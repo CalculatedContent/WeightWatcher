@@ -19,9 +19,10 @@ fit the singluar/eigenvalues to a power law.
 - log Norm (default, fast, less accurate)
 - weighted alpaha (slow, more accurate)
 
-Here is an exaple of the *weighted alpha* capacity metric for all the current pretrained VGG models.
+Here is an example of the *weighted alpha* capacity metric for all the current pretrained VGG models.
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
+Notice: we *did not peek* at the ImageNet test data to build this plot.
 
 ### Frameworks supported
 

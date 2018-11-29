@@ -148,7 +148,8 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 
 [Calculated Content Blog](https://calculatedcontent.com)
 
-[Orginal research: ]()
+[Orginal research: 
+Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
 
 [current ICLR 2019 submnission](https://openreview.net/forum?id=SJeFNoRcFQ)
 

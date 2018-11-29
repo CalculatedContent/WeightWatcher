@@ -7,19 +7,20 @@ or even the entire series of ResNet models--without needing a test set !
 
 This relies upon recent research into the [Heavy (Fat) Tailed Self Regularization in DNNs](https://openreview.net/forum?id=SJeFNoRcFQ)
  
-The tool lets one compute a averager capacity, or quality, metric for a series of  DNNs, trained on the same data, but with different hyperparameters, or even different but related architectures. For example, it can predict that VGG19_BN generalizes better than VGG19, and better than VGG16_BN, VGG16, etc.--without needing the ImageNet datasets.
+The tool lets one compute a averager capacity, or quality, metric for a series of  DNNs, trained on the same data, but with different hyperparameters, or even different but related architectures. For example, it can predict that VGG19_BN generalizes better than VGG19, and better than VGG16_BN, VGG16, etc.  
 
-
-![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
 
 ### Types of Capacity Metrics:
 There are 2 metrics availabe. The average **log Norm**, which is much faster but less accurate.
-The average **weighted alpha** isn more accurate but much slower because it needs to both compute the SVD of the layer weight matrices, and then
+The average **weighted alpha** is more accurate but much slower because it needs to both compute the SVD of the layer weight matrices, and thenaa
 fit the singluar/eigenvalues to a power law.
 
-- log Norm (fast, less accurate)
+- log Norm (default, fast, less accurate)
 - weighted alpaha (slow, more accurate)
+
+Here is an exaple of the *weighted alpha* capacity metric for all the current pretrained VGG models.
+![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
 
 ### Frameworks supported
@@ -32,7 +33,6 @@ fit the singluar/eigenvalues to a power law.
 
 - Dense / Linear / Fully Connected (and Conv1D)
 - Conv2D
-
 
 
 
@@ -55,9 +55,96 @@ watcher.get_summary()
 watcher.print_results()
 ```
 
+## Advanced Usage 
+
+The analyze function has several features described below
+
+```python
+def analyze(self, model=None, layers=[], min_size=50, max_size=0,
+                compute_alphas=False, compute_lognorms=True,
+                plot=False):
+...
+```
+
+and in the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
+
+
+### weighted alpha (SLOW)
+Power Law fit, here with pyTorch example
+
+```python
+import weightwatcher as ww
+import torchvision.models as models
+
+model = models.vgg19_bn(pretrained=True)
+watcher = ww.WeightWatcher(model=model)
+results = watcher.analyze(compute_alphas=True)
+data.append({"name": "vgg19bntorch", "summary": watcher.get_summary()})
+
+
+
+#### summary data: 
+```python
+{'name': 'vgg19bntorch',
+  'summary': {'lognorm': 0.81850576,
+   'lognorm_compound': 0.9365272010550088,
+   'alpha': 2.9646726379493287,
+   'alpha_compound': 2.847975521455623,
+   'alpha_weighted': 1.1588882728052485,
+   'alpha_weighted_compound': 1.5002343912892515}},
+```
+
+
+Capacity Metrics (evarages over all layers):
+- lognorm:  average log norm, fast
+- alpha_weight:  average weighted alpha, slow
+
+- alpha:  average alpha, not weighted  (slow, not as useful)
+
+Compound averages: Same as above, but averages are computed
+slightly differently. This will be desrcibed in an upcoming paper.
+
+Results are also provided for every layer; see [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
+
+### Additional options
+ 
+#### filter layer types 
+
+```python
+results = watcher.analyze(layers=ww.LAYER_TYPE.CONV1D|ww.LAYER_TYPE.DENSE)
+
+```
+
+#### filter by ids
+
+```python
+results = watcher.analyze(layers=[20])
+```
+
+#### minimum, maximum size of weight matrix
+
+Sets the minimum and maximum size of the weight matrices analyzed.
+Setting max is useful for a quick debugging.
+
+
+#### plots (for weight_alpha=True)
+
+Create log-log plots for each layer weight matrix to observe how well
+the power law fits work
+
+
 ## Links
 
-[Weight Watcher homepage](https://calculationconsulting.com)
+[Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
+
+[Calculation Consulting homepage](https://calculationconsulting.com)
+
+[Calculated Content Blog](https://calculatedcontent.com)
+
+[Orginal research: ]()
+
+[current ICLR 2019 submnission](https://openreview.net/forum?id=SJeFNoRcFQ)
+
 
 ## License
 

@@ -82,9 +82,7 @@ results = watcher.analyze(compute_alphas=True)
 data.append({"name": "vgg19bntorch", "summary": watcher.get_summary()})
 
 
-
-#### summary data: 
-```python
+### data:
 {'name': 'vgg19bntorch',
   'summary': {'lognorm': 0.81850576,
    'lognorm_compound': 0.9365272010550088,
@@ -95,20 +93,21 @@ data.append({"name": "vgg19bntorch", "summary": watcher.get_summary()})
 ```
 
 
-Capacity Metrics (evarages over all layers):
+#### Capacity Metrics (evarages over all layers):
 - lognorm:  average log norm, fast
 - alpha_weight:  average weighted alpha, slow
 
 - alpha:  average alpha, not weighted  (slow, not as useful)
 
-Compound averages: Same as above, but averages are computed
-slightly differently. This will be desrcibed in an upcoming paper.
+Compound averages: 
+
+  Same as above, but averages are computed slightly differently. This will be desrcibed in an upcoming paper.
 
 Results are also provided for every layer; see [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
 
 ### Additional options
  
-#### filter layer types 
+#### filter by layer types 
 
 ```python
 results = watcher.analyze(layers=ww.LAYER_TYPE.CONV1D|ww.LAYER_TYPE.DENSE)
@@ -126,11 +125,18 @@ results = watcher.analyze(layers=[20])
 Sets the minimum and maximum size of the weight matrices analyzed.
 Setting max is useful for a quick debugging.
 
+```python
+results = watcher.analyze(min_size=50, max_size=500)
+```
 
 #### plots (for weight_alpha=True)
 
 Create log-log plots for each layer weight matrix to observe how well
 the power law fits work
+
+```python
+results = watcher.analyze(compute_alphas=True, plot=True)
+```
 
 
 ## Links

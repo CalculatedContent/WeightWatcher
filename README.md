@@ -157,7 +157,9 @@ Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matri
 
 [Current ICLR 2019 submnission](https://openreview.net/forum?id=SJeFNoRcFQ)
 
-Latest R&D Talk (to be presented at UC Berkeley/ICSI 12/13/2018)  N/A yet
+[Latest R&D Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
+
+ICML 2019 Submission (available soon)
 
 ## License
 

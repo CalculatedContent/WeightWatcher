@@ -153,7 +153,7 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 [Orginal research: 
 Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
 
-[Early YouTube research talk](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
+[Early YouTube research talk (presented at NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
 
 [Current ICLR 2019 submnission](https://openreview.net/forum?id=SJeFNoRcFQ)
 

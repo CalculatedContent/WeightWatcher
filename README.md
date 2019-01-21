@@ -153,11 +153,11 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 [Orginal research: 
  Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
 
-[Early YouTube research talk (presented at NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
+[Recent talk (presented at NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
 
 [ICLR 2019 submnission:  Traditional and Heavy Tailed Self Regularization in Neural Network Models ](https://openreview.net/forum?id=SJeFNoRcFQ)
 
-[Latest R&D Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
+[Latest Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
 
 ICML 2019 Submission (available soon)
 

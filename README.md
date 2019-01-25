@@ -155,11 +155,11 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 
 [Recent talk (presented at NERSC Summer 2018)](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
 
-Traditional and Heavy Tailed Self Regularization in Neural Network Models ](https://arxiv.org/abs/1901.08276)
+[Traditional and Heavy Tailed Self Regularization in Neural Network Models](https://arxiv.org/abs/1901.08276)
 
 [Latest Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
 
-Heavy-Tailed Universality Predicts Trends in Test Accuracies for Very Large Pre-Trained Deep Neural Networks (https://arxiv.org/abs/1901.08278)
+[Heavy-Tailed Universality Predicts Trends in Test Accuracies for Very Large Pre-Trained Deep Neural Networks](https://arxiv.org/abs/1901.08278)
 
 ## License
 

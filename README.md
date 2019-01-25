@@ -159,7 +159,7 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 
 [Latest Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
 
-ICML 2019 Submission (available soon)
+ICML 2019 Submission (https://arxiv.org/abs/1901.08278)
 
 ## License
 

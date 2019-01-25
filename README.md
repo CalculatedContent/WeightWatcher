@@ -155,7 +155,7 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 
 [Recent talk (presented at NERSC Summer 2018)](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
 
-[ICLR 2019 submnission:  Traditional and Heavy Tailed Self Regularization in Neural Network Models ](https://openreview.net/forum?id=SJeFNoRcFQ)
+Traditional and Heavy Tailed Self Regularization in Neural Network Models ](https://arxiv.org/abs/1901.08276)
 
 [Latest Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
 

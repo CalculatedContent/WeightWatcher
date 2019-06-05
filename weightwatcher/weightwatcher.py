@@ -129,7 +129,7 @@ class WeightWatcher:
 
         return True
 
-         
+
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
                 compute_alphas=False, compute_lognorms=True, normalize=False,
@@ -150,9 +150,24 @@ class WeightWatcher:
         compute_lognorms:
             Compute the log norms of the weight matrices.
         """
+
         model = model or self.model
         
         res = {}
+
+        # Treats Custom Conv1D / Attention Layers (ex: GPT, BERT)
+        # since they have custom subclass from nn.Module (OpenAIGPTModel)
+        def isPyTorchLinearOrConv1D(l):
+            tf = False
+            import torch.nn as nn
+            if isinstance(l, nn.Conv1d):
+                tf = True
+            if isinstance(l, nn.Module):
+                if hasattr(l, 'weight'):
+                    w = l.weight.detach().numpy()
+                    if len(w.shape)==2: # Linear
+                        tf = True
+            return tf
 
         if not isinstance(layers, list):
             layers = [layers]
@@ -220,6 +235,18 @@ class WeightWatcher:
                     #    weights = weigths[0]+weights[1]
 
             # CONV1D layer
+            elif (isPyTorchLinearOrConv1D(l)):
+                res[i] = {"layer_type": LAYER_TYPE.CONV1D}
+
+                if (len(layer_types) > 0 and
+                        not any(layer_type & LAYER_TYPE.CONV1D for layer_type in layer_types)):
+                    msg = "Skipping (Layer type not requested to analyze)"
+                    self.debug("Layer {}: {}".format(i+1, msg))
+                    res[i]["message"] = msg
+                    continue
+
+                weights = [np.array(l.weight.data.clone().cpu())]
+
             elif (isinstance(l, keras.layers.convolutional.Conv1D)):
 
                 res[i] = {"layer_type": LAYER_TYPE.CONV1D}
@@ -289,7 +316,8 @@ class WeightWatcher:
         Return a pandas dataframe
         """
         df = self.compute_details(results=results)
-        return df[:-1].dropna(axis=1, how='all').set_index("layer_id") # prune the last line summary
+        details =  df[:-1].dropna(axis=1, how='all').set_index("layer_id") # prune the last line summary
+        return details[details.layer_type.notna()]
 
     def compute_details(self, results=None):
         """

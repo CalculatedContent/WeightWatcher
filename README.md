@@ -170,7 +170,29 @@ Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracie
 
 ---
 
+## Release
+
+Publishing to the PyPI repository:
+
+```sh
+# 1. Check in the latest code with the correct revision number (__version__ in __init__.py)
+vi weightwatcher/__init__.py # Increse release number, remove -dev to revision number
+git commit
+# 2. Check out latest version from the repo in a fresh directory
+cd ~/temp/
+git clone https://github.com/CalculatedContent/WeightWatcher
+cd WeightWatcher/
+# 3. Use the latest version of the tools
+python -m pip install --upgrade setuptools wheel twine
+# 4. Create the package
+python setup.py sdist bdist_wheel
+# 5. Test the package
+twine check dist/*
+# 6. Upload the package to PyPI
+twine upload dist/*
+# 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
+```
 
 ## License
 
-[Apache License 2.0](LICENSE)
+[Apache License 2.0](LICENSE.txt)

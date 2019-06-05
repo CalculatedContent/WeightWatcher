@@ -24,6 +24,7 @@ import tensorflow as tf
 from tensorflow import keras
 import keras
 from keras.models import load_model
+import pandas as pd
 
 from .constants import *
 
@@ -46,7 +47,9 @@ class WeightWatcher:
 
         self.info(self.banner())
 
+
     def logger_set(self, log=True, logger=None):
+        self.log = log
         self.logger = None
         if logger:
             self.logger = logger
@@ -55,7 +58,7 @@ class WeightWatcher:
             if not self.logger.handlers: # do not register handlers more than once
                 if log:
                     #logging.basicConfig(level=logging.DEBUG)
-                    log_level = logging.DEBUG
+                    log_level = logging.INFO
                     self.logger.setLevel(log_level)
                     console_handler = logging.StreamHandler()
                     console_handler.setLevel(log_level)
@@ -87,19 +90,23 @@ class WeightWatcher:
 
 
     def debug(self, message):
-        self.logger.debug(message)
+        if self.log:
+            self.logger.debug(message)
 
 
     def info(self, message):
-        self.logger.info(message)
+        if self.log:
+            self.logger.info(message)
 
 
     def warn(self, message):
-        self.logger.warning(message)
+        if self.log:
+            self.logger.warning(message)
 
 
     def error(self, message):
-        self.logger.error(message)
+        if self.log:
+            self.logger.error(message)
 
 
     def load_model(self, model):
@@ -120,11 +127,13 @@ class WeightWatcher:
         if not model:
             return False
 
-        return True        
+        return True
+
          
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
-                compute_alphas=False, compute_lognorms=True,
+                compute_alphas=False, compute_lognorms=True, normalize=False,
+                compute_spectralnorms=False, compute_softranks=False,
                 plot=False):
         """
         Analyze the weight matrices of a model.
@@ -174,7 +183,7 @@ class WeightWatcher:
         import torch.nn as nn
 
         for i, l in enumerate(layers):
-            self.info("Layer {}: {}".format(i+1, l))
+            self.debug("Layer {}: {}".format(i+1, l))
             res[i] = {"id": i}
             res[i]["type"] = l
             
@@ -183,7 +192,7 @@ class WeightWatcher:
             # Filter out layers by numerical id (if any provided)
             if (len(layer_ids) > 0 and (i not in layer_ids)):
                 msg = "Skipping (Layer id not requested to analyze)"
-                self.info("Layer {}: {}".format(i+1, msg))
+                self.debug("Layer {}: {}".format(i+1, msg))
                 res[i]["message"] = msg
                 continue
 
@@ -196,7 +205,7 @@ class WeightWatcher:
                 if (len(layer_types) > 0 and
                         not any(layer_type & LAYER_TYPE.DENSE for layer_type in layer_types)):
                     msg = "Skipping (Layer type not requested to analyze)"
-                    self.info("Layer {}: {}".format(i+1, msg))
+                    self.debug("Layer {}: {}".format(i+1, msg))
                     res[i]["message"] = msg
                     continue
                 
@@ -218,7 +227,7 @@ class WeightWatcher:
                 if (len(layer_types) > 0 and
                         not any(layer_type & LAYER_TYPE.CONV1D for layer_type in layer_types)):
                     msg = "Skipping (Layer type not requested to analyze)"
-                    self.info("Layer {}: {}".format(i+1, msg))
+                    self.debug("Layer {}: {}".format(i+1, msg))
                     res[i]["message"] = msg
                     continue
                 
@@ -232,7 +241,7 @@ class WeightWatcher:
                 if (len(layer_types) > 0 and
                         not any(layer_type & LAYER_TYPE.CONV2D for layer_type in layer_types)):
                     msg = "Skipping (Layer type not requested to analyze)"
-                    self.info("Layer {}: {}".format(i+1, msg))
+                    self.debug("Layer {}: {}".format(i+1, msg))
                     res[i]["message"] = msg
                     continue
                 
@@ -245,18 +254,22 @@ class WeightWatcher:
 
             else:
                 msg = "Skipping (Layer not supported)"
-                self.info("Layer {}: {}".format(i+1, msg))
+                self.debug("Layer {}: {}".format(i+1, msg))
                 res[i]["message"] = msg
                 continue
 
-            self.info("Layer {}: Analyzing {} weight matrices...".format(i+1, len(weights)))
+            self.debug("Layer {}: Analyzing {} weight matrices...".format(i+1, len(weights)))
+
+            if compute_softranks and not compute_lognorms:
+                compute_lognorms = True
 
             results = self.analyze_weights(weights, min_size=min_size, max_size=max_size,
                                            compute_alphas=compute_alphas, compute_lognorms=compute_lognorms,
-                                           plot=plot)
+                                           compute_spectralnorms=compute_spectralnorms, compute_softranks=compute_softranks,
+                                           normalize=normalize, plot=plot)
             if not results:
                 msg = "No weigths to analyze"
-                self.info("Layer {}: {}".format(i+1, msg))
+                self.debug("Layer {}: {}".format(i+1, msg))
                 res["message"] = msg
             else:
                 res[i] = {**res[i], **results}
@@ -269,6 +282,19 @@ class WeightWatcher:
     
     
     def print_results(self, results=None):
+        self.compute_details(results=results)
+
+    def get_details(self, results=None):
+        """
+        Return a pandas dataframe
+        """
+        df = self.compute_details(results=results)
+        return df[:-1].dropna(axis=1, how='all').set_index("layer_id") # prune the last line summary
+
+    def compute_details(self, results=None):
+        """
+        Return a pandas dataframe
+        """
         import numpy as np
         
         if results is None:
@@ -279,109 +305,138 @@ class WeightWatcher:
             return
 
         self.info("### Printing results ###")
-            
-        lognorms = [] # All lognorms of all slices
-        lognorms_compound = [] # Lognorms of the average of the slices
-        for layer_id, result in results.items():
-            compound = 0
-            count = 0
-            for slice_id, summary in result.items():
-                if not str(slice_id).isdigit() or "lognorm" not in summary:
-                    continue
-                lognorm = summary["lognorm"]
-                lognorms.append(lognorm)
-                compound += lognorm
-                count += 1
 
-            if count > 0:
-                compound = compound / count
-                lognorms_compound.append(compound)
+        metrics = {
+            # key in "results" : pretty print name
+            "norm": "Norm",
+            "lognorm": "LogNorm",
+            "alpha": "Alpha",
+            "alpha_weighted": "Alpha Weighted",
+            "spectralnorm": "Spectral Norm",
+            "softrank": "Softrank",
+            "softranklog": "Softrank Log",
+            "softranklogratio": "Softrank Log Ratio",
+        }
+
+        metrics_stats = []
+        for metric in metrics:
+            metrics_stats.append("{}_min".format(metric))
+            metrics_stats.append("{}_max".format(metric))
+            metrics_stats.append("{}_avg".format(metric))
+
+            metrics_stats.append("{}_compound_min".format(metric))
+            metrics_stats.append("{}_compound_max".format(metric))
+            metrics_stats.append("{}_compound_avg".format(metric))
+
+        columns = ["layer_id", "layer_type", "N", "M", "layer_count", "slice", "slice_count", "level", "comment"] + [*metrics] + metrics_stats
+        df = pd.DataFrame(columns=columns)
+
+        metrics_values = {}
+        metrics_values_compound = {}
+
+        for metric in metrics:
+            metrics_values[metric] = []
+            metrics_values_compound[metric] = []
+
+        layer_count = 0
+        for layer_id, result in results.items():
+            layer_count += 1
+
+            layer_type = np.NAN
+            if "layer_type" in result:
+                layer_type = str(result["layer_type"]).replace("LAYER_TYPE.", "")
+
+            compounds = {} # temp var
+            for metric in metrics:
+                compounds[metric] = []
+
+            slice_count = 0
+            Ntotal = 0
+            Mtotal = 0
+            for slice_id, summary in result.items():
+                if not str(slice_id).isdigit():
+                    continue
+
+                slice_count += 1
+
+                N = np.NAN
+                if "N" in summary:
+                    N = summary["N"]
+                    Ntotal += N
+
+                M = np.NAN
+                if "M" in summary:
+                    M = summary["M"]
+                    Mtotal += M
+
+                data = {"layer_id": layer_id, "layer_type": layer_type, "N": N, "M": M, "slice": slice_id, "level": LEVEL.SLICE, "comment": "Slice level"}
+                for metric in metrics:
+                    if metric in summary:
+                        value = summary[metric]
+                        if value is not None:
+                            metrics_values[metric].append(value)
+                            compounds[metric].append(value)
+                            data[metric] = value
+                row = pd.DataFrame(columns=columns, data=data, index=[0])
+                df = pd.concat([df, row])
+
+            data = {"layer_id": layer_id, "layer_type": layer_type, "N": Ntotal, "M": Mtotal, "slice_count": slice_count, "level": LEVEL.LAYER, "comment": "Layer level"}
+            # Compute the coumpound value over the slices
+            for metric, value in compounds.items():
+                count = len(value)
+                if count == 0:
+                    continue
+
+                compound = np.mean(value)
+                metrics_values_compound[metric].append(compound)
+                data[metric] = compound
 
                 if count > 1:
-                    # Compound norm of the multiple slices (conv2D)
-                    self.debug("Layer {}: Lognorm compound: {}".format(layer_id, compound))
+                    # Compound value of the multiple slices (conv2D)
+                    self.debug("Layer {}: {} compound: {}".format(layer_id, metrics[metric], compound))
                 else:
                     # No slices (Dense or Conv1D)
-                    self.debug("Layer {}: Lognorm: {}".format(layer_id, compound))
+                    self.debug("Layer {}: {}: {}".format(layer_id, metrics[metric], compound))
 
-        if len(lognorms) > 0:
-            avg = np.mean(lognorms)
-            self.summary["lognorm"] = avg
-            self.info("LogNorm: min: {}, max: {}, avg: {}".format(min(lognorms), max(lognorms), avg))
+            row = pd.DataFrame(columns=columns, data=data, index=[0])
+            df = pd.concat([df, row])
 
-            avg = np.mean(lognorms_compound)
-            self.summary["lognorm_compound"] = avg
-            self.info("LogNorm compound: min: {}, max: {}, avg: {}".format(min(lognorms_compound), max(lognorms_compound), avg))
-        
-        alphas = [] # All alphas for all slices
-        alphas_compound = [] # Alphas of the average of the slices
-        for layer_id, result in results.items():
-            compound = 0
-            count = 0
-            for slice_id, summary in result.items():
-                if not str(slice_id).isdigit() or "alpha" not in summary:
-                    continue
-                alpha = summary["alpha"]
-                alphas.append(alpha)
-                compound += alpha
-                count += 1
-                
-            if count > 0:
-                compound = compound / count
-                alphas_compound.append(compound)
+        data = {"layer_count": layer_count, "level": LEVEL.NETWORK, "comment": "Network Level"}
+        for metric, metric_name in metrics.items():
+            if metric not in metrics_values or len(metrics_values[metric]) == 0:
+                continue
 
-                if count > 1:
-                    # Compound alpha of the multiple slices (conv2D)
-                    self.debug("Layer {}: Alpha compound: {}".format(layer_id, compound))
-                else:
-                    # No slices (Dense or Conv1D)
-                    self.debug("Layer {}: Alpha: {}".format(layer_id, compound))
+            values = metrics_values[metric]
+            minimum = min(values)
+            maximum = max(values)
+            avg = np.mean(values)
+            self.summary[metric] = avg
+            self.info("{}: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
+            data["{}_min".format(metric)] = minimum
+            data["{}_max".format(metric)] = maximum
+            data["{}_avg".format(metric)] = avg
 
-        if len(alphas)>0:
-            avg = np.mean(alphas)
-            self.summary["alpha"] = avg
-            self.info("Alpha: min: {}, max: {}, avg: {}".format(min(alphas), max(alphas), avg))
+            values = metrics_values_compound[metric]
+            minimum = min(values)
+            maximum = max(values)
+            avg = np.mean(values)
+            self.summary["{}_compound".format(metric)] = avg
+            self.info("{} compound: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
+            data["{}_compound_min".format(metric)] = minimum
+            data["{}_compound_max".format(metric)] = maximum
+            data["{}_compound_avg".format(metric)] = avg
 
-            avg = np.mean(alphas_compound)
-            self.summary["alpha_compound"] = avg
-            self.info("Alpha compound: min: {}, max: {}, avg: {}".format(min(alphas_compound), max(alphas_compound), avg))
+        row = pd.DataFrame(columns=columns, data=data, index=[0])
+        df = pd.concat([df, row])
 
-        alphas_weighted = [] # All alphas for all slices
-        alphas_weighted_compound = [] # Alphas of the average of the slices
-        for layer_id, result in results.items():
-            compound = 0
-            count = 0
-            for slice_id, summary in result.items():
-                if not str(slice_id).isdigit() or "alpha_weighted" not in summary:
-                    continue
-                alpha = summary["alpha_weighted"]
-                alphas_weighted.append(alpha)
-                compound += alpha
-                count += 1
-                
-            if count > 0:
-                compound = compound / count
-                alphas_weighted_compound.append(compound)
-
-                if count > 1:
-                    # Compound alpha of the multiple slices (conv2D)
-                    self.debug("Layer {}: Alpha Weighted compound: {}".format(layer_id, compound))
-                else:
-                    # No slices (Dense or Conv1D)
-                    self.debug("Layer {}: Alpha Weigthed: {}".format(layer_id, compound))
-
-        if len(alphas_weighted)>0:
-            avg = np.mean(alphas_weighted)
-            self.summary["alpha_weighted"] = avg
-            self.info("Alpha Weighted: min: {}, max: {}, avg: {}".format(min(alphas_weighted), max(alphas_weighted), avg))
-
-            avg = np.mean(alphas_weighted_compound)
-            self.summary["alpha_weighted_compound"] = avg
-            self.info("Alpha Weighted compound: min: {}, max: {}, avg: {}".format(min(alphas_weighted_compound), max(alphas_weighted_compound), avg))
+        return df.dropna(axis=1,how='all')
 
     
-    def get_summary(self):
-        return self.summary
+    def get_summary(self, pandas=False):
+        if pandas:
+            return pd.DataFrame(data=self.summary, index=[0])
+        else:
+            return self.summary
 
 
     def get_conv2D_Wmats(self, Wtensor):
@@ -393,7 +448,7 @@ class WeightWatcher:
         s = Wtensor.shape
         N, M, imax, jmax = s[0],s[1],s[2],s[3]
         if N + M >= imax + jmax:
-            self.info("Pytorch tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+            self.debug("Pytorch tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
             
             for i in range(imax):
                 for j in range(jmax):
@@ -403,7 +458,7 @@ class WeightWatcher:
                     Wmats.append(W)
         else:
             N, M, imax, jmax = imax, jmax, N, M          
-            self.info("Keras tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+            self.debug("Keras tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
             
             for i in range(imax):
                 for j in range(jmax):
@@ -417,7 +472,8 @@ class WeightWatcher:
     
     def analyze_weights(self, weights, min_size=50, max_size=0,
                         compute_alphas=False, compute_lognorms=True,
-                        plot=False):
+                        compute_spectralnorms=False, compute_softranks=False,
+                        normalize=False, plot=False):
         """Analyzes weight matrices.
         
         Example in Keras:
@@ -442,10 +498,20 @@ class WeightWatcher:
             res[i]["M"] = M
             res[i]["Q"] = Q
 
+            lambda0 = None
+
+            if compute_spectralnorms:
+                svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
+                svd.fit(W)
+                sv = svd.singular_values_
+                evals = sv*sv # max value
+                lambda0 = evals[0]
+                res[i]["spectralnorm"] = lambda0
+
             if M < min_size:
                 summary = "Weight matrix {}/{} ({},{}): Skipping: too small (<{})".format(i+1, count, M, N, min_size)
                 res[i]["summary"] = summary 
-                self.info("    {}".format(summary))
+                self.debug("    {}".format(summary))
                 continue
 
             if max_size > 0 and M > max_size:
@@ -453,8 +519,10 @@ class WeightWatcher:
                 res[i]["summary"] = summary 
                 self.info("    {}".format(summary))
                 continue
+
+            summary = []
                 
-            self.info("    Weight matrix {}/{} ({},{}): Analyzing ..."
+            self.debug("    Weight matrix {}/{} ({},{}): Analyzing ..."
                      .format(i+1, count, M, N))
             
             if compute_alphas:
@@ -463,6 +531,10 @@ class WeightWatcher:
                 svd.fit(W) 
                 sv = svd.singular_values_
                 evals = sv*sv
+
+                if normalize:
+                    self.debug("    Normalizing ...")
+                    evals = evals / float(N)
 
                 # Other (slower) way of computing the eigen values:
                 #X = np.dot(W.T,W)/N
@@ -482,13 +554,11 @@ class WeightWatcher:
                 tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
                 res[i]["rank_loss"] = np.count_nonzero(sv > tolerance, axis=-1)
 
-                summary = "Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}".format(i+1, count, M, N, alpha, alpha_weighted, D)
-                res[i]["summary"] = summary 
-                self.info("    {}".format(summary))
+                summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}".format(i+1, count, M, N, alpha, alpha_weighted, D))
 
                 if alpha < alpha_min or alpha > alpha_max:
                     message = "Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(i+1, count, M, N, alpha, alpha_min, alpha_max)
-                    self.info("    {}".format(message))
+                    self.debug("    {}".format(message))
 
                 if plot:
                     fig2 = fit.plot_pdf(color='b', linewidth=2)
@@ -506,13 +576,39 @@ class WeightWatcher:
                     plt.loglog(evals)
                     plt.title("Eigen Values for Weight matrix {}/{}".format(i+1, count))
                     plt.show()
-                
+
             if compute_lognorms:
-                lognorm = np.log10(np.linalg.norm(W))
+                norm = np.linalg.norm(W)
+                res[i]["norm"] = norm
+                lognorm = np.log10(norm)
                 res[i]["lognorm"] = lognorm
+
+                softrank = None
+                softranklog = 0
+                softranklogratio = 0
+                if compute_softranks:
+                    if lambda0 is None: # if not already computed for the spectralnorm
+                        svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
+                        svd.fit(W)
+                        sv = svd.singular_values_
+                        evals = sv*sv # max value
+                        lambda0 = evals[0]
+
+                    if lambda0 != 0:
+                        softrank = norm / lambda0
+                        softranklog = np.log10(softrank)
+                        softranklogratio = lognorm / np.log10(lambda0)
                 
-                summary = "Weight matrix {}/{} ({},{}): Lognorm: {}".format(i+1, count, M, N, lognorm)
-                res[i]["summary"] = summary 
-                self.info("    {}".format(summary))
+                summary.append("Weight matrix {}/{} ({},{}): Lognorm: {}".format(i+1, count, M, N, lognorm))
+
+                if softrank is not None:
+                    res[i]["softrank"] = softrank
+                    res[i]["softranklog"] = softranklog
+                    res[i]["softranklogratio"] = softranklogratio
+                    summary += "{}. Softrank: {}. Softrank log: {}. Softrank log ratio: {}".format(summary, softrank, softranklog, softranklogratio)
+
+            res[i]["summary"] = "\n".join(summary)
+            for line in summary:
+                self.debug("    {}".format(line))
 
         return res

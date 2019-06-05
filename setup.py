@@ -33,7 +33,8 @@ setup(
                         'powerlaw',
                         'tensorflow',
                         'keras',
-                        'sklearn'],
+                        'sklearn',
+                        'pandas'],
     entry_points = '''
         [console_scripts]
         weightwatcher=weightwatcher:main

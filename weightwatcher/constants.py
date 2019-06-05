@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import IntFlag, auto
+from enum import IntFlag, auto, Enum
 
 class LAYER_TYPE(IntFlag):
     DENSE = auto()
@@ -23,3 +23,8 @@ class PLOT(IntFlag):
     POWERLAW = auto()
     ESD = auto()
     ESDLOG = auto()
+
+class LEVEL(Enum):
+    SLICE = auto()
+    LAYER = auto()
+    NETWORK = auto()

@@ -168,7 +168,7 @@ Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracie
 
 [Latest Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
 
-ICML 2019 Theoretical Physics Workshop Paper (https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/ICMLPhysicsWorkshop/icml_prl_TPDLW2019_fin.pdf)
+[ICML 2019 Theoretical Physics Workshop Paper](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/ICMLPhysicsWorkshop/icml_prl_TPDLW2019_fin.pdf)
 
 ---
 

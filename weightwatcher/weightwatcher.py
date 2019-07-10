@@ -128,8 +128,8 @@ class WeightWatcher:
             return False
 
         return True
-
-
+        
+         
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
                 compute_alphas=False, compute_lognorms=True, normalize=False,
@@ -150,24 +150,9 @@ class WeightWatcher:
         compute_lognorms:
             Compute the log norms of the weight matrices.
         """
-
         model = model or self.model
         
         res = {}
-
-        # Treats Custom Conv1D / Attention Layers (ex: GPT, BERT)
-        # since they have custom subclass from nn.Module (OpenAIGPTModel)
-        def isPyTorchLinearOrConv1D(l):
-            tf = False
-            import torch.nn as nn
-            if isinstance(l, nn.Conv1d):
-                tf = True
-            if isinstance(l, nn.Module):
-                if hasattr(l, 'weight'):
-                    w = l.weight.detach().numpy()
-                    if len(w.shape)==2: # Linear
-                        tf = True
-            return tf
 
         if not isinstance(layers, list):
             layers = [layers]
@@ -235,18 +220,6 @@ class WeightWatcher:
                     #    weights = weigths[0]+weights[1]
 
             # CONV1D layer
-            elif (isPyTorchLinearOrConv1D(l)):
-                res[i] = {"layer_type": LAYER_TYPE.CONV1D}
-
-                if (len(layer_types) > 0 and
-                        not any(layer_type & LAYER_TYPE.CONV1D for layer_type in layer_types)):
-                    msg = "Skipping (Layer type not requested to analyze)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-
-                weights = [np.array(l.weight.data.clone().cpu())]
-
             elif (isinstance(l, keras.layers.convolutional.Conv1D)):
 
                 res[i] = {"layer_type": LAYER_TYPE.CONV1D}
@@ -316,8 +289,7 @@ class WeightWatcher:
         Return a pandas dataframe
         """
         df = self.compute_details(results=results)
-        details =  df[:-1].dropna(axis=1, how='all').set_index("layer_id") # prune the last line summary
-        return details[details.layer_type.notna()]
+        return df[:-1].dropna(axis=1, how='all').set_index("layer_id") # prune the last line summary
 
     def compute_details(self, results=None):
         """
@@ -453,7 +425,7 @@ class WeightWatcher:
             data["{}_compound_min".format(metric)] = minimum
             data["{}_compound_max".format(metric)] = maximum
             data["{}_compound_avg".format(metric)] = avg
-
+        
         row = pd.DataFrame(columns=columns, data=data, index=[0])
         df = pd.concat([df, row])
 
@@ -510,6 +482,7 @@ class WeightWatcher:
         """
         from sklearn.decomposition import TruncatedSVD
 
+        if 
         res = {}
         count = len(weights)
         if count == 0:
@@ -527,13 +500,19 @@ class WeightWatcher:
             res[i]["Q"] = Q
 
             lambda0 = None
-
-            if compute_spectralnorms:
+            
+            if compute_spectralnorms or compute_alphas or compute_softranks:
                 svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
                 svd.fit(W)
                 sv = svd.singular_values_
-                evals = sv*sv # max value
+                evals = sv*sv # max value      
+                if normalize:
+                    self.debug("    Normalizing ...")
+                    evals = evals / float(N)
                 lambda0 = evals[0]
+                res[i]['evals']=evals                    
+
+            if compute_spectralnorms:
                 res[i]["spectralnorm"] = lambda0
 
             if M < min_size:
@@ -554,21 +533,6 @@ class WeightWatcher:
                      .format(i+1, count, M, N))
             
             if compute_alphas:
-
-                svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
-                svd.fit(W) 
-                sv = svd.singular_values_
-                evals = sv*sv
-
-                if normalize:
-                    self.debug("    Normalizing ...")
-                    evals = evals / float(N)
-
-                # Other (slower) way of computing the eigen values:
-                #X = np.dot(W.T,W)/N
-                #evals2 = np.linalg.eigvals(X)
-                #res[i]["lambda_max2"] = np.max(evals2)
-
                 lambda_max = np.max(evals)
                 fit = powerlaw.Fit(evals, xmax=lambda_max, verbose=False)
                 alpha = fit.alpha
@@ -615,13 +579,6 @@ class WeightWatcher:
                 softranklog = 0
                 softranklogratio = 0
                 if compute_softranks:
-                    if lambda0 is None: # if not already computed for the spectralnorm
-                        svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
-                        svd.fit(W)
-                        sv = svd.singular_values_
-                        evals = sv*sv # max value
-                        lambda0 = evals[0]
-
                     if lambda0 != 0:
                         softrank = norm / lambda0
                         softranklog = np.log10(softrank)

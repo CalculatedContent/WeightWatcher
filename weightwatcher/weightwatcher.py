@@ -482,7 +482,6 @@ class WeightWatcher:
         """
         from sklearn.decomposition import TruncatedSVD
 
-        if 
         res = {}
         count = len(weights)
         if count == 0:

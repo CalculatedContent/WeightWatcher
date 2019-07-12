@@ -134,7 +134,7 @@ class WeightWatcher:
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
                 compute_alphas=False, compute_lognorms=True, normalize=False,
                 compute_spectralnorms=False, compute_softranks=False,
-                plot=False):
+                plot=False, keep_evals = False):
         """
         Analyze the weight matrices of a model.
 
@@ -267,7 +267,7 @@ class WeightWatcher:
             results = self.analyze_weights(ilayer, weights, min_size=min_size, max_size=max_size,
                                            compute_alphas=compute_alphas, compute_lognorms=compute_lognorms,
                                            compute_spectralnorms=compute_spectralnorms, compute_softranks=compute_softranks,
-                                           normalize=normalize, plot=plot)
+                                           normalize=normalize, plot=plot, keep_evals=keep_evals)
             if not results:
                 msg = "No weigths to analyze"
                 self.debug("Layer {}: {}".format(ilayer, msg))
@@ -474,7 +474,7 @@ class WeightWatcher:
     def analyze_weights(self, ilayer, weights, min_size=50, max_size=0,
                         compute_alphas=False, compute_lognorms=True,
                         compute_spectralnorms=False, compute_softranks=False,
-                        normalize=False, plot=False):
+                        normalize=False, plot=False, keep_evals=False):
         """Analyzes weight matrices.
         
         Example in Keras:
@@ -501,9 +501,15 @@ class WeightWatcher:
 
             lambda0 = None
             
-            if compute_spectralnorms or compute_alphas or compute_softranks:
-                self.info("runnning fast TruncatedSVD on layer {}, with {}-1 components".format(i,M))
-                svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
+            num_evals = 0
+            if compute_alphas:
+                num_evals = M-1
+            elif compute_softranks or compute_spectralnorms:
+                num_evals = 1
+
+            if num_evals > 0 :
+                self.debug("runnning fast TruncatedSVD on layer {}, with {} n_components".format(i,num_evals))
+                svd = TruncatedSVD(n_components=num_evals, n_iter=7, random_state=10)
                 svd.fit(W)
                 sv = svd.singular_values_
                 evals = sv*sv # max value      
@@ -511,7 +517,8 @@ class WeightWatcher:
                     self.debug("    Normalizing ...")
                     evals = evals / float(N)
                 lambda0 = evals[0]
-                res[i]['evals']=evals                    
+                if keep_evals:
+                    res[i]['evals']=evals                    
 
             if compute_spectralnorms:
                 res[i]["spectralnorm"] = lambda0

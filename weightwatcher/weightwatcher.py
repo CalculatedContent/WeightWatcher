@@ -183,7 +183,7 @@ class WeightWatcher:
         import torch.nn as nn
 
         for i, l in enumerate(layers):
-            ilyaer = i+1 # used for display only
+            ilayer = i+1 # used for display only
             self.debug("Layer {}: {}".format(ilayer, l))
             res[i] = {"id": i}
             res[i]["type"] = l

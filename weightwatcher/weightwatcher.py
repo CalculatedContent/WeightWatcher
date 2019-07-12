@@ -501,7 +501,7 @@ class WeightWatcher:
             lambda0 = None
             
             if compute_spectralnorms or compute_alphas or compute_softranks:
-                svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
+                svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
                 svd.fit(W)
                 sv = svd.singular_values_
                 evals = sv*sv # max value      

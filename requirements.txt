@@ -1,0 +1,9 @@
+numpy
+matplotlib
+powerlaw
+tensorflow
+keras
+pytorch
+pandas
+pypandoc
+sklearn

@@ -183,7 +183,7 @@ class WeightWatcher:
         import torch.nn as nn
 
         for i, l in enumerate(layers):
-            ilayer = i+1 # used for display only
+            ilayer = i # used for display only
             self.debug("Layer {}: {}".format(ilayer, l))
             res[i] = {"id": i}
             res[i]["type"] = l
@@ -492,6 +492,7 @@ class WeightWatcher:
         alpha_max = 3.5
 
         for i, W in enumerate(weights):
+            iweight = i # for display
             res[i] = {}
             M, N = np.min(W.shape), np.max(W.shape)
             Q=N/M
@@ -524,13 +525,13 @@ class WeightWatcher:
                 res[i]["spectralnorm"] = lambda0
 
             if M < min_size:
-                summary = " Layer {} Weight matrix {}/{} ({},{}): Skipping: too small (<{})".format(ilayer, i+1, count, M, N, min_size)
+                summary = " Layer {} Weight matrix {}/{} ({},{}): Skipping: too small (<{})".format(ilayer, iweight, count, M, N, min_size)
                 res[i]["summary"] = summary 
                 self.debug("    {}".format(summary))
                 continue
 
             if max_size > 0 and M > max_size:
-                summary = "Layer {} Weight matrix {}/{} ({},{}): Skipping: too big (testing) (>{})".format(ilayer, i+1, count, M, N, max_size)
+                summary = "Layer {} Weight matrix {}/{} ({},{}): Skipping: too big (testing) (>{})".format(ilayer, iweight, count, M, N, max_size)
                 res[i]["summary"] = summary 
                 self.info("    {}".format(summary))
                 continue
@@ -538,7 +539,7 @@ class WeightWatcher:
             summary = []
                 
             self.debug(" Layer {}  Weight matrix {}/{} ({},{}): Analyzing ..."
-                     .format(ilayer, i+1, count, M, N))
+                     .format(ilayer, iweight, count, M, N))
             
             if compute_alphas:
                 lambda_max = np.max(evals)
@@ -554,10 +555,10 @@ class WeightWatcher:
                 tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
                 res[i]["rank_loss"] = np.count_nonzero(sv > tolerance, axis=-1)
 
-                summary.append("Layer {} Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}".format(ilayer, i+1, count, M, N, alpha, alpha_weighted, D))
+                summary.append("Layer {} Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}".format(ilayer, iweight, count, M, N, alpha, alpha_weighted, D))
 
                 if alpha < alpha_min or alpha > alpha_max:
-                    message = "Layer {} Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(ilayer, i+1, count, M, N, alpha, alpha_min, alpha_max)
+                    message = "Layer {} Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(ilayer, iweight, count, M, N, alpha, alpha_min, alpha_max)
                     self.debug("    {}".format(message))
 
                 if plot:
@@ -565,16 +566,16 @@ class WeightWatcher:
                     fit.power_law.plot_pdf(color='b', linestyle='--', ax=fig2)
                     fit.plot_ccdf(color='r', linewidth=2, ax=fig2)
                     fit.power_law.plot_ccdf(color='r', linestyle='--', ax=fig2)
-                    plt.title("Power law fit for Layer {} Weight matrix {}/{}".format(ilayer, i+1, count))
+                    plt.title("Power law fit for Layer {} Weight matrix {}/{}".format(ilayer, iweight, count))
                     plt.show()
 
                     # plot eigenvalue histogram
                     plt.hist(evals, bins=100, density=True)
-                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + " for Layer {} Weight matrix {}/{}".format(ilayer, i+1, count))
+                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + " for Layer {} Weight matrix {}/{}".format(ilayer, iweight, count))
                     plt.show()
 
                     plt.loglog(evals)
-                    plt.title("Eigen Values for Layer {} Weight matrix {}/{}".format(ilayer, i+1, count))
+                    plt.title("Eigen Values for Layer {} Weight matrix {}/{}".format(ilayer, iweight, count))
                     plt.show()
 
             if compute_lognorms:
@@ -592,7 +593,7 @@ class WeightWatcher:
                         softranklog = np.log10(softrank)
                         softranklogratio = lognorm / np.log10(lambda0)
                 
-                summary.append("Layer {} Weight matrix {}/{} ({},{}): Lognorm: {}".format(ilayer, i+1, count, M, N, lognorm))
+                summary.append("Layer {} Weight matrix {}/{} ({},{}): Lognorm: {}".format(ilayer, iweight, count, M, N, lognorm))
 
                 if softrank is not None:
                     res[i]["softrank"] = softrank

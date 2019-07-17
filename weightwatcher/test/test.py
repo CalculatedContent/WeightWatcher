@@ -9,7 +9,7 @@ class Test_VGG11(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		import torchvision.models as models
-		cls.model = models.vgg16(pretrained=True)
+		cls.model = models.vgg11(pretrained=True)
 		cls.watcher = ww.WeightWatcher(model=cls.model, log=False)
 
 
@@ -89,7 +89,6 @@ class Test_VGG11(unittest.TestCase):
 		# Non Conv2D layers are NOT analyzed
 		self.assertTrue((nonConv2DLayers.N == 0).all, "All {} NON conv2D layers have a zero N".format(nonConv2DCount))
 		self.assertTrue((nonConv2DLayers.M == 0).all, "All {} NON conv2D layers have a zero M".format(nonConv2DCount))
-
 
 
 if __name__ == '__main__':

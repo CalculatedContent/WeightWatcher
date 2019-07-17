@@ -195,6 +195,15 @@ twine upload dist/*
 # 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
 ```
 
+
+## Build from source
+
+ There appears to be a bug in the 
+
+```python setup.py``` 
+
+that breaks the standard build.  So we provide a simple requirements.txt until this is fixed.
+
 ## License
 
 [Apache License 2.0](LICENSE.txt)

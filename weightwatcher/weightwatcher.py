@@ -128,6 +128,153 @@ class WeightWatcher:
             return False
 
         return True
+
+
+    @classmethod
+    def run(cls, model, log=True, logger=None, 
+            layers=[], min_size=50, max_size=0,
+            compute_alphas=False, compute_lognorms=True, normalize=False,
+            compute_spectralnorms=False, compute_softranks=False):
+        """Static version of analyze(). See analyze() help for details.
+        """
+        instance = cls(model=model, log=log, logger=logger)
+        instance.analyze(layers=layers, min_size=min_size, max_size=max_size,
+                         compute_alphas=compute_alphas, compute_lognorms=compute_lognorms,
+                         normalize=normalize, compute_spectralnorms=compute_spectralnorms,
+                         compute_softranks=compute_softranks)
+        return instance
+
+
+    @staticmethod
+    def evaluate(model, details=False, log=True, logger=None, 
+                 layers=[], min_size=50, max_size=0,
+                 compute_alphas=False, compute_lognorms=True, normalize=False,
+                 compute_spectralnorms=False, compute_softranks=False):
+        """Helper method to facilitte multiprocessing. See analyze() help for details.
+        """
+        instance = __class__.run(model, log=log, logger=logger, 
+                                 layers=layers, min_size=min_size, max_size=max_size,
+                                 compute_alphas=compute_alphas, compute_lognorms=compute_lognorms,
+                                 normalize=normalize, compute_spectralnorms=compute_spectralnorms,
+                                 compute_softranks=compute_softranks)
+        if details:
+            return instance.get_details()
+        else:
+            return instance.get_summary()
+
+
+    @staticmethod
+    def compare(modelA, modelB, multiprocessing=True, log=True, logger=None, 
+                layers=[], min_size=50, max_size=0,
+                compute_alphas=False, compute_lognorms=True, normalize=False,
+                compute_spectralnorms=False, compute_softranks=False):
+        """Compare two models. See analyze() help for details.
+
+        Return True if modelA "better" than modelB
+
+        Example:
+            import weightwatcher as ww
+            import torchvision.models as models
+            modelA = models.vgg11(pretrained=True)
+            modelB = models.vgg16(pretrained=True)
+
+            # Check only the norm:
+            ww.WeightWatcher.compare(modelA, modelB)
+
+            # Check the alphas:
+            ww.WeightWatcher.compare(modelA, modelB, compute_alphas=True)
+
+            # Check spectral norm and softranks
+            ww.WeightWatcher.compare(modelA, modelB, compute_spectralnorms=True, compute_softranks=True)
+
+        multiprocessing:
+        Disable if your computer chokes (you probably want to if compute_alphas=True)
+        """
+
+        results = []
+
+        if multiprocessing:
+            from multiprocessing import Pool
+            from functools import partial
+
+            pool = Pool(processes=2)
+            #results = pool.map(__class__.evaluate, [modelA, modelB])
+            kwargs = {'details': False, 'log':log, 'logger':logger, 
+                    'layers':layers, 'min_size':min_size, 'max_size':max_size,
+                    'compute_alphas':compute_alphas, 'compute_lognorms':compute_lognorms, 'normalize':normalize,
+                    'compute_spectralnorms':compute_spectralnorms, 'compute_softranks':compute_softranks}
+            results = pool.map(partial(__class__.evaluate, **kwargs), [modelA, modelB])
+        else:
+            res = __class__.evaluate(model=modelA, log=log, logger=logger, 
+                               layers=layers, min_size=min_size, max_size=max_size,
+                               compute_alphas=compute_alphas, compute_lognorms=compute_lognorms,
+                               normalize=normalize, compute_spectralnorms=compute_spectralnorms,
+                               compute_softranks=compute_softranks)
+            results.append(res)
+            res = __class__.evaluate(model=modelB, log=log, logger=logger, 
+                               layers=layers, min_size=min_size, max_size=max_size,
+                               compute_alphas=compute_alphas, compute_lognorms=compute_lognorms,
+                               normalize=normalize, compute_spectralnorms=compute_spectralnorms,
+                               compute_softranks=compute_softranks)
+            results.append(res)
+
+        res = None
+
+        modelAname = ""
+        if hasattr(modelA, 'name'):
+            modelAname = " ('{}')".format(modelA.name)
+
+        modelBname = ""
+        if hasattr(modelB, 'name'):
+            modelBname = " ('{}')".format(modelB.name)
+
+        if compute_lognorms:
+            resA = results[0]["norm"]
+            resB = results[1]["norm"]
+            if resA < resB:
+                res = True
+                print("Model A{} is BETTER than Model B{} norm wise".format(modelAname, modelBname))
+            elif resA > resB:
+                res = False
+                print("Model A{} is WORST  than Model B{} norm wise".format(modelAname, modelBname))
+            else:
+                print("Model A{} is SAME     as Model B{} norm wise".format(modelAname, modelBname))
+       
+        if compute_alphas:
+            resA = results[0]["alpha"]
+            resB = results[1]["alpha"]
+            if resA < resB:
+                res = True
+                print("Model A{} is BETTER than Model B{} alpha wise".format(modelAname, modelBname))
+            elif resA > resB:
+                res = False
+                print("Model A{} is WORST  than Model B{} alpha wise".format(modelAname, modelBname))
+            else:
+                print("Model A{} is SAME     as Model B{} alpha wise".format(modelAname, modelBname))
+        
+        if compute_spectralnorms:
+            resA = results[0]["spectralnorm"]
+            resB = results[1]["spectralnorm"]
+            if resA < resB:
+                res = True
+                print("Model A{} is BETTER than Model B{} spectralnorm wise".format(modelAname, modelBname))
+            elif resA > resB:
+                res = False
+                print("Model A{} is WORST  than Model B{} spectralnorm wise".format(modelAname, modelBname))
+            else:
+                print("Model A{} is SAME     as Model B{} spectralnorm wise".format(modelAname, modelBname))
+        
+        if compute_softranks:
+            resA = results[0]["softrank"]
+            resB = results[1]["softrank"]
+            if resA < resB:
+                res = True
+                print("Model A{} is BETTER than Model B{} softrank wise".format(modelAname, modelBname))
+            elif resA > resB:
+                res = False
+                print("Model A{} is WORST  than Model B{} softrank wise".format(modelAname, modelBname))
+            else:
+                print("Model A{} is SAME     as Model B{} softrank wise".format(modelAname, modelBname))
         
          
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
@@ -218,7 +365,7 @@ class WeightWatcher:
                     weights = l.get_weights()[0:1] # keep only the weights and not the bias
                     # TODO: add option to append bias matrix
                     #if add_bias:
-                    #    weights = weigths[0]+weights[1]
+                    #    weights = weights[0]+weights[1]
 
             # CONV1D layer
             elif (isinstance(l, keras.layers.convolutional.Conv1D)):
@@ -269,7 +416,7 @@ class WeightWatcher:
                                            compute_spectralnorms=compute_spectralnorms, compute_softranks=compute_softranks,
                                            normalize=normalize, plot=plot, keep_evals=keep_evals)
             if not results:
-                msg = "No weigths to analyze"
+                msg = "No weights to analyze"
                 self.debug("Layer {}: {}".format(ilayer, msg))
                 res["message"] = msg
             else:

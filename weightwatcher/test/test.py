@@ -54,17 +54,17 @@ class Test_VGG11(unittest.TestCase):
 		self.assertTrue(denseCount > 0, "Non zero number of dense layers: {} found".format(denseCount))
 			
 		# Dense layers are analyzed
-		self.assertTrue((denseLayers.N > 0).all, "All {} dense layers have a non zero N".format(denseCount))
-		self.assertTrue((denseLayers.M > 0).all, "All {} dense layers have a non zero M".format(denseCount))
+		self.assertTrue((denseLayers.N > 0).all(axis=None), "All {} dense layers have a non zero N".format(denseCount))
+		self.assertTrue((denseLayers.M > 0).all(axis=None), "All {} dense layers have a non zero M".format(denseCount))
 
 		nonDenseLayers = d[d['layer_type']!="DENSE"]
 		nonDenseCount = len(nonDenseLayers)
 
-		self.assertTrue(nonDenseCount > 0, "VGG16 has non dense layers: {} found".format(nonDenseCount))
+		self.assertTrue(nonDenseCount > 0, "VGG11 has non dense layers: {} found".format(nonDenseCount))
 		
 		# Non Dense layers are NOT analyzed
-		self.assertTrue((nonDenseLayers.N == 0).all, "All {} NON dense layers have a zero N".format(nonDenseCount))
-		self.assertTrue((nonDenseLayers.M == 0).all, "All {} NON dense layers have a zero M".format(nonDenseCount))
+		self.assertTrue((nonDenseLayers.N == 0).all(axis=None), "All {} NON dense layers have a zero N".format(nonDenseCount))
+		self.assertTrue((nonDenseLayers.M == 0).all(axis=None), "All {} NON dense layers have a zero M".format(nonDenseCount))
 
 	def test_filter_conv2D_layer_types(self):
 		import pandas as pd
@@ -78,17 +78,17 @@ class Test_VGG11(unittest.TestCase):
 		self.assertTrue(conv2DCount > 0, "Non zero number of conv2D layers: {} found".format(conv2DCount))
 			
 		# Conv2D layers are analyzed
-		self.assertTrue((conv2DLayers.N > 0).all, "All {} conv2D layers have a non zero N".format(conv2DCount))
-		self.assertTrue((conv2DLayers.M > 0).all, "All {} conv2D layers have a non zero M".format(conv2DCount))
+		self.assertTrue((conv2DLayers.N > 0).all(axis=None), "All {} conv2D layers have a non zero N".format(conv2DCount))
+		self.assertTrue((conv2DLayers.M > 0).all(axis=None), "All {} conv2D layers have a non zero M".format(conv2DCount))
 
 		nonConv2DLayers = d[d['layer_type']!="CONV2D"]
 		nonConv2DCount = len(nonConv2DLayers)
 
-		self.assertTrue(nonConv2DCount > 0, "VGG16 has non conv2D layers: {} found".format(nonConv2DCount))
+		self.assertTrue(nonConv2DCount > 0, "VGG11 has non conv2D layers: {} found".format(nonConv2DCount))
 		
 		# Non Conv2D layers are NOT analyzed
-		self.assertTrue((nonConv2DLayers.N == 0).all, "All {} NON conv2D layers have a zero N".format(nonConv2DCount))
-		self.assertTrue((nonConv2DLayers.M == 0).all, "All {} NON conv2D layers have a zero M".format(nonConv2DCount))
+		self.assertTrue((nonConv2DLayers.N == 0).all(axis=None), "All {} NON conv2D layers have a zero N".format(nonConv2DCount))
+		self.assertTrue((nonConv2DLayers.M == 0).all(axis=None), "All {} NON conv2D layers have a zero M".format(nonConv2DCount))
 
 
 if __name__ == '__main__':

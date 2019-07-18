@@ -120,6 +120,58 @@ class Test_VGG11(unittest.TestCase):
 		# slow (disabled for now)
 		result = ww.WeightWatcher.compare(modelA, modelB, compute_alphas=True, multiprocessing=False)
 		self.assertFalse(result, "resnet152 is better than resnet18 alpha wise")
+
+	def test_min_matrix_shape(self)
+		"""Test that analyzes skips matrices smaller than  MIN matrix shape
+		"""
+
+	def test_max_matrix_shape(self)
+		"""Test that analyzes skips matrices larger than  MAX matrix shape
+		"""
+
+	def test_max_matrix_shape(self)
+		"""Test that analyzes skips matrices larger than  MAX matrix shape
+		"""
+
+	def test_layer_ids(self)
+		"""Test that layer_ids start at 0, not 1
+		"""
+
+	def test_slice_ids(self)
+		"""Test that slice_ids start at 0, not 1
+		"""
+
+	def test_slice_ids(self)
+		"""Test that slice_ids start at 0, not 1
+		"""
+
+	def test_compute_alphas(self)
+		"""Test that alphas are computed and values are within thresholds
+		"""
+
+	def test_compute_spectral_norms(self)
+		"""Test that spectral norms are computed and values are within thresholds
+		"""
+
+	def test_compute_soft_rank(self)
+		"""Test that soft ranks are computed and values are within thresholds
+		"""
+
+	def test_weighted_alpha(self)
+		"""Test that weight alpha computed as expected and values are within thresholds
+		"""
+
+	def test_compound_averages(self)
+		"""Test that compound averagesa computed as expected and values are within thresholds
+		"""
+
+	def test_normalize(self)
+		"""Test that weight matrices are normalized as expected
+		"""
+
+	def test_return_eiegnavlues(self)
+		"""Test that eigenvalues are returned in the result dict
+		"""
 		
 
 if __name__ == '__main__':

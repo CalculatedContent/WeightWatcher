@@ -19,7 +19,9 @@ class Test_VGG11(unittest.TestCase):
 		pass
 
 
-	def test_summary_is_dict(self):
+	def test_summary_is_dict(self)
+		"""Test that get_summary() returns a valid python dict
+		"""
 		self.watcher.analyze()
 		summary = self.watcher.get_summary()
 
@@ -30,6 +32,8 @@ class Test_VGG11(unittest.TestCase):
 
 
 	def test_pandas(self):
+		"""Test that get_summary(pandas=True) returns a valid pandas dataframe
+		"""
 		import pandas as pd
 
 		self.watcher.analyze()
@@ -43,6 +47,8 @@ class Test_VGG11(unittest.TestCase):
 
 
 	def test_filter_dense_layer_types(self):
+		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
+		"""
 		import pandas as pd
 
 		results = self.watcher.analyze(layers=ww.LAYER_TYPE.DENSE)
@@ -68,6 +74,8 @@ class Test_VGG11(unittest.TestCase):
 
 
 	def test_filter_conv2D_layer_types(self):
+		"""Test that ww.LAYER_TYPE.CONV2D filter is applied only to CONV2D layers"
+		"""
 		import pandas as pd
 
 		results = self.watcher.analyze(layers=ww.LAYER_TYPE.CONV2D)
@@ -110,8 +118,8 @@ class Test_VGG11(unittest.TestCase):
 		self.assertFalse(result, "resnet152 is better than resnet18 spectralnorm wise")
 
 		# slow (disabled for now)
-		#result = ww.WeightWatcher.compare(modelA, modelB, compute_alphas=True, multiprocessing=False)
-		#self.assertFalse(result, "resnet152 is better than resnet18 alpha wise")
+		result = ww.WeightWatcher.compare(modelA, modelB, compute_alphas=True, multiprocessing=False)
+		self.assertFalse(result, "resnet152 is better than resnet18 alpha wise")
 		
 
 if __name__ == '__main__':

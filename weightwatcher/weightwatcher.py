@@ -236,7 +236,7 @@ class WeightWatcher:
                 print("Model A{} is BETTER than Model B{} norm wise".format(modelAname, modelBname))
             elif resA > resB:
                 res = False
-                print("Model A{} is WORST  than Model B{} norm wise".format(modelAname, modelBname))
+                print("Model A{} is WORSE  than Model B{} norm wise".format(modelAname, modelBname))
             else:
                 print("Model A{} is SAME     as Model B{} norm wise".format(modelAname, modelBname))
        
@@ -248,7 +248,7 @@ class WeightWatcher:
                 print("Model A{} is BETTER than Model B{} alpha wise".format(modelAname, modelBname))
             elif resA > resB:
                 res = False
-                print("Model A{} is WORST  than Model B{} alpha wise".format(modelAname, modelBname))
+                print("Model A{} is WORSE  than Model B{} alpha wise".format(modelAname, modelBname))
             else:
                 print("Model A{} is SAME     as Model B{} alpha wise".format(modelAname, modelBname))
         
@@ -260,7 +260,7 @@ class WeightWatcher:
                 print("Model A{} is BETTER than Model B{} spectralnorm wise".format(modelAname, modelBname))
             elif resA > resB:
                 res = False
-                print("Model A{} is WORST  than Model B{} spectralnorm wise".format(modelAname, modelBname))
+                print("Model A{} is WORSE  than Model B{} spectralnorm wise".format(modelAname, modelBname))
             else:
                 print("Model A{} is SAME     as Model B{} spectralnorm wise".format(modelAname, modelBname))
         
@@ -272,7 +272,7 @@ class WeightWatcher:
                 print("Model A{} is BETTER than Model B{} softrank wise".format(modelAname, modelBname))
             elif resA > resB:
                 res = False
-                print("Model A{} is WORST  than Model B{} softrank wise".format(modelAname, modelBname))
+                print("Model A{} is WORSE  than Model B{} softrank wise".format(modelAname, modelBname))
             else:
                 print("Model A{} is SAME     as Model B{} softrank wise".format(modelAname, modelBname))
         

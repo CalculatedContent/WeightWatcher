@@ -173,8 +173,7 @@ Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracie
 ---
 
 [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
-Knowledge from Production-Scale Neural Networks] (video coming soon)
-(https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)
+Knowledge from Production-Scale Neural Networks](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)  (video coming soon)
 
 ---
 

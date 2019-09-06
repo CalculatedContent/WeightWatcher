@@ -164,9 +164,13 @@ class WeightWatcher:
                 tf = True
             if isinstance(l, nn.Module):
                 if hasattr(l, 'weight'):
+                    if isinstance(l, nn.modules.batchnorm._BatchNorm):
+                        return False
                     w = l.weight.detach().numpy()
+#                    tf = True
                     if len(w.shape)==2: # Linear
-                        tf = True
+                        if w.shape[1] >= 2:
+                            tf = True
             return tf
 
         if not isinstance(layers, list):
@@ -229,10 +233,17 @@ class WeightWatcher:
                     weights = [np.array(l.weight.data.clone().cpu())]
                 else:
                     # keras
-                    weights = l.get_weights()[0:1] # keep only the weights and not the bias
+#                    weights = l.get_weights()[0:1] # keep only the weights and not the bias
+                    weights = [l.get_weights()[0:1]]
                     # TODO: add option to append bias matrix
                     #if add_bias:
                     #    weights = weigths[0]+weights[1]
+
+                if weights[0].shape[1] < 2:
+                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
+                    self.debug("Layer {}: {}".format(i+1, msg))
+                    res[i]["message"] = msg
+                    continue
 
             # CONV1D layer
             elif (isPyTorchLinearOrConv1D(l)):
@@ -247,8 +258,13 @@ class WeightWatcher:
 
                 weights = [np.array(l.weight.data.clone().cpu())]
 
-            elif (isinstance(l, keras.layers.convolutional.Conv1D)):
-
+                if weights[0].shape[1] < 2:
+                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
+                    self.debug("Layer {}: {}".format(i+1, msg))
+                    res[i]["message"] = msg
+                    continue
+            
+            elif (isinstance(l, keras.layers.convolutional.Conv1D)):                
                 res[i] = {"layer_type": LAYER_TYPE.CONV1D}
 
                 if (len(layer_types) > 0 and
@@ -259,7 +275,13 @@ class WeightWatcher:
                     continue
                 
                 weights = l.get_weights()[0:1] # keep only the weights and not the bias
-
+                
+                if weights[0].shape[1] < 2:
+                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
+                    self.debug("Layer {}: {}".format(i+1, msg))
+                    res[i]["message"] = msg
+                    continue
+                
             # CONV2D layer
             elif isinstance(l, keras.layers.convolutional.Conv2D) or isinstance(l, nn.Conv2d):
 
@@ -278,7 +300,13 @@ class WeightWatcher:
                     w = l.get_weights()
                     
                 weights = self.get_conv2D_Wmats(w[0])
-
+                
+                if weights[0].shape[1] < 2:
+                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
+                    self.debug("Layer {}: {}".format(i+1, msg))
+                    res[i]["message"] = msg
+                    continue
+                
             else:
                 msg = "Skipping (Layer not supported)"
                 self.debug("Layer {}: {}".format(i+1, msg))
@@ -529,6 +557,7 @@ class WeightWatcher:
             lambda0 = None
 
             if compute_spectralnorms:
+                
                 svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
                 svd.fit(W)
                 sv = svd.singular_values_
@@ -606,10 +635,11 @@ class WeightWatcher:
                     plt.show()
 
             if compute_lognorms:
-                norm = np.linalg.norm(W)
+                norm = np.linalg.norm(W) #Frobenius Norm
                 res[i]["norm"] = norm
                 lognorm = np.log10(norm)
                 res[i]["lognorm"] = lognorm
+
 
                 softrank = None
                 softranklog = 0
@@ -620,12 +650,12 @@ class WeightWatcher:
                         svd.fit(W)
                         sv = svd.singular_values_
                         evals = sv*sv # max value
-                        lambda0 = evals[0]
+                        lambda0 = evals[0] 
 
                     if lambda0 != 0:
-                        softrank = norm / lambda0
+                        softrank = (norm**2) / lambda0
                         softranklog = np.log10(softrank)
-                        softranklogratio = lognorm / np.log10(lambda0)
+                        softranklogratio = 2*lognorm / np.log10(lambda0)
                 
                 summary.append("Weight matrix {}/{} ({},{}): Lognorm: {}".format(i+1, count, M, N, lognorm))
 

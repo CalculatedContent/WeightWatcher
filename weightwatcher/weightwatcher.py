@@ -26,8 +26,10 @@ import keras
 from keras.models import load_model
 import pandas as pd
 from .RMT_Util import *
+#from RMT_Util import *
 
 from .constants import *
+#from constants import *
 
 
 def main():
@@ -72,9 +74,9 @@ class WeightWatcher:
 
     def header(self):
         """WeightWatcher v0.1.dev0 by Calculation Consulting"""
-        from weightwatcher import __name__, __version__, __author__, __description__, __url__
-        return "{} v{} by {}\n{}\n{}".format(__name__, __version__, __author__, __description__, __url__)
-
+#        from weightwatcher import __name__, __version__, __author__, __description__, __url__
+#        return "{} v{} by {}\n{}\n{}".format(__name__, __version__, __author__, __description__, __url__)
+        return ""
 
     def banner(self):
         versions  = "\npython      version {}".format(sys.version)

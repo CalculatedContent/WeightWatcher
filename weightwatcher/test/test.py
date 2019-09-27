@@ -1,4 +1,9 @@
 import unittest
+import warnings
+warnings.simplefilter(action='ignore', category=RuntimeWarning)
+
+import sys
+sys.path.append("C:/Users/mzczm/WeightWatcher")
 
 import weightwatcher as ww
 
@@ -103,18 +108,6 @@ class Test_VGG11(unittest.TestCase):
 		self.assertTrue((nonConv2DLayers.N == 0).all(axis=None), "All {} NON conv2D layers have a zero N".format(nonConv2DCount))
 		self.assertTrue((nonConv2DLayers.M == 0).all(axis=None), "All {} NON conv2D layers have a zero M".format(nonConv2DCount))
     
-#    def test_density_fit(self): 
-#        """Test the fitted sigma from the density fit
-#        """
-#        
-#        model = models.vgg11(pretrained=True)
-#        watcher = ww.WeightWatcher(model=model, logger=logger)
-#        results = watcher.analyze(layers = [10], alphas = True, spectralnorms=True, softranks=True, mp_fit = True, normalize = True)
-#                
-#        df = watcher.get_details()
-#        
-#        self.assertAlmostEqual(df.iloc[0, 15], 1.064648437)
-
 	def test_density_fit(self):
 		"""Test the fitted sigma from the density fit
 		"""
@@ -126,8 +119,14 @@ class Test_VGG11(unittest.TestCase):
 		results = watcher.analyze(layers = [10], alphas = True, spectralnorms=True, softranks=True, mp_fit = True, normalize = True)
 
 		df = watcher.get_details()
-		self.assertAlmostEqual(df.iloc[0, 15], 1.064648437)
-                
+		df = df.reset_index()
+		self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.064648437) #sigma_mp
+		self.assertAlmostEqual(df.loc[0, 'numofSpikes'], 30.00) #numofSig
+		self.assertAlmostEqual(df.loc[0, 'ratio_numofSpikes'], 0.117647, places = 6)
+		self.assertAlmostEqual(df.loc[0, 'softrank_mp'], 0.203082, places = 6)
+
+    
+
 #	def test_compare(self):
 #		"""End to end testing between resnet18 and resnet152
 #		"""

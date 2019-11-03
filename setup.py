@@ -1,6 +1,7 @@
 from setuptools import setup
 import weightwatcher as ww
 
+
 try:
     import pypandoc
     readme = pypandoc.convert('README.md', 'rst')
@@ -27,6 +28,7 @@ setup(
     long_description = readme,
     packages = ["weightwatcher"],
     include_package_data = True,
+    test_suite = 'test',
     python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
     install_requires = ['numpy',
                         'matplotlib',

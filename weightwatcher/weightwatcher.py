@@ -137,7 +137,7 @@ class WeightWatcher:
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
                 alphas=False, lognorms=True, normalize=False,
                 spectralnorms=False, softranks=False,
-                plot=False, mp_fit=False):
+                plot=False, mp_fit=False, alpha_offset=False):
         """
         Analyze the weight matrices of a model.
 
@@ -152,11 +152,26 @@ class WeightWatcher:
             Time consuming so disabled by default (use lognorm if you want speed)
         lognorms:
             Compute the log norms of the weight matrices.
+        spectralnorms:
+            Compute the spectral norm (max eigenvalue) of the weight matrices.
+        softranks:
+            Compute the soft norm (i.e. StableRank) of the weight matrices.
+        mp_fit:
+            Compute the best Marchenko-Pastur fit of each weight matrix ESD
+        alpha_offset:
+            Subtract 1.0 from alpha
         """
 
-        model = model or self.model
-        
+        model = model or self.model        
         res = {}
+
+        # set offset for alpha                                                                                                                                                    
+        offset= 0.0
+        if alpha_offset:
+            offset = 1.0
+            self.debug("Using alpha offset 1.0")
+
+
 
         # Treats Custom Conv1D / Attention Layers (ex: GPT, BERT)
         # since they have custom subclass from nn.Module (OpenAIGPTModel)
@@ -237,8 +252,8 @@ class WeightWatcher:
                     receptive_field_size = l.weight.data[0][0].numel()
                 else:
                     # keras
-#                    weights = l.get_weights()[0:1] # keep only the weights and not the bias
-                    weights = [l.get_weights()[0:1]] #Keras default Glorot uniform
+                    weights = l.get_weights()[0:1] # keep only the weights and not the bias
+#                    weights = l.get_weights()[0:1]  #Keras default Glorot uniform
                     
                     # TODO: add option to append bias matrix
                     #if add_bias:
@@ -328,7 +343,7 @@ class WeightWatcher:
             results = self.analyze_weights(weights, layerid = i, min_size=min_size, max_size=max_size,
                                            alphas=alphas, lognorms=lognorms,
                                            spectralnorms=spectralnorms, softranks=softranks,
-                                           normalize=normalize, plot=plot, mp_fit=mp_fit)
+                                           normalize=normalize, plot=plot, mp_fit=mp_fit, offset=offset)
             if not results:
                 msg = "No weigths to analyze"
                 self.debug("Layer {}: {}".format(i+1, msg))
@@ -563,7 +578,8 @@ class WeightWatcher:
     def analyze_weights(self, weights, layerid, min_size=50, max_size=0,
                         alphas=False, lognorms=True,
                         spectralnorms=False, softranks=False,
-                        normalize=False, plot=False, mp_fit=False):
+                        normalize=False, plot=False, mp_fit=False,
+                        offset=0.0):
         """Analyzes weight matrices.
         
         Example in Keras:
@@ -644,7 +660,7 @@ class WeightWatcher:
 
                 lambda_max = np.max(evals)
                 fit = powerlaw.Fit(evals, xmax=lambda_max, verbose=False)
-                alpha = fit.alpha
+                alpha = fit.alpha - offset
                 res[i]["alpha"] = alpha
                 D = fit.D
                 res[i]["D"] = D
@@ -657,9 +673,9 @@ class WeightWatcher:
 
                 summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}".format(i+1, count, M, N, alpha, alpha_weighted, D))
 
-                if alpha < alpha_min or alpha > alpha_max:
-                    message = "Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(i+1, count, M, N, alpha, alpha_min, alpha_max)
-                    self.debug("    {}".format(message))
+                #if alpha < alpha_min or alpha > alpha_max:
+                #    message = "Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(i+1, count, M, N, alpha, alpha_min, alpha_max)
+                #    self.debug("    {}".format(message))
 
                 if plot:
                     fig2 = fit.plot_pdf(color='b', linewidth=2)

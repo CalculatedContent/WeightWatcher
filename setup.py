@@ -26,6 +26,7 @@ setup(
     maintainer_email = ww.__email__,
     description = ww.__description__,
     long_description = readme,
+    long_description_content_type="text/x-rst",
     packages = ["weightwatcher"],
     include_package_data = True,
     test_suite = 'tests',

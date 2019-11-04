@@ -2,6 +2,8 @@
 
 ## Weight Watcher  
 
+### the UCLA Edition
+
 Current Version: 0.2
 
 **Weight Watcher** analyzes the Fat Tails in the  weight matrices of Deep Neural Networks (DNNs).

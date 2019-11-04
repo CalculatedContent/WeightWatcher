@@ -1,6 +1,8 @@
 <meta name="image" property="og:image" content="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png">
 
-## Weight Watcher
+## Weight Watcher  
+
+Current Version: 0.2
 
 **Weight Watcher** analyzes the Fat Tails in the  weight matrices of Deep Neural Networks (DNNs).
 
@@ -174,6 +176,9 @@ Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracie
 
 [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
 Knowledge from Production-Scale Neural Networks](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)  (slides only, video coming soon)
+
+[Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/
+)
 
 ---
 

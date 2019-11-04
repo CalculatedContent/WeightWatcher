@@ -2,13 +2,18 @@ from setuptools import setup
 import weightwatcher as ww
 
 
-try:
-    import pypandoc
-    readme = pypandoc.convert('README.md', 'rst')
-    readme = readme.replace("\r","")
-except OSError as e:
-    # pypandoc failed, use the short description as long description
-    readme = ww.__description__
+#try:
+#    import pypandoc
+#    readme = pypandoc.convert('README.md', 'rst')
+#    readme = readme.replace("\r","")
+#except OSError as e:
+#    # pypandoc failed, use the short description as long description
+#    readme = ww.__description__
+
+from os import path
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    readme = f.read()
 
 setup(
     name = ww.__name__,
@@ -26,7 +31,7 @@ setup(
     maintainer_email = ww.__email__,
     description = ww.__description__,
     long_description = readme,
-    long_description_content_type="text/x-rst",
+    long_description_content_type="text/markdown",
     packages = ["weightwatcher"],
     include_package_data = True,
     test_suite = 'tests',

@@ -210,3 +210,10 @@ twine upload dist/*
 ## License
 
 [Apache License 2.0](LICENSE.txt)
+
+#### Contributors
+
+[Charles H Martin, PhD](https://www.linkedin.com/in/charlesmartin14)
+[Calculation Consulting](https://calculationconsulting.com)
+
+[Serena Peng](https://www.linkedin.com/in/serenapeng)

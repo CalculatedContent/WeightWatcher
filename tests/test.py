@@ -199,6 +199,13 @@ class Test_VGG11(unittest.TestCase):
 	def test_return_eiegnavlues(self):
 		"""Test that eigenvalues are returned in the result dict
 		"""
+
+	def test_runtime_warnings(self):
+		"""Test that runtime warnings are still active
+		"""
+		import numpy as np
+		print(np.sqrt(-1.0))
+		assert(True)
 		
         
         

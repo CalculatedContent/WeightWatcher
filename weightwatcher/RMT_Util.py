@@ -377,7 +377,7 @@ def resid_mp(p, evals, Q, bw, allresid = True, num_spikes=0, debug=False):
         resid = ymp - yde
     else:
         # MP fit for this sigma
-        xmp, ymp, a, b = marchenko_pastur_fun(xde, Q=Q, sigma=sigma)
+        xmp, (ymp, a, b) = marchenko_pastur_fun(xde, Q=Q, sigma=sigma)
 
         if (b > max(xde)) | (a > xde[np.where(yde == max(yde))][0]) | (sigma > 1):
             # print(xde[np.where(yde == max(yde))])

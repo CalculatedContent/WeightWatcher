@@ -337,9 +337,9 @@ def marchenko_pastur_fun(x, Q, sigma=1):
 
     with warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=RuntimeWarning)
-        val = np.nan_to_num((1/(2*np.pi*sigma*sigma*x*y))*np.sqrt((b-x)*(x-a))), a, b
+        val = np.nan_to_num((1/(2*np.pi*sigma*sigma*x*y))*np.sqrt((b-x)*(x-a)))
 
-    return x, val
+    return x, val, a, b
 
 def quarter_circle_fun(x, sigma = 1): 
 

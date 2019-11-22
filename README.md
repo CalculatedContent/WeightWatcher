@@ -85,7 +85,7 @@ import torchvision.models as models
 
 model = models.vgg19_bn(pretrained=True)
 watcher = ww.WeightWatcher(model=model)
-results = watcher.analyze(compute_alphas=True)
+results = watcher.analyze(alphas=True)
 data.append({"name": "vgg19bntorch", "summary": watcher.get_summary()})
 
 

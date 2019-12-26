@@ -397,7 +397,8 @@ class WeightWatcher:
             "sigma_mp": "Marchenko-Pastur (MP) fit sigma",
             "numofSpikes": "Number of spikes per MP fit",
             "ratio_numofSpikes": "aka, percent_mass, Number of spikes / total number of evals",
-            "softrank_mp": "Softrank for MP fit"
+            "softrank_mp": "Softrank for MP fit",
+            "pnormp": "alpha pNorm"
         }
 
         metrics_stats = []
@@ -670,8 +671,11 @@ class WeightWatcher:
                 res[i]["alpha_weighted"] = alpha_weighted
                 tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
                 res[i]["rank_loss"] = np.count_nonzero(sv > tolerance, axis=-1)
+                
+                pnorm = np.sum([ev**alpha for ev in evals])
+                res[i]["pnorm"] = pnorm
 
-                summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}".format(i+1, count, M, N, alpha, alpha_weighted, D))
+                summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}, pNorm {}".format(i+1, count, M, N, alpha, alpha_weighted, D, pnorm))
 
                 #if alpha < alpha_min or alpha > alpha_max:
                 #    message = "Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(i+1, count, M, N, alpha, alpha_min, alpha_max)
@@ -782,6 +786,8 @@ class WeightWatcher:
                     res[i]["softranklog"] = softranklog
                     res[i]["softranklogratio"] = softranklogratio
                     summary += "{}. Softrank: {}. Softrank log: {}. Softrank log ratio: {}".format(summary, softrank, softranklog, softranklogratio)
+
+                        
 
             res[i]["summary"] = "\n".join(summary)
             for line in summary:

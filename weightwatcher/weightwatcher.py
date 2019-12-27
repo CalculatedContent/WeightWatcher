@@ -398,7 +398,7 @@ class WeightWatcher:
             "numofSpikes": "Number of spikes per MP fit",
             "ratio_numofSpikes": "aka, percent_mass, Number of spikes / total number of evals",
             "softrank_mp": "Softrank for MP fit",
-            "pnormp": "alpha pNorm"
+            "logpnorm": "alpha pNorm"
         }
 
         metrics_stats = []
@@ -672,10 +672,10 @@ class WeightWatcher:
                 tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
                 res[i]["rank_loss"] = np.count_nonzero(sv > tolerance, axis=-1)
                 
-                pnorm = np.sum([ev**alpha for ev in evals])
-                res[i]["pnorm"] = pnorm
+                logpnorm = np.log10(np.sum([ev**alpha for ev in evals]))
+                res[i]["logpnorm"] = logpnorm
 
-                summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}, pNorm {}".format(i+1, count, M, N, alpha, alpha_weighted, D, pnorm))
+                summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}, pNorm {}".format(i+1, count, M, N, alpha, alpha_weighted, D, logpnorm))
 
                 #if alpha < alpha_min or alpha > alpha_max:
                 #    message = "Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(i+1, count, M, N, alpha, alpha_min, alpha_max)

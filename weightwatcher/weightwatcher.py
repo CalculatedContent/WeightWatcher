@@ -147,6 +147,8 @@ class WeightWatcher:
             Minimum weight matrix size to analyze
         max_size:
             Maximum weight matrix size to analyze (0 = no limit)
+        normalize
+            Force 1/N normalization
         alphas:
             Compute the power laws (alpha) of the weight matrices. 
             Time consuming so disabled by default (use lognorm if you want speed)
@@ -554,9 +556,21 @@ class WeightWatcher:
             
         return Wmats
 
+
+    def normalize_evals(self, evals, N, M, rf_size):
+        """Normalize eigenvalues (X matrix) by N and receptive field size (if needed)"""
+        self.debug(" normalzing {} eigenvalues, N, M, rf_size {},{},{}".format(len(evals),N,M,rf_size))
+        if rf_size > 1:
+            factor = (kappa * np.sqrt(N))
+        else:
+            factor = np.sqrt(N)
+
+        return evals/factor
+
     def norm_check(self, weight, N, M, receptive_field_size, 
                    lower = 0.5, upper = 1.5):
-        
+        """Deprecated, used previously to understand what to do"""
+
         kappa = np.sqrt( 2 / ((N + M)*receptive_field_size) )
         norm = np.linalg.norm(weight)
 #        normsq = np.power(norm, 2)
@@ -608,15 +622,17 @@ class WeightWatcher:
 
             lambda0 = None
 
-            if normalize:
-                W = self.norm_check(W, N, M, count) #receptive_field_size)
+            #if normalize:
+                # W = self.norm_check(W, N, M, count) #receptive_field_size)
 
             if spectralnorms: #spectralnorm is the max eigenvalues
                 
                 svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
                 svd.fit(W)
                 sv = svd.singular_values_
-                evals = sv*sv # max value
+                evals = sv*sv
+                if normalize:
+                    evals = self.normalize_evals(evals,N,M,count)
                 lambda0 = evals[0]
                 res[i]["spectralnorm"] = lambda0
 
@@ -649,10 +665,8 @@ class WeightWatcher:
                     
                 sv = svd.singular_values_
                 evals = sv*sv
-
-#                if normalize:
-#                    self.debug("    Normalizing ...")
-#                    evals = evals / float(N)
+                if normalize:
+                    evals = self.normalize_evals(evals, N,M,count)
 
                 # Other (slower) way of computing the eigen values:
                 #X = np.dot(W.T,W)/N
@@ -711,11 +725,13 @@ class WeightWatcher:
 #                w_unnorm = W*np.sqrt(N + M)/np.sqrt(2*N)
                 
                 if not alphas:
-                    W = self.norm_check(W, N, M, count)
+                    #W = self.normalize(W, N, M, count)
                     svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
                     svd.fit(W) 
                     sv = svd.singular_values_
                     evals = sv*sv       
+                    if normalize:
+                        evals = self.normalize_evals(evals, N, M , count)
                     lambda_max = np.max(evals)
                 
                 to_plot = evals.copy()
@@ -772,6 +788,8 @@ class WeightWatcher:
                         svd.fit(W)
                         sv = svd.singular_values_
                         evals = sv*sv # max value
+                        if normalize:
+                            evals = self.normalize_evals(evals,N,M,count)
                         lambda0 = evals[0] 
 
                     if lambda0 != 0:

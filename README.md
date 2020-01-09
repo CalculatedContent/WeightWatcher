@@ -1,6 +1,6 @@
 <meta name="image" property="og:image" content="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png">
 
-## Weight Watcher  
+## Weight Watcher 
 
 ### the Stat Mech Edition
 
@@ -216,5 +216,4 @@ twine upload dist/*
 
 [Charles H Martin, PhD](https://www.linkedin.com/in/charlesmartin14)
 [Calculation Consulting](https://calculationconsulting.com)
-
 [Serena Peng](https://www.linkedin.com/in/serenapeng)

@@ -135,9 +135,8 @@ class WeightWatcher:
 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
-                alphas=False, lognorms=True, normalize=False,
-                spectralnorms=False, softranks=False,
-                plot=False, mp_fit=False, alpha_offset=False):
+                alphas=False, lognorms=True, normalize=False, glorot_fix = False,
+                spectralnorms=False, softranks=False,  plot=False, mp_fit=False):
         """
         Analyze the weight matrices of a model.
 
@@ -147,8 +146,10 @@ class WeightWatcher:
             Minimum weight matrix size to analyze
         max_size:
             Maximum weight matrix size to analyze (0 = no limit)
-        normalize
-            Force 1/N normalization
+        normalize:
+            Normalize the X matrix. Usually True for Keras, False for PyTorch
+        glorot_fix:
+            Adjust the norm for the Glorot Normalization
         alphas:
             Compute the power laws (alpha) of the weight matrices. 
             Time consuming so disabled by default (use lognorm if you want speed)
@@ -160,20 +161,10 @@ class WeightWatcher:
             Compute the soft norm (i.e. StableRank) of the weight matrices.
         mp_fit:
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
-        alpha_offset:
-            Subtract 1.0 from alpha
         """
 
         model = model or self.model        
         res = {}
-
-        # set offset for alpha                                                                                                                                                    
-        offset= 0.0
-        if alpha_offset:
-            offset = 1.0
-            self.debug("Using alpha offset 1.0")
-
-
 
         # Treats Custom Conv1D / Attention Layers (ex: GPT, BERT)
         # since they have custom subclass from nn.Module (OpenAIGPTModel)
@@ -345,7 +336,8 @@ class WeightWatcher:
             results = self.analyze_weights(weights, layerid = i, min_size=min_size, max_size=max_size,
                                            alphas=alphas, lognorms=lognorms,
                                            spectralnorms=spectralnorms, softranks=softranks,
-                                           normalize=normalize, plot=plot, mp_fit=mp_fit, offset=offset)
+                                           normalize=normalize, glorot_fix=glorot_fix,
+                                           plot=plot, mp_fit=mp_fit)
             if not results:
                 msg = "No weigths to analyze"
                 self.debug("Layer {}: {}".format(i+1, msg))
@@ -390,6 +382,8 @@ class WeightWatcher:
             # key in "results" : pretty print name
             "norm": "Norm",
             "lognorm": "LogNorm",
+            "normX": "Norm X",
+            "lognormX": "LogNorm X",
             "alpha": "Alpha",
             "alpha_weighted": "Alpha Weighted",
             "spectralnorm": "Spectral Norm",
@@ -556,45 +550,44 @@ class WeightWatcher:
             
         return Wmats
 
+    # TODO: fix this ..we are doing sometjhing wrong
 
     def normalize_evals(self, evals, N, M, rf_size):
-        """Normalize eigenvalues (X matrix) by N and receptive field size (if needed)"""
-        self.debug(" normalzing {} eigenvalues, N, M, rf_size {},{},{}".format(len(evals),N,M,rf_size))
-        if rf_size > 1:
-            factor = (kappa * np.sqrt(N))
-        else:
-            factor = np.sqrt(N)
+        """Normalize the eigenvalues W by N and receptive field size (if needed)"""
+        self.debug(" normalzing evals, N, M, rf_size {},{},{}".format(N,M,rf_size))
+        factor =  np.sqrt(rf_size*N)
 
         return evals/factor
 
-    def norm_check(self, weight, N, M, receptive_field_size, 
+    def glorot_norm_fix(self, W, N, M, rf_size, 
                    lower = 0.5, upper = 1.5):
-        """Deprecated, used previously to understand what to do"""
+        """Check if this layer needs Glorot Normalization Fix"""
 
-        kappa = np.sqrt( 2 / ((N + M)*receptive_field_size) )
-        norm = np.linalg.norm(weight)
-#        normsq = np.power(norm, 2)
-        
-#        if ((normsq/kappa) > lower) & ((normsq/kappa) < upper):       
-#            return weight / np.sqrt(N)   
-#        else: #aka, if Glorot normalization
-#            return weight / (kappa * np.sqrt(N))       
+        kappa = np.sqrt( 2 / (N + M) )
+        return W/(kappa * np.sqrt(N) ) 
+
+
+    def glorot_norm_check(self, W, N, M, rf_size, 
+                   lower = 0.5, upper = 1.5):
+        """Check if this layer needs Glorot Normalization Fix"""
+
+        kappa = np.sqrt( 2 / ((N + M)*rf_size) )
+        norm = np.linalg.norm(W)
 
         check1 = norm / np.sqrt(N*M)
         check2 = norm / (kappa*np.sqrt(N*M))
-        if (check2 > lower) & (check2 < upper):   
-            #aka, if Glorot normalization
-            return weight / (kappa * np.sqrt(N))   
+        
+        if (rf_size > 1) and (check2 > lower) and (check2 < upper):   
+            return True
         elif (check1 > lower) & (check1 < upper): 
-            return weight / np.sqrt(N)      
+            return True
         else:
-            return weight
+            return False
     
     def analyze_weights(self, weights, layerid, min_size=50, max_size=0,
                         alphas=False, lognorms=True,
                         spectralnorms=False, softranks=False,
-                        normalize=False, plot=False, mp_fit=False,
-                        offset=0.0):
+                        normalize=False, glorot_fix=False, plot=False, mp_fit=False):
         """Analyzes weight matrices.
         
         Example in Keras:
@@ -619,20 +612,26 @@ class WeightWatcher:
             res[i]["N"] = N
             res[i]["M"] = M
             res[i]["Q"] = Q
-
             lambda0 = None
 
-            #if normalize:
-                # W = self.norm_check(W, N, M, count) #receptive_field_size)
+            if glorot_fix:
+                W = self.glorot_norm_fix(W, N, M, count) 
+
+            # also correct for #receptive_field_size for conv2D layers
+            W = W * np.sqrt(count)
+
 
             if spectralnorms: #spectralnorm is the max eigenvalues
                 
                 svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
                 svd.fit(W)
                 sv = svd.singular_values_
+                sv_max = np.max(sv)
                 evals = sv*sv
                 if normalize:
                     evals = self.normalize_evals(evals,N,M,count)
+                    
+
                 lambda0 = evals[0]
                 res[i]["spectralnorm"] = lambda0
 
@@ -664,18 +663,19 @@ class WeightWatcher:
                     svd.fit(W)
                     
                 sv = svd.singular_values_
+                sv_max = np.max(sv)
                 evals = sv*sv
                 if normalize:
                     evals = self.normalize_evals(evals, N,M,count)
 
                 # Other (slower) way of computing the eigen values:
-                #X = np.dot(W.T,W)/N
+                # X = np.dot(W.T,W)/N
                 #evals2 = np.linalg.eigvals(X)
                 #res[i]["lambda_max2"] = np.max(evals2)
 
                 lambda_max = np.max(evals)
                 fit = powerlaw.Fit(evals, xmax=lambda_max, verbose=False)
-                alpha = fit.alpha - offset
+                alpha = fit.alpha 
                 res[i]["alpha"] = alpha
                 D = fit.D
                 res[i]["D"] = D
@@ -729,6 +729,7 @@ class WeightWatcher:
                     svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
                     svd.fit(W) 
                     sv = svd.singular_values_
+                    sv_max = np.max(sv)
                     evals = sv*sv       
                     if normalize:
                         evals = self.normalize_evals(evals, N, M , count)
@@ -778,28 +779,20 @@ class WeightWatcher:
                 lognorm = np.log10(norm)
                 res[i]["lognorm"] = lognorm
 
+                X = np.dot(W.T,W)                
+                if normalize:
+                    X = X/N
+                normX = np.linalg.norm(X) #Frobenius Norm
+                res[i]["normX"] = normX
+                lognormX = np.log10(normX)
+                res[i]["lognormX"] = lognormX
 
-                softrank = None
-                softranklog = 0
-                softranklogratio = 0
-                if softranks:
-                    if lambda0 is None: # if not already computed for the spectralnorm
-                        svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
-                        svd.fit(W)
-                        sv = svd.singular_values_
-                        evals = sv*sv # max value
-                        if normalize:
-                            evals = self.normalize_evals(evals,N,M,count)
-                        lambda0 = evals[0] 
-
-                    if lambda0 != 0:
-                        softrank = (norm**2) / lambda0 ## ||W||^2 / max_eig
-                        softranklog = np.log10(softrank)
-                        softranklogratio = 2*lognorm / np.log10(lambda0)
+                summary.append("Weight matrix {}/{} ({},{}): LogNorm: {} ; LogNormX: {}".format(i+1, count, M, N, lognorm, lognormX))
                 
-                summary.append("Weight matrix {}/{} ({},{}): Lognorm: {}".format(i+1, count, M, N, lognorm))
-
-                if softrank is not None:
+                if softranks: 
+                    softrank = norm**2 / sv_max**2
+                    softranklog = np.log10(softrank)
+                    softranklogratio = lognorm / np.log10(sv_max)
                     res[i]["softrank"] = softrank
                     res[i]["softranklog"] = softranklog
                     res[i]["softranklogratio"] = softranklogratio

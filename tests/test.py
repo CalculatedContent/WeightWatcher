@@ -116,7 +116,7 @@ class Test_VGG11(unittest.TestCase):
 
 		model = models.vgg11(pretrained=True)
 		watcher = ww.WeightWatcher(model=model, logger=logger)
-		results = watcher.analyze(layers = [10], alphas = True, spectralnorms=True, softranks=True, mp_fit = True, normalize = True)
+		results = watcher.analyze(layers = [10], alphas = True, spectralnorms=True, softranks=True, mp_fit = True, normalize = False, glorot_fix=True)
 
 		df = watcher.get_details()
 		df = df.reset_index()

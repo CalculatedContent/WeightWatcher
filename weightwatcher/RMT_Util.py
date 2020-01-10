@@ -114,8 +114,8 @@ def plot_density_and_fit(eigenvalues=None, model=None,  weightfile=None,
     
     If Q = 1, analyze the singular values for the Quarter Circle law"""
     
-    if eigenvalues is None:
-        eigenvalues = get_eigenvalues(model, weightfile, layer)
+    #if eigenvalues is None:
+    #    eigenvalues = get_eigenvalues(model, weightfile, layer)
    
     if Q == 1:
         to_fit = np.sqrt(eigenvalues)

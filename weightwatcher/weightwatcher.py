@@ -135,7 +135,7 @@ class WeightWatcher:
 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
-                alphas=False, lognorms=True, normalize=False, glorot_fix = False,
+                alphas=False, lognorms=True, normalize=True, glorot_fix = True,
                 spectralnorms=False, softranks=False,  plot=False, mp_fit=False):
         """
         Analyze the weight matrices of a model.

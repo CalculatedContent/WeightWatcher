@@ -380,6 +380,8 @@ class WeightWatcher:
 
         metrics = {
             # key in "results" : pretty print name
+            "check": "Check",
+            "checkTF": "CheckTF",
             "norm": "Norm",
             "lognorm": "LogNorm",
             "normX": "Norm X",
@@ -578,11 +580,14 @@ class WeightWatcher:
         check2 = norm / (kappa*np.sqrt(N*M))
         
         if (rf_size > 1) and (check2 > lower) and (check2 < upper):   
-            return True
+            return check2, True
         elif (check1 > lower) & (check1 < upper): 
-            return True
+            return check1, True
         else:
-            return False
+            if rf_size > 1:
+                return check2, False
+            else:
+                return check1, False
     
     def analyze_weights(self, weights, layerid, min_size=50, max_size=0,
                         alphas=False, lognorms=True,
@@ -614,6 +619,9 @@ class WeightWatcher:
             res[i]["Q"] = Q
             lambda0 = None
 
+            check, checkTF = self.glorot_norm_check(W, N, M, count) 
+            res[i]['check'] = check
+            res[i]['checkTF'] = checkTF
             if glorot_fix:
                 W = self.glorot_norm_fix(W, N, M, count) 
 

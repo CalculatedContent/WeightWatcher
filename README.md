@@ -4,7 +4,7 @@
 
 ### the Stat Mech Edition
 
-Current Version: 0.2.4
+Current Version: 0.2.5
 
 **Weight Watcher** analyzes the Fat Tails in the  weight matrices of Deep Neural Networks (DNNs).
 

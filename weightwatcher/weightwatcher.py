@@ -552,21 +552,17 @@ class WeightWatcher:
             
         return Wmats
 
-    # TODO: fix this ..we are doing sometjhing wrong
 
-    def normalize_evals(self, evals, N, M, rf_size):
-        """Normalize the eigenvalues W by N and receptive field size (if needed)"""
-        self.debug(" normalzing evals, N, M, rf_size {},{},{}".format(N,M,rf_size))
-        factor =  np.sqrt(rf_size*N)
+    def normalize_evals(self, evals, N, M):
+        """DEPRECATED: Normalize the eigenvalues W by N and receptive field size (if needed)"""
+        self.debug(" normalzing evals, N, M {},{},{}".format(N,M))
+        return evals/np.sqrt(N)
 
-        return evals/factor
-
-    def glorot_norm_fix(self, W, N, M, rf_size, 
-                   lower = 0.5, upper = 1.5):
+    def glorot_norm_fix(self, W, N, M):
         """Check if this layer needs Glorot Normalization Fix"""
 
-        kappa = np.sqrt( 2 / (N + M) )
-        return W/(kappa * np.sqrt(N) ) 
+        kappa = np.sqrt(2/(N + M))
+        return W/(kappa)# * np.sqrt(N) ) 
 
 
     def glorot_norm_check(self, W, N, M, rf_size, 
@@ -623,7 +619,7 @@ class WeightWatcher:
             res[i]['check'] = check
             res[i]['checkTF'] = checkTF
             if glorot_fix:
-                W = self.glorot_norm_fix(W, N, M, count) 
+                W = self.glorot_norm_fix(W, N, M)
 
             # also correct for #receptive_field_size for conv2D layers
             W = W * np.sqrt(count)
@@ -637,8 +633,7 @@ class WeightWatcher:
                 sv_max = np.max(sv)
                 evals = sv*sv
                 if normalize:
-                    evals = self.normalize_evals(evals,N,M,count)
-                    
+                    evals = evals/N
 
                 lambda0 = evals[0]
                 res[i]["spectralnorm"] = lambda0
@@ -674,7 +669,7 @@ class WeightWatcher:
                 sv_max = np.max(sv)
                 evals = sv*sv
                 if normalize:
-                    evals = self.normalize_evals(evals, N,M,count)
+                    evals = evals/N
 
                 # Other (slower) way of computing the eigen values:
                 # X = np.dot(W.T,W)/N
@@ -740,7 +735,7 @@ class WeightWatcher:
                     sv_max = np.max(sv)
                     evals = sv*sv       
                     if normalize:
-                        evals = self.normalize_evals(evals, N, M , count)
+                        evals = evals/N
                     lambda_max = np.max(evals)
                 
                 to_plot = evals.copy()

@@ -136,7 +136,7 @@ class WeightWatcher:
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=50, max_size=0,
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
-                normalize=True, glorot_fix = True, plot=False, mp_fit=False):
+                normalize=False, glorot_fix=False, plot=False, mp_fit=False):
         """
         Analyze the weight matrices of a model.
 
@@ -558,11 +558,20 @@ class WeightWatcher:
         return evals/np.sqrt(N)
 
     def glorot_norm_fix(self, W, N, M, rf_size):
-        """Check if this layer needs Glorot Normalization Fix"""
+        """Apply Glorot Normalization Fix"""
 
         kappa = np.sqrt( 2 / ((N + M)*rf_size) )
-        W = W/(kappa)# * np.sqrt(N) ) 
-        #self.debug("glorot_norm_fix: normalzing N, M  rf_size: {} {} {} kappa{}".format(N,M,rf_size, kappa))
+        W = W/kappa
+        return W 
+
+    def pytorch_norm_fix(self, W, N, M, rf_size):
+        """Apply pytorch Channel Normalization Fix
+
+        see: https://chsasank.github.io/vision/_modules/torchvision/models/vgg.html
+        """
+
+        kappa = np.sqrt( 2/(N*rf_size) )
+        W = W/kappa
         return W 
 
 
@@ -622,7 +631,7 @@ class WeightWatcher:
                 W = self.glorot_norm_fix(W, N, M, count)
             else:
                 # probably never needed since we always fix for glorot
-                W = W * (np.sqrt(count/2))
+                W = W * np.sqrt(count/2.0) 
 
 
             if spectralnorms: #spectralnorm is the max eigenvalues
@@ -631,9 +640,9 @@ class WeightWatcher:
                 svd.fit(W)
                 sv = svd.singular_values_
                 sv_max = np.max(sv)
-                evals = sv*sv/N
-                #if normalize:
-                #evals = evals/N
+                evals = sv*sv
+                if normalize:
+                    evals = evals/N
 
                 lambda0 = evals[0]
                 res[i]["spectralnorm"] = lambda0
@@ -667,9 +676,9 @@ class WeightWatcher:
                     
                 sv = svd.singular_values_
                 sv_max = np.max(sv)
-                evals = sv*sv/N
-                #if normalize:
-                #    evals = evals/N
+                evals = sv*sv
+                if normalize:
+                    evals = evals/N
 
                 # Other (slower) way of computing the eigen values:
                 # X = np.dot(W.T,W)/N
@@ -733,9 +742,9 @@ class WeightWatcher:
                     svd.fit(W) 
                     sv = svd.singular_values_
                     sv_max = np.max(sv)
-                    evals = sv*sv/N
-                    #if normalize:
-                    #    evals = evals/N
+                    evals = sv*sv
+                    if normalize:
+                        evals = evals/N
                     lambda_max = np.max(evals)
                 
                 to_plot = evals.copy()

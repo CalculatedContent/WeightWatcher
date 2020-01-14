@@ -116,15 +116,16 @@ class Test_VGG11(unittest.TestCase):
 
 		model = models.vgg11(pretrained=True)
 		watcher = ww.WeightWatcher(model=model, logger=logger)
-		results = watcher.analyze(layers = [10], alphas = True, spectralnorms=True, softranks=True, mp_fit = True, \
-					  normalize=True, glorot_fix=True)
+		results = watcher.analyze(layers = [10], alphas = True, spectralnorms=True, softranks=True, mp_fit = True)
 
 		df = watcher.get_details()
 		df = df.reset_index()
-		self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.064648437) #sigma_mp
-		self.assertAlmostEqual(df.loc[0, 'numofSpikes'], 30.00) #numofSig
-		self.assertAlmostEqual(df.loc[0, 'ratio_numofSpikes'], 0.117647, places = 6)
-		self.assertAlmostEqual(df.loc[0, 'softrank_mp'], 0.203082, places = 6)
+		self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.00, places=2) #sigma_mp
+		self.assertAlmostEqual(df.loc[0, 'numofSpikes'], 13) #numofSig
+		#self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.064648437) #sigma_mp
+		#self.assertAlmostEqual(df.loc[0, 'numofSpikes'], 30.00) #numofSig
+		#self.assertAlmostEqual(df.loc[0, 'ratio_numofSpikes'], 0.117647, places = 6)
+		#self.assertAlmostEqual(df.loc[0, 'softrank_mp'], 0.203082, places = 6)
 
     
 	def test_min_matrix_shape(self):
@@ -170,13 +171,13 @@ class Test_VGG11(unittest.TestCase):
 		model = models.vgg11(pretrained=True)
 		watcher = ww.WeightWatcher(model=model, logger=logger)
 
-		results = self.watcher.analyze(layers=[5], alphas=True,  spectralnorms=True, normalize=True, glorot_fix=True)
+		results = self.watcher.analyze(layers=[5], alphas=True,  spectralnorms=True)#, normalize=False, glorot_fix=False)
 		d = self.watcher.get_details(results=results)
 		print(d)
 		a = d.spectralnorm.to_numpy()
-		#self.assertAlmostEqual(a[0],30.3223, places=4)
-		#self.assertAlmostEqual(a[1],37.2236, places=4)
-		#self.assertAlmostEqual(a[2],29.0693, places=4)
+		self.assertAlmostEqual(a[0],20.2149, places=4)
+		self.assertAlmostEqual(a[1],24.8158, places=4)
+		self.assertAlmostEqual(a[2],19.3795, places=4)
 
 	def test_compute_soft_rank(self):
 		"""Test that soft ranks are computed and values are within thresholds

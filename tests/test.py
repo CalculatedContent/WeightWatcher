@@ -127,28 +127,6 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(df.loc[0, 'softrank_mp'], 0.203082, places = 6)
 
     
-
-#	def test_compare(self):
-#		"""End to end testing between resnet18 and resnet152
-#		"""
-#		import torchvision.models as models
-#
-#		modelA = models.resnet18(pretrained=True)
-#		modelB = models.resnet152(pretrained=True)
-#		
-#		result = ww.WeightWatcher.compare(modelA, modelB)
-#		self.assertFalse(result, "resnet152 is better than resnet18 norm wise")
-#
-#		result = ww.WeightWatcher.compare(modelA, modelB, compute_spectralnorms=True)
-#		self.assertFalse(result, "resnet152 is better than resnet18 spectralnorm wise")
-#
-#		result = ww.WeightWatcher.compare(modelA, modelB, compute_softranks=True)
-#		self.assertFalse(result, "resnet152 is better than resnet18 spectralnorm wise")
-#
-#		# slow (disabled for now)
-#		result = ww.WeightWatcher.compare(modelA, modelB, compute_alphas=True, multiprocessing=False)
-#		self.assertFalse(result, "resnet152 is better than resnet18 alpha wise")
-
 	def test_min_matrix_shape(self):
 		"""Test that analyzes skips matrices smaller than  MIN matrix shape
 		"""
@@ -176,10 +154,29 @@ class Test_VGG11(unittest.TestCase):
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
+		results = self.watcher.analyze(layers=[5], alphas=True)
+		d = self.watcher.get_details(results=results)
+		a = d.alpha.to_numpy()
+		self.assertAlmostEqual(a[0],1.65014, places=4)
+		self.assertAlmostEqual(a[1],1.57297, places=4)
+		self.assertAlmostEqual(a[3],1.43459, places=4)
 
 	def test_compute_spectral_norms(self):
 		"""Test that spectral norms are computed and values are within thresholds
 		"""
+		logger = logging.getLogger("imported_module")
+		logger.setLevel(logging.INFO)
+
+		model = models.vgg11(pretrained=True)
+		watcher = ww.WeightWatcher(model=model, logger=logger)
+
+		results = self.watcher.analyze(layers=[5], alphas=True,  spectralnorms=True, normalize=True, glorot_fix=True)
+		d = self.watcher.get_details(results=results)
+		print(d)
+		a = d.spectralnorm.to_numpy()
+		#self.assertAlmostEqual(a[0],30.3223, places=4)
+		#self.assertAlmostEqual(a[1],37.2236, places=4)
+		#self.assertAlmostEqual(a[2],29.0693, places=4)
 
 	def test_compute_soft_rank(self):
 		"""Test that soft ranks are computed and values are within thresholds

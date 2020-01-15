@@ -612,7 +612,7 @@ class WeightWatcher:
         if count == 0:
             return res
 
-        self.logger.info("analyze_weights normalize={}, glorot_fix={} count={}".format(normalize, glorot_fix, count))
+        #self.logger.info("analyze_weights normalize={}, glorot_fix={} count={}".format(normalize, glorot_fix, count))
 
         for i, W in enumerate(weights):
             res[i] = {}

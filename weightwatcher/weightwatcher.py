@@ -388,6 +388,7 @@ class WeightWatcher:
             "alpha": "Alpha",
             "alpha_weighted": "Alpha Weighted",
             "spectralnorm": "Spectral Norm",
+            "logspectralnorm": "Log Spectral Norm",
             "softrank": "Softrank",
             "softranklog": "Softrank Log",
             "softranklogratio": "Softrank Log Ratio",
@@ -646,6 +647,7 @@ class WeightWatcher:
 
                 lambda0 = evals[0]
                 res[i]["spectralnorm"] = lambda0
+                res[i]["logspectralnorm"] = np.log10(lambda0)
 
             if M < min_size:
                 summary = "Weight matrix {}/{} ({},{}): Skipping: too small (<{})".format(i+1, count, M, N, min_size)

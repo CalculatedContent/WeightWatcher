@@ -68,8 +68,8 @@ The analyze function has several features described below
 
 ```python
 def analyze(self, model=None, layers=[], min_size=50, max_size=0,
-                compute_alphas=False, compute_lognorms=True,
-                plot=False):
+                alphas=False, softranks=True, spectralnorms=True, 
+                mp_fit=True,  plot=False):
 ...
 ```
 

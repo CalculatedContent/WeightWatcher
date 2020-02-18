@@ -184,7 +184,8 @@ Knowledge from Production-Scale Neural Networks](https://www.stat.berkeley.edu/~
 [Aggregate Intellect Podcast](https://aisc.ai.science/events/2019-11-06)
 
 ---
-Repo for latest paper: [Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://github.com/CalculatedContent/ww-trends-2020)
+[Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
+[Repo for latest paper] (https://github.com/CalculatedContent/ww-trends-2020)
 
 ## Release
 

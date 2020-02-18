@@ -185,7 +185,8 @@ Knowledge from Production-Scale Neural Networks](https://www.stat.berkeley.edu/~
 
 ---
 [Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
-[Repo for latest paper] (https://github.com/CalculatedContent/ww-trends-2020)
+
+[Repo for latest paper](https://github.com/CalculatedContent/ww-trends-2020)
 
 ## Release
 

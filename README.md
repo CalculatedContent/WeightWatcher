@@ -162,7 +162,7 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 
 Notebook for above 2 papers (https://github.com/CalculatedContent/ImplicitSelfRegularization)
 
-[Recent talk (presented at NERSC Summer 2018)](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
+[Talk at NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
 
 ---
 

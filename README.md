@@ -177,7 +177,9 @@ Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracie
 ---
 
 [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
-Knowledge from Production-Scale Neural Networks](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)  (slides only, video coming soon)
+Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
+
+[and the slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
 
 [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
 

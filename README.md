@@ -170,29 +170,35 @@ Notebook for above 2 papers (https://github.com/CalculatedContent/ImplicitSelfRe
 
 Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
 
-[Latest Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
+[Talk at UC Berkeley/ICSI 12/13/2018](https://www.youtube.com/watch?v=6Zgul4oygMc)
 
 [ICML 2019 Theoretical Physics Workshop Paper](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/ICMLPhysicsWorkshop/icml_prl_TPDLW2019_fin.pdf)
 
 ---
+#### KDD2019 Workshop
 
 [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
 Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
 
 [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
 
+----
+#### Selected Podcasts
+
 [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
 
 [Aggregate Intellect Podcast](https://aisc.ai.science/events/2019-11-06)
 
 ---
-#### Latest paper
+#### Latest paper and results
 
 [Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
 
 [Repo for latest paper](https://github.com/CalculatedContent/ww-trends-2020)
 
-## Release
+[Talk on latest results, Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
+
+## How to Release
 
 Publishing to the PyPI repository:
 

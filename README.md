@@ -225,6 +225,12 @@ twine upload dist/*
 
 [Apache License 2.0](LICENSE.txt)
 
+## Slack Channel
+
+We have a slack channel for the tool if you need help
+For an invite, please send an email to charles@calculationconsulting.com
+
+
 #### Contributors
 
 [Charles H Martin, PhD](https://www.linkedin.com/in/charlesmartin14)

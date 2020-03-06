@@ -142,7 +142,7 @@ Create log-log plots for each layer weight matrix to observe how well
 the power law fits work
 
 ```python
-results = watcher.analyze(compute_alphas=True, plot=True)
+results = watcher.analyze(alphas=True, plot=True)
 ```
 
 

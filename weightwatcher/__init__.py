@@ -14,7 +14,7 @@
 
 from __future__ import division, print_function
 
-__name__ = "WeightWatcher"
+__name__ = "aeightwatcher"
 __version__ = "0.3"
 __license__ = "Apache License, Version 2.0"
 __description__ = "Analyze weight matrices of Deep Neural Networks"

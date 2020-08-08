@@ -722,11 +722,13 @@ class WeightWatcher:
                     plt.hist(evals, bins=100, density=True)
 #                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + " for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor Weight matrix ({}x{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))                    
+                    plt.axvline(x=fit.xmin, color='red')
                     plt.show()
 
                     plt.loglog(evals)
 #                    plt.title("Eigen Values for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title("Logscaling Plot of Eigenvalues\nfor Weight matrix ({}X{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))
+                    plt.axvline(x=np.log10(fit.xmin), color='red')
                     plt.show()
                 
             if mp_fit:

@@ -725,7 +725,8 @@ class WeightWatcher:
                     plt.axvline(x=fit.xmin, color='red')
                     plt.show()
 
-                    plt.loglog(evals)
+                    nonzero_evals = evals[evals > 0.0]
+                    plt.hist(np.log10(nonzero_evals),bins=100, density=True)
 #                    plt.title("Eigen Values for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title("Logscaling Plot of Eigenvalues\nfor Weight matrix ({}X{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))
                     plt.axvline(x=np.log10(fit.xmin), color='red')

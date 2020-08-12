@@ -386,7 +386,9 @@ class WeightWatcher:
             "normX": "Norm X",
             "lognormX": "LogNorm X",
             "alpha": "Alpha",
+            "alpha2": "Alpha2",
             "alpha_weighted": "Alpha Weighted",
+            "alpha2_weighted": "Alpha2 Weighted",
             "spectralnorm": "Spectral Norm",
             "logspectralnorm": "Log Spectral Norm",
             "softrank": "Softrank",
@@ -687,12 +689,16 @@ class WeightWatcher:
                 #evals2 = np.linalg.eigvals(X)
                 #res[i]["lambda_max2"] = np.max(evals2)
 
+                #TODO:  add alpha2
+
                 lambda_max = np.max(evals)
                 fit = powerlaw.Fit(evals, xmax=lambda_max, verbose=False)
                 alpha = fit.alpha 
-                res[i]["alpha"] = alpha
                 D = fit.D
+                xmin = fit.xmin
+                res[i]["alpha"] = alpha
                 res[i]["D"] = D
+                res[i]["xmin"] = alpha
                 res[i]["lambda_min"] = np.min(evals)
                 res[i]["lambda_max"] = lambda_max
                 alpha_weighted = alpha * np.log10(lambda_max)
@@ -702,6 +708,17 @@ class WeightWatcher:
                 
                 logpnorm = np.log10(np.sum([ev**alpha for ev in evals]))
                 res[i]["logpnorm"] = logpnorm
+
+                h = np.histogram(np.log10(evals),bins=100)
+                ih = np.argmax(h[0])
+                xmin2 = 10**h[1][ih]
+                fit2 = powerlaw.Fit(evals, xmin = xmin2, xmax=lambda_max, verbose=False)
+                alpha2 = fit2.alpha
+                D2 = fit2.D
+                res[i]["alphaD"] = alpha2
+                res[i]["D2"] = D2
+                res[i]["xmin2"] = xmin2
+                res[i]["alpha2_weighted"] =  alpha2 * np.log10(lambda_max)
 
                 summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}, pNorm {}".format(i+1, count, M, N, alpha, alpha_weighted, D, logpnorm))
 
@@ -723,6 +740,7 @@ class WeightWatcher:
 #                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + " for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor Weight matrix ({}x{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))                    
                     plt.axvline(x=fit.xmin, color='red')
+                    plt.axvline(x=fit.xmin2, color='green')
                     plt.show()
 
                     nonzero_evals = evals[evals > 0.0]

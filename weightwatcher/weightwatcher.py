@@ -709,10 +709,12 @@ class WeightWatcher:
                 logpnorm = np.log10(np.sum([ev**alpha for ev in evals]))
                 res[i]["logpnorm"] = logpnorm
 
-                h = np.histogram(np.log10(evals),bins=100)
+                nz_evals = evals[evals > 0.0]
+                num_bins = np.max([100, len(nz_evals)]
+                h = np.histogram(np.log10(nz_evals),bins=num_bins)
                 ih = np.argmax(h[0])
                 xmin2 = 10**h[1][ih]
-                fit2 = powerlaw.Fit(evals, xmin = xmin2, xmax=lambda_max, verbose=False)
+                fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)
                 alpha2 = fit2.alpha
                 D2 = fit2.D
                 res[i]["alphaD"] = alpha2

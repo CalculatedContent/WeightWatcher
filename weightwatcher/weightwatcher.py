@@ -734,7 +734,8 @@ class WeightWatcher:
                     fit.power_law.plot_ccdf(color='r', linestyle='--', ax=fig2)
                     fit2.plot_pdf(color='g', linewidth=2)
 #                    plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
-                    plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})\n".format(i+1, count, layerid) + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D))                    
+                    plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})\n".format(i+1, count, layerid) + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D) +"\n"+\
+                                  + r"$\alpha2$={0:.3f}; ".format(alpha2) + r"KS_distance={0:.3f}".format(D2) +"\n"+)                    
                     plt.show()
 
                     # plot eigenvalue histogram

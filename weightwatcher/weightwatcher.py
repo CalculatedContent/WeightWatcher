@@ -21,8 +21,8 @@ import matplotlib.pyplot as plt
 import powerlaw
         
 import tensorflow as tf
-import tensorflow.keras as keras
-from tensorflow.keras.models import load_model
+import tensorflow.keras 
+#import tensorflow.keras.models.load_model
 import pandas as pd
 from .RMT_Util import *
 #from RMT_Util import *
@@ -40,9 +40,11 @@ def main():
 
 class WeightWatcher:
 
-    def __init__(self, model=None, log=True, logger=None):
-        self.model = self.load_model(model)
+#    def __init__(self, model=None, log=True, logger=None):
+
+#        self.model = self.load_modelmodel)
 #        self.alphas = {}
+    def __init__(self,  log=True, logger=None):
         self.results = {}
         self.summary = {}
         self.logger_set(log=log, logger=logger)
@@ -111,17 +113,17 @@ class WeightWatcher:
             self.logger.error(message)
 
 
-    def load_model(self, model):
-        """Load a model from a file if necessary.
-        """
-        res = model
-        if isinstance(model, str):
-            if os.path.isfile(model):
-                self.info("Loading model from file '{}'".format(model))
-                res = load_model(model)
-            else:
-                self.error("Loading model from file '{}': file not found".format(model))
-        return res
+#    def load_model(self, model):
+#        """Load a model from a file if necessary.
+#        """
+#        res = model
+#        if isinstance(model, str):
+#            if os.path.isfile(model):
+#                self.info("Loading model from file '{}'".format(model))
+#                res = load_model(model)
+#            else:
+#                self.error("Loading model from file '{}': file not found".format(model))
+#        return res
 
 
     def model_is_valid(self, model=None):

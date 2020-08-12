@@ -715,8 +715,8 @@ class WeightWatcher:
                 xmin2 = 10**h[1][ih+1]
                 fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)
                 alpha2 = fit2.alpha
-                D2 = fit2.D
-                res[i]["alphaD"] = alpha2
+                D2 = fit2.DA
+                res[i]["alpha2"] = alpha2
                 res[i]["D2"] = D2
                 res[i]["xmin2"] = xmin2
                 res[i]["alpha2_weighted"] =  alpha2 * np.log10(lambda_max)
@@ -734,8 +734,10 @@ class WeightWatcher:
                     fit.power_law.plot_ccdf(color='r', linestyle='--', ax=fig2)
                     fit2.plot_pdf(color='g', linewidth=2)
 #                    plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
-                    plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})\n".format(i+1, count, layerid) + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D) +"\n"+\
-                                  + r"$\alpha2$={0:.3f}; ".format(alpha2) + r"KS_distance={0:.3f}".format(D2) +"\n"+)                    
+                    title = "Power law fit for Weight matrix {}/{} (layer ID: {})\n".format(i+1, count, layerid) 
+                    title = title + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D) +"\n"
+                    title = title + r"$\alpha2$={0:.3f}; ".format(alpha2) + r"KS_distance={0:.3f}".format(D2)
+                    plt.title(title)
                     plt.show()
 
                     # plot eigenvalue histogram

@@ -228,7 +228,9 @@ class WeightWatcher:
                 continue
 
             # DENSE layer (Keras) / LINEAR (pytorch)
-            if isinstance(l, keras.layers.core.Dense) or isinstance(l, nn.Linear):
+            #if isinstance(l, keras.layers.core.Dense) or isinstance(l, nn.Linear):
+            # TF 2.x
+            if isinstance(l, keras.layers.Dense) or isinstance(l, nn.Linear):
 
                 res[i]["layer_type"] = LAYER_TYPE.DENSE
 

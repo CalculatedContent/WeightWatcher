@@ -712,7 +712,7 @@ class WeightWatcher:
                 num_bins = np.min([100, len(nz_evals)])
                 h = np.histogram(np.log10(nz_evals),bins=num_bins)
                 ih = np.argmax(h[0])
-                xmin2 = 10**h[1][ih]
+                xmin2 = 10**h[1][ih+1]
                 fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)
                 alpha2 = fit2.alpha
                 D2 = fit2.D
@@ -732,6 +732,7 @@ class WeightWatcher:
                     fit.power_law.plot_pdf(color='b', linestyle='--', ax=fig2)
                     fit.plot_ccdf(color='r', linewidth=2, ax=fig2)
                     fit.power_law.plot_ccdf(color='r', linestyle='--', ax=fig2)
+                    fit2.plot_pdf(color='g', linewidth=2)
 #                    plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})\n".format(i+1, count, layerid) + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D))                    
                     plt.show()

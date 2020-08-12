@@ -697,7 +697,7 @@ class WeightWatcher:
                 xmin = fit.xmin
                 res[i]["alpha"] = alpha
                 res[i]["D"] = D
-                res[i]["xmin"] = alpha
+                res[i]["xmin"] = xmin
                 res[i]["lambda_min"] = np.min(evals)
                 res[i]["lambda_max"] = lambda_max
                 alpha_weighted = alpha * np.log10(lambda_max)
@@ -714,11 +714,12 @@ class WeightWatcher:
                 ih = np.argmax(h[0])
                 xmin2 = 10**h[1][ih]
                 if xmin2 > xmin:
+                    info("resseting xmin2 to xmin")
                     xmin2 = xmin
 
                 fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)
                 alpha2 = fit2.alpha
-                D2 = fit2.DA
+                D2 = fit2.D
                 res[i]["alpha2"] = alpha2
                 res[i]["D2"] = D2
                 res[i]["xmin2"] = xmin2

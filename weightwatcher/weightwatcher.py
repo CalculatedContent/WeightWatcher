@@ -21,7 +21,6 @@ import matplotlib.pyplot as plt
 import powerlaw
         
 import tensorflow as tf
-import tensorflow.keras 
 #import tensorflow.keras.models.load_model
 import pandas as pd
 from .RMT_Util import *
@@ -40,11 +39,8 @@ def main():
 
 class WeightWatcher:
 
-#    def __init__(self, model=None, log=True, logger=None):
-
-#        self.model = self.load_modelmodel)
-#        self.alphas = {}
-    def __init__(self,  log=True, logger=None):
+    def __init__(self, model=None, log=True, logger=None):
+        self.model = self.load_model(model)
         self.results = {}
         self.summary = {}
         self.logger_set(log=log, logger=logger)
@@ -83,7 +79,7 @@ class WeightWatcher:
         versions  = "\npython      version {}".format(sys.version)
         versions += "\nnumpy       version {}".format(np.__version__)
         versions += "\ntensforflow version {}".format(tf.__version__)
-        versions += "\nkeras       version {}".format(keras.__version__)
+        versions += "\nkeras       version {}".format(tf.keras.__version__)
         return "\n{}{}".format(self.header(), versions)
 
 
@@ -113,17 +109,17 @@ class WeightWatcher:
             self.logger.error(message)
 
 
-#    def load_model(self, model):
-#        """Load a model from a file if necessary.
-#        """
-#        res = model
-#        if isinstance(model, str):
-#            if os.path.isfile(model):
-#                self.info("Loading model from file '{}'".format(model))
-#                res = load_model(model)
-#            else:
-#                self.error("Loading model from file '{}': file not found".format(model))
-#        return res
+    def load_model(self, model):
+        """Load a model from a file if necessary.  Only works for Keras
+        """
+        res = model
+        if isinstance(model, str):
+            if os.path.isfile(model):
+                self.info("Loading model from file '{}'".format(model))
+                res =tf.keras.models.load_model(model)
+            else:
+                self.error("Loading model from file '{}': file not found".format(model))
+        return res
 
 
     def model_is_valid(self, model=None):
@@ -230,7 +226,7 @@ class WeightWatcher:
             # DENSE layer (Keras) / LINEAR (pytorch)
             #if isinstance(l, keras.layers.core.Dense) or isinstance(l, nn.Linear):
             # TF 2.x
-            if isinstance(l, keras.layers.Dense) or isinstance(l, nn.Linear):
+            if isinstance(l, tf.keras.layers.Dense) or isinstance(l, nn.Linear):
 
                 res[i]["layer_type"] = LAYER_TYPE.DENSE
 
@@ -249,7 +245,7 @@ class WeightWatcher:
                 else:
                     # keras
                     weights = l.get_weights()[0:1] # keep only the weights and not the bias
-#                    weights = l.get_weights()[0:1]  #Keras default Glorot uniform
+#                    weights = l.get_weights()[0:1]  #Tf.Keras.default Glorot uniform
                     
                     # TODO: add option to append bias matrix
                     #if add_bias:
@@ -281,7 +277,7 @@ class WeightWatcher:
                     res[i]["message"] = msg
                     continue
             
-            elif (isinstance(l, keras.layers.convolutional.Conv1D)):                
+            elif (isinstance(l, tf.keras.layers.Conv1D)):                
                 res[i] = {"layer_type": LAYER_TYPE.CONV1D}
 
                 if (len(layer_types) > 0 and
@@ -300,7 +296,7 @@ class WeightWatcher:
                     continue
                 
             # CONV2D layer
-            elif isinstance(l, keras.layers.convolutional.Conv2D) or isinstance(l, nn.Conv2d):
+            elif isinstance(l, tf.keras.layers.Conv2D) or isinstance(l, nn.Conv2d):
 
                 res[i] = {"layer_type": LAYER_TYPE.CONV2D}
 
@@ -546,7 +542,7 @@ class WeightWatcher:
                     Wmats.append(W)
         else:
             N, M, imax, jmax = imax, jmax, N, M          
-            self.debug("Keras tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+            self.debug("Tf.Keras.tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
             
             for i in range(imax):
                 for j in range(jmax):
@@ -607,7 +603,7 @@ class WeightWatcher:
                         normalize, glorot_fix, plot, mp_fit):
         """Analyzes weight matrices.
         
-        Example in Keras:
+        Example in Tf.Keras.
             weights = layer.get_weights()
             analyze_weights(weights)
         """
@@ -745,7 +741,7 @@ class WeightWatcher:
 #                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + " for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor Weight matrix ({}x{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))                    
                     plt.axvline(x=fit.xmin, color='red')
-                    plt.axvline(x=fit.xmin2, color='green')
+                    plt.axvline(x=xmin2, color='green')
                     plt.show()
 
                     nonzero_evals = evals[evals > 0.0]
@@ -753,6 +749,7 @@ class WeightWatcher:
 #                    plt.title("Eigen Values for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title("Logscaling Plot of Eigenvalues\nfor Weight matrix ({}X{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))
                     plt.axvline(x=np.log10(fit.xmin), color='red')
+                    plt.axvline(x=np.log10(xmin2), color='green')
                     plt.show()
                 
             if mp_fit:

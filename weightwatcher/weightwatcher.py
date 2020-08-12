@@ -712,7 +712,10 @@ class WeightWatcher:
                 num_bins = np.min([100, len(nz_evals)])
                 h = np.histogram(np.log10(nz_evals),bins=num_bins)
                 ih = np.argmax(h[0])
-                xmin2 = 10**h[1][ih+1]
+                xmin2 = 10**h[1][ih]
+                if xmin2 > xmin:
+                    xmin2 = xmin
+
                 fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)
                 alpha2 = fit2.alpha
                 D2 = fit2.DA

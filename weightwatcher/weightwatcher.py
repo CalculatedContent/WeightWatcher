@@ -714,7 +714,7 @@ class WeightWatcher:
                 ih = np.argmax(h[0])
                 xmin2 = 10**h[1][ih]
                 if xmin2 > xmin:
-                    info("resseting xmin2 to xmin")
+                    self.info("resseting xmin2 to xmin")
                     xmin2 = xmin
 
                 fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)

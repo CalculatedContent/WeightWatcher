@@ -40,7 +40,6 @@ setup(
                         'matplotlib',
                         'powerlaw',
                         'tensorflow',
-                        'keras',
                         'sklearn',
                         'pandas'],
     entry_points = '''

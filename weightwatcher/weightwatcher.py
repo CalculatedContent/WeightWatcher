@@ -21,9 +21,8 @@ import matplotlib.pyplot as plt
 import powerlaw
         
 import tensorflow as tf
-from tensorflow import keras
-import keras
-from keras.models import load_model
+import tensorflow.keras as keras
+from tensorflow.keras.models import load_model
 import pandas as pd
 from .RMT_Util import *
 #from RMT_Util import *

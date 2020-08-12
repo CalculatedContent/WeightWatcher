@@ -709,7 +709,7 @@ class WeightWatcher:
                 res[i]["logpnorm"] = logpnorm
 
                 nz_evals = evals[evals > 0.0]
-                num_bins = np.max([100, len(nz_evals)])
+                num_bins = np.min([100, len(nz_evals)])
                 h = np.histogram(np.log10(nz_evals),bins=num_bins)
                 ih = np.argmax(h[0])
                 xmin2 = 10**h[1][ih]

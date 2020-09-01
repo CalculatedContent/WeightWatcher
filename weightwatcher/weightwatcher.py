@@ -845,6 +845,14 @@ class WeightWatcher:
             plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
             plt.axvline(x=fit.xmin, color='red')
             plt.show()
+
+
+            # plot log eigenvalue histogram
+            nonzero_evals = evals[evals > 0.0]
+            plt.hist(np.log10(nonzero_evals),bins=100, density=True)
+            plt.title(r"Log10 ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
+            plt.axvline(x=np.log10(fit.xmin), color='red')
+            plt.show()
     
             # plot xmins vs D
             plt.plot(fit.xmins, fit.Ds, label=r'$D$')

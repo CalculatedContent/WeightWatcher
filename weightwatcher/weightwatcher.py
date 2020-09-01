@@ -12,22 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
+import sys, os 
 import logging
 
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import powerlaw
-        
+ 
+from sklearn.decomposition import TruncatedSVD
+
 import tensorflow as tf
+import torch.nn as nn
+
 #import tensorflow.keras.models.load_model
 import pandas as pd
-from .RMT_Util import *
-#from RMT_Util import *
 
-from .constants import *
+#from RMT_Util import *
+from .RMT_Util import *
+
 #from constants import *
+from .constants import *
+
+
 
 
 def main():
@@ -131,7 +138,7 @@ class WeightWatcher:
 
 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
-    def analyze(self, model=None, layers=[], min_size=50, max_size=0,
+    def analyze(self, model=None, layers=[], min_size=3, max_size=50000,
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False):
         """
@@ -167,12 +174,12 @@ class WeightWatcher:
         # since they have custom subclass from nn.Module (OpenAIGPTModel)
         def isPyTorchLinearOrConv1D(l):
             tf = False
-            import torch.nn as nn
             if isinstance(l, nn.Conv1d):
                 tf = True
             if isinstance(l, nn.Module):
                 if hasattr(l, 'weight'):
-                    if isinstance(l, nn.modules.batchnorm._BatchNorm):
+                    #if isinstance(l, nn.modules.batchnorm._BatchNorm):
+                    if "BatchNorm" in str(type(l)):
                         return False
                     w = l.weight.detach().numpy()
 #                    tf = True
@@ -333,9 +340,16 @@ class WeightWatcher:
                 lognorms = True
 
             layer_id = i
-            results = self.analyze_weights(weights, layer_id, min_size, max_size,
-                                           alphas, lognorms, spectralnorms, softranks,
-                                           normalize, glorot_fix, plot, mp_fit)
+            ### CHM: I think weights > 0 only for Conv2D layers, but maybe for attention layers too ?
+            ### TODO: if combine, then combine all the weights evals, then analyze
+            #results = self.analyze_weights(weights, layer_id, min_size, max_size,
+            #                               alphas, lognorms, spectralnorms, softranks,
+            #                               normalize, glorot_fix, plot, mp_fit)
+            layerid = i
+            results = self.analyze_combined_weights(weights, layerid, min_size, max_size,
+                                                    normalize, glorot_fix, plot, mp_fit,  conv2Dnorm=True)
+
+         
             if not results:
                 msg = "No weigths to analyze"
                 self.debug("Layer {}: {}".format(i+1, msg))
@@ -596,7 +610,255 @@ class WeightWatcher:
                 return check2, False
             else:
                 return check1, False
+            
+    # make this a static method ?        
+    def combined_eigenvalues(self, weights, min_size=0, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+        """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
+            combined into a single, sorted, numpy array
     
+            Skips matrices where M < min_size or M > max_size
+            Applied normalization and glorot_fix if specified
+            
+            Assumes an array of weights comes from a conv2D layer and applies conv2Dnorm normalization by default
+          
+            Also returns max singular value and rank_loss, needed for other calculations
+         """
+         
+        all_evals = []
+        max_sv = 0.0
+        rank_loss = 0
+
+        count = len(weights)
+        for  W in weights:
+            M, N = np.min(W.shape), np.max(W.shape)
+            if M >= min_size and M <= max_size:
+
+                Q=N/M
+                check, checkTF = self.glorot_norm_check(W, N, M, count) 
+    
+                # assume receptive field size is count
+                if glorot_fix:
+                    W = self.glorot_norm_fix(W, N, M, count)
+                elif conv2Dnorm:
+                    # probably never needed since we always fix for glorot
+                    W = W * np.sqrt(count/2.0) 
+                
+                # SVD can be swapped out here
+                # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
+
+                try:
+                    sv = np.linalg.svd(W, compute_uv=False)
+                    #svd.fit(W) 
+                except:
+                    W = W.astype(float)
+                    #svd.fit(W)
+                    sv = np.linalg.svd(W, compute_uv=False)
+
+                    
+                #sv = svd.singular_values_
+                evals = sv*sv
+                if normalize:
+                    evals = evals/N
+                 
+                all_evals.extend(evals)
+                                           
+                max_sv = np.max([max_sv, np.max(sv)])
+                max_ev = np.max(evals)
+                rank_loss = 0#rank_loss + self.calc_rank_loss(sv, M, max_ev)
+            
+        return np.sort(np.array(all_evals)), max_sv, rank_loss
+    
+
+    
+    
+    
+    def analyze_combined_weights(self, weights, layerid, min_size, max_size,
+                normalize, glorot_fix, plot, mp_fit,  conv2Dnorm=True):
+        """Analyzes weight matrices, combined as if they are 1 giant matrices
+        Computes PL alpha fits and  various norm metrics
+         - alpha
+         - alpha_weighted
+         
+         - Frobenius norm 
+         - Spectral Norm
+         - p-norm / Shatten norm
+         - Soft Rank / Stable Rank
+        
+        Assumes all matrices have the same shape, (N x M), N > M.
+        
+        For now, retains the old idea that we have layer_id and slice_id=0 (always)
+        res[0][''] = ...
+         """
+         
+        res = {}
+        count = len(weights)
+        if count == 0:
+            return res
+
+        self.info("count = {}".format(count))
+        
+        # slice_id
+        i = 0
+        res[i] = {}
+        
+        # assume all weight matrices have the same shape
+        W = weights[0]
+        M, N = np.min(W.shape), np.max(W.shape)
+        Q=N/M
+        
+        res[i]["N"] = N
+        res[i]["M"] = M
+        res[i]["Q"] = Q  
+        summary = []
+         
+   
+        #
+        # Get combined eigenvalues for all weight matrices, using SVD
+        # returns singular values to
+        #
+ 
+        check, checkTF = self.glorot_norm_check(W, N, M, count) 
+        res[i]['check'] = check
+        res[i]['checkTF'] = checkTF
+        
+        
+        evals, sv_max, rank_loss = self.combined_eigenvalues(weights, min_size, max_size, normalize, glorot_fix, conv2Dnorm)  
+        
+        
+        lambda_max = np.max(evals)
+        
+        res[i]["sv_max"] = sv_max
+        res[i]["rank_loss"] = rank_loss
+        
+        # this should never happen, but just in case
+        if len(evals) < 2: 
+            return res
+        
+        #
+        # Power law fit
+        #
+        title = "Weight matrix ({}x{})  layer ID: {}".format(N, M, layerid)
+        alpha, D, xmin, xmax = self.fit_powerlaw(evals, plot=plot, title=title)    
+        
+        res[i]["alpha"] = alpha
+        res[i]["D"] = D
+        res[i]["xmin"] = xmin
+        res[i]["xmax"] = xmax
+        res[i]["lambda_min"] = np.min(evals)
+        res[i]["lambda_max"] =lambda_max
+        
+        
+        alpha_weighted = alpha * np.log10(lambda_max)
+        res[i]["alpha_weighted"] = alpha_weighted
+        
+        #
+        # other metrics
+        #
+                  
+        norm = np.sum(evals)
+        res[i]["norm"] = norm
+        lognorm = np.log10(norm)
+        res[i]["lognorm"] = lognorm
+        
+        logpnorm = np.log10(np.sum([ev**alpha for ev in evals]))
+        res[i]["logpnorm"] = logpnorm
+            
+        res[i]["spectralnorm"] = lambda_max
+        res[i]["logspectralnorm"] = np.log10(lambda_max)
+
+        summary.append("Weight matrix  ({},{}): LogNorm: {} ".format( M, N, lognorm) )
+                
+        softrank = norm**2 / sv_max**2
+        softranklog = np.log10(softrank)
+        softranklogratio = lognorm / np.log10(sv_max)
+        res[i]["softrank"] = softrank
+        res[i]["softranklog"] = softranklog
+        res[i]["softranklogratio"] = softranklogratio
+        
+        summary += "{}. Softrank: {}. Softrank log: {}. Softrank log ratio: {}".format(summary, softrank, softranklog, softranklogratio)
+        res[i]["summary"] = "\n".join(summary)
+        for line in summary:
+            self.debug("    {}".format(line))
+        
+        return res
+            
+        
+    # Mmybe should be static function    
+    def calc_rank_loss(self, singular_values, M, lambda_max):
+        """compute the rank loss for these singular given the tolerances
+        """
+        sv = singular_values
+        tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
+        return np.count_nonzero(sv > tolerance, axis=-1)
+        
+            
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, title=""):
+        """Fit eigenvalues to powerlaw
+        
+            if xmin is 
+                'auto' or None, , automatically set this with powerlaw method
+                'peak' , try to set by finding the peak of the ESD on a log scale
+            
+            if xmax is 'auto' or None, xmax = np.max(evals)
+                     
+         """
+        alpha, D =  None, None      
+        
+        if xmax=='auto' or xmin is None:
+            xmax = np.max(evals)
+            
+        if xmin=='auto' or xmin is None:
+            fit = powerlaw.Fit(evals, xmax=xmax, verbose=False)
+        elif xmin=='peak':
+            nz_evals = evals[evals > 0.0]
+            num_bins = np.min([100, len(nz_evals)])
+            h = np.histogram(np.log10(nz_evals),bins=num_bins)
+            ih = np.argmax(h[0])
+            xmin2 = 10**h[1][ih]
+            if xmin2 > xmin:
+                xmin2 = xmin
+            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=False)   
+        else:
+            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=False)
+            
+            
+        alpha = fit.alpha 
+        D = fit.D
+        xmin = fit.xmin
+        xmax = fit.xmax
+        
+  
+        if plot:
+            fig2 = fit.plot_pdf(color='b', linewidth=2)
+            fit.power_law.plot_pdf(color='b', linestyle='--', ax=fig2)
+            fit.plot_ccdf(color='r', linewidth=2, ax=fig2)
+            fit.power_law.plot_ccdf(color='r', linestyle='--', ax=fig2)
+        
+            title = "Power law fit for {}\n".format(title) 
+            title = title + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D) +"\n"
+            plt.title(title)
+            plt.show()
+    
+            # plot eigenvalue histogram
+            num_bins = np.min([100,len(evals)])
+            plt.hist(evals, bins=num_bins, density=True)
+            plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
+            plt.axvline(x=fit.xmin, color='red')
+            plt.show()
+    
+            # plot xmins vs D
+            plt.plot(fit.xmins, fit.Ds, label=r'$D$')
+            plt.axvline(x=fit.xmin, color='red')
+            plt.xlabel(r'$x_{min}$')
+            plt.ylabel(r'$D,\sigma,\alpha$')
+            plt.title("current xmin={:0.3}".format(fit.xmin))
+            plt.show()   
+            
+        ### TODOL  find best fit     
+    
+        return alpha , D, xmin, xmax
+        
+         
 
     def analyze_weights(self, weights, layerid, min_size, max_size,
                         alphas, lognorms, spectralnorms, softranks,  
@@ -607,14 +869,12 @@ class WeightWatcher:
             weights = layer.get_weights()
             analyze_weights(weights)
         """
-        from sklearn.decomposition import TruncatedSVD
 
         res = {}
         count = len(weights)
         if count == 0:
             return res
 
-        #self.logger.info("analyze_weights normalize={}, glorot_fix={} count={}".format(normalize, glorot_fix, count))
 
         for i, W in enumerate(weights):
             res[i] = {}
@@ -646,7 +906,7 @@ class WeightWatcher:
                 if normalize:
                     evals = evals/N
 
-                lambda0 = evals[0]
+                lambda0 = np.max(evals)
                 res[i]["spectralnorm"] = lambda0
                 res[i]["logspectralnorm"] = np.log10(lambda0)
 
@@ -722,7 +982,7 @@ class WeightWatcher:
                 D2 = fit2.D
                 res[i]["alpha2"] = alpha2
                 res[i]["D2"] = D2
-                res[i]["xmin2"] = xmin2
+                res[i]["xmin2"] = fit2.xmin
                 res[i]["alpha2_weighted"] =  alpha2 * np.log10(lambda_max)
 
                 summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}, pNorm {}".format(i+1, count, M, N, alpha, alpha_weighted, D, logpnorm))
@@ -749,7 +1009,7 @@ class WeightWatcher:
 #                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + " for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
                     plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor Weight matrix ({}x{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))                    
                     plt.axvline(x=fit.xmin, color='red')
-                    plt.axvline(x=xmin2, color='green')
+                    plt.axvline(x=fit2.xmin, color='green')
                     plt.show()
 
                     nonzero_evals = evals[evals > 0.0]
@@ -850,3 +1110,6 @@ class WeightWatcher:
                 self.debug("    {}".format(line))
 
         return res
+    
+    
+    

@@ -8,12 +8,16 @@ from shutil import copy
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import pandas as pd
 
 import scipy as sp
 from scipy.linalg import svd
 
 from scipy import optimize
 from sklearn.neighbors import KernelDensity
+
+import powerlaw
+import tqdm
 
 
 ### Generalized Entropy
@@ -443,17 +447,17 @@ def fit_density_with_range(evals, Q, bw = 0.1, sigma_range = (slice(0.3, 1.05, 0
     return brute_output[0][0], brute_output[1] #sigma_optimized, resid
     
 
-def fit_mp_findspikes(evals, Q):
-    '''Remove eigen (spikes) from largest to smallest'''
-    evals = sorted(evals)[::-1]
-    
-    df_output = np.zeros((len(evals), 3))
-    for spike in range(len(evals)):
-        this_evals = np.array(evals[spike:])
-        sigma, fvec = fit_mp(this_evals, Q)
-        df_output[spike, 0] = spike
-        df_output[spike, 1] = sigma
-        df_output[spike, 2] = np.linalg.norm(fvec)
-        
-    return pd.DataFrame(df_output, columns = ['spikes', 'sigma', 'F_norm'])
+# def fit_mp_findspikes(evals, Q):
+#     '''Remove eigen (spikes) from largest to smallest'''
+#     evals = sorted(evals)[::-1]
+#     
+#     df_output = np.zeros((len(evals), 3))
+#     for spike in range(len(evals)):
+#         this_evals = np.array(evals[spike:])
+#         sigma, fvec = fit_mp(this_evals, Q)
+#         df_output[spike, 0] = spike
+#         df_output[spike, 1] = sigma
+#         df_output[spike, 2] = np.linalg.norm(fvec)
+#         
+#     return pd.DataFrame(df_output, columns = ['spikes', 'sigma', 'F_norm'])
 

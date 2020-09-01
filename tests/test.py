@@ -3,7 +3,6 @@ import warnings
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 import sys
-sys.path.append("C:/Users/mzczm/WeightWatcher")
 
 import weightwatcher as ww
 

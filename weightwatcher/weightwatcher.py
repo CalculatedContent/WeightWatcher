@@ -696,7 +696,7 @@ class WeightWatcher:
                     W = W * np.sqrt(count/2.0) 
                 
                 Wrand = W.flatten()
-                Wrand.shuffle()
+                np.random.shuffle(Wrand)
                 W = Wrand.reshape(W.shape)
        
                 try:

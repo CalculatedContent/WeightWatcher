@@ -840,7 +840,7 @@ class WeightWatcher:
             plt.show()
     
             # plot eigenvalue histogram
-            num_bins = np.min([100,len(evals)])
+            num_bins = 100#np.min([100,len(evals)])
             plt.hist(evals, bins=num_bins, density=True)
             plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
             plt.axvline(x=fit.xmin, color='red')

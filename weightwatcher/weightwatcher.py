@@ -854,16 +854,20 @@ class WeightWatcher:
         #
         # note: this only works if we have more than a few eigenvalues < xmax and > xmin
         alpha2, D2, xmin2, xmax2 = None, None, None, None
-        xmax = np.max(rand_evals)
-        num_evals_left = len(evals[evals < xmax])
-        if  num_evals_left > 10: # not sure on this yet
-            title = "Weight matrix ({}x{})  layer ID: {} Fit2".format(N, M, layerid)
-            alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title)    
+        try:
+            xmax = np.max(rand_evals)
+            num_evals_left = len(evals[evals < xmax])
+            if  num_evals_left > 10: # not sure on this yet
+                title = "Weight matrix ({}x{})  layer ID: {} Fit2".format(N, M, layerid)
+                alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title)  
+                res[i]["alpha2"] = alpha2
+                res[i]["D2"] = D2
+                alpha2_weighted = alpha2 * np.log10(xmax)
+                res[i]["alpha2_weighted"] = alpha2_weighted
+        except:
+            self.info("fit2 fails, not sure why")
+            pass  
             
-        res[i]["alpha2"] = alpha2
-        res[i]["D2"] = D2
-        alpha2_weighted = alpha2 * np.log10(xmax)
-        res[i]["alpha2_weighted"] = alpha2_weighted
         
         return res
             

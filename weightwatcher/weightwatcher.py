@@ -35,8 +35,6 @@ from .RMT_Util import *
 from .constants import *
 
 
-
-
 def main():
     """
     Weight Watcher
@@ -392,6 +390,7 @@ class WeightWatcher:
 
         self.info("### Printing results ###")
 
+        # not all implemented
         metrics = {
             # key in "results" : pretty print name
             "check": "Check",
@@ -765,7 +764,8 @@ class WeightWatcher:
         res[i]["Q"] = Q  
         summary = []
          
-   
+    
+        
         #
         # Get combined eigenvalues for all weight matrices, using SVD
         # returns singular values to
@@ -777,6 +777,14 @@ class WeightWatcher:
         
         
         evals, sv_max, rank_loss = self.combined_eigenvalues(weights, min_size, max_size, normalize, glorot_fix, conv2Dnorm)  
+        
+        num_evals = len(evals)     
+        if num_evals < min_size:
+            self.info("skipping layer, num evals {} < {} min size".format(num_evals, min_size))
+            return res
+        elif num_evals > max_size:
+            self.info("skipping layer, num evals {} > {} max size".format(num_evals, max_size))
+            return res
         
         
         lambda_max = np.max(evals)
@@ -839,7 +847,23 @@ class WeightWatcher:
         if len(evals) < 1000: 
             num_replicas = int(1000/len(evals))
         rand_evals = self.random_eigenvalues(weights, num_replicas, min_size, max_size, normalize, glorot_fix, conv2Dnorm)  
-        self.plot_random_esd(evals, rand_evals, title)        
+        self.plot_random_esd(evals, rand_evals, title)       
+        
+        # power law fit, with xmax = random bulk edge
+        # experimental fit
+        #
+        # note: this only works if we have more than a few eigenvalues < xmax and > xmin
+        alpha2, D2, xmin2, xmax2 = None, None, None, None
+        xmax = np.max(rand_evals)
+        num_evals_left = len(evals[evals < xmax])
+        if  num_evals_left > 10: # not sure on this yet
+            title = "Weight matrix ({}x{})  layer ID: {} Fit2".format(N, M, layerid)
+            alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title)    
+            
+        res[i]["alpha2"] = alpha2
+        res[i]["D2"] = D2
+        alpha2_weighted = alpha2 * np.log10(xmax)
+        res[i]["alpha2_weighted"] = alpha2_weighted
         
         return res
             
@@ -852,14 +876,14 @@ class WeightWatcher:
 
         plt.hist((nonzero_evals),bins=100, density=True, color='g', label='original')
         plt.hist((nonzero_rand_evals),bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=(max_rand_eval), color='red')
+        plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
         plt.title(r"ESD and Randomized (ESD $\rho(\lambda)$" + "\nfor {} ".format(title))                  
         plt.legend()
         plt.show()
 
         plt.hist(np.log10(nonzero_evals),bins=100, density=True, color='g', label='original')
         plt.hist(np.log10(nonzero_rand_evals),bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=np.log10(max_rand_eval), color='red')
+        plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
         plt.title(r"Log10 ESD and Randomized (ESD $\rho(\lambda)$" + "\nfor {} ".format(title))                  
         plt.legend()
         plt.show()
@@ -888,7 +912,7 @@ class WeightWatcher:
          """
         alpha, D =  None, None      
         
-        if xmax=='auto' or xmin is None:
+        if xmax=='auto' or xmax is None:
             xmax = np.max(evals)
             
         if xmin=='auto' or xmin is None:
@@ -899,9 +923,8 @@ class WeightWatcher:
             h = np.histogram(np.log10(nz_evals),bins=num_bins)
             ih = np.argmax(h[0])
             xmin2 = 10**h[1][ih]
-            if xmin2 > xmin:
-                xmin2 = xmin
-            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=False)   
+            xmin_range = (0.95*xmin2, 1.05*xmin2)
+            fit = powerlaw.Fit(evals, xmin=xmin_range, xmax=xmax, verbose=False)   
         else:
             fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=False)
             
@@ -927,7 +950,8 @@ class WeightWatcher:
             num_bins = 100#np.min([100,len(evals)])
             plt.hist(evals, bins=num_bins, density=True)
             plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
-            plt.axvline(x=fit.xmin, color='red')
+            plt.axvline(x=fit.xmin, color='red', label='xmin')
+            plt.legend()
             plt.show()
 
 
@@ -936,14 +960,17 @@ class WeightWatcher:
             plt.hist(np.log10(nonzero_evals),bins=100, density=True)
             plt.title(r"Log10 ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
             plt.axvline(x=np.log10(fit.xmin), color='red')
+            plt.axvline(x=np.log10(fit.xmax), color='orange', label='xmax')
+            plt.legend()
             plt.show()
     
             # plot xmins vs D
             plt.plot(fit.xmins, fit.Ds, label=r'$D$')
-            plt.axvline(x=fit.xmin, color='red')
+            plt.axvline(x=fit.xmin, color='red', label='xmin')
             plt.xlabel(r'$x_{min}$')
             plt.ylabel(r'$D,\sigma,\alpha$')
             plt.title("current xmin={:0.3}".format(fit.xmin))
+            plt.legend()
             plt.show()   
             
         ### TODOL  find best fit     

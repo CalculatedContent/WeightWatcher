@@ -671,47 +671,51 @@ class WeightWatcher:
         return np.sort(np.array(all_evals)), max_sv, rank_loss
     
     
-    def random_eigenvalues(self, weights, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+    def random_eigenvalues(self, weights, num_replicas=1, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
         """Compute the eigenvalues for all weights of the NxM Randomized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
         see: combined_eigenvalues()
+        
          """
+         
          
         all_evals = []
 
-        count = len(weights)
-        for  W in weights:
-            M, N = np.min(W.shape), np.max(W.shape)
-            if M >= min_size and M <= max_size:
-
-                Q=N/M
-                check, checkTF = self.glorot_norm_check(W, N, M, count) 
+        for num in range(num_replicas):
+            count = len(weights)
+            for  W in weights:
     
-                # assume receptive field size is count
-                if glorot_fix:
-                    W = self.glorot_norm_fix(W, N, M, count)
-                elif conv2Dnorm:
-                    # probably never needed since we always fix for glorot
-                    W = W * np.sqrt(count/2.0) 
-                
-                Wrand = W.flatten()
-                np.random.shuffle(Wrand)
-                W = Wrand.reshape(W.shape)
-       
-                try:
-                    sv = np.linalg.svd(W, compute_uv=False)
-                except:
-                    W = W.astype(float)
-                    sv = np.linalg.svd(W, compute_uv=False)
-
+                M, N = np.min(W.shape), np.max(W.shape)
+                if M >= min_size and M <= max_size:
+    
+                    Q=N/M
+                    check, checkTF = self.glorot_norm_check(W, N, M, count) 
+        
+                    # assume receptive field size is count
+                    if glorot_fix:
+                        W = self.glorot_norm_fix(W, N, M, count)
+                    elif conv2Dnorm:
+                        # probably never needed since we always fix for glorot
+                        W = W * np.sqrt(count/2.0) 
                     
-                #sv = svd.singular_values_
-                evals = sv*sv
-                if normalize:
-                    evals = evals/N
-                 
-                all_evals.extend(evals)
+                    Wrand = W.flatten()
+                    np.random.shuffle(Wrand)
+                    W = Wrand.reshape(W.shape)
+           
+                    try:
+                        sv = np.linalg.svd(W, compute_uv=False)
+                    except:
+                        W = W.astype(float)
+                        sv = np.linalg.svd(W, compute_uv=False)
+    
+                        
+                    #sv = svd.singular_values_
+                    evals = sv*sv
+                    if normalize:
+                        evals = evals/N
+                     
+                    all_evals.extend(evals)
                                         
             
         return np.sort(np.array(all_evals))
@@ -831,24 +835,33 @@ class WeightWatcher:
             self.debug("    {}".format(line))
             
         # overlay plot with randomized matrix on log scale
-        rand_evals = self.random_eigenvalues(weights, min_size, max_size, normalize, glorot_fix, conv2Dnorm)  
+        num_replicas = 1
+        if len(evals) < 1000: 
+            num_replicas = int(1000/len(evals))
+        rand_evals = self.random_eigenvalues(weights, num_replicas, min_size, max_size, normalize, glorot_fix, conv2Dnorm)  
         self.plot_random_esd(evals, rand_evals, title)        
         
         return res
             
     def plot_random_esd(self, evals, rand_evals, title):
-        """Plot log histogram of ESD and randomized ESD"""
+        """Plot histogram and log histogram of ESD and randomized ESD"""
           
         nonzero_evals = evals[evals > 0.0]
-        plt.hist(np.log10(nonzero_evals),bins=100, density=True, color='g')
-        
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
-        plt.hist(np.log10(nonzero_rand_evals),bins=100, density=True, color='r')
-        
         max_rand_eval = np.max(rand_evals)
+
+        plt.hist((nonzero_evals),bins=100, density=True, color='g', label='original')
+        plt.hist((nonzero_rand_evals),bins=100, density=True, color='r', label='random', alpha=0.5)
+        plt.axvline(x=(max_rand_eval), color='red')
+        plt.title(r"ESD and Randomized (ESD $\rho(\lambda)$" + "\nfor {} ".format(title))                  
+        plt.legend()
+        plt.show()
+
+        plt.hist(np.log10(nonzero_evals),bins=100, density=True, color='g', label='original')
+        plt.hist(np.log10(nonzero_rand_evals),bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=np.log10(max_rand_eval), color='red')
         plt.title(r"Log10 ESD and Randomized (ESD $\rho(\lambda)$" + "\nfor {} ".format(title))                  
-        
+        plt.legend()
         plt.show()
         
         

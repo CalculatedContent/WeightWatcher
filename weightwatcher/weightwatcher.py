@@ -35,6 +35,7 @@ from .RMT_Util import *
 from .constants import *
 
 
+
 def main():
     """
     Weight Watcher
@@ -66,7 +67,6 @@ class WeightWatcher:
                     log_level = logging.INFO
                     self.logger.setLevel(log_level)
                     console_handler = logging.StreamHandler()
-                    console_handler.setLevel(log_level)
                     formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
                     console_handler.setFormatter(formatter)
                     self.logger.addHandler(console_handler)
@@ -369,7 +369,7 @@ class WeightWatcher:
 
     def get_details(self, results=None):
         """
-        Return a pandas dataframe
+        Return a pandas dataframe with details for each layer
         """
         df = self.compute_details(results=results)
         details =  df[:-1].dropna(axis=1, how='all').set_index("layer_id") # prune the last line summary
@@ -377,7 +377,7 @@ class WeightWatcher:
 
     def compute_details(self, results=None):
         """
-        Return a pandas dataframe
+        Return a pandas dataframe with details for each layer
         """
         import numpy as np
         
@@ -390,15 +390,13 @@ class WeightWatcher:
 
         self.info("### Printing results ###")
 
-        # not all implemented
+        # not all implemented for detais, many are jsut for debugging
         metrics = {
             # key in "results" : pretty print name
-            "check": "Check",
-            "checkTF": "CheckTF",
+            "D": "D",
+            "D2": "D2",
             "norm": "Norm",
             "lognorm": "LogNorm",
-            "normX": "Norm X",
-            "lognormX": "LogNorm X",
             "alpha": "Alpha",
             "alpha2": "Alpha2",
             "alpha_weighted": "Alpha Weighted",
@@ -859,7 +857,9 @@ class WeightWatcher:
             num_evals_left = len(evals[evals < xmax])
             if  num_evals_left > 10: # not sure on this yet
                 title = "Weight matrix ({}x{})  layer ID: {} Fit2".format(N, M, layerid)
-                alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title)  
+                #alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title) 
+                alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin=None, xmax=xmax, plot=plot, title=title)  
+ 
                 res[i]["alpha2"] = alpha2
                 res[i]["D2"] = D2
                 alpha2_weighted = alpha2 * np.log10(xmax)

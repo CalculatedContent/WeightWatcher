@@ -728,7 +728,7 @@ class WeightWatcher:
         return np.sort(np.array(all_evals)), max_sv, rank_loss
     
     
-    def random_eigenvalues(self, weights, n_comp, num_replicas=1, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+    def random_eigenvalues(self, weights, n_comp, num_replicas=1, min_size=1, max_size=10000, normalize=True, glorot_fix=False, conv2Dnorm=True):
         """Compute the eigenvalues for all weights of the NxM Randomized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -744,7 +744,7 @@ class WeightWatcher:
             for  W in weights:
     
                 M, N = np.min(W.shape), np.max(W.shape)
-                if M >= min_size and M <= max_size:
+                if M >= min_size:# and M <= max_size:
     
                     Q=N/M
                     check, checkTF = self.glorot_norm_check(W, N, M, count) 
@@ -905,7 +905,8 @@ class WeightWatcher:
         if len(evals) < 1000: 
             num_replicas = int(1000/len(evals))
         rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas, min_size, max_size, normalize, glorot_fix, conv2d_norm)  
-        self.plot_random_esd(evals, rand_evals, title)       
+        if plot:
+            self.plot_random_esd(evals, rand_evals, title)       
         
         # power law fit, with xmax = random bulk edge
         # experimental fit
@@ -941,14 +942,14 @@ class WeightWatcher:
         plt.hist((nonzero_evals),bins=100, density=True, color='g', label='original')
         plt.hist((nonzero_rand_evals),bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
-        plt.title(r"ESD and Randomized (ESD $\rho(\lambda)$" + "\nfor {} ".format(title))                  
+        plt.title(r"ESD and Randomized (ESD $\rho(\lambda)$)" + "\nfor {} ".format(title))                  
         plt.legend()
         plt.show()
 
         plt.hist(np.log10(nonzero_evals),bins=100, density=True, color='g', label='original')
         plt.hist(np.log10(nonzero_rand_evals),bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
-        plt.title(r"Log10 ESD and Randomized (ESD $\rho(\lambda)$" + "\nfor {} ".format(title))                  
+        plt.title(r"Log10 ESD and Randomized (ESD $\rho(\lambda))$" + "\nfor {} ".format(title))                  
         plt.legend()
         plt.show()
         
@@ -974,6 +975,8 @@ class WeightWatcher:
             if xmax is 'auto' or None, xmax = np.max(evals)
                      
          """
+        
+        self.info("fitting power law on {} eigenvalues".format(len(evals)))
         alpha, D =  None, None      
         
         if xmax=='auto' or xmax is None:
@@ -1099,11 +1102,11 @@ class WeightWatcher:
                 self.debug("    {}".format(summary))
                 continue
 
-            if max_size > 0 and M > max_size:
-                summary = "Weight matrix {}/{} ({},{}): Skipping: too big (testing) (>{})".format(i+1, count, M, N, max_size)
-                res[i]["summary"] = summary 
-                self.info("    {}".format(summary))
-                continue
+            #if max_size > 0 and M > max_size:
+            #    summary = "Weight matrix {}/{} ({},{}): Skipping: too big (testing) (>{})".format(i+1, count, M, N, max_size)
+            #    res[i]["summary"] = summary 
+            #    self.info("    {}".format(summary))
+            #    continue
 
             summary = []
                 

@@ -28,12 +28,11 @@ import torch.nn as nn
 #import tensorflow.keras.models.load_model
 import pandas as pd
 
-#from RMT_Util import *
+#from .RMT_Util import *
 from .RMT_Util import *
 
-#from constants import *
+#from .constants import *
 from .constants import *
-
 
 
 def main():
@@ -138,7 +137,7 @@ class WeightWatcher:
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=3, max_size=50000,
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
-                normalize=False, glorot_fix=False, plot=False, mp_fit=False):
+                normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False):
         """
         Analyze the weight matrices of a model.
 
@@ -163,6 +162,8 @@ class WeightWatcher:
             Compute the soft norm (i.e. StableRank) of the weight matrices.
         mp_fit:
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
+        conv2d_fft:
+            For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
         """
 
         model = model or self.model        
@@ -261,6 +262,10 @@ class WeightWatcher:
                     self.debug("Layer {}: {}".format(i+1, msg))
                     res[i]["message"] = msg
                     continue
+                
+                W = weights[0]
+                M, N = np.min(W.shape), np.max(W.shape)
+                
 
             # CONV1D layer
             elif (isPyTorchLinearOrConv1D(l)):
@@ -281,6 +286,9 @@ class WeightWatcher:
                     self.debug("Layer {}: {}".format(i+1, msg))
                     res[i]["message"] = msg
                     continue
+                
+                W = weights[0]
+                M, N = np.min(W.shape), np.max(W.shape)
             
             elif (isinstance(l, tf.keras.layers.Conv1D)):                
                 res[i] = {"layer_type": LAYER_TYPE.CONV1D}
@@ -293,12 +301,14 @@ class WeightWatcher:
                     continue
                 
                 weights = l.get_weights()[0:1] # keep only the weights and not the bias
-                
                 if weights[0].shape[1] < 2:
                     msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
                     self.debug("Layer {}: {}".format(i+1, msg))
                     res[i]["message"] = msg
                     continue
+                
+                W = weights[0]
+                M, N = np.min(W.shape), np.max(W.shape)
                 
             # CONV2D layer
             elif isinstance(l, tf.keras.layers.Conv2D) or isinstance(l, nn.Conv2d):
@@ -312,15 +322,21 @@ class WeightWatcher:
                     res[i]["message"] = msg
                     continue
                 
+                #TODO:  check is this right ?
                 if isinstance(l, nn.Conv2d):
                     w = [np.array(l.weight.data.clone().cpu())]
                     receptive_field_size = l.weight.data[0][0].numel()
                 else:
                     w = l.get_weights()
                     
-                # TODO:  allow 2 kinds of conv2D
-                # or need to modify analyze_combined_weights 
-                weights = self.get_conv2D_Wmats(w[0])
+                # Run FFT on all channels or just get slices 
+                if conv2d_fft:
+                    weights, N, M, n_comp = self.get_conv2D_fft(w[0])
+                    conv2d_norm = True # ?
+                else:
+                    weights, N, M = self.get_conv2D_Wmats(w[0])
+                    n_comp = M
+                    conv2d_norm = True
                 
                 if weights[0].shape[1] < 2:
                     msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
@@ -347,7 +363,8 @@ class WeightWatcher:
             #                               normalize, glorot_fix, plot, mp_fit)
             layerid = i
             results = self.analyze_combined_weights(weights, layerid, min_size, max_size,
-                                                    normalize, glorot_fix, plot, mp_fit,  conv2Dnorm=True)
+                                                    normalize, glorot_fix, plot, mp_fit, 
+                                                    conv2d_norm, N, M, n_comp)
 
          
             if not results:
@@ -541,6 +558,9 @@ class WeightWatcher:
         Return ij (N x M) matrices
         
         """
+        
+        self.info("get_conv2D_Wmats")
+
         Wmats = []
         s = Wtensor.shape
         N, M, imax, jmax = s[0],s[1],s[2],s[3]
@@ -563,8 +583,47 @@ class WeightWatcher:
                     if N < M:
                         W = W.T
                     Wmats.append(W)
+                    
+        self.info("get_conv2D_Wmats N={} M={}".format(N,M))
+
             
-        return Wmats
+        return Wmats, N, M
+    
+    
+    def get_conv2D_fft(self, W):
+        """Compute FFT of Conv2D channels, to apply SVD later"""
+        
+        self.info("get_conv2D_fft on W {}".format(W.shape))
+
+        # is pytorch or tensor style 
+        s = W.shape
+        self.debug("    Conv2D SVD ({}): Analyzing ...".format(s))
+
+        N, M, imax, jmax = s[0],s[1],s[2],s[3]
+        # probably better just to check what col N is in 
+        if N + M >= imax + jmax:
+            self.debug("[2,3] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))    
+            fft_axes = [2,3]
+        else:
+            N, M, imax, jmax = imax, jmax, N, M          
+            fft_axes = [0,1]
+            self.debug("[1,2] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+
+        #  receptive_field / kernel size
+        rf = np.min([imax, jmax])
+        # aspect ratio
+        Q = N/M 
+        # num non-zero eigenvalues
+        n_comp = rf*N*M
+        
+        self.info("N={} M={} n_comp {} ".format(N,M,n_comp))
+
+        # run FFT on each channel
+        fft_grid = [32,32]
+        fft_coefs = np.fft.fft2(W, fft_grid, axes=fft_axes)
+        
+        return [fft_coefs], N, M, n_comp
+
 
 
     def normalize_evals(self, evals, N, M):
@@ -611,7 +670,7 @@ class WeightWatcher:
                 return check1, False
             
     # make this a static method ?        
-    def combined_eigenvalues(self, weights, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+    def combined_eigenvalues(self, weights, n_comp, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -645,14 +704,11 @@ class WeightWatcher:
                 # SVD can be swapped out here
                 # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
 
-                try:
-                    sv = np.linalg.svd(W, compute_uv=False)
-                    #svd.fit(W) 
-                except:
-                    W = W.astype(float)
-                    #svd.fit(W)
-                    sv = np.linalg.svd(W, compute_uv=False)
-
+                W = W.astype(float)
+                self.info("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
+                sv = np.linalg.svd(W, compute_uv=False)
+                sv = sv.flatten()
+                sv = np.sort(sv)[-n_comp:]
                     
                 #sv = svd.singular_values_
                 evals = sv*sv
@@ -668,7 +724,7 @@ class WeightWatcher:
         return np.sort(np.array(all_evals)), max_sv, rank_loss
     
     
-    def random_eigenvalues(self, weights, num_replicas=1, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+    def random_eigenvalues(self, weights, n_comp, num_replicas=1, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
         """Compute the eigenvalues for all weights of the NxM Randomized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -700,13 +756,12 @@ class WeightWatcher:
                     np.random.shuffle(Wrand)
                     W = Wrand.reshape(W.shape)
            
-                    try:
-                        sv = np.linalg.svd(W, compute_uv=False)
-                    except:
-                        W = W.astype(float)
-                        sv = np.linalg.svd(W, compute_uv=False)
-    
-                        
+                    W = W.astype(float)
+                    self.info("Running Randomized Full SVD")
+                    sv = np.linalg.svd(W, compute_uv=False)
+                    sv = sv.flatten()
+                    sv = np.sort(sv)[-n_comp:]    
+                    
                     #sv = svd.singular_values_
                     evals = sv*sv
                     if normalize:
@@ -722,7 +777,7 @@ class WeightWatcher:
     
     
     def analyze_combined_weights(self, weights, layerid, min_size, max_size,
-                normalize, glorot_fix, plot, mp_fit,  conv2Dnorm=True):
+                normalize, glorot_fix, plot, mp_fit,  conv2d_norm, N, M, n_comp):
         """Analyzes weight matrices, combined as if they are 1 giant matrices
         Computes PL alpha fits and  various norm metrics
          - alpha
@@ -754,7 +809,7 @@ class WeightWatcher:
         
         # assume all weight matrices have the same shape
         W = weights[0]
-        M, N = np.min(W.shape), np.max(W.shape)
+        #M, N = np.min(W.shape), np.max(W.shape)
         Q=N/M
         
         res[i]["N"] = N
@@ -762,7 +817,8 @@ class WeightWatcher:
         res[i]["Q"] = Q  
         summary = []
          
-    
+        # TODO:  start method here, have a pre-method that creates the matrices of weights
+        # pass N, M in 
         
         #
         # Get combined eigenvalues for all weight matrices, using SVD
@@ -774,7 +830,7 @@ class WeightWatcher:
         res[i]['checkTF'] = checkTF
         
         
-        evals, sv_max, rank_loss = self.combined_eigenvalues(weights, min_size, max_size, normalize, glorot_fix, conv2Dnorm)  
+        evals, sv_max, rank_loss = self.combined_eigenvalues(weights, n_comp, min_size, max_size, normalize, glorot_fix, conv2d_norm)  
         
         num_evals = len(evals)     
         if num_evals < min_size:
@@ -844,7 +900,7 @@ class WeightWatcher:
         num_replicas = 1
         if len(evals) < 1000: 
             num_replicas = int(1000/len(evals))
-        rand_evals = self.random_eigenvalues(weights, num_replicas, min_size, max_size, normalize, glorot_fix, conv2Dnorm)  
+        rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas, min_size, max_size, normalize, glorot_fix, conv2d_norm)  
         self.plot_random_esd(evals, rand_evals, title)       
         
         # power law fit, with xmax = random bulk edge

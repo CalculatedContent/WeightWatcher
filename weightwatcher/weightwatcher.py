@@ -840,9 +840,9 @@ class WeightWatcher:
         if num_evals < min_size:
             self.info("skipping layer, num evals {} < {} min size".format(num_evals, min_size))
             return res
-        elif num_evals > max_size:
-            self.info("skipping layer, num evals {} > {} max size".format(num_evals, max_size))
-            return res
+        #elif num_evals > max_size:
+        #    self.info("skipping layer, num evals {} > {} max size".format(num_evals, max_size))
+        #    return res
         
         
         lambda_max = np.max(evals)

@@ -690,7 +690,7 @@ class WeightWatcher:
         count = len(weights)
         for  W in weights:
             M, N = np.min(W.shape), np.max(W.shape)
-            if M >= min_size and M <= max_size:
+            if M >= min_size:# and M <= max_size:
 
                 Q=N/M
                 check, checkTF = self.glorot_norm_check(W, N, M, count) 

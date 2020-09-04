@@ -135,7 +135,7 @@ class WeightWatcher:
 
 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
-    def analyze(self, model=None, layers=[], min_size=3, max_size=50000,
+    def analyze(self, model=None, layers=[], min_size=3, max_size=10000,
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False):
         """
@@ -164,6 +164,7 @@ class WeightWatcher:
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
         conv2d_fft:
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
+            Note:  for conf2d_fft, the ESD is automatically subsampled to max_size eigenvalues max
         """
 
         model = model or self.model        
@@ -613,7 +614,7 @@ class WeightWatcher:
         rf = np.min([imax, jmax])
         # aspect ratio
         Q = N/M 
-        # num non-zero eigenvalues
+        # num non-zero eigenvalues  rf is receptive field size (sorry calculated again here)
         n_comp = rf*N*M
         
         self.info("N={} M={} n_comp {} ".format(N,M,n_comp))
@@ -670,7 +671,7 @@ class WeightWatcher:
                 return check1, False
             
     # make this a static method ?        
-    def combined_eigenvalues(self, weights, n_comp, min_size=1, max_size=50000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+    def combined_eigenvalues(self, weights, n_comp, min_size=1, max_size=10000, normalize=True, glorot_fix=False, conv2Dnorm=True):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -709,6 +710,9 @@ class WeightWatcher:
                 sv = np.linalg.svd(W, compute_uv=False)
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]
+                if len(sv) > max_size:
+                    self.info("chosing {} singular values from {} ".format(max_size, len(sv)))
+                    sv = np.random.choice(sv, size=max_size)
                     
                 #sv = svd.singular_values_
                 evals = sv*sv

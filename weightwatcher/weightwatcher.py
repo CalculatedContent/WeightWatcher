@@ -137,7 +137,8 @@ class WeightWatcher:
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=3, max_size=10000,
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
-                normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False):
+                normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
+                fit_bulk = False):
         """
         Analyze the weight matrices of a model.
 
@@ -165,6 +166,11 @@ class WeightWatcher:
         conv2d_fft:
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
             Note:  for conf2d_fft, the ESD is automatically subsampled to max_size eigenvalues max
+        fit_bulk: 
+            Attempt to fit bulk region of ESD only
+        device: N/A yet
+            if 'gpu'  use torch.svd()
+            else 'cpu' use np.linalg.svd
         """
 
         model = model or self.model        
@@ -365,7 +371,8 @@ class WeightWatcher:
             layerid = i
             results = self.analyze_combined_weights(weights, layerid, min_size, max_size,
                                                     normalize, glorot_fix, plot, mp_fit, 
-                                                    conv2d_norm, N, M, n_comp)
+                                                    conv2d_norm, N, M, n_comp,
+                                                    fit_bulk)
 
          
             if not results:
@@ -781,7 +788,8 @@ class WeightWatcher:
     
     
     def analyze_combined_weights(self, weights, layerid, min_size, max_size,
-                normalize, glorot_fix, plot, mp_fit,  conv2d_norm, N, M, n_comp):
+                normalize, glorot_fix, plot, mp_fit,  conv2d_norm, N, M, n_comp, 
+                fit_bulk):
         """Analyzes weight matrices, combined as if they are 1 giant matrices
         Computes PL alpha fits and  various norm metrics
          - alpha
@@ -913,22 +921,24 @@ class WeightWatcher:
         #
         # note: this only works if we have more than a few eigenvalues < xmax and > xmin
         alpha2, D2, xmin2, xmax2 = None, None, None, None
-        try:
-            xmax = np.max(rand_evals)
-            num_evals_left = len(evals[evals < xmax])
-            if  num_evals_left > 10: # not sure on this yet
-                title = "Weight matrix ({}x{})  layer ID: {} Fit2".format(N, M, layerid)
-                #alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title) 
-                alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin=None, xmax=xmax, plot=plot, title=title)  
- 
-                res[i]["alpha2"] = alpha2
-                res[i]["D2"] = D2
-                alpha2_weighted = alpha2 * np.log10(xmax)
-                res[i]["alpha2_weighted"] = alpha2_weighted
-        except:
-            self.info("fit2 fails, not sure why")
-            pass  
-            
+        if fit_bulk:
+            self.info("fitting bulk")
+            try:
+                xmax = np.max(rand_evals)
+                num_evals_left = len(evals[evals < xmax])
+                if  num_evals_left > 10: # not sure on this yet
+                    title = "Weight matrix ({}x{})  layer ID: {} Fit2".format(N, M, layerid)
+                    #alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title) 
+                    alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin=None, xmax=xmax, plot=plot, title=title)  
+     
+                    res[i]["alpha2"] = alpha2
+                    res[i]["D2"] = D2
+                    alpha2_weighted = alpha2 * np.log10(xmax)
+                    res[i]["alpha2_weighted"] = alpha2_weighted
+            except:
+                self.info("fit2 fails, not sure why")
+                pass  
+                
         
         return res
             

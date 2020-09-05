@@ -678,14 +678,15 @@ class WeightWatcher:
                 return check1, False
             
     # make this a static method ?        
-    def combined_eigenvalues(self, weights, n_comp, min_size=1, max_size=10000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+    def combined_eigenvalues(self, weights, n_comp, min_size=1, max_size=10000, 
+                             normalize=True, glorot_fix=False, conv2d_norm=True):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
             Skips matrices where M < min_size or M > max_size
             Applied normalization and glorot_fix if specified
             
-            Assumes an array of weights comes from a conv2D layer and applies conv2Dnorm normalization by default
+            Assumes an array of weights comes from a conv2D layer and applies conv2d_norm normalization by default
           
             Also returns max singular value and rank_loss, needed for other calculations
          """
@@ -705,7 +706,7 @@ class WeightWatcher:
                 # assume receptive field size is count
                 if glorot_fix:
                     W = self.glorot_norm_fix(W, N, M, count)
-                elif conv2Dnorm:
+                elif conv2d_norm:
                     # probably never needed since we always fix for glorot
                     W = W * np.sqrt(count/2.0) 
                 
@@ -735,7 +736,8 @@ class WeightWatcher:
         return np.sort(np.array(all_evals)), max_sv, rank_loss
     
     
-    def random_eigenvalues(self, weights, n_comp, num_replicas=1, min_size=1, max_size=10000, normalize=True, glorot_fix=False, conv2Dnorm=True):
+    def random_eigenvalues(self, weights, n_comp, num_replicas=1, min_size=1, max_size=10000, 
+                           normalize=True, glorot_fix=False, conv2d_norm=True):
         """Compute the eigenvalues for all weights of the NxM Randomized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -759,7 +761,7 @@ class WeightWatcher:
                     # assume receptive field size is count
                     if glorot_fix:
                         W = self.glorot_norm_fix(W, N, M, count)
-                    elif conv2Dnorm:
+                    elif conv2d_norm:
                         # probably never needed since we always fix for glorot
                         W = W * np.sqrt(count/2.0) 
                     
@@ -912,7 +914,11 @@ class WeightWatcher:
         num_replicas = 1
         if len(evals) < 100: 
             num_replicas = 10
-        rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas, min_size, max_size, normalize, glorot_fix, conv2d_norm)  
+            
+        rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas=num_replicas, 
+                                              min_size=min_size, max_size=max_size, 
+                                              normalize=normalize, glorot_fix=glorot_fix, conv2d_norm=conv2d_norm)
+
         if plot:
             self.plot_random_esd(evals, rand_evals, title)       
         

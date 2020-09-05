@@ -720,7 +720,7 @@ class WeightWatcher:
                 sv = np.linalg.svd(W, compute_uv=False)
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]
-                if len(sv) > MAX_NUM_EVALS:
+                if len(sv) > max_size:
                     self.info("chosing {} singular values from {} ".format(max_size, len(sv)))
                     sv = np.random.choice(sv, size=max_size)
                     
@@ -983,7 +983,7 @@ class WeightWatcher:
         return np.count_nonzero(sv > tolerance, axis=-1)
         
             
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, title=""):
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, title="", sample=True):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -996,6 +996,11 @@ class WeightWatcher:
         
         self.info("fitting power law on {} eigenvalues".format(len(evals)))
         alpha, D =  None, None      
+        
+        if  sample and len(evals) > MAX_NUM_EVALS:
+            self.info("chosing {} eigenvalues from {} ".format(MAX_NUM_EVALS, len(evals)))
+            evals = np.random.choice(evals, size=MAX_NUM_EVALS)
+                    
         
         if xmax=='auto' or xmax is None:
             xmax = np.max(evals)

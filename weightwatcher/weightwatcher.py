@@ -750,6 +750,7 @@ class WeightWatcher:
          
         all_evals = []
 
+        self.info("generating {} replicas for each W of the random eigenvalues".format(num_replicas))
         for num in range(num_replicas):
             count = len(weights)
             for  W in weights:
@@ -914,8 +915,10 @@ class WeightWatcher:
             
         # overlay plot with randomized matrix on log scale
         num_replicas = 1
-        if len(evals) < 100: 
+        if len(evals)*len(weights) < 100: 
             num_replicas = 10
+            self.info("Using {} random replicas".format(num_replicas))
+
             
         rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas=num_replicas, 
                                               min_size=min_size, max_size=max_size, 

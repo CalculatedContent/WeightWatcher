@@ -35,6 +35,8 @@ from .RMT_Util import *
 from .constants import *
 
 
+MAX_NUM_EVALS= 1000
+
 def main():
     """
     Weight Watcher
@@ -718,7 +720,7 @@ class WeightWatcher:
                 sv = np.linalg.svd(W, compute_uv=False)
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]
-                if len(sv) > max_size:
+                if len(sv) > MAX_NUM_EVALS:
                     self.info("chosing {} singular values from {} ".format(max_size, len(sv)))
                     sv = np.random.choice(sv, size=max_size)
                     

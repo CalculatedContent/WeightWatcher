@@ -29,10 +29,10 @@ import torch.nn as nn
 import pandas as pd
 
 #from .RMT_Util import *
-from .RMT_Util import *
+from RMT_Util import *
 
 #from .constants import *
-from .constants import *
+from constants import *
 
 
 def main():
@@ -910,8 +910,8 @@ class WeightWatcher:
             
         # overlay plot with randomized matrix on log scale
         num_replicas = 1
-        if len(evals) < 1000: 
-            num_replicas = int(1000/len(evals))
+        if len(evals) < 100: 
+            num_replicas = 10
         rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas, min_size, max_size, normalize, glorot_fix, conv2d_norm)  
         if plot:
             self.plot_random_esd(evals, rand_evals, title)       

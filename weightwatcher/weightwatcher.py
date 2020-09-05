@@ -29,10 +29,10 @@ import torch.nn as nn
 import pandas as pd
 
 #from .RMT_Util import *
-from RMT_Util import *
+from .RMT_Util import *
 
 #from .constants import *
-from constants import *
+from .constants import *
 
 
 def main():

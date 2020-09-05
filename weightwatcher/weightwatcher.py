@@ -437,7 +437,13 @@ class WeightWatcher:
             "numofSpikes": "Number of spikes per MP fit",
             "ratio_numofSpikes": "aka, percent_mass, Number of spikes / total number of evals",
             "softrank_mp": "Softrank for MP fit",
-            "logpnorm": "alpha pNorm"
+            "logpnorm": "alpha pNorm",
+            "xmin": "xin of PL fit",
+            "xmax": "xmax of PL fit",
+            "rand_xmax": "xmax of random X "
+
+
+
         }
 
         metrics_stats = []
@@ -924,6 +930,9 @@ class WeightWatcher:
                                               min_size=min_size, max_size=max_size, 
                                               normalize=normalize, glorot_fix=glorot_fix, conv2d_norm=conv2d_norm)
 
+        res[i]["max_rand_eval"] = np.max(rand_evals)
+        res[i]["min_rand_eval"] = np.max(rand_evals)
+        
         if plot:
             self.plot_random_esd(evals, rand_evals, title)       
         
@@ -973,6 +982,7 @@ class WeightWatcher:
         plt.title(r"Log10 ESD and Randomized (ESD $\rho(\lambda))$" + "\nfor {} ".format(title))                  
         plt.legend()
         plt.show()
+        
         
         
           

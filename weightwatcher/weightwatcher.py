@@ -340,7 +340,8 @@ class WeightWatcher:
                     
                 # Run FFT on all channels or just get slices 
                 if conv2d_fft:
-                    weights, N, M, n_comp = self.get_conv2D_fft(w[0])
+                    n = l.input_shape[1]
+                    weights, N, M, n_comp = self.get_conv2D_fft(w[0],n)
                     conv2d_norm = True # ?
                 else:
                     weights, N, M = self.get_conv2D_Wmats(w[0])
@@ -421,6 +422,7 @@ class WeightWatcher:
         metrics = {
             # key in "results" : pretty print name
             "D": "D",
+            "sigma": "sigma",
             "D2": "D2",
             "norm": "Norm",
             "lognorm": "LogNorm",
@@ -606,7 +608,7 @@ class WeightWatcher:
         return Wmats, N, M
     
     
-    def get_conv2D_fft(self, W):
+    def get_conv2D_fft(self, W, n=32):
         """Compute FFT of Conv2D channels, to apply SVD later"""
         
         self.info("get_conv2D_fft on W {}".format(W.shape))
@@ -625,6 +627,10 @@ class WeightWatcher:
             fft_axes = [0,1]
             self.debug("[1,2] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
 
+        # Switch N, M if in wrong order
+        if N < M:
+            M, N = N, M
+
         #  receptive_field / kernel size
         rf = np.min([imax, jmax])
         # aspect ratio
@@ -635,7 +641,7 @@ class WeightWatcher:
         self.info("N={} M={} n_comp {} ".format(N,M,n_comp))
 
         # run FFT on each channel
-        fft_grid = [32,32]
+        fft_grid = [n,n]
         fft_coefs = np.fft.fft2(W, fft_grid, axes=fft_axes)
         
         return [fft_coefs], N, M, n_comp
@@ -877,10 +883,12 @@ class WeightWatcher:
         # Power law fit
         #
         title = "Weight matrix ({}x{})  layer ID: {}".format(N, M, layerid)
-        alpha, D, xmin, xmax = self.fit_powerlaw(evals, plot=plot, title=title)    
+        alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, plot=plot, title=title)    
         
         res[i]["alpha"] = alpha
         res[i]["D"] = D
+        res[i]["sigma"] = sigma
+
         res[i]["xmin"] = xmin
         res[i]["xmax"] = xmax
         res[i]["lambda_min"] = np.min(evals)
@@ -1034,10 +1042,11 @@ class WeightWatcher:
             
         alpha = fit.alpha 
         D = fit.D
+        sigma = fit.sigma
         xmin = fit.xmin
         xmax = fit.xmax
         
-  
+        
         if plot:
             fig2 = fit.plot_pdf(color='b', linewidth=2)
             fit.power_law.plot_pdf(color='b', linestyle='--', ax=fig2)
@@ -1068,17 +1077,17 @@ class WeightWatcher:
             plt.show()
     
             # plot xmins vs D
+            
             plt.plot(fit.xmins, fit.Ds, label=r'$D$')
             plt.axvline(x=fit.xmin, color='red', label='xmin')
+            plt.plot(fit.xmins, fit.sigmas/fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
             plt.xlabel(r'$x_{min}$')
             plt.ylabel(r'$D,\sigma,\alpha$')
             plt.title("current xmin={:0.3}".format(fit.xmin))
             plt.legend()
-            plt.show()   
-            
-        ### TODOL  find best fit     
-    
-        return alpha , D, xmin, xmax
+            plt.show() 
+                          
+        return alpha, xmin, xmax, D, sigma
         
          
 

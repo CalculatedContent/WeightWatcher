@@ -712,7 +712,9 @@ class WeightWatcher:
         count = len(weights)
         for  W in weights:
             M, N = np.min(W.shape), np.max(W.shape)
+            #print("combined evals  W.shape {}  N {} M {}".format(W.shape,N,M))
             if M >= min_size:# and M <= max_size:
+                #print("M large enough M {}  min_size {}".format(M, min_size))
 
                 Q=N/M
                 check, checkTF = self.glorot_norm_check(W, N, M, count) 
@@ -728,7 +730,7 @@ class WeightWatcher:
                 # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
 
                 W = W.astype(float)
-                self.info("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
+                self.debug("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
                 sv = np.linalg.svd(W, compute_uv=False)
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]
@@ -752,7 +754,7 @@ class WeightWatcher:
     
     def random_eigenvalues(self, weights, n_comp, num_replicas=1, min_size=1, max_size=10000, 
                            normalize=True, glorot_fix=False, conv2d_norm=True):
-        """Compute the eigenvalues for all weights of the NxM Randomized weight matrices (N >= M), 
+        """Compute the eigenvalues for all weights of the NxM skipping layer, num evals ized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
         see: combined_eigenvalues()

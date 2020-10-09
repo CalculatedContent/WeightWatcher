@@ -778,10 +778,10 @@ class WeightWatcher(object):
         details = pd.DataFrame(columns = ['layer_id', 'name'])
            
         for ww_layer in layer_iterator:
-           if(ww_layer.has_weights):
+           if not ww_layer.skipped and ww_layer.has_weights:
                self.apply_esd(ww_layer, params)
-               print(" evals {}".format(ww_layer.evals))
-               self.apply_fit_powerlaw(ww_layer, params)
+               if ww_layer.evals is not None:
+                   self.apply_fit_powerlaw(ww_layer, params)
                details = details.append(ww_layer.get_row(),  ignore_index=True)
         
         results = {}

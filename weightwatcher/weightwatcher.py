@@ -16,23 +16,33 @@ import sys, os
 import logging
 
 import numpy as np
+import pandas as pd
+
 import matplotlib
 import matplotlib.pyplot as plt
 import powerlaw
  
+ 
 from sklearn.decomposition import TruncatedSVD
 
 import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.models import load_model
+
+import torch
 import torch.nn as nn
 
-#import tensorflow.keras.models.load_model
-import pandas as pd
 
 #from .RMT_Util import *
-from .RMT_Util import *
-
 #from .constants import *
+
+from .RMT_Util import *
 from .constants import *
+
+# TODO:  allow configuring custom logging
+import logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger('WeightWatcher')
 
 
 MAX_NUM_EVALS= 1000
@@ -44,35 +54,390 @@ def main():
     print("WeightWatcher command line support coming later. https://calculationconsulting.com")
 
 
-class WeightWatcher:
-
-    def __init__(self, model=None, log=True, logger=None):
-        self.model = self.load_model(model)
-        self.results = {}
-        self.summary = {}
-        self.logger_set(log=log, logger=logger)
-
-        self.info(self.banner())
 
 
-    def logger_set(self, log=True, logger=None):
-        self.log = log
-        self.logger = None
-        if logger:
-            self.logger = logger
+class WWLayer:
+    """WW wrapper layer to Keras and PyTorch Layer layer objects
+       Uses pythong metaprogramming to add result columns for the final details dataframe"""
+       
+    def __init__(self, layer, index=-1, name="", 
+                 the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, skipped=False):
+        self.layer = layer
+        self.index = index
+        self.name = name
+        self.skipped = skipped
+        self.the_type = the_type
+        self.framework = framework
+        
+        self.channels = CHANNELS.UNKNOWN
+
+        if (self.framework==FRAMEWORK.KERAS):
+            self.channels = CHANNELS.FIRST
+        elif (self.framework==FRAMEWORK.PYTORCH):
+            self.channels = CHANNELS.LAST
+        
+        # original weights (tensor) and biases
+        self.has_weights = False
+        self.weights = None
+  
+        # extracted weight matrices
+        self.num_W = 0
+        self.Wmats = []
+        self.N = 0
+        self.M = 0
+        self.num_components = self.M # default for full SVD, not used yet
+        self.rf = 1 #receptive field size, default for dense layer
+        self.inputs_shape = []
+        self.outputs_shape = []
+        
+        # evals 
+        self.evals = None
+        
+        # details, set by metaprogramming in apply_xxx() methods
+        self.columns = []
+        
+        
+    def add_column(self, name, value):
+        """Add column to the details dataframe"""
+        self.columns.append(name)
+        self.__dict__[name] =  value
+        
+    def get_row(self, params={}):
+        """get a details dataframe row from the columns and metadata"""
+        data = {}
+        
+        data['layer_id']=self.index
+        data['name']=self.name
+        data['N']=self.N
+        data['M']=self.M
+        data['rf']=self.rf
+        
+        for col in self.columns:
+            data[col]=self.__dict__[col]
+        
+        return data
+    
+    
+    
+    def layer_type(self, layer):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic Keras and PyTorch classes by type, and will try to infer the type otherwise. """
+
+        the_type = LAYER_TYPE.UNKNOWN
+       
+        typestr = (str(type(layer))).lower()
+            
+        # Keras TF 2.x types
+        if isinstance(layer, keras.layers.Dense): 
+            the_type = LAYER_TYPE.DENSE
+            
+        elif isinstance(layer, keras.layers.Conv1D):                
+            the_type = LAYER_TYPE.CONV1D
+        
+        elif isinstance(layer, keras.layers.Conv2D):                
+            the_type = LAYER_TYPE.CONV2D
+            
+        elif isinstance(layer, keras.layers.Flatten):
+            the_type = LAYER_TYPE.FLATTENED
+            
+        elif isinstance(layer, keras.layers.Embedding):
+            the_type = LAYER_TYPE.EMBEDDING
+            
+        elif isinstance(layer, tf.keras.layers.LayerNormalization):
+            the_type = LAYER_TYPE.NORM
+                 
+        
+        # PyTorch        
+             
+        elif isinstance(layer, nn.Linear):
+            the_type = LAYER_TYPE.DENSE
+            
+        elif isinstance(layer, nn.Conv1d):
+            the_type = LAYER_TYPE.CONV1D
+        
+        elif isinstance(layer, nn.Conv2d):
+            the_type = LAYER_TYPE.CONV2D
+            
+        elif isinstance(layer, nn.Embedding):
+            the_type = LAYER_TYPE.EMBEDDING
+                
+        elif isinstance(layer, nn.LayerNorm):
+            the_type = LAYER_TYPE.NORM
+            
+        
+        # try to infer type (i.e for huggingface)
+        elif typestr.endswith(".linear'>"):
+            the_type = LAYER_TYPE.DENSE
+            
+        elif typestr.endswith(".dense'>"):
+            the_type = LAYER_TYPE.DENSE
+            
+        elif typestr.endswith(".conv1d'>"):
+            the_type = LAYER_TYPE.CONV1D
+            
+        elif typestr.endswith(".conv2d'>"):
+            the_type = LAYER_TYPE.CONV2D
+
+        
+        return the_type
+
+
+    
+    def make(self, filter_ids=None, filter_types=None):
+        """ Constructor for WWLayer class.  Make a ww (wrapper)_layer from a framework layer, or return None if layer is skipped.
+        In particular , late uses specify filter on layer ids and names """
+        
+        self.the_type = self.layer_type(self.layer)
+        has_weights = False;
+        
+        if hasattr(self.layer, 'name'):
+            name = self.layer.name
+        
+        if filter_ids is not None and len(filter_ids) > 0:
+            if self.layer_id not in filter_ids:
+                self.skipped = True
+                
+        if filter_types is not None and len(filter_types) > 0:
+            if self.the_type not in filter_types:
+                self.skipped = True
+        
+        # TODO: maybe move this to the constructor
+        if not self.skipped:
+            has_weights, weights, has_biases, biases = self.get_weights_and_biases()
+            
+            self.has_weights = has_weights
+            self.has_biases = has_biases
+            
+            if has_biases:
+                self.biases = biases   
+                
+            if has_weights:    
+                self.weights = weights
+                self.set_weight_matrices(weights)
+    
+        return self
+    
+
+
+        
+    def get_weights_and_biases(self):
+        """extract the original weights (as a tensor) for the layer, and biases for the layer, if present"""
+        
+        has_weights, has_biases = False, False
+        weights, biases = None, None
+    
+        if self.framework==FRAMEWORK.PYTORCH:
+            if hasattr(self.layer, 'weight'):
+                w = [np.array(self.layer.weight.data.clone().cpu())]
+                has_weights = True
+                
+        elif self.framework==FRAMEWORK.KERAS:
+            w = self.layer.get_weights()
+            if(len(w)>0):
+                has_weights = True
+                
+            if(len(w)>1):
+                has_biases = True
+                
         else:
-            self.logger = logging.getLogger(__name__)
-            if not self.logger.handlers: # do not register handlers more than once
-                if log:
-                    #logging.basicConfig(level=logging.DEBUG)
-                    log_level = logging.INFO
-                    self.logger.setLevel(log_level)
-                    console_handler = logging.StreamHandler()
-                    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-                    console_handler.setFormatter(formatter)
-                    self.logger.addHandler(console_handler)
-                else:
-                    self.logger.addHandler(logging.NullHandler())
+            logger.error("unknown framework: weighwatcher only supports keras (tf 2.x) or pytorch ")
+       
+        if has_weights:
+            if len(w)==1:
+                weights = w[0]
+                biases = None
+            elif len(w)==2:
+                weights = w[0]
+                biases =  w[1]
+            else:
+                logger.error("unknown weights, with len(w)={} ".format(len(w)))
+        
+        return has_weights, weights, has_biases, biases  
+    
+    
+      
+    def set_weight_matrices(self, weights, conv2d_fft=False, conv2d_norm=True):
+        """extract the weight matrices from the framework layer weights (tensors)
+        sets the weights and detailed properties on the ww (wrapper) layer 
+    
+        conv2d_fft not supported yet """
+   
+        if not self.has_weights:
+            logger.info("Layer {} {} has no weights".format(self.index, self.name))
+            return 
+        
+        the_type = self.the_type
+        
+        N, M, n_comp, rf = 0, 0, 0, None
+        Wmats = []
+        
+        # this may change if we treat Conv1D differently layer
+        if (the_type == LAYER_TYPE.DENSE or the_type == LAYER_TYPE.CONV1D):
+            Wmats = self.weights
+            N, M = np.max(Wmats.shape), np.min(Wmats.shape)
+            n_comp = M
+            rf = 1
+            
+        # TODO: reset channels nere ?    
+        elif the_type == LAYER_TYPE.CONV2D:
+            Wmats, N, M, rf, channels = self.conv2D_Wmats(weights)
+            n_comp = M
+            self.channels = channels
+
+            
+        elif the_type == LAYER_TYPE.NORM:
+            logger.info("Layer id {}  Layer norm has no matrices".format(self.index))
+        
+        else:
+            logger.info("Layer id {}  unknown type {} layer  {}".format(self.index, the_type, self.layer))
+    
+        self.N = N
+        self.M = M
+        self.rf = rf
+        self.Wmats = Wmats
+        self.num_components = n_comp
+        
+        return 
+    
+
+            
+        
+    def __repr__(self):
+        return "WWLayer()"
+
+    def __str__(self):
+        return "WWLayer {}  {} {} {}  skipped {}".format(self.index, self.name, 
+                                                       self.framework.name, self.the_type.name, self.skipped)
+        
+            
+      
+    
+    def conv2D_Wmats(self, Wtensor, channels=CHANNELS.UNKNOWN):
+        """Extract W slices from a 4 index conv2D tensor of shape: (N,M,i,j) or (M,N,i,j).  
+        Return ij (N x M) matrices, with receptive field size (rf) and channels flag (first or last)"""
+        
+        logger.debug("conv2D_Wmats")
+        
+        # TODO:  detect or use channels
+        # if channels specified ...
+    
+        Wmats = []
+        s = Wtensor.shape
+        N, M, imax, jmax = s[0],s[1],s[2],s[3]
+        if N + M >= imax + jmax:
+            logger.debug("Channels Last tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+            
+            channels=CHANNELS.LAST
+            for i in range(imax):
+                for j in range(jmax):
+                    W = Wtensor[:,:,i,j]
+                    if N < M:
+                        W = W.T
+                    Wmats.append(W)
+        else:
+            N, M, imax, jmax = imax, jmax, N, M          
+            logger.debug("Channels First shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+            
+            channels=CHANNELS.FIRST
+            for i in range(imax):
+                for j in range(jmax):
+                    W = Wtensor[i,j,:,:]
+                    if N < M:
+                        W = W.T
+                    Wmats.append(W)
+                    
+        rf = imax*jmax # receptive field size             
+        logger.debug("get_conv2D_Wmats N={} M={} rf= {} channels = {}".format(N,M,rf,channels))
+    
+        return Wmats, N, M, rf, channels    
+
+    
+  
+      
+
+
+
+    
+class WWLayerIterator:
+    """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available."""
+
+    def __init__(self, model, filter_ids=[], filter_types=[]):
+        self.model = model
+        self.layers_iter, self.framework = self.model_iter(model) 
+
+        self.filter_ids = filter_ids
+        self.filter_types = filter_types
+        
+        self.k = 0
+        
+
+    def __iter__(self):
+        return self
+    
+    # Python 3 compatibility
+    def __next__(self):
+        return self.next()
+    
+    
+    def model_iter(self, model):
+        """Create a python iterator for the layers in the model. Also detects the framework being used."""
+        layer_iter = None
+        
+        if hasattr(model, 'layers'):
+            layer_iter = (l for l in model.layers)
+            framework = FRAMEWORK.KERAS
+        elif hasattr(model, 'modules'):
+            layer_iter = model.modules()
+            framework = FRAMEWORK.PYTORCH
+        else:
+            layer_iter = None
+            framework = FRAMEWORK.UNKNOWN
+            
+        return layer_iter, framework
+
+
+
+    def next(self):
+        curr_layer = next(self.layers_iter)
+        if curr_layer:    
+            curr_id, self.k = self.k, self.k+1
+            
+            ww_layer = WWLayer(curr_layer, index=curr_id, framework=self.framework)
+            ww_layer.make(filter_ids=self.filter_ids, filter_types=self.filter_types)
+                        
+            return ww_layer
+        else:
+            raise StopIteration()
+
+
+class WeightWatcher(object):
+
+    def __init__(self, model=None, log=True):
+        self.model = self.load_model(model)
+        #self.setup_custom_logger(log, logger)     
+        logger.info(self.banner())
+
+#     def setup_custom_logger(self, log, logger):
+#         formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(module)s - %(message)s')
+#     
+#         handler = logging.StreamHandler()
+#         handler.setFormatter(formatter)
+#     
+#         if not logger:
+#            logger = logging.getLogger(__name__)
+#         
+#         if not logger.handlers: # do not register handlers more than once
+#             if log:
+#                 logging.setLevel(logging.INFO) 
+#                 console_handler = logging.StreamHandler()
+#                 formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+#                 console_handler.setFormatter(formatter)
+#                 self.logger.addHandler(console_handler)
+#             else:
+#                 self.logger.addHandler(logging.NullHandler())
+#   
+#         return logger
+
 
 
     def header(self):
@@ -94,53 +459,278 @@ class WeightWatcher:
         txt  = "\nAnalysis done: {}".format(done)
         return "{}{}".format(self.header(), txt)
 
-
-    def debug(self, message):
-        if self.log:
-            self.logger.debug(message)
-
-
-    def info(self, message):
-        if self.log:
-            self.logger.info(message)
-
-
-    def warn(self, message):
-        if self.log:
-            self.logger.warning(message)
-
-
-    def error(self, message):
-        if self.log:
-            self.logger.error(message)
-
-
-    def load_model(self, model):
-        """Load a model from a file if necessary.  Only works for Keras
-        """
+            
+    # TODO: get rid of this or extend to be more generally useful
+    def load_model(self,model):
+        """load the model from a file, only works for keras right now"""
         res = model
         if isinstance(model, str):
             if os.path.isfile(model):
-                self.info("Loading model from file '{}'".format(model))
-                res =tf.keras.models.load_model(model)
+                logger.info("Loading model from file '{}'".format(model))
+                res = load_model(model)
             else:
-                self.error("Loading model from file '{}': file not found".format(model))
+                logger.error("Loading model from file '{}': file not found".format(model))
         return res
+    
 
 
-    def model_is_valid(self, model=None):
-        model = model or self.model
-        if not model:
-            return False
+    
+    
 
-        return True
+            
+    
+    # TODO: implement
+    def same_models(self, model_1, model_2):
+        """Compare models to see if the are the same architecture.
+        Not really impelemnted yet"""
+    
+        same = True
+        layer_iter_1 = WWLayerIterator(model_1)
+        layer_iter_2 = WWLayerIterator(model_2)
+        
+        same = layer_iter_1.framework == layer_iter_2.framework 
 
+        return same
+    
+    def distances(self, model_1, model_2):
+        """Compute the distances between model_1 and model_2 for each layer. 
+        Reports Frobenius norm of the distance between each layer weights (tensor)
+        
+           < ||W_1-W_2|| >
+           
+        output: avg delta W, a details dataframe
+           
+        models should be the same size and from the same framework
+           
+        """
+        
+        # check and throw exception if inputs incorrect
+        # TODO: review design here...may need something else
+        #   need to:
+        #.   - iterate over all layers and check
+        #.   - inspect framework by framework
+        #.   - check here instead
+        #
+        
+        same = True
+        layer_iter_1 = WWLayerIterator(model_1)
+        layer_iter_2 = WWLayerIterator(model_2)
+        
+        same = layer_iter_1.framework == layer_iter_2.framework 
+        if not same:
+            raise Exception("Sorry, models are from different frameworks")
+            
+       
+        
+        details = pd.DataFrame(columns = ['layer_id', 'name', 'delta_W', 'delta_b', 'W_shape', 'b_shape'])
+        data = {}
+        
+        try:      
+            for layer_1, layer_2 in zip(layer_iter_1, layer_iter_2):
+                data['layer_id'] = layer_1.index
+                data['name'] = layer_1.name
+    
+                if layer_1.has_weights:
+                    data['delta_W'] = np.linalg.norm(layer_1.weights-layer_2.weights)
+                    data['W_shape'] = layer_1.weights.shape
+    
+                    if layer_1.has_biases:
+                        data['delta_b'] = np.linalg.norm(layer_1.biases-layer_2.biases)
+                        data['b_shape'] = layer_1.biases.shape
+    
+                    details = details.append(data,  ignore_index=True)
+        except:
+            logger.error("Sorry, problem comparing models")
+            raise Exception("Sorry, problem comparing models")
+        
+        details.set_index('layer_id', inplace=True)
+        avg_dW = np.mean(details['delta_W'].to_numpy())
+        return avg_dW, details
+    
+   
+    
+    def combined_eigenvalues(self, Wmats, N, M, n_comp, params):
+        """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
+            combined into a single, sorted, numpy array
+    
+            Applied normalization and glorot_fix if specified
+    
+            Assumes an array of weights comes from a conv2D layer and applies conv2d_norm normalization by default
+    
+            Also returns max singular value and rank_loss, needed for other calculations
+         """
+    
+        all_evals = []
+        max_sv = 0.0
+        rank_loss = 0
+    
+        #TODO:  allow user to specify
+        normalize = params['normalize']
+        glorot_fix = params['glorot_fix']
+        conv2d_norm = params['conv2d_norm']
+    
+    
+        count = len(Wmats)
+        for  W in Wmats:
+    
+            Q=N/M
+            # not really used
+            check, checkTF = self.glorot_norm_check(W, N, M, count) 
+    
+            # assume receptive field size is count
+            if glorot_fix:
+                W = self.glorot_norm_fix(W, N, M, count)
+            elif conv2d_norm:
+                # probably never needed since we always fix for glorot
+                W = W * np.sqrt(count/2.0) 
+    
+            # SVD can be swapped out here
+            # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
+    
+            W = W.astype(float)
+            logger.debug("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
+            sv = np.linalg.svd(W, compute_uv=False)
+            sv = sv.flatten()
+            sv = np.sort(sv)[-n_comp:]
+            # TODO:  move to PL fit for robust estimator
+            #if len(sv) > max_size:
+            #    #logger.info("chosing {} singular values from {} ".format(max_size, len(sv)))
+            #    sv = np.random.choice(sv, size=max_size)
+    
+            #sv = svd.singular_values_
+            evals = sv*sv
+            if normalize:
+                evals = evals/N
+    
+            all_evals.extend(evals)
+    
+            max_sv = np.max([max_sv, np.max(sv)])
+            max_ev = np.max(evals)
+            rank_loss = 0#rank_loss + self.calc_rank_loss(sv, M, max_ev)
+    
+        return np.sort(np.array(all_evals)), max_sv, rank_loss
+
+
+
+    
+    def layer_supported(self, ww_layer, params={}):
+        """Return true if this kind of layer is supported"""
+        
+        layer_id = ww_layer.index
+        name = ww_layer.name
+        the_type = ww_layer.the_type
+        rf = ww_layer.rf
+        
+        M  = ww_layer.M
+        N  = ww_layer.N
+        
+        min_size = params.get('min_size')
+        max_size = params.get('max_size')
+        
+        supported = False
+        if ww_layer.skipped:
+            logger.debug("Layer {} {} is skipped".format(layer_id, name))
+            
+        elif not ww_layer.has_weights:
+            logger.debug("Layer {} {} has no weights".format(layer_id, name))
+        
+        elif the_type is LAYER_TYPE.UNKNOWN:
+            logger.debug("Layer {} {} type {} unknown".format(layer_id, name, the_type))
+        
+        elif the_type in [LAYER_TYPE.FLATTENED, LAYER_TYPE.NORM]:
+            logger.debug("Layer {} {} type {} not supported".format(layer_id, name, the_type))
+        
+        elif min_size and M*rf < min_size:
+            logger.debug("Layer {} {}: size {} < {}".format(layer_id, name, M*rf, min_size))
+                  
+        elif max_size and N > max_size:
+            logger.debug("Layer {} {}: size {} > {}".format(layer_id, name, N, max_size))
+        
+        elif the_type  in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D]:
+            supported = True
+            
+        return supported
+    
+    
+            
+    def apply_esd(self, ww_layer, params={}):
+        """run full SVD on layer weight matrices, compute ESD, combine all,  and save to layer """
+        
+        layer_id = ww_layer.index
+        name = ww_layer.name
+        the_type = ww_layer.the_type
+         
+        M  = ww_layer.M
+        N  = ww_layer.N
+        rf = ww_layer.rf
+            
+        if self.layer_supported(ww_layer, params):
+        
+            Wmats = ww_layer.Wmats
+            n_comp = ww_layer.num_components
+            
+            evals, sv_max, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
+         
+            ww_layer.evals = evals
+            ww_layer.add_column("has_esd",True)
+            ww_layer.add_column("num_evals",len(evals))
+            ww_layer.add_column("sv_max",sv_max)
+            ww_layer.add_column("rank_loss",rank_loss)
+            ww_layer.add_column("lambda_max",np.max(evals))
+            
+        return ww_layer
+              
+           
+    def apply_plot_esd(self, ww_layer, params={}):
+        """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
+        
+        if self.layer_supported(ww_layer, params):
+            
+            evals = ww_layer.evals
+            name = ww_layer.name
+            
+            plt.title(name)
+            plt.hist(evals, bins=100)
+            plt.show()
+            
+            plt.title(name)
+            plt.hist(np.log10(evals), bins=100)
+            plt.show()
+            
+        return ww_layer
+    
+ 
+    def apply_fit_powerlaw(self, ww_layer, params={}):
+        """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
+        
+        if self.layer_supported(ww_layer, params):
+            
+            evals = ww_layer.evals
+            layer_id = ww_layer.index
+            name = ww_layer.name
+            title = "{} {}".format(layer_id, name)
+                                
+            alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, title=title)
+            
+            ww_layer.alpha = alpha
+            ww_layer.xmin = xmin
+            ww_layer.xmax = xmax
+            ww_layer.D = D
+            ww_layer.sigma = sigma
+
+            
+        return ww_layer
+    
+    
+    
+          
+              
 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_size=3, max_size=10000,
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
-                fit_bulk = False):
+                conv2d_norm=True, fit_bulk = False, params={}):
         """
         Analyze the weight matrices of a model.
 
@@ -176,220 +766,29 @@ class WeightWatcher:
         """
 
         model = model or self.model        
-        res = {}
-
-        # Treats Custom Conv1D / Attention Layers (ex: GPT, BERT)
-        # since they have custom subclass from nn.Module (OpenAIGPTModel)
-        def isPyTorchLinearOrConv1D(l):
-            tf = False
-            if isinstance(l, nn.Conv1d):
-                tf = True
-            if isinstance(l, nn.Module):
-                if hasattr(l, 'weight'):
-                    #if isinstance(l, nn.modules.batchnorm._BatchNorm):
-                    if "BatchNorm" in str(type(l)):
-                        return False
-                    w = l.weight.detach().numpy()
-#                    tf = True
-                    if len(w.shape)==2: # Linear
-                        if w.shape[1] >= 2:
-                            tf = True
-            return tf
-
-        if not isinstance(layers, list):
-            layers = [layers]
-        layer_ids = [x for x in layers if str(x).isdigit()]
-        layer_types = [x for x in layers if isinstance(x, LAYER_TYPE)]
-
-        if not self.model_is_valid(model):
-            self.error("Invalid model")
-            return res
-
-        if hasattr(model, 'name'):
-            # keras has a 'name' attribute on the model
-            self.info("Analyzing model '{}' with {} layers".format(model.name, len(model.layers)))
-        else:
-            # pyTorch has no 'name'
-            self.info("Analyzing model")
-
-        weights = []
         
-        layers = []
-        if hasattr(model, 'layers'):
-            # keras
-            layers = model.layers
-        else:
-            # pyTorch
-            layers = model.modules()
-            
-        import torch.nn as nn
-
-        for i, l in enumerate(layers):
-            self.debug("Layer {}: {}".format(i+1, l))
-            res[i] = {"id": i}
-            res[i]["type"] = l
-            
-            weights = []
-
-            # Filter out layers by numerical id (if any provided)
-            if (len(layer_ids) > 0 and (i not in layer_ids)):
-                msg = "Skipping (Layer id not requested to analyze)"
-                self.debug("Layer {}: {}".format(i+1, msg))
-                res[i]["message"] = msg
-                continue
-
-            # DENSE layer (Keras) / LINEAR (pytorch)
-            #if isinstance(l, keras.layers.core.Dense) or isinstance(l, nn.Linear):
-            # TF 2.x
-            if isinstance(l, tf.keras.layers.Dense) or isinstance(l, nn.Linear):
-
-                res[i]["layer_type"] = LAYER_TYPE.DENSE
-
-                # Filter out layers by type (if any provided)
-                if (len(layer_types) > 0 and
-                        not any(layer_type & LAYER_TYPE.DENSE for layer_type in layer_types)):
-                    msg = "Skipping (Layer type not requested to analyze)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-                
-                if isinstance(l, nn.Linear):
-                    # pyTorch
-                    weights = [np.array(l.weight.data.clone().cpu())]
-                    receptive_field_size = l.weight.data[0][0].numel()
-                else:
-                    # keras
-                    weights = l.get_weights()[0:1] # keep only the weights and not the bias
-#                    weights = l.get_weights()[0:1]  #Tf.Keras.default Glorot uniform
-                    
-                    # TODO: add option to append bias matrix
-                    #if add_bias:
-                    #    weights = weigths[0]+weights[1]
-
-                if weights[0].shape[1] < 2:
-                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-                
-                W = weights[0]
-                M, N = np.min(W.shape), np.max(W.shape)
-                
-
-            # CONV1D layer
-            elif (isPyTorchLinearOrConv1D(l)):
-                res[i] = {"layer_type": LAYER_TYPE.CONV1D}
-
-                if (len(layer_types) > 0 and
-                        not any(layer_type & LAYER_TYPE.CONV1D for layer_type in layer_types)):
-                    msg = "Skipping (Layer type not requested to analyze)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-
-                weights = [np.array(l.weight.data.clone().cpu())]
-                receptive_field_size = l.weight.data[0][0].numel()
-
-                if weights[0].shape[1] < 2:
-                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-                
-                W = weights[0]
-                M, N = np.min(W.shape), np.max(W.shape)
-            
-            elif (isinstance(l, tf.keras.layers.Conv1D)):                
-                res[i] = {"layer_type": LAYER_TYPE.CONV1D}
-
-                if (len(layer_types) > 0 and
-                        not any(layer_type & LAYER_TYPE.CONV1D for layer_type in layer_types)):
-                    msg = "Skipping (Layer type not requested to analyze)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-                
-                weights = l.get_weights()[0:1] # keep only the weights and not the bias
-                if weights[0].shape[1] < 2:
-                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-                
-                W = weights[0]
-                M, N = np.min(W.shape), np.max(W.shape)
-                
-            # CONV2D layer
-            elif isinstance(l, tf.keras.layers.Conv2D) or isinstance(l, nn.Conv2d):
-
-                res[i] = {"layer_type": LAYER_TYPE.CONV2D}
-
-                if (len(layer_types) > 0 and
-                        not any(layer_type & LAYER_TYPE.CONV2D for layer_type in layer_types)):
-                    msg = "Skipping (Layer type not requested to analyze)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-                
-                #TODO:  check is this right ?
-                if isinstance(l, nn.Conv2d):
-                    w = [np.array(l.weight.data.clone().cpu())]
-                    receptive_field_size = l.weight.data[0][0].numel()
-                else:
-                    w = l.get_weights()
-                    
-                # Run FFT on all channels or just get slices 
-                if conv2d_fft:
-                    n = l.input_shape[1]
-                    weights, N, M, n_comp = self.get_conv2D_fft(w[0],n)
-                    conv2d_norm = True # ?
-                else:
-                    weights, N, M = self.get_conv2D_Wmats(w[0])
-                    n_comp = M
-                    conv2d_norm = True
-                
-                if weights[0].shape[1] < 2:
-                    msg = "Skipping (Found array with 1 feature(s) while a minimum of 2 is required)"
-                    self.debug("Layer {}: {}".format(i+1, msg))
-                    res[i]["message"] = msg
-                    continue
-                
-            else:
-                msg = "Skipping (Layer not supported)"
-                self.debug("Layer {}: {}".format(i+1, msg))
-                res[i]["message"] = msg
-                continue
-
-            self.debug("Layer {}: Analyzing {} weight matrices...".format(i+1, len(weights)))
-
-            if softranks and not lognorms:
-                lognorms = True
-
-            layer_id = i
-            ### CHM: I think weights > 0 only for Conv2D layers, but maybe for attention layers too ?
-            ### TODO: if combine, then combine all the weights evals, then analyze
-            #results = self.analyze_weights(weights, layer_id, min_size, max_size,
-            #                               alphas, lognorms, spectralnorms, softranks,
-            #                               normalize, glorot_fix, plot, mp_fit)
-            layerid = i
-            results = self.analyze_combined_weights(weights, layerid, min_size, max_size,
-                                                    normalize, glorot_fix, plot, mp_fit, 
-                                                    conv2d_norm, N, M, n_comp,
-                                                    fit_bulk)
-
-         
-            if not results:
-                msg = "No weigths to analyze"
-                self.debug("Layer {}: {}".format(i+1, msg))
-                res["message"] = msg
-            else:
-                res[i] = {**res[i], **results}
-                
-        self.results = res
+        params['min_size'] = min_size
+        params['max_size'] = max_size
+        params['plot'] = plot
+        params['normalize'] = normalize
+        params['glorot_fix'] = glorot_fix
+        params['conv2d_norm'] = conv2d_norm
+   
+        layer_iterator = WWLayerIterator(model)     
+        details = pd.DataFrame(columns = ['layer_id', 'name'])
+           
+        for ww_layer in layer_iterator:
+           if(ww_layer.has_weights):
+               self.apply_esd(ww_layer, params)
+               print(" evals {}".format(ww_layer.evals))
+               self.apply_fit_powerlaw(ww_layer, params)
+               details = details.append(ww_layer.get_row(),  ignore_index=True)
         
-        self.print_results(results=res)
+        results = {}
+        self.print_results(results=results)
 
-        return res
+        return details
+
     
     
     def print_results(self, results=None):
@@ -413,10 +812,10 @@ class WeightWatcher:
             results = self.results
 
         if not results:
-            self.warn("No results to print")
+            logger.warn("No results to print")
             return
 
-        self.info("### Printing results ###")
+        logger.info("### Printing results ###")
 
         # not all implemented for detais, many are jsut for debugging
         metrics = {
@@ -500,7 +899,7 @@ class WeightWatcher:
                     M = summary["M"]
                     Mtotal += M
 
-                data = {"layer_id": layer_id, "layer_type": layer_type, "N": N, "M": M, "slice": slice_id, "level": LEVEL.SLICE, "comment": "Slice level"}
+                data = {"layer_id": layer_id, "layer_type": layer_type, "N": N, "M": M, "slice": slice_id,  "comment": "Slice level"}
                 for metric in metrics:
                     if metric in summary:
                         value = summary[metric]
@@ -511,7 +910,7 @@ class WeightWatcher:
                 row = pd.DataFrame(columns=columns, data=data, index=[0])
                 df = pd.concat([df, row])
 
-            data = {"layer_id": layer_id, "layer_type": layer_type, "N": Ntotal, "M": Mtotal, "slice_count": slice_count, "level": LEVEL.LAYER, "comment": "Layer level"}
+            data = {"layer_id": layer_id, "layer_type": layer_type, "N": Ntotal, "M": Mtotal, "slice_count": slice_count, "comment": "Layer level"}
             # Compute the coumpound value over the slices
             for metric, value in compounds.items():
                 count = len(value)
@@ -524,15 +923,15 @@ class WeightWatcher:
 
                 if count > 1:
                     # Compound value of the multiple slices (conv2D)
-                    self.debug("Layer {}: {} compound: {}".format(layer_id, metrics[metric], compound))
+                    logger.debug("Layer {}: {} compound: {}".format(layer_id, metrics[metric], compound))
                 else:
                     # No slices (Dense or Conv1D)
-                    self.debug("Layer {}: {}: {}".format(layer_id, metrics[metric], compound))
+                    logger.debug("Layer {}: {}: {}".format(layer_id, metrics[metric], compound))
 
             row = pd.DataFrame(columns=columns, data=data, index=[0])
             df = pd.concat([df, row])
 
-        data = {"layer_count": layer_count, "level": LEVEL.NETWORK, "comment": "Network Level"}
+        data = {"layer_count": layer_count, "comment": "Network Level"}
         for metric, metric_name in metrics.items():
             if metric not in metrics_values or len(metrics_values[metric]) == 0:
                 continue
@@ -542,7 +941,7 @@ class WeightWatcher:
             maximum = max(values)
             avg = np.mean(values)
             self.summary[metric] = avg
-            self.info("{}: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
+            logger.info("{}: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
             data["{}_min".format(metric)] = minimum
             data["{}_max".format(metric)] = maximum
             data["{}_avg".format(metric)] = avg
@@ -552,7 +951,7 @@ class WeightWatcher:
             maximum = max(values)
             avg = np.mean(values)
             self.summary["{}_compound".format(metric)] = avg
-            self.info("{} compound: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
+            logger.info("{} compound: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
             data["{}_compound_min".format(metric)] = minimum
             data["{}_compound_max".format(metric)] = maximum
             data["{}_compound_avg".format(metric)] = avg
@@ -571,61 +970,25 @@ class WeightWatcher:
             return self.summary
 
 
-    def get_conv2D_Wmats(self, Wtensor):
-        """Extract W slices from a 4 index conv2D tensor of shape: (N,M,i,j) or (M,N,i,j).  
-        Return ij (N x M) matrices
-        
-        """
-        
-        self.info("get_conv2D_Wmats")
-
-        Wmats = []
-        s = Wtensor.shape
-        N, M, imax, jmax = s[0],s[1],s[2],s[3]
-        if N + M >= imax + jmax:
-            self.debug("Pytorch tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
-            
-            for i in range(imax):
-                for j in range(jmax):
-                    W = Wtensor[:,:,i,j]
-                    if N < M:
-                        W = W.T
-                    Wmats.append(W)
-        else:
-            N, M, imax, jmax = imax, jmax, N, M          
-            self.debug("Tf.Keras.tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
-            
-            for i in range(imax):
-                for j in range(jmax):
-                    W = Wtensor[i,j,:,:]
-                    if N < M:
-                        W = W.T
-                    Wmats.append(W)
-                    
-        self.info("get_conv2D_Wmats N={} M={}".format(N,M))
-
-            
-        return Wmats, N, M
-    
     
     def get_conv2D_fft(self, W, n=32):
         """Compute FFT of Conv2D channels, to apply SVD later"""
         
-        self.info("get_conv2D_fft on W {}".format(W.shape))
+        logger.info("get_conv2D_fft on W {}".format(W.shape))
 
         # is pytorch or tensor style 
         s = W.shape
-        self.debug("    Conv2D SVD ({}): Analyzing ...".format(s))
+        logger.debug("    Conv2D SVD ({}): Analyzing ...".format(s))
 
         N, M, imax, jmax = s[0],s[1],s[2],s[3]
         # probably better just to check what col N is in 
         if N + M >= imax + jmax:
-            self.debug("[2,3] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))    
+            logger.debug("[2,3] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))    
             fft_axes = [2,3]
         else:
             N, M, imax, jmax = imax, jmax, N, M          
             fft_axes = [0,1]
-            self.debug("[1,2] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+            logger.debug("[1,2] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
 
         # Switch N, M if in wrong order
         if N < M:
@@ -638,7 +1001,7 @@ class WeightWatcher:
         # num non-zero eigenvalues  rf is receptive field size (sorry calculated again here)
         n_comp = rf*N*M
         
-        self.info("N={} M={} n_comp {} ".format(N,M,n_comp))
+        logger.info("N={} M={} n_comp {} ".format(N,M,n_comp))
 
         # run FFT on each channel
         fft_grid = [n,n]
@@ -650,7 +1013,7 @@ class WeightWatcher:
 
     def normalize_evals(self, evals, N, M):
         """DEPRECATED: Normalize the eigenvalues W by N and receptive field size (if needed)"""
-        self.debug(" normalzing evals, N, M {},{},{}".format(N,M))
+        logger.debug(" normalzing evals, N, M {},{},{}".format(N,M))
         return evals/np.sqrt(N)
 
     def glorot_norm_fix(self, W, N, M, rf_size):
@@ -691,68 +1054,10 @@ class WeightWatcher:
             else:
                 return check1, False
             
-    # make this a static method ?        
-    def combined_eigenvalues(self, weights, n_comp, min_size=1, max_size=10000, 
-                             normalize=True, glorot_fix=False, conv2d_norm=True):
-        """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
-            combined into a single, sorted, numpy array
-    
-            Skips matrices where M < min_size or M > max_size
-            Applied normalization and glorot_fix if specified
-            
-            Assumes an array of weights comes from a conv2D layer and applies conv2d_norm normalization by default
-          
-            Also returns max singular value and rank_loss, needed for other calculations
-         """
-         
-        all_evals = []
-        max_sv = 0.0
-        rank_loss = 0
-
-        count = len(weights)
-        for  W in weights:
-            M, N = np.min(W.shape), np.max(W.shape)
-            #print("combined evals  W.shape {}  N {} M {}".format(W.shape,N,M))
-            if M >= min_size:# and M <= max_size:
-                #print("M large enough M {}  min_size {}".format(M, min_size))
-
-                Q=N/M
-                check, checkTF = self.glorot_norm_check(W, N, M, count) 
-    
-                # assume receptive field size is count
-                if glorot_fix:
-                    W = self.glorot_norm_fix(W, N, M, count)
-                elif conv2d_norm:
-                    # probably never needed since we always fix for glorot
-                    W = W * np.sqrt(count/2.0) 
-                
-                # SVD can be swapped out here
-                # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
-
-                W = W.astype(float)
-                self.debug("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
-                sv = np.linalg.svd(W, compute_uv=False)
-                sv = sv.flatten()
-                sv = np.sort(sv)[-n_comp:]
-                if len(sv) > max_size:
-                    self.info("chosing {} singular values from {} ".format(max_size, len(sv)))
-                    sv = np.random.choice(sv, size=max_size)
-                    
-                #sv = svd.singular_values_
-                evals = sv*sv
-                if normalize:
-                    evals = evals/N
-                 
-                all_evals.extend(evals)
-                                           
-                max_sv = np.max([max_sv, np.max(sv)])
-                max_ev = np.max(evals)
-                rank_loss = 0#rank_loss + self.calc_rank_loss(sv, M, max_ev)
-            
-        return np.sort(np.array(all_evals)), max_sv, rank_loss
     
     
-    def random_eigenvalues(self, weights, n_comp, num_replicas=1, min_size=1, max_size=10000, 
+    
+    def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, min_size=1, max_size=10000, 
                            normalize=True, glorot_fix=False, conv2d_norm=True):
         """Compute the eigenvalues for all weights of the NxM skipping layer, num evals ized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
@@ -764,10 +1069,10 @@ class WeightWatcher:
          
         all_evals = []
 
-        self.info("generating {} replicas for each W of the random eigenvalues".format(num_replicas))
+        logger.info("generating {} replicas for each W of the random eigenvalues".format(num_replicas))
         for num in range(num_replicas):
-            count = len(weights)
-            for  W in weights:
+            count = len(Wmats)
+            for  W in Wmats:
     
                 M, N = np.min(W.shape), np.max(W.shape)
                 if M >= min_size:# and M <= max_size:
@@ -785,9 +1090,8 @@ class WeightWatcher:
                     Wrand = W.flatten()
                     np.random.shuffle(Wrand)
                     W = Wrand.reshape(W.shape)
-           
                     W = W.astype(float)
-                    self.info("Running Randomized Full SVD")
+                    logger.info("Running Randomized Full SVD")
                     sv = np.linalg.svd(W, compute_uv=False)
                     sv = sv.flatten()
                     sv = np.sort(sv)[-n_comp:]    
@@ -798,8 +1102,7 @@ class WeightWatcher:
                         evals = evals/N
                      
                     all_evals.extend(evals)
-                                        
-            
+                                       
         return np.sort(np.array(all_evals))
     
 
@@ -865,10 +1168,10 @@ class WeightWatcher:
         
         num_evals = len(evals)     
         if num_evals < min_size:
-            self.info("skipping layer, num evals {} < {} min size".format(num_evals, min_size))
+            logger.info("skipping layer, num evals {} < {} min size".format(num_evals, min_size))
             return res
         #elif num_evals > max_size:
-        #    self.info("skipping layer, num evals {} > {} max size".format(num_evals, max_size))
+        #    logger.info("skipping layer, num evals {} > {} max size".format(num_evals, max_size))
         #    return res
         
         
@@ -927,13 +1230,13 @@ class WeightWatcher:
         summary += "{}. Softrank: {}. Softrank log: {}. Softrank log ratio: {}".format(summary, softrank, softranklog, softranklogratio)
         res[i]["summary"] = "\n".join(summary)
         for line in summary:
-            self.debug("    {}".format(line))
+            logger.debug("    {}".format(line))
             
         # overlay plot with randomized matrix on log scale
         num_replicas = 1
         if len(evals)*len(weights) < 100: 
             num_replicas = 10
-            self.info("Using {} random replicas".format(num_replicas))
+            logger.info("Using {} random replicas".format(num_replicas))
 
             
         rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas=num_replicas, 
@@ -952,7 +1255,7 @@ class WeightWatcher:
         # note: this only works if we have more than a few eigenvalues < xmax and > xmin
         alpha2, D2, xmin2, xmax2 = None, None, None, None
         if fit_bulk:
-            self.info("fitting bulk")
+            logger.info("fitting bulk")
             try:
                 xmax = np.max(rand_evals)
                 num_evals_left = len(evals[evals < xmax])
@@ -966,7 +1269,7 @@ class WeightWatcher:
                     alpha2_weighted = alpha2 * np.log10(xmax)
                     res[i]["alpha2_weighted"] = alpha2_weighted
             except:
-                self.info("fit2 fails, not sure why")
+                logger.info("fit2 fails, not sure why")
                 pass  
                 
         
@@ -1016,15 +1319,16 @@ class WeightWatcher:
             if xmax is 'auto' or None, xmax = np.max(evals)
                      
          """
+             
+        num_evals = len(evals)
+        logger.info("fitting power law on {} eigenvalues".format(num_evals))
         
-        self.info("fitting power law on {} eigenvalues".format(len(evals)))
-        alpha, D =  None, None      
-        
-        if  sample and len(evals) > MAX_NUM_EVALS:
-            self.info("chosing {} eigenvalues from {} ".format(MAX_NUM_EVALS, len(evals)))
+        # TODO: replace this with a robust sampler / stimator
+        # requires a lot of refactoring below
+        if  sample and num_evals > MAX_NUM_EVALS:
+            logger.info("chosing {} eigenvalues from {} ".format(MAX_NUM_EVALS, len(evals)))
             evals = np.random.choice(evals, size=MAX_NUM_EVALS)
                     
-        
         if xmax=='auto' or xmax is None:
             xmax = np.max(evals)
             
@@ -1146,18 +1450,18 @@ class WeightWatcher:
             if M < min_size:
                 summary = "Weight matrix {}/{} ({},{}): Skipping: too small (<{})".format(i+1, count, M, N, min_size)
                 res[i]["summary"] = summary 
-                self.debug("    {}".format(summary))
+                logger.debug("    {}".format(summary))
                 continue
 
             #if max_size > 0 and M > max_size:
             #    summary = "Weight matrix {}/{} ({},{}): Skipping: too big (testing) (>{})".format(i+1, count, M, N, max_size)
             #    res[i]["summary"] = summary 
-            #    self.info("    {}".format(summary))
+            #    logger.info("    {}".format(summary))
             #    continue
 
             summary = []
                 
-            self.debug("    Weight matrix {}/{} ({},{}): Analyzing ..."
+            logger.debug("    Weight matrix {}/{} ({},{}): Analyzing ..."
                      .format(i+1, count, M, N))
             
             if alphas:
@@ -1207,7 +1511,7 @@ class WeightWatcher:
                 ih = np.argmax(h[0])
                 xmin2 = 10**h[1][ih]
                 if xmin2 > xmin:
-                    self.info("resseting xmin2 to xmin")
+                    logger.info("resseting xmin2 to xmin")
                     xmin2 = xmin
 
                 fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)
@@ -1222,7 +1526,7 @@ class WeightWatcher:
 
                 #if alpha < alpha_min or alpha > alpha_max:
                 #    message = "Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(i+1, count, M, N, alpha, alpha_min, alpha_max)
-                #    self.debug("    {}".format(message))
+                #    logger.debug("    {}".format(message))
 
                 if plot:
                     fig2 = fit.plot_pdf(color='b', linewidth=2)
@@ -1340,7 +1644,7 @@ class WeightWatcher:
 
             res[i]["summary"] = "\n".join(summary)
             for line in summary:
-                self.debug("    {}".format(line))
+                logger.debug("    {}".format(line))
 
         return res
     

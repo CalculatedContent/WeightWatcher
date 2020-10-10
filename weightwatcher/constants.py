@@ -14,17 +14,32 @@
 
 from enum import IntFlag, auto, Enum
 
+
+from enum import IntFlag, auto, Enum
+
 class LAYER_TYPE(IntFlag):
+    UNKNOWN = auto()
     DENSE = auto()
     CONV1D = auto()
     CONV2D = auto()
+    FLATTENED = auto()
+    EMBEDDING = auto()
+    NORM = auto()
 
+    
+class FRAMEWORK(IntFlag):
+    UNKNOWN = auto()
+    PYTORCH = auto()
+    KERAS = auto()
+    
+
+class CHANNELS(IntFlag):
+    UNKNOWN = auto()
+    FIRST = auto()
+    LAST = auto()
+    
 class PLOT(IntFlag):
     POWERLAW = auto()
     ESD = auto()
     ESDLOG = auto()
 
-class LEVEL(Enum):
-    SLICE = auto()
-    LAYER = auto()
-    NETWORK = auto()

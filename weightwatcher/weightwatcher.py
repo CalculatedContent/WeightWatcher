@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+#
 import sys, os 
 import logging
 
@@ -22,9 +22,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 import powerlaw
  
- 
-from sklearn.decomposition import TruncatedSVD
-
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.models import load_model
@@ -32,17 +29,30 @@ from tensorflow.keras.models import load_model
 import torch
 import torch.nn as nn
 
+#
+# this is use to allow editing in Eclipse but also
+# building on the commend line
+# see: https://stackoverflow.com/questions/14132789/relative-imports-for-the-billionth-time
+#
+if __package__ is None or __package__ == '':
+    # uses current directory visibility
+    from RMT_Util import *
+    from constants import *
+else:
+    # uses current package visibility
+    from .RMT_Util import *
+    from .constants import *
+    
 
-#from .RMT_Util import *
-#from .constants import *
 
-from .RMT_Util import *
-from .constants import *
 
 # TODO:  allow configuring custom logging
 import logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger('WeightWatcher')
+
+mpl_logger = logging.getLogger("matplotlib")
+mpl_logger.setLevel(logging.WARNING)
 
 
 MAX_NUM_EVALS= 1000
@@ -244,6 +254,7 @@ class WWLayer:
        
         if has_weights:
             if len(w)==1:
+                logger.debug("Linear weights shape  len(w){} type(w){}  w.shape {} ".format(len(w), type(w), w[0].shape) )
                 weights = w[0]
                 biases = None
             elif len(w)==2:
@@ -273,8 +284,8 @@ class WWLayer:
         
         # this may change if we treat Conv1D differently layer
         if (the_type == LAYER_TYPE.DENSE or the_type == LAYER_TYPE.CONV1D):
-            Wmats = self.weights
-            N, M = np.max(Wmats.shape), np.min(Wmats.shape)
+            Wmats = [self.weights]
+            N, M = np.max(Wmats[0].shape), np.min(Wmats[0].shape)
             n_comp = M
             rf = 1
             
@@ -568,6 +579,10 @@ class WeightWatcher(object):
         normalize = params['normalize']
         glorot_fix = params['glorot_fix']
         conv2d_norm = params['conv2d_norm']
+        
+        if type(Wmats) is not list:
+            logger.debug("combined_eigenvalues: Wmats -> [WMmats]")
+            Wmats = [Wmats]
     
     
         count = len(Wmats)
@@ -588,7 +603,7 @@ class WeightWatcher(object):
             # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
     
             W = W.astype(float)
-            logger.debug("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
+            logger.debug("Running full SVD: type(Wmats_ {}  W.shape={}  n_comp = {}".format(type(Wmats), W.shape, n_comp))
             sv = np.linalg.svd(W, compute_uv=False)
             sv = sv.flatten()
             sv = np.sort(sv)[-n_comp:]
@@ -616,6 +631,8 @@ class WeightWatcher(object):
     def layer_supported(self, ww_layer, params={}):
         """Return true if this kind of layer is supported"""
         
+        supported = False
+
         layer_id = ww_layer.index
         name = ww_layer.name
         the_type = ww_layer.the_type
@@ -627,28 +644,35 @@ class WeightWatcher(object):
         min_size = params.get('min_size')
         max_size = params.get('max_size')
         
-        supported = False
+        logger.debug("layer_supported  N {} max size {}".format(N, max_size))
+        
         if ww_layer.skipped:
             logger.debug("Layer {} {} is skipped".format(layer_id, name))
             
+            
         elif not ww_layer.has_weights:
-            logger.debug("Layer {} {} has no weights".format(layer_id, name))
+            logger.debug("layer not supported: Layer {} {} has no weights".format(layer_id, name))
+            return False
         
         elif the_type is LAYER_TYPE.UNKNOWN:
-            logger.debug("Layer {} {} type {} unknown".format(layer_id, name, the_type))
+            logger.debug("layer not supported: Layer {} {} type {} unknown".format(layer_id, name, the_type))
+            return False
         
         elif the_type in [LAYER_TYPE.FLATTENED, LAYER_TYPE.NORM]:
-            logger.debug("Layer {} {} type {} not supported".format(layer_id, name, the_type))
+            logger.debug("layer not supported: Layer {} {} type {} not supported".format(layer_id, name, the_type))
+            return False
         
         elif min_size and M*rf < min_size:
-            logger.debug("Layer {} {}: size {} < {}".format(layer_id, name, M*rf, min_size))
+            logger.debug("layer not supported: Layer {} {}: size {} < {}".format(layer_id, name, M*rf, min_size))
+            return False
                   
         elif max_size and N > max_size:
-            logger.debug("Layer {} {}: size {} > {}".format(layer_id, name, N, max_size))
+            logger.debug("layer not supported: Layer {} {}: size {} > {}".format(layer_id, name, N, max_size))
+            return False
         
-        elif the_type  in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D]:
+        elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D]:
             supported = True
-            
+                        
         return supported
     
     
@@ -663,8 +687,14 @@ class WeightWatcher(object):
         M  = ww_layer.M
         N  = ww_layer.N
         rf = ww_layer.rf
+        
+        logger.debug("apply ESD  on Layer {} {} ".format(layer_id, name))
             
         if self.layer_supported(ww_layer, params):
+            
+            logger.debug("running SVD on Layer {} {} ".format(layer_id, name))
+            logger.debug("params {} ".format(params))
+
         
             Wmats = ww_layer.Wmats
             n_comp = ww_layer.num_components
@@ -712,13 +742,12 @@ class WeightWatcher(object):
                                 
             alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, title=title)
             
-            ww_layer.alpha = alpha
-            ww_layer.xmin = xmin
-            ww_layer.xmax = xmax
-            ww_layer.D = D
-            ww_layer.sigma = sigma
+            ww_layer.add_column('alpha',alpha)
+            ww_layer.add_column('xmin', xmin)
+            ww_layer.add_column('xmax', xmax)
+            ww_layer.add_column('D', D)
+            ww_layer.add_column('sigma', sigma)
 
-            
         return ww_layer
     
     
@@ -779,6 +808,8 @@ class WeightWatcher(object):
            
         for ww_layer in layer_iterator:
            if not ww_layer.skipped and ww_layer.has_weights:
+               logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.index, ww_layer.the_type, type(ww_layer.layer)))
+               logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_size']))
                self.apply_esd(ww_layer, params)
                if ww_layer.evals is not None:
                    self.apply_fit_powerlaw(ww_layer, params)
@@ -1397,256 +1428,5 @@ class WeightWatcher(object):
         
          
 
-    def analyze_weights(self, weights, layerid, min_size, max_size,
-                        alphas, lognorms, spectralnorms, softranks,  
-                        normalize, glorot_fix, plot, mp_fit):
-        """Analyzes weight matrices.
-        
-        Example in Tf.Keras.
-            weights = layer.get_weights()
-            analyze_weights(weights)
-        """
-
-        res = {}
-        count = len(weights)
-        if count == 0:
-            return res
-
-
-        for i, W in enumerate(weights):
-            res[i] = {}
-            M, N = np.min(W.shape), np.max(W.shape)
-            Q=N/M
-            res[i]["N"] = N
-            res[i]["M"] = M
-            res[i]["Q"] = Q
-            lambda0 = None
-
-            check, checkTF = self.glorot_norm_check(W, N, M, count) 
-            res[i]['check'] = check
-            res[i]['checkTF'] = checkTF
-            # assume receptive field size is count
-            if glorot_fix:
-                W = self.glorot_norm_fix(W, N, M, count)
-            else:
-                # probably never needed since we always fix for glorot
-                W = W * np.sqrt(count/2.0) 
-
-
-            if spectralnorms: #spectralnorm is the max eigenvalues
-                
-                svd = TruncatedSVD(n_components=1, n_iter=7, random_state=10)
-                svd.fit(W)
-                sv = svd.singular_values_
-                sv_max = np.max(sv)
-                evals = sv*sv
-                if normalize:
-                    evals = evals/N
-
-                lambda0 = np.max(evals)
-                res[i]["spectralnorm"] = lambda0
-                res[i]["logspectralnorm"] = np.log10(lambda0)
-
-            if M < min_size:
-                summary = "Weight matrix {}/{} ({},{}): Skipping: too small (<{})".format(i+1, count, M, N, min_size)
-                res[i]["summary"] = summary 
-                logger.debug("    {}".format(summary))
-                continue
-
-            #if max_size > 0 and M > max_size:
-            #    summary = "Weight matrix {}/{} ({},{}): Skipping: too big (testing) (>{})".format(i+1, count, M, N, max_size)
-            #    res[i]["summary"] = summary 
-            #    logger.info("    {}".format(summary))
-            #    continue
-
-            summary = []
-                
-            logger.debug("    Weight matrix {}/{} ({},{}): Analyzing ..."
-                     .format(i+1, count, M, N))
-            
-            if alphas:
-
-                svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
-                
-                try:
-                    svd.fit(W) 
-                except:
-                    W = W.astype(float)
-                    svd.fit(W)
-                    
-                sv = svd.singular_values_
-                sv_max = np.max(sv)
-                evals = sv*sv
-                if normalize:
-                    evals = evals/N
-
-                # Other (slower) way of computing the eigen values:
-                # X = np.dot(W.T,W)/N
-                #evals2 = np.linalg.eigvals(X)
-                #res[i]["lambda_max2"] = np.max(evals2)
-
-                #TODO:  add alpha2
-
-                lambda_max = np.max(evals)
-                fit = powerlaw.Fit(evals, xmax=lambda_max, verbose=False)
-                alpha = fit.alpha 
-                D = fit.D
-                xmin = fit.xmin
-                res[i]["alpha"] = alpha
-                res[i]["D"] = D
-                res[i]["xmin"] = xmin
-                res[i]["lambda_min"] = np.min(evals)
-                res[i]["lambda_max"] = lambda_max
-                alpha_weighted = alpha * np.log10(lambda_max)
-                res[i]["alpha_weighted"] = alpha_weighted
-                tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
-                res[i]["rank_loss"] = np.count_nonzero(sv > tolerance, axis=-1)
-                
-                logpnorm = np.log10(np.sum([ev**alpha for ev in evals]))
-                res[i]["logpnorm"] = logpnorm
-
-                nz_evals = evals[evals > 0.0]
-                num_bins = np.min([100, len(nz_evals)])
-                h = np.histogram(np.log10(nz_evals),bins=num_bins)
-                ih = np.argmax(h[0])
-                xmin2 = 10**h[1][ih]
-                if xmin2 > xmin:
-                    logger.info("resseting xmin2 to xmin")
-                    xmin2 = xmin
-
-                fit2 = powerlaw.Fit(evals, xmin=xmin2, xmax=lambda_max, verbose=False)
-                alpha2 = fit2.alpha
-                D2 = fit2.D
-                res[i]["alpha2"] = alpha2
-                res[i]["D2"] = D2
-                res[i]["xmin2"] = fit2.xmin
-                res[i]["alpha2_weighted"] =  alpha2 * np.log10(lambda_max)
-
-                summary.append("Weight matrix {}/{} ({},{}): Alpha: {}, Alpha Weighted: {}, D: {}, pNorm {}".format(i+1, count, M, N, alpha, alpha_weighted, D, logpnorm))
-
-                #if alpha < alpha_min or alpha > alpha_max:
-                #    message = "Weight matrix {}/{} ({},{}): Alpha {} is in the danger zone ({},{})".format(i+1, count, M, N, alpha, alpha_min, alpha_max)
-                #    logger.debug("    {}".format(message))
-
-                if plot:
-                    fig2 = fit.plot_pdf(color='b', linewidth=2)
-                    fit.power_law.plot_pdf(color='b', linestyle='--', ax=fig2)
-                    fit.plot_ccdf(color='r', linewidth=2, ax=fig2)
-                    fit.power_law.plot_ccdf(color='r', linestyle='--', ax=fig2)
-                    fit2.plot_pdf(color='g', linewidth=2)
-#                    plt.title("Power law fit for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
-                    title = "Power law fit for Weight matrix {}/{} (layer ID: {})\n".format(i+1, count, layerid) 
-                    title = title + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D) +"\n"
-                    title = title + r"$\alpha2$={0:.3f}; ".format(alpha2) + r"KS_distance={0:.3f}".format(D2)
-                    plt.title(title)
-                    plt.show()
-
-                    # plot eigenvalue histogram
-                    plt.hist(evals, bins=100, density=True)
-#                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + " for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
-                    plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor Weight matrix ({}x{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))                    
-                    plt.axvline(x=fit.xmin, color='red')
-                    plt.axvline(x=fit2.xmin, color='green')
-                    plt.show()
-
-                    nonzero_evals = evals[evals > 0.0]
-                    plt.hist(np.log10(nonzero_evals),bins=100, density=True)
-#                    plt.title("Eigen Values for Weight matrix {}/{} (layer ID: {})".format(i+1, count, layerid))
-                    plt.title("Logscaling Plot of Eigenvalues\nfor Weight matrix ({}X{}) {}/{} (layer ID: {})".format(N, M, i+1, count, layerid))
-                    plt.axvline(x=np.log10(fit.xmin), color='red')
-                    plt.axvline(x=np.log10(xmin2), color='green')
-                    plt.show()
-                
-            if mp_fit:
-#                if Q == 1:
-#                    ## Quarter-Circle Law
-#                    sv = svd.singular_values_
-#                    to_plot = np.sqrt(sv*sv/N)
-#                else:
-#                    to_plot = sv*sv/N
-#                w_unnorm = W*np.sqrt(N + M)/np.sqrt(2*N)
-                
-                if not alphas:
-                    #W = self.normalize(W, N, M, count)
-                    svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
-                    svd.fit(W) 
-                    sv = svd.singular_values_
-                    sv_max = np.max(sv)
-                    evals = sv*sv
-                    if normalize:
-                        evals = evals/N
-                    lambda_max = np.max(evals)
-                
-                to_plot = evals.copy()
-                
-                bw = 0.1
-#                s1, f1 = RMT_Util.fit_mp(to_plot, Q, bw = 0.01)  
-#                s1, f1 = fit_density(to_plot, Q, bw = bw)  
-                s1, f1 = fit_density_with_range(to_plot, Q, bw = bw)
-                
-                res[i]['sigma_mp'] = s1
-                
-                bulk_edge = (s1 * (1 + 1/np.sqrt(Q)))**2
-                
-                spikes = sum(to_plot > bulk_edge)
-                res[i]['numofSpikes'] = spikes
-                res[i]['ratio_numofSpikes'] = spikes / (M - 1)
-                
-                softrank_mp = bulk_edge / lambda_max
-                res[i]['softrank_mp'] = softrank_mp
-                
-                if plot:
-                    
-                    if Q == 1:
-                        fit_law = 'QC SSD'
-                        
-                        #Even if the quarter circle applies, still plot the MP_fit
-                        plot_density(to_plot, s1, Q, method = "MP")
-                        plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
-                        plt.title("MP ESD, sigma auto-fit for Weight matrix {}/{} (layer ID: {})\nsigma_fit = {}, softrank_mp = {}".format(i+1, count, layerid, round(s1, 6), round(softrank_mp, 3)))
-                        plt.show()
-                        
-                    else:
-                        fit_law = 'MP ESD'
-#                        RMT_Util.plot_ESD_and_fit(model=None, eigenvalues=to_plot, 
-#                                                  Q=Q, num_spikes=0, sigma=s1)
-                    plot_density_and_fit(model=None, eigenvalues=to_plot, 
-                                         Q=Q, num_spikes=0, sigma=s1, verbose = False)
-                    plt.title("{}, sigma auto-fit for Weight matrix {}/{} (layer ID: {})\nsigma_fit = {}, softrank_mp = {}".format(fit_law, i+1, count, layerid, round(s1, 6), round(softrank_mp, 3)))
-                    plt.show()
-                        
-            if lognorms:
-                norm = np.linalg.norm(W) #Frobenius Norm
-                res[i]["norm"] = norm
-                lognorm = np.log10(norm)
-                res[i]["lognorm"] = lognorm
-
-                X = np.dot(W.T,W)                
-                if normalize:
-                    X = X/N
-                normX = np.linalg.norm(X) #Frobenius Norm
-                res[i]["normX"] = normX
-                lognormX = np.log10(normX)
-                res[i]["lognormX"] = lognormX
-
-                summary.append("Weight matrix {}/{} ({},{}): LogNorm: {} ; LogNormX: {}".format(i+1, count, M, N, lognorm, lognormX))
-                
-                if softranks: 
-                    softrank = norm**2 / sv_max**2
-                    softranklog = np.log10(softrank)
-                    softranklogratio = lognorm / np.log10(sv_max)
-                    res[i]["softrank"] = softrank
-                    res[i]["softranklog"] = softranklog
-                    res[i]["softranklogratio"] = softranklogratio
-                    summary += "{}. Softrank: {}. Softrank log: {}. Softrank log ratio: {}".format(summary, softrank, softranklog, softranklogratio)
-
-                        
-
-            res[i]["summary"] = "\n".join(summary)
-            for line in summary:
-                logger.debug("    {}".format(line))
-
-        return res
-    
     
     

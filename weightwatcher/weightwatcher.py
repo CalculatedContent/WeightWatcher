@@ -28,6 +28,7 @@ from tensorflow.keras.models import load_model
 
 import torch
 import torch.nn as nn
+from build.lib.weightwatcher.constants import LAYER_TYPE
 
 #
 # this is use to allow editing in Eclipse but also
@@ -49,7 +50,7 @@ else:
 # TODO:  allow configuring custom logging
 import logging
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('WeightWatcher')
+logger = logging.getLogger('weightwatcher') # ww.__name__
 
 mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
@@ -70,10 +71,10 @@ class WWLayer:
     """WW wrapper layer to Keras and PyTorch Layer layer objects
        Uses pythong metaprogramming to add result columns for the final details dataframe"""
        
-    def __init__(self, layer, index=-1, name="", 
+    def __init__(self, layer, layer_id=-1, name="", 
                  the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, skipped=False):
         self.layer = layer
-        self.index = index  # change to layer_id ?
+        self.layer_id = layer_id  # change to layer_id ?
         self.name = name
         self.skipped = skipped
         self.the_type = the_type
@@ -116,7 +117,7 @@ class WWLayer:
         """get a details dataframe row from the columns and metadata"""
         data = {}
         
-        data['layer_id']=self.index
+        data['layer_id']=self.layer_id
         data['name']=self.name
         data['N']=self.N
         data['M']=self.M
@@ -193,7 +194,7 @@ class WWLayer:
 
 
     
-    def make(self, filter_ids=None, filter_types=None):
+    def make(self):
         """ Constructor for WWLayer class.  Make a ww (wrapper)_layer from a framework layer, or return None if layer is skipped.
         In particular , late uses specify filter on layer ids and names """
         
@@ -202,14 +203,6 @@ class WWLayer:
         
         if hasattr(self.layer, 'name'):
             name = self.layer.name
-        
-        if filter_ids is not None and len(filter_ids) > 0:
-            if self.layer_id not in filter_ids:
-                self.skipped = True
-                
-        if filter_types is not None and len(filter_types) > 0:
-            if self.the_type not in filter_types:
-                self.skipped = True
         
         # TODO: maybe move this to the constructor
         if not self.skipped:
@@ -274,7 +267,7 @@ class WWLayer:
         conv2d_fft not supported yet """
    
         if not self.has_weights:
-            logger.info("Layer {} {} has no weights".format(self.index, self.name))
+            logger.info("Layer {} {} has no weights".format(self.layer_id, self.name))
             return 
         
         the_type = self.the_type
@@ -297,10 +290,10 @@ class WWLayer:
 
             
         elif the_type == LAYER_TYPE.NORM:
-            logger.info("Layer id {}  Layer norm has no matrices".format(self.index))
+            logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
         
         else:
-            logger.info("Layer id {}  unknown type {} layer  {}".format(self.index, the_type, self.layer))
+            logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, self.layer))
     
         self.N = N
         self.M = M
@@ -317,14 +310,14 @@ class WWLayer:
         return "WWLayer()"
 
     def __str__(self):
-        return "WWLayer {}  {} {} {}  skipped {}".format(self.index, self.name, 
+        return "WWLayer {}  {} {} {}  skipped {}".format(self.layer_id, self.name, 
                                                        self.framework.name, self.the_type.name, self.skipped)
         
             
       
     
     def conv2D_Wmats(self, Wtensor, channels=CHANNELS.UNKNOWN):
-        """Extract W slices from a 4 index conv2D tensor of shape: (N,M,i,j) or (M,N,i,j).  
+        """Extract W slices from a 4 layer_id conv2D tensor of shape: (N,M,i,j) or (M,N,i,j).  
         Return ij (N x M) matrices, with receptive field size (rf) and channels flag (first or last)"""
         
         logger.debug("conv2D_Wmats")
@@ -371,16 +364,15 @@ class WWLayer:
 class ModelIterator:
     """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available."""
 
-    def __init__(self, model, filter_ids=[], filter_types=[]):
+    def __init__(self, model, params={}):
         
-        self.filter_ids = filter_ids
-        self.filter_types = filter_types
+        self.params = params
         self.k = 0
         
         self.model = model
         self.model_iter, self.framework = self.model_iter_(model) 
         
-        self.layer_iter = self.make_layer_iter_()
+        self.layer_iter = self.make_layer_iter_()            
        
         
     def __iter__(self):
@@ -439,16 +431,62 @@ class ModelIterator:
 class WWLayerIterator(ModelIterator):
     """Creates an iterator that generates WWLayer wrapper objects to the model layers"""
 
+    def __init__(self, model, params={}, filters=[]):
+        
+        super().__init__(model, params=params)
+        
+        self.filter_ids = []
+        self.filter_types = []
+        self.filter_names = []
+        for f in filters:
+            tf = type(f)
+        
+            if tf is LAYER_TYPE:
+                self.filter_types.append(f)
+            elif tf is int:
+                self.filter_ids.append(f) 
+            elif tf is str:
+                self.filter_names.append(f) 
+            else:
+                logger.warn("unknown filter type {} detected and ignored".format(tf))
+                
+                
+                
+    def filter_applied(self, ww_layer):
+        """Return true if filter is applied to this layer"""
+        applied = False
+          
+        if self.filter_types is not None and len(self.filter_types) > 0:
+            if ww_layer.the_type in self.filter_types:
+                logger.info("skipping layer {} {} with type {} ".format(ww_layer.layer_id,  ww_layer.name , ww_layer.the_type))
+                self.skipped = True
+                
+        if self.filter_ids is not None and len(self.filter_ids) > 0:
+            if ww_layer.layer_id in self.filter_ids:
+                logger.info("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                self.skipped = True
+                
+        if self.filter_names is not None and len(self.filter_names) > 0:
+            if ww_layer.name in self.filter_names:
+                logger.info("skipping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                self.skipped = True     
+        
+        return applied
+    
+    
     def ww_layer_iter_(self):
         """Create a generator for iterating over ww_layers, created lazily """
         for curr_layer in self.model_iter:
             curr_id, self.k = self.k, self.k+1
             
             # try to combne all this into the Layer Object
-            ww_layer = WWLayer(curr_layer, index=curr_id, framework=self.framework)
-            ww_layer.make(filter_ids=self.filter_ids, filter_types=self.filter_types)
+            ww_layer = WWLayer(curr_layer, layer_id=curr_id, framework=self.framework)
+            ww_layer.make()
             
-            if ww_layer.the_type is LAYER_TYPE.UNKNOWN:
+            if not self.layer_supported(ww_layer):
+                ww_layer.skipped = True
+                
+            if  self.filter_applied(ww_layer):
                 ww_layer.skipped = True
                         
             if not ww_layer.skipped:
@@ -456,6 +494,56 @@ class WWLayerIterator(ModelIterator):
                 
     def make_layer_iter_(self):
         return self.ww_layer_iter_()
+    
+
+        
+    
+    def layer_supported(self, ww_layer):
+        """Return true if this kind of layer is supported"""
+        
+        supported = False
+
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name
+        the_type = ww_layer.the_type
+        rf = ww_layer.rf
+        
+        M  = ww_layer.M
+        N  = ww_layer.N
+        
+        min_evals = self.params.get('min_evals')
+        max_evals = self.params.get('max_evals')
+        
+        logger.debug("layer_supported  N {} max evals {}".format(N, max_evals))
+        
+        if ww_layer.skipped:
+            logger.debug("Layer {} {} is skipped".format(layer_id, name))
+            
+            
+        elif not ww_layer.has_weights:
+            logger.debug("layer not supported: Layer {} {} has no weights".format(layer_id, name))
+            return False
+        
+        elif the_type is LAYER_TYPE.UNKNOWN:
+            logger.debug("layer not supported: Layer {} {} type {} unknown".format(layer_id, name, the_type))
+            return False
+        
+        elif the_type in [LAYER_TYPE.FLATTENED, LAYER_TYPE.NORM]:
+            logger.debug("layer not supported: Layer {} {} type {} not supported".format(layer_id, name, the_type))
+            return False
+        
+        elif min_evals and M*rf < min_evals:
+            logger.debug("layer not supported: Layer {} {}: num_evals {} < {}".format(layer_id, name, M*rf, min_evals))
+            return False
+                  
+        elif max_evals and N*rf > max_evals:
+            logger.debug("layer not supported: Layer {} {}: num_evals {} > {}".format(layer_id, name, N*rf, max_evals))
+            return False
+        
+        elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D]:
+            supported = True
+                        
+        return supported
     
 
 class WW2xSliceIterator(WWLayerIterator):
@@ -602,7 +690,7 @@ class WeightWatcher(object):
         
         try:      
             for layer_1, layer_2 in zip(layer_iter_1, layer_iter_2):
-                data['layer_id'] = layer_1.index
+                data['layer_id'] = layer_1.layer_id
                 data['name'] = layer_1.name
     
                 if layer_1.has_weights:
@@ -618,7 +706,7 @@ class WeightWatcher(object):
             logger.error("Sorry, problem comparing models")
             raise Exception("Sorry, problem comparing models")
         
-        details.set_index('layer_id', inplace=True)
+        details.set_layer_id('layer_id', inplace=True)
         avg_dW = np.mean(details['delta_W'].to_numpy())
         return avg_dW, details
     
@@ -642,7 +730,7 @@ class WeightWatcher(object):
         #TODO:  allow user to specify
         normalize = params['normalize']
         glorot_fix = params['glorot_fix']
-        conv2d_norm = params['conv2d_norm']
+        conv2d_norm = params['conv2d_norm'] # True
         
         if type(Wmats) is not list:
             logger.debug("combined_eigenvalues: Wmats -> [WMmats]")
@@ -672,9 +760,9 @@ class WeightWatcher(object):
             sv = sv.flatten()
             sv = np.sort(sv)[-n_comp:]
             # TODO:  move to PL fit for robust estimator
-            #if len(sv) > max_size:
-            #    #logger.info("chosing {} singular values from {} ".format(max_size, len(sv)))
-            #    sv = np.random.choice(sv, size=max_size)
+            #if len(sv) > max_evals:
+            #    #logger.info("chosing {} singular values from {} ".format(max_evals, len(sv)))
+            #    sv = np.random.choice(sv, size=max_evals)
     
             #sv = svd.singular_values_
             evals = sv*sv
@@ -692,59 +780,14 @@ class WeightWatcher(object):
 
 
     
-    def layer_supported(self, ww_layer, params={}):
-        """Return true if this kind of layer is supported"""
-        
-        supported = False
-
-        layer_id = ww_layer.index
-        name = ww_layer.name
-        the_type = ww_layer.the_type
-        rf = ww_layer.rf
-        
-        M  = ww_layer.M
-        N  = ww_layer.N
-        
-        min_size = params.get('min_size')
-        max_size = params.get('max_size')
-        
-        logger.debug("layer_supported  N {} max size {}".format(N, max_size))
-        
-        if ww_layer.skipped:
-            logger.debug("Layer {} {} is skipped".format(layer_id, name))
-            
-            
-        elif not ww_layer.has_weights:
-            logger.debug("layer not supported: Layer {} {} has no weights".format(layer_id, name))
-            return False
-        
-        elif the_type is LAYER_TYPE.UNKNOWN:
-            logger.debug("layer not supported: Layer {} {} type {} unknown".format(layer_id, name, the_type))
-            return False
-        
-        elif the_type in [LAYER_TYPE.FLATTENED, LAYER_TYPE.NORM]:
-            logger.debug("layer not supported: Layer {} {} type {} not supported".format(layer_id, name, the_type))
-            return False
-        
-        elif min_size and M*rf < min_size:
-            logger.debug("layer not supported: Layer {} {}: size {} < {}".format(layer_id, name, M*rf, min_size))
-            return False
-                  
-        elif max_size and N > max_size:
-            logger.debug("layer not supported: Layer {} {}: size {} > {}".format(layer_id, name, N, max_size))
-            return False
-        
-        elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D]:
-            supported = True
-                        
-        return supported
+    
     
     
             
     def apply_esd(self, ww_layer, params={}):
         """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
         
-        layer_id = ww_layer.index
+        layer_id = ww_layer.layer_id
         name = ww_layer.name
         the_type = ww_layer.the_type
          
@@ -753,24 +796,22 @@ class WeightWatcher(object):
         rf = ww_layer.rf
         
         logger.debug("apply ESD  on Layer {} {} ".format(layer_id, name))
-            
-        if self.layer_supported(ww_layer, params):
-            
-            logger.debug("running SVD on Layer {} {} ".format(layer_id, name))
-            logger.debug("params {} ".format(params))
+                        
+        logger.debug("running SVD on Layer {} {} ".format(layer_id, name))
+        logger.debug("params {} ".format(params))
 
+    
+        Wmats = ww_layer.Wmats
+        n_comp = ww_layer.num_components
         
-            Wmats = ww_layer.Wmats
-            n_comp = ww_layer.num_components
-            
-            evals, sv_max, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
-         
-            ww_layer.evals = evals
-            ww_layer.add_column("has_esd",True)
-            ww_layer.add_column("num_evals",len(evals))
-            ww_layer.add_column("sv_max",sv_max)
-            ww_layer.add_column("rank_loss",rank_loss)
-            ww_layer.add_column("lambda_max",np.max(evals))
+        evals, sv_max, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
+     
+        ww_layer.evals = evals
+        ww_layer.add_column("has_esd",True)
+        ww_layer.add_column("num_evals",len(evals))
+        ww_layer.add_column("sv_max",sv_max)
+        ww_layer.add_column("rank_loss",rank_loss)
+        ww_layer.add_column("lambda_max",np.max(evals))
             
         return ww_layer
     
@@ -782,40 +823,41 @@ class WeightWatcher(object):
            
     def apply_plot_esd(self, ww_layer, params={}):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
+                    
+        evals = ww_layer.evals
+        name = ww_layer.name
         
-        if self.layer_supported(ww_layer, params):
-            
-            evals = ww_layer.evals
-            name = ww_layer.name
-            
-            plt.title(name)
-            plt.hist(evals, bins=100)
-            plt.show()
-            
-            plt.title(name)
-            plt.hist(np.log10(evals), bins=100)
-            plt.show()
+        plt.title(name)
+        plt.hist(evals, bins=100)
+        plt.show()
+        
+        plt.title(name)
+        plt.hist(np.log10(evals), bins=100)
+        plt.show()
             
         return ww_layer
     
  
     def apply_fit_powerlaw(self, ww_layer, params={}):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
+                    
+        evals = ww_layer.evals
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name
+        title = "{} {}".format(layer_id, name)
         
-        if self.layer_supported(ww_layer, params):
-            
-            evals = ww_layer.evals
-            layer_id = ww_layer.index
-            name = ww_layer.name
-            title = "{} {}".format(layer_id, name)
-                                
-            alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, title=title)
-            
-            ww_layer.add_column('alpha',alpha)
-            ww_layer.add_column('xmin', xmin)
-            ww_layer.add_column('xmax', xmax)
-            ww_layer.add_column('D', D)
-            ww_layer.add_column('sigma', sigma)
+        xmin=None #TODO: allow other xmin settings
+        xmax=np.max(evals)
+        plot=params['plot']
+        sample=True  #TODO:  decide if we want sampling for large evals       
+              
+        alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, title="", sample=sample)
+        
+        ww_layer.add_column('alpha',alpha)
+        ww_layer.add_column('xmin', xmin)
+        ww_layer.add_column('xmax', xmax)
+        ww_layer.add_column('D', D)
+        ww_layer.add_column('sigma', sigma)
 
         return ww_layer
     
@@ -824,7 +866,8 @@ class WeightWatcher(object):
               
 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
-    def analyze(self, model=None, layers=[], min_size=3, max_size=10000,
+    def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
+                min_size=None, max_size=None, #deprecated
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
                 conv2d_norm=True, fit_bulk = False, params={}):
@@ -833,10 +876,10 @@ class WeightWatcher(object):
 
         layers:
             List of layer ids. If empty, analyze all layers (default)
-        min_size:
-            Minimum weight matrix size to analyze
-        max_size:
-            Maximum weight matrix size to analyze (0 = no limit)
+        min_evals:
+            Minimum number of evals (M*rf) 
+        max_evals:
+            Maximum number of evals (N*rf) (0 = no limit)
         normalize:
             Normalize the X matrix. Usually True for Keras, False for PyTorch
         glorot_fix:
@@ -854,7 +897,7 @@ class WeightWatcher(object):
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
         conv2d_fft:
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
-            Note:  for conf2d_fft, the ESD is automatically subsampled to max_size eigenvalues max
+            Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max
         fit_bulk: 
             Attempt to fit bulk region of ESD only
         device: N/A yet
@@ -864,20 +907,25 @@ class WeightWatcher(object):
 
         model = model or self.model        
         
-        params['min_size'] = min_size
-        params['max_size'] = max_size
+        params['min_evals'] = min_evals
+        params['max_evals'] = max_evals
         params['plot'] = plot
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
-        params['conv2d_norm'] = conv2d_norm
+        params['conv2d_norm'] = conv2d_norm 
+        
+        logger.info("params {}".format(params))
+        
+        if min_size or max_size:
+            logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")
    
-        layer_iterator = WWLayerIterator(model)     
+        layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
         details = pd.DataFrame(columns = ['layer_id', 'name'])
            
         for ww_layer in layer_iterator:
            if not ww_layer.skipped and ww_layer.has_weights:
-               logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.index, ww_layer.the_type, type(ww_layer.layer)))
-               logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_size']))
+               logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+               logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
                self.apply_esd(ww_layer, params)
                if ww_layer.evals is not None:
                    self.apply_fit_powerlaw(ww_layer, params)
@@ -898,7 +946,7 @@ class WeightWatcher(object):
         Return a pandas dataframe with details for each layer
         """
         df = self.compute_details(results=results)
-        details =  df[:-1].dropna(axis=1, how='all').set_index("layer_id") # prune the last line summary
+        details =  df[:-1].dropna(axis=1, how='all').set_layer_id("layer_id") # prune the last line summary
         return details[details.layer_type.notna()]
 
     def compute_details(self, results=None):
@@ -1027,7 +1075,7 @@ class WeightWatcher(object):
                     # No slices (Dense or Conv1D)
                     logger.debug("Layer {}: {}: {}".format(layer_id, metrics[metric], compound))
 
-            row = pd.DataFrame(columns=columns, data=data, index=[0])
+            row = pd.DataFrame(columns=columns, data=data, layer_id=[0])
             df = pd.concat([df, row])
 
         data = {"layer_count": layer_count, "comment": "Network Level"}
@@ -1156,8 +1204,7 @@ class WeightWatcher(object):
     
     
     
-    def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, min_size=1, max_size=10000, 
-                           normalize=True, glorot_fix=False, conv2d_norm=True):
+    def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params={}):
         """Compute the eigenvalues for all weights of the NxM skipping layer, num evals ized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -1165,6 +1212,9 @@ class WeightWatcher(object):
         
          """
          
+        normalize=params['normalize']
+        glorot_fix=params['glorot_fix']
+        conv2d_norm=params['conv2d_norm']# True
          
         all_evals = []
 
@@ -1174,33 +1224,33 @@ class WeightWatcher(object):
             for  W in Wmats:
     
                 M, N = np.min(W.shape), np.max(W.shape)
-                if M >= min_size:# and M <= max_size:
+              
     
-                    Q=N/M
-                    check, checkTF = self.glorot_norm_check(W, N, M, count) 
-        
-                    # assume receptive field size is count
-                    if glorot_fix:
-                        W = self.glorot_norm_fix(W, N, M, count)
-                    elif conv2d_norm:
-                        # probably never needed since we always fix for glorot
-                        W = W * np.sqrt(count/2.0) 
-                    
-                    Wrand = W.flatten()
-                    np.random.shuffle(Wrand)
-                    W = Wrand.reshape(W.shape)
-                    W = W.astype(float)
-                    logger.info("Running Randomized Full SVD")
-                    sv = np.linalg.svd(W, compute_uv=False)
-                    sv = sv.flatten()
-                    sv = np.sort(sv)[-n_comp:]    
-                    
-                    #sv = svd.singular_values_
-                    evals = sv*sv
-                    if normalize:
-                        evals = evals/N
-                     
-                    all_evals.extend(evals)
+                Q=N/M
+                check, checkTF = self.glorot_norm_check(W, N, M, count) 
+    
+                # assume receptive field size is count
+                if glorot_fix:
+                    W = self.glorot_norm_fix(W, N, M, count)
+                elif conv2d_norm:
+                    # probably never needed since we always fix for glorot
+                    W = W * np.sqrt(count/2.0) 
+                
+                Wrand = W.flatten()
+                np.random.shuffle(Wrand)
+                W = Wrand.reshape(W.shape)
+                W = W.astype(float)
+                logger.info("Running Randomized Full SVD")
+                sv = np.linalg.svd(W, compute_uv=False)
+                sv = sv.flatten()
+                sv = np.sort(sv)[-n_comp:]    
+                
+                #sv = svd.singular_values_
+                evals = sv*sv
+                if normalize:
+                    evals = evals/N
+                 
+                all_evals.extend(evals)
                                        
         return np.sort(np.array(all_evals))
     

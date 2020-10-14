@@ -28,7 +28,6 @@ from tensorflow.keras.models import load_model
 
 import torch
 import torch.nn as nn
-from build.lib.weightwatcher.constants import LAYER_TYPE
 
 #
 # this is use to allow editing in Eclipse but also
@@ -119,13 +118,14 @@ class WWLayer:
         
         data['layer_id']=self.layer_id
         data['name']=self.name
+        data['layer_type']=str(self.layer_type)
         data['N']=self.N
         data['M']=self.M
         data['rf']=self.rf
         
         for col in self.columns:
             data[col]=self.__dict__[col]
-        
+                    
         return data
     
     
@@ -755,7 +755,7 @@ class WeightWatcher(object):
             # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
     
             W = W.astype(float)
-            logger.debug("Running full SVD: type(Wmats_ {}  W.shape={}  n_comp = {}".format(type(Wmats), W.shape, n_comp))
+            logger.debug("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
             sv = np.linalg.svd(W, compute_uv=False)
             sv = sv.flatten()
             sv = np.sort(sv)[-n_comp:]
@@ -849,9 +849,10 @@ class WeightWatcher(object):
         xmin=None #TODO: allow other xmin settings
         xmax=np.max(evals)
         plot=params['plot']
-        sample=True  #TODO:  decide if we want sampling for large evals       
+        sample=False  #TODO:  decide if we want sampling for large evals       
+        sample_size=None
               
-        alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, title="", sample=sample)
+        alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, title="", sample=sample, sample_size=sample_size)
         
         ww_layer.add_column('alpha',alpha)
         ww_layer.add_column('xmin', xmin)
@@ -905,7 +906,10 @@ class WeightWatcher(object):
             else 'cpu' use np.linalg.svd
         """
 
-        model = model or self.model        
+        model = model or self.model   
+        
+        if min_size or max_size:
+            logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
         params['min_evals'] = min_evals
         params['max_evals'] = max_evals
@@ -913,11 +917,11 @@ class WeightWatcher(object):
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
         params['conv2d_norm'] = conv2d_norm 
-        
+            
         logger.info("params {}".format(params))
-        
-        if min_size or max_size:
-            logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")
+        if not self.valid_params(params):
+            logger.error("Error, params not valid: \n {}".format(params))
+
    
         layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
         details = pd.DataFrame(columns = ['layer_id', 'name'])
@@ -935,20 +939,93 @@ class WeightWatcher(object):
         self.print_results(results=results)
 
         return details
+    
+    
+    # test with https://github.com/osmr/imgclsmob/blob/master/README.md
+    def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
+                min_size=None, max_size=None, #deprecated
+                normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
+                conv2d_norm=True, fit_bulk = False, params={}):
+        """
+        Same as analyze() , but does not run the ESD or Power law fits
+        
+        """
 
+        model = model or self.model    
+        
+        if min_size or max_size:
+            logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
+        
+        params['min_evals'] = min_evals
+        params['max_evals'] = max_evals
+        params['plot'] = plot
+        params['normalize'] = normalize
+        params['glorot_fix'] = glorot_fix
+        params['conv2d_norm'] = conv2d_norm 
+            
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            logger.error("Error, params not valid: \n {}".format(params))
+                
+   
+        layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
+        details = pd.DataFrame(columns = ['layer_id', 'name'])
+           
+        for ww_layer in layer_iterator:
+           if not ww_layer.skipped and ww_layer.has_weights:
+               logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+               logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
+               ww_layer.add_column('num_evals', ww_layer.M*ww_layer.rf)
+               details = details.append(ww_layer.get_row(),  ignore_index=True)
+        
+        results = {}
+        self.print_results(results=results)
+
+        return details
+
+
+
+    def valid_params(self, params):
+        """Vlaidate the input parametersm, return True if valid, False otherwise"""
+        
+        valid = True
+        
+        xmin = params.get('xmin')
+        if xmin and xmin not in [XMIN.UNKNOWN, XMIN.AUTO, XMIN.PEAK]:
+            logger.warn("param xmin unknown, ignoring {}".format(xmin))
+            valid = False
+            
+        xmax = params.get('xmax')
+        if xmax and xmax not in [XMAX.UNKNOWN, XMIN.AUTO]:
+            logger.warn("param xmax unknown, ignoring {}".format(xmax))
+            valid = False
+        
+        
+        min_evals = params.get('min_evals') 
+        max_evals = params.get('max_evals')
+        if min_evals and max_evals and min_evals>=max_evals:
+            logger.warn("min_evals {} > max_evals {}".format(min_evals,max_evals))
+            valid = False
+        elif max_evals and max_evals < -1:
+            logger.warn(" max_evals {} < -1 ".format(max_evals))
+            valid = False
+                    
+        
+        return valid
     
-    
+     # @deprecated
     def print_results(self, results=None):
         self.compute_details(results=results)
 
+    # @deprecated
     def get_details(self, results=None):
         """
-        Return a pandas dataframe with details for each layer
+        Deprecated: returns a pandas dataframe with details for each layer
         """
-        df = self.compute_details(results=results)
-        details =  df[:-1].dropna(axis=1, how='all').set_layer_id("layer_id") # prune the last line summary
-        return details[details.layer_type.notna()]
-
+        return self.details
+    
+    
+    #   @deprecated
     def compute_details(self, results=None):
         """
         Return a pandas dataframe with details for each layer
@@ -1109,7 +1186,7 @@ class WeightWatcher(object):
 
         return df.dropna(axis=1,how='all')
 
-    
+    # @deprecated / not implemented yet 
     def get_summary(self, pandas=False):
         if pandas:
             return pd.DataFrame(data=self.summary, index=[0])
@@ -1117,7 +1194,7 @@ class WeightWatcher(object):
             return self.summary
 
 
-    
+ # not used yet   
     def get_conv2D_fft(self, W, n=32):
         """Compute FFT of Conv2D channels, to apply SVD later"""
         
@@ -1292,7 +1369,7 @@ class WeightWatcher(object):
         return np.count_nonzero(sv > tolerance, axis=-1)
         
             
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, title="", sample=True):
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, title="", sample=False, sample_size=None):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1308,16 +1385,21 @@ class WeightWatcher(object):
         
         # TODO: replace this with a robust sampler / stimator
         # requires a lot of refactoring below
-        if  sample and num_evals > MAX_NUM_EVALS:
-            logger.info("chosing {} eigenvalues from {} ".format(MAX_NUM_EVALS, len(evals)))
-            evals = np.random.choice(evals, size=MAX_NUM_EVALS)
+        if sample and  sample_size is None:
+            logger.info("setting sample size to default MAX_NUM_EVALS={}".format(MAX_NUM_EVALS))
+            sample_size = MAX_NUM_EVALS
+            
+        if sample and num_evals > sample_size:
+            logger.warn("samping not implemented in production yet")
+            logger.info("chosing {} eigenvalues from {} ".format(sample_size, len(evals)))
+            evals = np.random.choice(evals, size=sample_size)
                     
-        if xmax=='auto' or xmax is None:
+        if xmax==XMAX.AUTO or xmax is XMAX.UNKNOWN or xmax is None:
             xmax = np.max(evals)
             
-        if xmin=='auto' or xmin is None:
+        if xmin==XMAX.AUTO  or xmin is None:
             fit = powerlaw.Fit(evals, xmax=xmax, verbose=False)
-        elif xmin=='peak':
+        elif xmin==XMAX.PEAK :
             nz_evals = evals[evals > 0.0]
             num_bins = 100# np.min([100, len(nz_evals)])
             h = np.histogram(np.log10(nz_evals),bins=num_bins)

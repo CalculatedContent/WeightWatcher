@@ -73,7 +73,7 @@ class WWLayer:
     def __init__(self, layer, index=-1, name="", 
                  the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, skipped=False):
         self.layer = layer
-        self.index = index
+        self.index = index  # change to layer_id ?
         self.name = name
         self.skipped = skipped
         self.the_type = the_type
@@ -368,20 +368,21 @@ class WWLayer:
 
 
 
-    
-class WWLayerIterator:
+class ModelIterator:
     """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available."""
 
     def __init__(self, model, filter_ids=[], filter_types=[]):
-        self.model = model
-        self.layers_iter, self.framework = self.model_iter(model) 
-
+        
         self.filter_ids = filter_ids
         self.filter_types = filter_types
-        
         self.k = 0
         
-
+        self.model = model
+        self.model_iter, self.framework = self.model_iter_(model) 
+        
+        self.layer_iter = self.make_layer_iter_()
+       
+        
     def __iter__(self):
         return self
     
@@ -390,15 +391,35 @@ class WWLayerIterator:
         return self.next()
     
     
-    def model_iter(self, model):
-        """Create a python iterator for the layers in the model. Also detects the framework being used."""
+    def next(self):
+        curr_layer = next(self.layer_iter)
+        if curr_layer:    
+            return curr_layer
+        else:
+            raise StopIteration()
+  
+ 
+    
+    
+    def model_iter_(self, model):
+        """Return a generator for iterating over the layers in the model.  
+        Also detects the framework being used. 
+        Used by base class and child classes to iterate over the framework layers """
         layer_iter = None
         
         if hasattr(model, 'layers'):
-            layer_iter = (l for l in model.layers)
+            def layer_iter_():
+                for layer in model.layers:
+                        yield layer 
+                        
+            layer_iter = layer_iter_()
             framework = FRAMEWORK.KERAS
         elif hasattr(model, 'modules'):
-            layer_iter = model.modules()
+            def layer_iter_():
+                for layer in model.modules():
+                        yield layer 
+                        
+            layer_iter = layer_iter_()    
             framework = FRAMEWORK.PYTORCH
         else:
             layer_iter = None
@@ -406,21 +427,64 @@ class WWLayerIterator:
             
         return layer_iter, framework
 
+           
+                      
+    def make_layer_iter_(self):
+        """The layer iterator for this class / instance.
+         Override this method to change the type of iterator used by the child class"""
+        return self.model_iter
 
 
-    def next(self):
-        curr_layer = next(self.layers_iter)
-        if curr_layer:    
+
+class WWLayerIterator(ModelIterator):
+    """Creates an iterator that generates WWLayer wrapper objects to the model layers"""
+
+    def ww_layer_iter_(self):
+        """Create a generator for iterating over ww_layers, created lazily """
+        for curr_layer in self.model_iter:
             curr_id, self.k = self.k, self.k+1
             
+            # try to combne all this into the Layer Object
             ww_layer = WWLayer(curr_layer, index=curr_id, framework=self.framework)
             ww_layer.make(filter_ids=self.filter_ids, filter_types=self.filter_types)
+            
+            if ww_layer.the_type is LAYER_TYPE.UNKNOWN:
+                ww_layer.skipped = True
                         
-            return ww_layer
-        else:
-            raise StopIteration()
+            if not ww_layer.skipped:
+                yield ww_layer    
+                
+    def make_layer_iter_(self):
+        return self.ww_layer_iter_()
+    
 
+class WW2xSliceIterator(WWLayerIterator):
+    """Iterator variant that breaks Conv2D layers into slices for back compatability"""
+    import copy
 
+  
+    def ww_slice_iter_(self):
+        
+        for ww_layer in self.ww_layer_iter_():
+            ww_slices = []
+            if ww_layer.the_type == LAYER_TYPE.CONV2D:
+                
+                for iw, W in enumerate(ww_layer.Wmats):
+                    ww_slice = copy.copy(ww_layer)
+                    ww_slice.Wmats = [W]
+                    ww_slice.add_column("slice_id", iw)
+                    yield ww_slice
+
+            else:
+                ww_layer.add_column("slice_id", 0)
+                yield ww_layer
+                
+                
+    def make_layer_iter_(self):
+        return self.ww_slice_iter_()
+    
+    
+    
 class WeightWatcher(object):
 
     def __init__(self, model=None, log=True):
@@ -678,7 +742,7 @@ class WeightWatcher(object):
     
             
     def apply_esd(self, ww_layer, params={}):
-        """run full SVD on layer weight matrices, compute ESD, combine all,  and save to layer """
+        """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
         
         layer_id = ww_layer.index
         name = ww_layer.name
@@ -709,6 +773,11 @@ class WeightWatcher(object):
             ww_layer.add_column("lambda_max",np.max(evals))
             
         return ww_layer
+    
+   
+            
+            
+    
               
            
     def apply_plot_esd(self, ww_layer, params={}):
@@ -749,7 +818,6 @@ class WeightWatcher(object):
             ww_layer.add_column('sigma', sigma)
 
         return ww_layer
-    
     
     
           
@@ -1139,173 +1207,7 @@ class WeightWatcher(object):
 
     
     
-    
-    def analyze_combined_weights(self, weights, layerid, min_size, max_size,
-                normalize, glorot_fix, plot, mp_fit,  conv2d_norm, N, M, n_comp, 
-                fit_bulk):
-        """Analyzes weight matrices, combined as if they are 1 giant matrices
-        Computes PL alpha fits and  various norm metrics
-         - alpha
-         - alpha_weighted
-         
-         - Frobenius norm 
-         - Spectral Norm
-         - p-norm / Shatten norm
-         - Soft Rank / Stable Rank
-        
-        Assumes all matrices have the same shape, (N x M), N > M.
-        
-        For now, retains the old idea that we have layer_id and slice_id=0 (always)
-        res[0][''] = ...
-         """
-         
-        res = {}
-        count = len(weights)
-        if count == 0:
-            return res
-
-        # slice_id
-        i = 0
-        res[i] = {}
-        
-        # TODO:  add conv2D ?  How to integrate into this code base ?
-        # how deal with glorot norm and normalization ?
-        # what is Q ?  n_comps x something ?
-        
-        # assume all weight matrices have the same shape
-        W = weights[0]
-        #M, N = np.min(W.shape), np.max(W.shape)
-        Q=N/M
-        
-        res[i]["N"] = N
-        res[i]["M"] = M
-        res[i]["Q"] = Q  
-        summary = []
-         
-        # TODO:  start method here, have a pre-method that creates the matrices of weights
-        # pass N, M in 
-        
-        #
-        # Get combined eigenvalues for all weight matrices, using SVD
-        # returns singular values to
-        #
- 
-        check, checkTF = self.glorot_norm_check(W, N, M, count) 
-        res[i]['check'] = check
-        res[i]['checkTF'] = checkTF
-        
-        
-        evals, sv_max, rank_loss = self.combined_eigenvalues(weights, n_comp, min_size, max_size, normalize, glorot_fix, conv2d_norm)  
-        
-        num_evals = len(evals)     
-        if num_evals < min_size:
-            logger.info("skipping layer, num evals {} < {} min size".format(num_evals, min_size))
-            return res
-        #elif num_evals > max_size:
-        #    logger.info("skipping layer, num evals {} > {} max size".format(num_evals, max_size))
-        #    return res
-        
-        
-        lambda_max = np.max(evals)
-        
-        res[i]["sv_max"] = sv_max
-        res[i]["rank_loss"] = rank_loss
-        
-        # this should never happen, but just in case
-        if len(evals) < 2: 
-            return res
-        
-        #
-        # Power law fit
-        #
-        title = "Weight matrix ({}x{})  layer ID: {}".format(N, M, layerid)
-        alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, plot=plot, title=title)    
-        
-        res[i]["alpha"] = alpha
-        res[i]["D"] = D
-        res[i]["sigma"] = sigma
-
-        res[i]["xmin"] = xmin
-        res[i]["xmax"] = xmax
-        res[i]["lambda_min"] = np.min(evals)
-        res[i]["lambda_max"] =lambda_max
-        
-        
-        alpha_weighted = alpha * np.log10(lambda_max)
-        res[i]["alpha_weighted"] = alpha_weighted
-        
-        #
-        # other metrics
-        #
-                  
-        norm = np.sum(evals)
-        res[i]["norm"] = norm
-        lognorm = np.log10(norm)
-        res[i]["lognorm"] = lognorm
-        
-        logpnorm = np.log10(np.sum([ev**alpha for ev in evals]))
-        res[i]["logpnorm"] = logpnorm
-            
-        res[i]["spectralnorm"] = lambda_max
-        res[i]["logspectralnorm"] = np.log10(lambda_max)
-
-        summary.append("Weight matrix  ({},{}): LogNorm: {} ".format( M, N, lognorm) )
-                
-        softrank = norm**2 / sv_max**2
-        softranklog = np.log10(softrank)
-        softranklogratio = lognorm / np.log10(sv_max)
-        res[i]["softrank"] = softrank
-        res[i]["softranklog"] = softranklog
-        res[i]["softranklogratio"] = softranklogratio
-        
-        summary += "{}. Softrank: {}. Softrank log: {}. Softrank log ratio: {}".format(summary, softrank, softranklog, softranklogratio)
-        res[i]["summary"] = "\n".join(summary)
-        for line in summary:
-            logger.debug("    {}".format(line))
-            
-        # overlay plot with randomized matrix on log scale
-        num_replicas = 1
-        if len(evals)*len(weights) < 100: 
-            num_replicas = 10
-            logger.info("Using {} random replicas".format(num_replicas))
-
-            
-        rand_evals = self.random_eigenvalues(weights, n_comp, num_replicas=num_replicas, 
-                                              min_size=min_size, max_size=max_size, 
-                                              normalize=normalize, glorot_fix=glorot_fix, conv2d_norm=conv2d_norm)
-
-        res[i]["max_rand_eval"] = np.max(rand_evals)
-        res[i]["min_rand_eval"] = np.max(rand_evals)
-        
-        if plot:
-            self.plot_random_esd(evals, rand_evals, title)       
-        
-        # power law fit, with xmax = random bulk edge
-        # experimental fit
-        #
-        # note: this only works if we have more than a few eigenvalues < xmax and > xmin
-        alpha2, D2, xmin2, xmax2 = None, None, None, None
-        if fit_bulk:
-            logger.info("fitting bulk")
-            try:
-                xmax = np.max(rand_evals)
-                num_evals_left = len(evals[evals < xmax])
-                if  num_evals_left > 10: # not sure on this yet
-                    title = "Weight matrix ({}x{})  layer ID: {} Fit2".format(N, M, layerid)
-                    #alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin='peak', xmax=xmax, plot=plot, title=title) 
-                    alpha2, D2, xmin2, xmax2 = self.fit_powerlaw(evals, xmin=None, xmax=xmax, plot=plot, title=title)  
-     
-                    res[i]["alpha2"] = alpha2
-                    res[i]["D2"] = D2
-                    alpha2_weighted = alpha2 * np.log10(xmax)
-                    res[i]["alpha2_weighted"] = alpha2_weighted
-            except:
-                logger.info("fit2 fails, not sure why")
-                pass  
-                
-        
-        return res
-            
+   
     def plot_random_esd(self, evals, rand_evals, title):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           

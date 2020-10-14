@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import sys, os 
+import sys, os, copy
 import logging
 
 import numpy as np
@@ -65,10 +65,10 @@ class WWLayer:
     """WW wrapper layer to Keras and PyTorch Layer layer objects
        Uses pythong metaprogramming to add result columns for the final details dataframe"""
        
-    def __init__(self, layer, layer_id=-1, name="",
+    def __init__(self, layer, layer_id=-1, name=None,
                  the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, skipped=False):
         self.layer = layer
-        self.layer_id = layer_id  # change to layer_id ?
+        self.layer_id = layer_id  
         self.name = name
         self.skipped = skipped
         self.the_type = the_type
@@ -81,6 +81,12 @@ class WWLayer:
         elif (self.framework == FRAMEWORK.PYTORCH):
             self.channels = CHANNELS.LAST
         
+        # get the LAYER_TYPE
+        self.the_type = self.layer_type(self.layer)
+        
+        if self.name is None and hasattr(self.layer, 'name'):
+            name = self.layer.name
+
         # original weights (tensor) and biases
         self.has_weights = False
         self.weights = None
@@ -100,6 +106,7 @@ class WWLayer:
         
         # details, set by metaprogramming in apply_xxx() methods
         self.columns = []
+        self.make_weights()
         
     def add_column(self, name, value):
         """Add column to the details dataframe"""
@@ -181,17 +188,11 @@ class WWLayer:
         
         return the_type
     
-    def make(self):
+    def make_weights(self):
         """ Constructor for WWLayer class.  Make a ww (wrapper)_layer from a framework layer, or return None if layer is skipped.
         In particular , late uses specify filter on layer ids and names """
         
-        self.the_type = self.layer_type(self.layer)
         has_weights = False;
-        
-        if hasattr(self.layer, 'name'):
-            name = self.layer.name
-        
-        # TODO: maybe move this to the constructor
         if not self.skipped:
             has_weights, weights, has_biases, biases = self.get_weights_and_biases()
             
@@ -440,9 +441,7 @@ class WWLayerIterator(ModelIterator):
         for curr_layer in self.model_iter:
             curr_id, self.k = self.k, self.k + 1
             
-            # try to combne all this into the Layer Object
             ww_layer = WWLayer(curr_layer, layer_id=curr_id, framework=self.framework)
-            ww_layer.make()
             
             if not self.layer_supported(ww_layer):
                 ww_layer.skipped = True
@@ -505,12 +504,10 @@ class WWLayerIterator(ModelIterator):
 
 class WW2xSliceIterator(WWLayerIterator):
     """Iterator variant that breaks Conv2D layers into slices for back compatability"""
-    import copy
   
     def ww_slice_iter_(self):
         
         for ww_layer in self.ww_layer_iter_():
-            ww_slices = []
             if ww_layer.the_type == LAYER_TYPE.CONV2D:
                 
                 for iw, W in enumerate(ww_layer.Wmats):
@@ -845,13 +842,13 @@ class WeightWatcher(object):
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         for ww_layer in layer_iterator:
-           if not ww_layer.skipped and ww_layer.has_weights:
-               logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
-               logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
-               self.apply_esd(ww_layer, params)
-               if ww_layer.evals is not None:
-                   self.apply_fit_powerlaw(ww_layer, params)
-               details = details.append(ww_layer.get_row(), ignore_index=True)
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
+                self.apply_esd(ww_layer, params)
+                if ww_layer.evals is not None:
+                    self.apply_fit_powerlaw(ww_layer, params)
+                details = details.append(ww_layer.get_row(), ignore_index=True)
         
         results = {}
         self.print_results(results=results)
@@ -888,11 +885,11 @@ class WeightWatcher(object):
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         for ww_layer in layer_iterator:
-           if not ww_layer.skipped and ww_layer.has_weights:
-               logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
-               logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
-               ww_layer.add_column('num_evals', ww_layer.M * ww_layer.rf)
-               details = details.append(ww_layer.get_row(), ignore_index=True)
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
+                ww_layer.add_column('num_evals', ww_layer.M * ww_layer.rf)
+                details = details.append(ww_layer.get_row(), ignore_index=True)
         
         results = {}
         self.print_results(results=results)
@@ -940,9 +937,7 @@ class WeightWatcher(object):
     def compute_details(self, results=None):
         """
         Return a pandas dataframe with details for each layer
-        """
-        import numpy as np
-        
+        """        
         if results is None:
             results = self.results
 
@@ -1349,3 +1344,44 @@ class WeightWatcher(object):
                           
         return alpha, xmin, xmax, D, sigma
     
+    
+    def get_ESD(self, model = None, layer=None, params={}):
+        """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""
+        
+        model = self.model or model
+        
+        details = self.describe(model=model)
+        layer_ids = details['layer_id'].to_numpy()
+        layer_names = details['name'].to_numpy()
+        
+        if type(layer) is int and layer not in layer_ids:
+            logger.error("Can not find layer id {} in valid layer_ids {}".format(layer, layer_ids))
+            return []
+        
+        elif type(layer) is str and layer not in layer_names:
+            logger.error("Can not find layer name {} in valid layer_names {}".format(layer, layer_names))
+            return []
+    
+        logger.info("Getting ESD for layer {} ".format(layer))
+        logger.info("Getting ESD for layer {} ".format(layer))
+
+        layer_iter = WWLayerIterator(model=model, filters=[layer], params=params)     
+        details = pd.DataFrame(columns=['layer_id', 'name'])
+           
+        ww_layer = next(layer_iter)
+        assert(not ww_layer.skipped) 
+        assert(ww_layer.has_weights)
+        
+        self.apply_esd(ww_layer, params)
+            
+        esd = ww_layer.evals
+        if esd is None or len(esd)==0:
+            logger.warn("No eigenvalues found for {} {}".format(ww_layer.layer_id, ww_layer.name))
+                
+        else:
+            logger.info("Found {} eiganvalues for {} {}".format(ww_layer.layer_id, ww_layer.name))     
+            
+        return esd
+        
+
+        

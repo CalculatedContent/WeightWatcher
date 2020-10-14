@@ -1381,7 +1381,7 @@ class WeightWatcher(object):
             logger.warn("No eigenvalues found for {} {}".format(ww_layer.layer_id, ww_layer.name))
                 
         else:
-            logger.info("Found {} eiganvalues for {} {}".format(ww_layer.layer_id, ww_layer.name))     
+            logger.info("Found {} eiganvalues for {} {}".format(len(esd), ww_layer.layer_id, ww_layer.name))     
             
         return esd
         

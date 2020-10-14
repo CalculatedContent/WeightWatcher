@@ -53,6 +53,8 @@ mpl_logger.setLevel(logging.WARNING)
 
 MAX_NUM_EVALS = 1000
 
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True}
+    
 
 def main():
     """
@@ -335,7 +337,7 @@ class WWLayer:
 class ModelIterator:
     """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available."""
 
-    def __init__(self, model, params={}):
+    def __init__(self, model, params=DEFAULT_PARAMS):
         
         self.params = params
         self.k = 0
@@ -396,7 +398,7 @@ class ModelIterator:
 class WWLayerIterator(ModelIterator):
     """Creates an iterator that generates WWLayer wrapper objects to the model layers"""
 
-    def __init__(self, model, params={}, filters=[]):
+    def __init__(self, model, params=DEFAULT_PARAMS, filters=[]):
         
         super().__init__(model, params=params)
         
@@ -712,7 +714,7 @@ class WeightWatcher(object):
     
         return np.sort(np.array(all_evals)), max_sv, rank_loss
             
-    def apply_esd(self, ww_layer, params={}):
+    def apply_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
         
         layer_id = ww_layer.layer_id
@@ -742,7 +744,7 @@ class WeightWatcher(object):
             
         return ww_layer
            
-    def apply_plot_esd(self, ww_layer, params={}):
+    def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                     
         evals = ww_layer.evals
@@ -758,7 +760,7 @@ class WeightWatcher(object):
             
         return ww_layer
  
-    def apply_fit_powerlaw(self, ww_layer, params={}):
+    def apply_fit_powerlaw(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                     
         evals = ww_layer.evals
@@ -787,7 +789,7 @@ class WeightWatcher(object):
                 min_size=None, max_size=None,  # deprecated
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
-                conv2d_norm=True, fit_bulk=False, params={}):
+                conv2d_norm=True, fit_bulk=False, params=DEFAULT_PARAMS):
         """
         Analyze the weight matrices of a model.
 
@@ -859,7 +861,7 @@ class WeightWatcher(object):
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
-                conv2d_norm=True, fit_bulk=False, params={}):
+                conv2d_norm=True, fit_bulk=False, params=DEFAULT_PARAMS):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1178,7 +1180,7 @@ class WeightWatcher(object):
             else:
                 return check1, False
     
-    def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params={}):
+    def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params=DEFAULT_PARAMS):
         """Compute the eigenvalues for all weights of the NxM skipping layer, num evals ized weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -1345,7 +1347,7 @@ class WeightWatcher(object):
         return alpha, xmin, xmax, D, sigma
     
     
-    def get_ESD(self, model = None, layer=None, params={}):
+    def get_ESD(self, model=None, layer=None, params=DEFAULT_PARAMS):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""
         
         model = self.model or model
@@ -1384,4 +1386,5 @@ class WeightWatcher(object):
         return esd
         
 
+   
         

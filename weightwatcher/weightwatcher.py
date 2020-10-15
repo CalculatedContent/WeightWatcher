@@ -763,7 +763,7 @@ class WeightWatcher(object):
     
         Wmats = ww_layer.Wmats
         n_comp = ww_layer.num_components
-        
+        num_replicas = 1
         # hack to improve random estimator if we don't have that many evals
         if n_comp < 100:
             num_replicas = 5

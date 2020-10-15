@@ -53,7 +53,7 @@ mpl_logger.setLevel(logging.WARNING)
 
 MAX_NUM_EVALS = 1000
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True}
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True}
     
 
 def main():
@@ -105,6 +105,7 @@ class WWLayer:
         
         # evals 
         self.evals = None
+        self.rand_evals = None
         
         # details, set by metaprogramming in apply_xxx() methods
         self.columns = []
@@ -743,6 +744,37 @@ class WeightWatcher(object):
         ww_layer.add_column("lambda_max", np.max(evals))
             
         return ww_layer
+    
+    def apply_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
+        """Randomize the layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
+        
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name
+        the_type = ww_layer.the_type
+         
+        M = ww_layer.M
+        N = ww_layer.N
+        rf = ww_layer.rf
+        
+        logger.debug("apply random ESD  on Layer {} {} ".format(layer_id, name))
+                        
+        logger.debug("running SVD on Layer {} {} ".format(layer_id, name))
+        logger.debug("params {} ".format(params))
+    
+        Wmats = ww_layer.Wmats
+        n_comp = ww_layer.num_components
+        
+        # hack to improve random estimator if we don't have that many evals
+        if n_comp < 100:
+            num_replicas = 5
+        
+        rand_evals = self.random_eigenvalues(Wmats, n_comp, num_replicas , params)
+     
+        ww_layer.rand_evals = rand_evals
+        ww_layer.add_column("max_rand_eval", np.max(rand_evals))
+            
+        return ww_layer
+    
            
     def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
@@ -759,6 +791,8 @@ class WeightWatcher(object):
         plt.show()
             
         return ww_layer
+    
+    
  
     def apply_fit_powerlaw(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
@@ -829,12 +863,12 @@ class WeightWatcher(object):
         if min_size or max_size:
             logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
-        params['min_evals'] = min_evals
+        params['min_evals'] = min_evals 
         params['max_evals'] = max_evals
         params['plot'] = plot
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
-        params['conv2d_norm'] = conv2d_norm 
+        params['conv2d_norm'] = conv2d_norm
             
         logger.info("params {}".format(params))
         if not self.valid_params(params):
@@ -850,6 +884,13 @@ class WeightWatcher(object):
                 self.apply_esd(ww_layer, params)
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
+                    
+                if params['randomize']:
+                    self.apply_random_esd(ww_layer, params)
+                    self.plot_random_esd(ww_layer, params)
+                    
+                # TODO: add find correlation traps here
+                    
                 details = details.append(ww_layer.get_row(), ignore_index=True)
         
         results = {}
@@ -1229,8 +1270,12 @@ class WeightWatcher(object):
                                        
         return np.sort(np.array(all_evals))
    
-    def plot_random_esd(self, evals, rand_evals, title):
+    def plot_random_esd(self, ww_layer):
         """Plot histogram and log histogram of ESD and randomized ESD"""
+          
+        evals = ww_layer.evals
+        rand_evals = ww_layer.rand_evals
+        title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name))
           
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
@@ -1239,14 +1284,17 @@ class WeightWatcher(object):
         plt.hist((nonzero_evals), bins=100, density=True, color='g', label='original')
         plt.hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
-        plt.title(r"ESD and Randomized (ESD $\rho(\lambda)$)" + "\nfor {} ".format(title))                  
+        plt.title(title)   
+        plt.xlabel(r" Eigenvalues $(\lambda)$")               
         plt.legend()
         plt.show()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
         plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
-        plt.title(r"Log10 ESD and Randomized (ESD $\rho(\lambda))$" + "\nfor {} ".format(title))                  
+        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name))
+        plt.title(title)   
+        plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         plt.legend()
         plt.show()
         

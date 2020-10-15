@@ -121,7 +121,7 @@ class WWLayer:
         
         data['layer_id'] = self.layer_id
         data['name'] = self.name
-        data['layer_type'] = str(self.layer_type)
+        data['layer_type'] = str(self.the_type)
         data['N'] = self.N
         data['M'] = self.M
         data['rf'] = self.rf

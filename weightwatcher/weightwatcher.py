@@ -1275,7 +1275,7 @@ class WeightWatcher(object):
           
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
-        title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name))
+        title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
           
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
@@ -1292,7 +1292,7 @@ class WeightWatcher(object):
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
         plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
-        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name))
+        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
         plt.title(title)   
         plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         plt.legend()

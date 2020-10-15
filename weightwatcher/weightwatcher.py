@@ -1270,7 +1270,7 @@ class WeightWatcher(object):
                                        
         return np.sort(np.array(all_evals))
    
-    def plot_random_esd(self, ww_layer):
+    def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
         evals = ww_layer.evals

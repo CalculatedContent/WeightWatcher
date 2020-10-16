@@ -890,6 +890,8 @@ class WeightWatcher(object):
                         self.apply_random_esd(ww_layer, params)
                         self.plot_random_esd(ww_layer, params)
                         self.apply_mp_fit(ww_layer, random=True, params=params)
+                        
+                    self.apply_norm_metrics(ww_layer, params)
                     
                 # TODO: add find correlation traps here
                     
@@ -1435,6 +1437,39 @@ class WeightWatcher(object):
             
         return esd
     
+    def apply_norm_metrics(self, ww_layer, params=DEFAULT_PARAMS):
+        """Compute the norm metrics, as they depend on the eigenvalues"""
+
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name or "" 
+        evals = ww_layer.evals
+        
+        # TODO:  check normalization on all
+        norm = np.sum(evals)
+        log_norm = np.log10(norm)
+
+        spectral_norm = np.max(evals)     
+        log_spectral_norm = np.log10(spectral_norm)
+        
+        # TODO: check formula
+        alpha = ww_layer.alpha
+        alpha_weighted = alpha*log_spectral_norm
+        log_alpha_norm = np.log10(np.sum( [ ev**alpha for ev in evals]))
+        
+        stable_rank = norm / spectral_norm
+                     
+        ww_layer.add_column('norm', norm)
+        ww_layer.add_column('log_norm', log_norm)
+        ww_layer.add_column('spectral_norm', spectral_norm)
+        ww_layer.add_column('log_spectral_norm', log_spectral_norm)
+        ww_layer.add_column('alpha_weighted', alpha_weighted)
+        ww_layer.add_column('log_alpha_norm', log_alpha_norm)
+        ww_layer.add_column('stable_rank', stable_rank)
+
+        return ww_layer
+    
+    
+    
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
         """Perform MP fit on random or actual random eigenvalues
         N/A yet"""
@@ -1449,7 +1484,6 @@ class WeightWatcher(object):
             title = "Layer {} P{}  W".format(layer_id, name)
             evals = ww_layer.evals
 
-        layer_id = ww_layer.layer_id
         N, M = ww_layer.N, ww_layer.M
         
         num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, title)

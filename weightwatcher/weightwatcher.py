@@ -823,7 +823,7 @@ class WeightWatcher(object):
                 min_size=None, max_size=None,  # deprecated
                 alphas=False, lognorms=True, spectralnorms=False, softranks=False,
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
-                conv2d_norm=True, fit_bulk=False, params=DEFAULT_PARAMS):
+                conv2d_norm=True, fit_bulk=False, ww2x=False, params=DEFAULT_PARAMS):
         """
         Analyze the weight matrices of a model.
 
@@ -838,13 +838,17 @@ class WeightWatcher(object):
         glorot_fix:
             Adjust the norm for the Glorot Normalization
         alphas:
+            # deprecated
             Compute the power laws (alpha) of the weight matrices. 
             Time consuming so disabled by default (use lognorm if you want speed)
         lognorms:
+            # deprecated
             Compute the log norms of the weight matrices.
         spectralnorms:
+            # deprecated
             Compute the spectral norm (max eigenvalue) of the weight matrices.
         softranks:
+            # deprecated
             Compute the soft norm (i.e. StableRank) of the weight matrices.
         mp_fit:
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
@@ -852,10 +856,14 @@ class WeightWatcher(object):
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
             Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max
         fit_bulk: 
-            Attempt to fit bulk region of ESD only
+            Attempt to fit bulk region of ESD only  N/A yet
+        ww2x:
+            Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
         device: N/A yet
             if 'gpu'  use torch.svd()
             else 'cpu' use np.linalg.svd
+        params:  
+            N/A as inputs: dictionary of default parameters, which can be set but will be over-written by 
         """
 
         model = model or self.model   
@@ -863,18 +871,26 @@ class WeightWatcher(object):
         if min_size or max_size:
             logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
+        # I need to figure this out
         params['min_evals'] = min_evals 
         params['max_evals'] = max_evals
         params['plot'] = plot
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
         params['conv2d_norm'] = conv2d_norm
+        params['ww2x'] = ww2x
+
             
         logger.info("params {}".format(params))
         if not self.valid_params(params):
             logger.error("Error, params not valid: \n {}".format(params))
    
-        layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
+        if ww2x:
+            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
+            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
+        else:
+            layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
+        
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         for ww_layer in layer_iterator:

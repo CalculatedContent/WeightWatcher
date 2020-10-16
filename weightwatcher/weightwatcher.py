@@ -872,6 +872,8 @@ class WeightWatcher(object):
             logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
         # I need to figure this out
+        # can not specify params on input yet
+        # maybe just have a different analyze() that only uses this 
         params['min_evals'] = min_evals 
         params['max_evals'] = max_evals
         params['plot'] = plot

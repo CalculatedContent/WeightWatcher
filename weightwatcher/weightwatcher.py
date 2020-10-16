@@ -13,6 +13,7 @@
 # limitations under the License.
 #
 import sys, os, copy
+from copy import copy
 import logging
 
 import numpy as np

@@ -1452,10 +1452,21 @@ class WeightWatcher(object):
         layer_id = ww_layer.layer_id
         N, M = ww_layer.N, ww_layer.M
         
-        return self.mp_fit(evals, N, M, title)
+        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, title)
+        
+        if random:
+            ww_layer.add_column('rand_num_spikes', num_spikes)
+            ww_layer.add_column('rand_sigma_mp', sigma_mp)
+            ww_layer.add_column('rand_mp_softrank', mp_softrank)
+        else:
+            ww_layer.add_column('num_spikes', num_spikes)
+            ww_layer.add_column('sigma_mp', sigma_mp)
+            ww_layer.add_column('mp_softrank', mp_softrank)
+            
+        return 
     
     def mp_fit(self, evals, N, M, title):
-        """Automatic MP fit to evals, with spikes """
+        """Automatic MP fit to evals, compute numner of spikes and mp_softrank """
         
         Q = N/M
         lambda_max = np.max(evals)

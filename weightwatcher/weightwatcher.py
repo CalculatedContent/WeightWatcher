@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import sys, os, copy
-from copy import copy
+import sys, os
 import logging
 
 import numpy as np
@@ -508,14 +507,15 @@ class WWLayerIterator(ModelIterator):
 
 class WW2xSliceIterator(WWLayerIterator):
     """Iterator variant that breaks Conv2D layers into slices for back compatability"""
-  
+    from copy import deepcopy
+
     def ww_slice_iter_(self):
         
         for ww_layer in self.ww_layer_iter_():
             if ww_layer.the_type == LAYER_TYPE.CONV2D:
                 
                 for iw, W in enumerate(ww_layer.Wmats):
-                    ww_slice = copy.copy(ww_layer)
+                    ww_slice = deepcopy(ww_layer)
                     ww_slice.Wmats = [W]
                     ww_slice.add_column("slice_id", iw)
                     yield ww_slice

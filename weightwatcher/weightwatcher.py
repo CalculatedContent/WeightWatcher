@@ -884,10 +884,12 @@ class WeightWatcher(object):
                 self.apply_esd(ww_layer, params)
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
+                    self.apply_mp_fit(ww_layer, random=False, params=params)
                     
-                if params['randomize']:
-                    self.apply_random_esd(ww_layer, params)
-                    self.plot_random_esd(ww_layer, params)
+                    if params['randomize']:
+                        self.apply_random_esd(ww_layer, params)
+                        self.plot_random_esd(ww_layer, params)
+                        self.apply_mp_fit(ww_layer, random=True, params=params)
                     
                 # TODO: add find correlation traps here
                     
@@ -1432,6 +1434,72 @@ class WeightWatcher(object):
             logger.info("Found {} eiganvalues for {} {}".format(len(esd), ww_layer.layer_id, ww_layer.name))     
             
         return esd
+    
+    def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
+        """Perform MP fit on random or actual random eigenvalues
+        N/A yet"""
+
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name or ""
+        
+        if random:
+            title = "Layer {} P{} randomize W".format(layer_id, name)
+            evals = ww_layer.rand_evals
+        else:
+            title = "Layer {} P{}  W".format(layer_id, name)
+            evals = ww_layer.evals
+
+        layer_id = ww_layer.layer_id
+        N, M = ww_layer.N, ww_layer.M
+        
+        return self.mp_fit(evals, N, M, title)
+    
+    def mp_fit(self, evals, N, M, title):
+        """Automatic MP fit to evals, with spikes """
+        
+        Q = N/M
+        lambda_max = np.max(evals)
+        
+        to_plot = evals.copy()
+        
+        bw = 0.1 
+        s1, f1 = fit_density_with_range(to_plot, Q, bw = bw)
+        sigma_mp = s1
+        
+        bulk_edge = (s1 * (1 + 1/np.sqrt(Q)))**2
+        
+        num_spikes = sum(to_plot > bulk_edge)
+        ratio_numofSpikes  = num_spikes / (M - 1)
+        
+        mp_softrank = bulk_edge / lambda_max
+            
+        
+        if Q == 1.0:
+            fit_law = 'QC SSD'
+            
+            #Even if the quarter circle applies, still plot the MP_fit
+            plot_density(to_plot, s1, Q, method = "MP")
+            plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
+            plt.title("MP ESD, sigma auto-fit ")
+            plt.show()
+            
+        else:
+            fit_law = 'MP ESD'
+#    
+    
+        plot_density_and_fit(model=None, eigenvalues=to_plot, 
+                             Q=Q, num_spikes=0, sigma=s1, verbose = False)
+        title = fit_law+" "+title+"\n Q={:0.3} ".format(Q)
+        title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
+        title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
+        title = title + r"$\#$ spikes={}".format(num_spikes)
+
+        plt.title(title)
+        plt.show()
+            
+        return num_spikes, sigma_mp, mp_softrank
+
+        
         
 
    

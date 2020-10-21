@@ -406,38 +406,60 @@ class WWLayerIterator(ModelIterator):
         self.filter_ids = []
         self.filter_types = []
         self.filter_names = []
+        
+        if type(filters) is not list:
+            filters = [filters]
+            
         for f in filters:
             tf = type(f)
         
             if tf is LAYER_TYPE:
+                logger.info("Filtering layer by type {}".format(str(f)))
                 self.filter_types.append(f)
             elif tf is int:
+                logger.info("Filtering layer by id {}".format(f))
                 self.filter_ids.append(f) 
             elif tf is str:
+                logger.info("Filtering layer by name {}".format(f))
                 self.filter_names.append(f) 
             else:
                 logger.warn("unknown filter type {} detected and ignored".format(tf))
                 
-    def filter_applied(self, ww_layer):
-        """Return true if filter is applied to this layer"""
-        applied = False
+    def apply_filters(self, ww_layer):
+        """Apply filters.  Set skipped False  if filter is applied to this layer, keeping the layer (or no filters, meaning all layers kept)"""
+        ww_layer.skipped = False
           
         if self.filter_types is not None and len(self.filter_types) > 0:
+            logger.info("filter by types: {}".format(self.filter_types))
             if ww_layer.the_type in self.filter_types:
-                logger.info("skipping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , ww_layer.the_type))
-                self.skipped = True
+                logger.info("keeping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
+                ww_layer.skipped = False
+            else:
+                logger.info("skipping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
+                ww_layer.skipped = True
+
                 
         if self.filter_ids is not None and len(self.filter_ids) > 0:
+            logger.info("filter by ids: {}".format(self.filter_ids))
             if ww_layer.layer_id in self.filter_ids:
+                logger.info("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                ww_layer.skipped = False
+            else:
                 logger.info("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
-                self.skipped = True
+                ww_layer.skipped = True
+
+
                 
         if self.filter_names is not None and len(self.filter_names) > 0:
+            logger.info("filter by names: {}".format(self.filter_names))
             if ww_layer.name in self.filter_names:
+                logger.info("keeping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                ww_layer.skipped = False
+            else:
                 logger.info("skipping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
-                self.skipped = True     
-        
-        return applied
+                ww_layer.skipped = True
+     
+        return ww_layer.skipped
     
     def ww_layer_iter_(self):
         """Create a generator for iterating over ww_layers, created lazily """
@@ -449,8 +471,7 @@ class WWLayerIterator(ModelIterator):
             if not self.layer_supported(ww_layer):
                 ww_layer.skipped = True
                 
-            if  self.filter_applied(ww_layer):
-                ww_layer.skipped = True
+            self.apply_filters(ww_layer)
                         
             if not ww_layer.skipped:
                 yield ww_layer    
@@ -773,6 +794,9 @@ class WeightWatcher(object):
      
         ww_layer.rand_evals = rand_evals
         ww_layer.add_column("max_rand_eval", np.max(rand_evals))
+        
+        if params['plot']:
+            self.plot_random_esd(ww_layer, params)
             
         return ww_layer
     
@@ -802,7 +826,7 @@ class WeightWatcher(object):
         layer_id = ww_layer.layer_id
         name = ww_layer.name
         title = "{} {}".format(layer_id, name)
-        
+
         xmin = None  # TODO: allow other xmin settings
         xmax = np.max(evals)
         plot = params['plot']
@@ -822,9 +846,8 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                alphas=False, lognorms=True, spectralnorms=False, softranks=False,
-                normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
-                conv2d_norm=True, fit_bulk=False, ww2x=False, params=DEFAULT_PARAMS):
+                normalize=False, glorot_fix=False, plot=False, randomize=False, 
+                mp_fit=False, conv2d_fft=False,conv2d_norm=True, fit_bulk=False, ww2x=False):#, params=DEFAULT_PARAMS):
         """
         Analyze the weight matrices of a model.
 
@@ -875,9 +898,13 @@ class WeightWatcher(object):
         # I need to figure this out
         # can not specify params on input yet
         # maybe just have a different analyze() that only uses this 
+        
+        params=DEFAULT_PARAMS
         params['min_evals'] = min_evals 
         params['max_evals'] = max_evals
         params['plot'] = plot
+        params['randomize'] = randomize
+        params['mp_fit'] = mp_fit
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
         params['conv2d_norm'] = conv2d_norm
@@ -901,19 +928,22 @@ class WeightWatcher(object):
                 logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
                 self.apply_esd(ww_layer, params)
+                
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
-                    self.apply_mp_fit(ww_layer, random=False, params=params)
+                    if params['mp_fit']:
+                        logger.debug("MP Fitting: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        self.apply_mp_fit(ww_layer, random=False, params=params)
                     
-                    if params['randomize']:
+                    if params['randomize'] or params['mp_fit']:
+                        logger.debug("Randomizing: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                         self.apply_random_esd(ww_layer, params)
-                        self.plot_random_esd(ww_layer, params)
+                        logger.debug("MP Fitting Random: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=True, params=params)
-                        
+                    
                     self.apply_norm_metrics(ww_layer, params)
                     
                 # TODO: add find correlation traps here
-                    
                 details = details.append(ww_layer.get_row(), ignore_index=True)
         
         results = {}
@@ -925,7 +955,7 @@ class WeightWatcher(object):
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
-                conv2d_norm=True, fit_bulk=False, params=DEFAULT_PARAMS):
+                conv2d_norm=True, fit_bulk=False,  ww2x=False):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -936,6 +966,7 @@ class WeightWatcher(object):
         if min_size or max_size:
             logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
+        params = DEFAULT_PARAMS
         params['min_evals'] = min_evals
         params['max_evals'] = max_evals
         params['plot'] = plot
@@ -947,7 +978,13 @@ class WeightWatcher(object):
         if not self.valid_params(params):
             logger.error("Error, params not valid: \n {}".format(params))
    
-        layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
+        if ww2x:
+            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
+            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
+        else:
+            layer_iterator = WWLayerIterator(model, filters=layers, params=params)  
+   
+        
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         for ww_layer in layer_iterator:
@@ -957,8 +994,8 @@ class WeightWatcher(object):
                 ww_layer.add_column('num_evals', ww_layer.M * ww_layer.rf)
                 details = details.append(ww_layer.get_row(), ignore_index=True)
         
-        results = {}
-        self.print_results(results=results)
+        #results = {}
+        #self.print_results(results=results)
 
         return details
 
@@ -1375,7 +1412,7 @@ class WeightWatcher(object):
         sigma = fit.sigma
         xmin = fit.xmin
         xmax = fit.xmax
-        
+
         if plot:
             fig2 = fit.plot_pdf(color='b', linewidth=2)
             fit.power_law.plot_pdf(color='b', linestyle='--', ax=fig2)
@@ -1495,17 +1532,19 @@ class WeightWatcher(object):
 
         layer_id = ww_layer.layer_id
         name = ww_layer.name or ""
+        layer_id_name = "{} {}".format(layer_id, name)
         
         if random:
-            title = "Layer {} P{} randomize W".format(layer_id, name)
+            title = "Layer {} randomize W".format(layer_id_name)
             evals = ww_layer.rand_evals
         else:
-            title = "Layer {} P{}  W".format(layer_id, name)
+            title = "Layer {} W".format(layer_id_name)
             evals = ww_layer.evals
 
         N, M = ww_layer.N, ww_layer.M
         
-        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, title)
+
+        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, title, layer_id_name, params['plot'])
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -1517,8 +1556,8 @@ class WeightWatcher(object):
             ww_layer.add_column('mp_softrank', mp_softrank)
             
         return 
-    
-    def mp_fit(self, evals, N, M, title):
+
+    def mp_fit(self, evals, N, M, title, layer_id, plot):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank """
         
         Q = N/M
@@ -1536,7 +1575,6 @@ class WeightWatcher(object):
         ratio_numofSpikes  = num_spikes / (M - 1)
         
         mp_softrank = bulk_edge / lambda_max
-            
         
         if Q == 1.0:
             fit_law = 'QC SSD'
@@ -1549,10 +1587,9 @@ class WeightWatcher(object):
             
         else:
             fit_law = 'MP ESD'
-#    
-    
-        plot_density_and_fit(model=None, eigenvalues=to_plot, 
-                             Q=Q, num_spikes=0, sigma=s1, verbose = False)
+#        
+        plot_density_and_fit(model=None, eigenvalues=to_plot, layer=layer_id,
+                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot)
         title = fit_law+" "+title+"\n Q={:0.3} ".format(Q)
         title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
         title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)

@@ -430,7 +430,6 @@ class WWLayerIterator(ModelIterator):
         ww_layer.skipped = False
           
         if self.filter_types is not None and len(self.filter_types) > 0:
-            logger.info("filter by types: {}".format(self.filter_types))
             if ww_layer.the_type in self.filter_types:
                 logger.info("keeping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
                 ww_layer.skipped = False
@@ -440,7 +439,6 @@ class WWLayerIterator(ModelIterator):
 
                 
         if self.filter_ids is not None and len(self.filter_ids) > 0:
-            logger.info("filter by ids: {}".format(self.filter_ids))
             if ww_layer.layer_id in self.filter_ids:
                 logger.info("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
                 ww_layer.skipped = False
@@ -451,7 +449,6 @@ class WWLayerIterator(ModelIterator):
 
                 
         if self.filter_names is not None and len(self.filter_names) > 0:
-            logger.info("filter by names: {}".format(self.filter_names))
             if ww_layer.name in self.filter_names:
                 logger.info("keeping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
                 ww_layer.skipped = False
@@ -468,10 +465,10 @@ class WWLayerIterator(ModelIterator):
             
             ww_layer = WWLayer(curr_layer, layer_id=curr_id, framework=self.framework)
             
+            self.apply_filters(ww_layer)
+            
             if not self.layer_supported(ww_layer):
                 ww_layer.skipped = True
-                
-            self.apply_filters(ww_layer)
                         
             if not ww_layer.skipped:
                 yield ww_layer    
@@ -513,11 +510,11 @@ class WWLayerIterator(ModelIterator):
             return False
         
         elif min_evals and M * rf < min_evals:
-            logger.debug("layer not supported: Layer {} {}: num_evals {} < {}".format(layer_id, name, M * rf, min_evals))
+            logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   
         elif max_evals and N * rf > max_evals:
-            logger.debug("layer not supported: Layer {} {}: num_evals {} > {}".format(layer_id, name, N * rf, max_evals))
+            logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         
         elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D]:

@@ -2,15 +2,12 @@ import unittest
 import warnings
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
-import sys
-
+import sys, logging
 import weightwatcher as ww
 from weightwatcher import  LAYER_TYPE 
 
 import torchvision.models as models
 import pandas as pd
-
-import logging
 
 
 class Test_VGG11(unittest.TestCase):
@@ -19,10 +16,11 @@ class Test_VGG11(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
+
 		cls.model = models.vgg11(pretrained=True)
 		cls.watcher = ww.WeightWatcher(model=cls.model, log=False)
-
-
+		logging.getLogger("weightwatcher").setLevel(logging.INFO)
+		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -41,18 +39,29 @@ class Test_VGG11(unittest.TestCase):
 # 			self.assertTrue(key in summary, "{} in summary".format(key))
 # 
 # 
-	def test_details(self):
+	def test_basic_columns(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+		details = self.watcher.describe()
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+		print(details)
+		# TODO: add more columns ?
+		for key in ['layer_id', 'name', 'M', 'N']:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+			
+			
+	def test_all_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
 		"""
  		
-		details = self.watcher.describe()
+		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
  
 		
-		#columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm, \
-		#	log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin".split(',')
 
-		for key in ['layer_id', 'name', 'M', 'N']:
+		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
  
  
@@ -91,9 +100,9 @@ class Test_VGG11(unittest.TestCase):
 	def test_filter_dense_layer_types(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
 		"""
-		
+		print("test_filter_dense_layer_types")
 		details = self.watcher.describe(layers=[LAYER_TYPE.DENSE])
-
+		print(details)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
@@ -138,6 +147,7 @@ class Test_VGG11(unittest.TestCase):
 		"""
 
 		details = self.watcher.describe(layers=ww.LAYER_TYPE.CONV2D)
+		print(details)
 
 		conv2DLayers = details[details['layer_type']==str(LAYER_TYPE.CONV2D)]
 		conv2DCount = len(conv2DLayers)
@@ -147,24 +157,25 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEquals(nonConv2DCount, 0, "VGG11 has non conv2D layers: {} found".format(nonConv2DCount))
 
 	
-#     
-# 	def test_min_matrix_shape(self):
-# 		"""Test that analyzes skips matrices smaller than  MIN matrix shape
-# 		"""
-# 
-# 	def test_max_matrix_shape(self):
-# 		"""Test that analyzes skips matrices larger than  MAX matrix shape
-# 		"""
-# 
-# 	def test_layer_ids(self):
-# 		"""Test that layer_ids start at 0, not 1
-# 		"""
-# 
-# 	def test_slice_ids(self):
-# 		"""Test that slice_ids start at 0, not 1
-# 		"""
-# 
-# 
+
+	def test_min_matrix_shape(self):
+		"""Test that analyzes skips matrices smaller than  MIN matrix shape
+		"""
+
+		print("test_min_matrix_shape")
+		details = self.watcher.describe(min_evals=30)
+		print(details)
+		
+
+
+	def test_max_matrix_shape(self):
+		"""Test that analyzes skips matrices larger than  MAX matrix shape
+		"""
+
+		print("test_max_matrix_shape")
+		details = self.watcher.describe(max_evals=100)
+		print(details)
+		
 
 	def test_describe_model(self):
 		"""Test that alphas are computed and values are within thresholds
@@ -174,15 +185,15 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(len(details), 11)
 
 
-		
+ 		
 	def test_describe_model_ww2x(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
 		details = self.watcher.describe(ww2x=True)
 		print(details)
 		self.assertEqual(len(details), 75)
-
 		
+ 		
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
@@ -194,10 +205,11 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(a[0],1.65014, places=4)
 		self.assertAlmostEqual(a[1],1.57297, places=4)
 		self.assertAlmostEqual(a[3],1.43459, places=4)
-		
+ 		
 		# spectral norm
 		a = details.spectral_norm.to_numpy()
 		print("------------FIX THIS--------------")
+		print(a[0], a[1], a[2])
 		#self.assertAlmostEqual(a[0],20.2149, places=4)
 		#self.assertAlmostEqual(a[1],24.8158, places=4)
 		#self.assertAlmostEqual(a[2],19.3795, places=4)
@@ -219,19 +231,24 @@ class Test_VGG11(unittest.TestCase):
 # 		"""Test that weight matrices are normalized as expected
 # 		"""
 # 
-# 	def test_return_eiegnavlues(self):
-# 		"""Test that eigenvalues are returned in the result dict
-# 		"""
+	def test_getESD(self):
+		"""Test that eigenvalues are available 
+		"""
 
+		esd = self.watcher.get_ESD(layer=5)
+		self.assertEqual(len(esd), 75)
+
+
+ 
 	def test_density_fit(self):
 		"""Test the fitted sigma from the density fit
 		"""
-		
+ 		
 		print("----test_density_fit-----")
 		print("PLOT STILL PLOTTING..FIX")
 		#details = self.watcher.analyze(layers = [10], randomize=False, plot=False, mp_fit=True)
 		#print(details)
-
+ 
 		#df = df.reset_index()
 		#self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.00, places=2) #sigma_mp
 		#self.assertAlmostEqual(df.loc[0, 'numofSpikes'], 13) #numofSig
@@ -249,7 +266,6 @@ class Test_VGG11(unittest.TestCase):
 		print("test runtime warning: sqrt(-1)=", np.sqrt(-1.0))
 		assert(True)
 		
-        
 
 
 if __name__ == '__main__':

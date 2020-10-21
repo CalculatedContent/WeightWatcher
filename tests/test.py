@@ -236,7 +236,8 @@ class Test_VGG11(unittest.TestCase):
 		"""
 
 		esd = self.watcher.get_ESD(layer=5)
-		self.assertEqual(len(esd), 75)
+		self.assertEqual(len(esd), 576)
+
 
 
  

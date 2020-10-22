@@ -15,8 +15,6 @@
 from enum import IntFlag, auto, Enum
 
 
-from enum import IntFlag, auto, Enum
-
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()
     DENSE = auto()
@@ -37,9 +35,20 @@ class CHANNELS(IntFlag):
     UNKNOWN = auto()
     FIRST = auto()
     LAST = auto()
+
     
 class PLOT(IntFlag):
     POWERLAW = auto()
     ESD = auto()
     ESDLOG = auto()
 
+    
+class XMAX(IntFlag):
+    UNKNOWN = auto()
+    AUTO = auto()
+    PEAK = auto()
+
+
+class XMIN(IntFlag):
+    UNKNOWN = auto()
+    AUTO = auto()

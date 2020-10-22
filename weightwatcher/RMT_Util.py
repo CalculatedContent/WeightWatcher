@@ -121,9 +121,9 @@ def get_shuffled_eigenvalues(W, layer=7, num=100):
     return evals
 
 
-def plot_density_and_fit(eigenvalues=None, model=None, weightfile=None,
-                     layer=2, Q=1.0, num_spikes=0, sigma=None,
-                     alpha=0.25, color='blue', skip=False, verbose=True):
+def plot_density_and_fit(eigenvalues=None, model=None, layer="",
+                     Q=1.0, num_spikes=0, sigma=None,
+                     alpha=0.25, color='blue', skip=False, verbose=True, plot=True):
     """Plot histogram of eigenvalues, for Q, and fit Marchenk Pastur.  
     If no sigma, calculates from maximum eigenvalue (minus spikes)
     Can read keras weights from model if specified.  Does not read PyTorch
@@ -142,8 +142,9 @@ def plot_density_and_fit(eigenvalues=None, model=None, weightfile=None,
         label = r'$\rho_{emp}(\lambda)$'
         title = " W{} ESD, MP Sigma={0,.3}f" 
         
-    plt.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
-    plt.legend()
+    if plot:
+        plt.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
+        plt.legend()
     
     if skip:
         return
@@ -166,15 +167,15 @@ def plot_density_and_fit(eigenvalues=None, model=None, weightfile=None,
     else:
         x, mp = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
 
-    plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
-    
+    if plot:
+        plt.title(title.format(layer, sigma))
+        plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
+        
     if verbose:
-        plt.title(title.format(layer, sigma));
         print("% spikes outside bulk {0:.2f}".format(percent_mass))
         print("% sigma {0:.4f}".format(sigma))
-        return sigma
-    
-    return None
+        
+    return sigma
 
 
 def plot_density(to_plot, sigma, Q, method="MP"):
@@ -359,8 +360,7 @@ def best_dist(fit):
 
     return dist
 
-
-#def fit_powerlaw(evals, verbose=True):
+# def fit_powerlaw(evals, verbose=True):
 #    fit = powerlaw.Fit(evals, xmax=np.max(evals))
 #    return [fit.alpha, fit.D, best_dist(fit)]A
 
@@ -457,7 +457,7 @@ def shuf_matrix(W, seed=None):
 
 
 def fit_density(evals, Q, bw=0.1, sigma0=None):
-    "simple fit of evals, only floats sigma right now"
+    "Fit the esd to a MP distribution: simple fit of evals, only floats sigma right now"
     
     if sigma0 is None:
         sigma0 = 1.0

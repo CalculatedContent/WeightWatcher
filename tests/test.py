@@ -9,6 +9,7 @@ from weightwatcher import  LAYER_TYPE
 import torchvision.models as models
 import pandas as pd
 
+#  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
 class Test_VGG11(unittest.TestCase):
 
@@ -226,23 +227,37 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(len(esd), 576)
 
 
+	def randomize(self):
+		"""Test randomize option
+		"""
+		
+		print("----test_density_fit-----")
+		details = self.watcher.analyze(layers = [25], randomize=False, plot=False, mp_fit=False)
+		print(details.columns)
+		self.assertNotIn('max_rand_eval', details.columns)
+		
+		print("----test_density_fit-----")
+		details = self.watcher.analyze(layers = [25], randomize=True, plot=False, mp_fit=False)
+		print(details.columns)
+		self.assertIn('max_rand_eval', details.columns)
+		
+		
+		
+	
 	def test_density_fit(self):
 		"""Test the fitted sigma from the density fit
 		"""
  		
 		print("----test_density_fit-----")
-		print("PLOT STILL PLOTTING..FIX")
-		details = self.watcher.analyze(layers = [10], randomize=False, plot=False, mp_fit=True)
-		print(details)
- 
-		#df = df.reset_index()
-		#self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.00, places=2) #sigma_mp
-		#self.assertAlmostEqual(df.loc[0, 'numofSpikes'], 13) #numofSig
-		#self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.064648437) #sigma_mp
-		#self.assertAlmostEqual(df.loc[0, 'numofSpikes'], 30.00) #numofSig
-		#self.assertAlmostEqual(df.loc[0, 'ratio_numofSpikes'], 0.117647, places = 6)
-		#self.assertAlmostEqual(df.loc[0, 'softrank_mp'], 0.203082, places = 6)
-# 
+		details = self.watcher.analyze(layers = [25], ww2x=True, randomize=False, plot=False, mp_fit=True)
+		print(details.columns)
+		print("num spikes", details.num_spikes)
+		print("sigma mp", details.sigma_mp)
+		print("softrank", details.mp_softrank)
+
+		#self.assertAlmostEqual(details.num_spikes, 13) #numofSig
+		#self.assertAlmostEqual(details.sigma_mp, 1.064648437) #sigma_mp
+		#self.assertAlmostEqual(details.np_softrank, 0.203082, places = 6) 
 
 
 	def test_runtime_warnings(self):

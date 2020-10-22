@@ -973,7 +973,7 @@ class WeightWatcher(object):
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
                     if params['mp_fit']:
-                        logger.debug("MP Fitting: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        logger.info("MP Fitting: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
                     
                     if params['randomize'] or params['mp_fit']:
@@ -986,9 +986,6 @@ class WeightWatcher(object):
                     
                 # TODO: add find correlation traps here
                 details = details.append(ww_layer.get_row(), ignore_index=True)
-        
-        results = {}
-        self.print_results(results=results)
 
         return details
     
@@ -1034,9 +1031,6 @@ class WeightWatcher(object):
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
                 ww_layer.add_column('num_evals', ww_layer.M * ww_layer.rf)
                 details = details.append(ww_layer.get_row(), ignore_index=True)
-        
-        #results = {}
-        #self.print_results(results=results)
 
         return details
 
@@ -1066,181 +1060,18 @@ class WeightWatcher(object):
         
         return valid
     
-     # @deprecated
-    def print_results(self, results=None):
-        self.compute_details(results=results)
-
-    # @deprecated
-    def get_details(self, results=None):
-        """
-        Deprecated: returns a pandas dataframe with details for each layer
-        """
-        return self.details
+#      # @deprecated
+#     def print_results(self, results=None):
+#         self.compute_details(results=results)
+# 
+#     # @deprecated
+#     def get_details(self, results=None):
+#         """
+#         Deprecated: returns a pandas dataframe with details for each layer
+#         """
+#         return self.details
     
-    #   @deprecated
-    def compute_details(self, results=None):
-        """
-        Return a pandas dataframe with details for each layer
-        """        
-        if results is None:
-            results = self.results
-
-        if not results:
-            logger.warn("No results to print")
-            return
-
-        logger.info("### Printing results ###")
-
-        # not all implemented for detais, many are jsut for debugging
-        metrics = {
-            # key in "results" : pretty print name
-            "D": "D",
-            "sigma": "sigma",
-            "D2": "D2",
-            "norm": "Norm",
-            "lognorm": "LogNorm",
-            "alpha": "Alpha",
-            "alpha2": "Alpha2",
-            "alpha_weighted": "Alpha Weighted",
-            "alpha2_weighted": "Alpha2 Weighted",
-            "spectralnorm": "Spectral Norm",
-            "logspectralnorm": "Log Spectral Norm",
-            "softrank": "Softrank",
-            "softranklog": "Softrank Log",
-            "softranklogratio": "Softrank Log Ratio",
-            "sigma_mp": "Marchenko-Pastur (MP) fit sigma",
-            "numofSpikes": "Number of spikes per MP fit",
-            "ratio_numofSpikes": "aka, percent_mass, Number of spikes / total number of evals",
-            "softrank_mp": "Softrank for MP fit",
-            "logpnorm": "alpha pNorm",
-            "xmin": "xin of PL fit",
-            "xmax": "xmax of PL fit",
-            "rand_xmax": "xmax of random X "
-
-        }
-
-        metrics_stats = []
-        for metric in metrics:
-            metrics_stats.append("{}_min".format(metric))
-            metrics_stats.append("{}_max".format(metric))
-            metrics_stats.append("{}_avg".format(metric))
-
-            metrics_stats.append("{}_compound_min".format(metric))
-            metrics_stats.append("{}_compound_max".format(metric))
-            metrics_stats.append("{}_compound_avg".format(metric))
-
-        columns = ["layer_id", "layer_type", "N", "M", "layer_count", "slice",
-                   "slice_count", "level", "comment"] + [*metrics] + metrics_stats
-        df = pd.DataFrame(columns=columns)
-
-        metrics_values = {}
-        metrics_values_compound = {}
-
-        for metric in metrics:
-            metrics_values[metric] = []
-            metrics_values_compound[metric] = []
-
-        layer_count = 0
-        for layer_id, result in results.items():
-            layer_count += 1
-
-            layer_type = np.NAN
-            if "layer_type" in result:
-                layer_type = str(result["layer_type"]).replace("LAYER_TYPE.", "")
-
-            compounds = {}  # temp var
-            for metric in metrics:
-                compounds[metric] = []
-
-            slice_count = 0
-            Ntotal = 0
-            Mtotal = 0
-            for slice_id, summary in result.items():
-                if not str(slice_id).isdigit():
-                    continue
-
-                slice_count += 1
-
-                N = np.NAN
-                if "N" in summary:
-                    N = summary["N"]
-                    Ntotal += N
-
-                M = np.NAN
-                if "M" in summary:
-                    M = summary["M"]
-                    Mtotal += M
-
-                data = {"layer_id": layer_id, "layer_type": layer_type, "N": N, "M": M, "slice": slice_id, "comment": "Slice level"}
-                for metric in metrics:
-                    if metric in summary:
-                        value = summary[metric]
-                        if value is not None:
-                            metrics_values[metric].append(value)
-                            compounds[metric].append(value)
-                            data[metric] = value
-                row = pd.DataFrame(columns=columns, data=data, index=[0])
-                df = pd.concat([df, row])
-
-            data = {"layer_id": layer_id, "layer_type": layer_type, "N": Ntotal, "M": Mtotal, "slice_count": slice_count, "comment": "Layer level"}
-            # Compute the coumpound value over the slices
-            for metric, value in compounds.items():
-                count = len(value)
-                if count == 0:
-                    continue
-
-                compound = np.mean(value)
-                metrics_values_compound[metric].append(compound)
-                data[metric] = compound
-
-                if count > 1:
-                    # Compound value of the multiple slices (conv2D)
-                    logger.debug("Layer {}: {} compound: {}".format(layer_id, metrics[metric], compound))
-                else:
-                    # No slices (Dense or Conv1D)
-                    logger.debug("Layer {}: {}: {}".format(layer_id, metrics[metric], compound))
-
-            row = pd.DataFrame(columns=columns, data=data, layer_id=[0])
-            df = pd.concat([df, row])
-
-        data = {"layer_count": layer_count, "comment": "Network Level"}
-        for metric, metric_name in metrics.items():
-            if metric not in metrics_values or len(metrics_values[metric]) == 0:
-                continue
-
-            values = metrics_values[metric]
-            minimum = min(values)
-            maximum = max(values)
-            avg = np.mean(values)
-            self.summary[metric] = avg
-            logger.info("{}: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
-            data["{}_min".format(metric)] = minimum
-            data["{}_max".format(metric)] = maximum
-            data["{}_avg".format(metric)] = avg
-
-            values = metrics_values_compound[metric]
-            minimum = min(values)
-            maximum = max(values)
-            avg = np.mean(values)
-            self.summary["{}_compound".format(metric)] = avg
-            logger.info("{} compound: min: {}, max: {}, avg: {}".format(metric_name, minimum, maximum, avg))
-            data["{}_compound_min".format(metric)] = minimum
-            data["{}_compound_max".format(metric)] = maximum
-            data["{}_compound_avg".format(metric)] = avg
-
-        row = pd.DataFrame(columns=columns, data=data, index=[0])
-        df = pd.concat([df, row])
-        df['slice'] += 1  # fix the issue that slice starts from 0 and don't match the plot
-
-        return df.dropna(axis=1, how='all')
-
-    # @deprecated / not implemented yet 
-    def get_summary(self, pandas=False):
-        if pandas:
-            return pd.DataFrame(data=self.summary, index=[0])
-        else:
-            return self.summary
-
+    
  # not used yet   
     def get_conv2D_fft(self, W, n=32):
         """Compute FFT of Conv2D channels, to apply SVD later"""
@@ -1600,7 +1431,9 @@ class WeightWatcher(object):
         
         bulk_edge = (s1 * (1 + 1/np.sqrt(Q)))**2
         
-        num_spikes = sum(to_plot > bulk_edge)
+        #TODO: add Tracy Widom (TW) range
+        
+        num_spikes = len(to_plot[to_plot > bulk_edge])
         ratio_numofSpikes  = num_spikes / (M - 1)
         
         mp_softrank = bulk_edge / lambda_max

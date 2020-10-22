@@ -96,10 +96,15 @@ class WWLayer:
         # extracted weight matrices
         self.num_W = 0
         self.Wmats = []
+
         self.N = 0
         self.M = 0
         self.num_components = self.M  # default for full SVD, not used yet
         self.rf = 1  # receptive field size, default for dense layer
+        self.conv2d_count = 1  # reset by slice iterator for back compatability with ww2x
+        self.w_norm = 1 # reset if normalize, conv2D_norm, or glorot_fix used
+
+        # to be used for conv2d_fft approach
         self.inputs_shape = []
         self.outputs_shape = []
         
@@ -532,9 +537,11 @@ class WW2xSliceIterator(WWLayerIterator):
         for ww_layer in self.ww_layer_iter_():
             if ww_layer.the_type == LAYER_TYPE.CONV2D:
                 
+                count = len(ww_layer.Wmats)
                 for iw, W in enumerate(ww_layer.Wmats):
                     ww_slice = deepcopy(ww_layer)
                     ww_slice.Wmats = [W]
+                    ww_slice.conv2d_count = count
                     ww_slice.add_column("slice_id", iw)
                     yield ww_slice
 
@@ -697,17 +704,7 @@ class WeightWatcher(object):
         count = len(Wmats)
         for  W in Wmats:
     
-            Q = N / M
-            # not really used
-            check, checkTF = self.glorot_norm_check(W, N, M, count) 
-    
-            # assume receptive field size is count
-            if glorot_fix:
-                W = self.glorot_norm_fix(W, N, M, count)
-            elif conv2d_norm:
-                # probably never needed since we always fix for glorot
-                W = W * np.sqrt(count / 2.0) 
-    
+            Q = N / M  
             # SVD can be swapped out here
             # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
     
@@ -734,6 +731,50 @@ class WeightWatcher(object):
     
         return np.sort(np.array(all_evals)), max_sv, rank_loss
             
+            
+    def apply_normalize_Wmats(self, ww_layer, params=DEFAULT_PARAMS):
+        """Normalize the W matrix or Wmats """
+
+        normalize = params['normalize']
+        glorot_fix = params['glorot_fix']
+        conv2d_norm = params['conv2d_norm']
+        
+        M = ww_layer.M
+        N = ww_layer.N
+        rf = ww_layer.rf
+        norm = ww_layer.w_norm # shoud be 1.0 unless reset for some reason
+        
+        Wmats = ww_layer.Wmats
+        new_Wmats = []
+        
+        if type(Wmats) is not list:
+            logger.debug("combined_eigenvalues: Wmats -> [WMmats]")
+            Wmats = [Wmats]
+               
+        for  W in Wmats:
+            # not really used
+            rf_size = ww_layer.conv2d_count
+            check, checkTF = self.glorot_norm_check(W, N, M, rf_size) 
+            
+            if glorot_fix:
+                norm = self.glorot_norm_fix(W, N, M, rf_size)
+                
+            elif conv2d_norm and ww_layer.the_type is LAYER_TYPE.CONV2D:
+                # w_norm is reset in slices to fix this
+                norm = np.sqrt(ww_layer.conv2d_count/2.0)
+                
+            if normalize and not glorot_fix:
+                norm = 1 / np.sqrt(N)
+               
+            W = W * norm
+            ww_layer.w_norm = norm
+            new_Wmats.append(W)
+    
+        ww_layer.Wmats = new_Wmats
+        return ww_layer
+                
+        
+                 
     def apply_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
         
@@ -752,7 +793,7 @@ class WeightWatcher(object):
     
         Wmats = ww_layer.Wmats
         n_comp = ww_layer.num_components
-        
+                
         evals, sv_max, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
      
         ww_layer.evals = evals
@@ -855,9 +896,10 @@ class WeightWatcher(object):
         max_evals:
             Maximum number of evals (N*rf) (0 = no limit)
         normalize:
-            Normalize the X matrix. Usually True for Keras, False for PyTorch
+            Normalize the X matrix. Usually True for Keras, False for PyTorch.
+            Ignored if glorot_norm is set
         glorot_fix:
-            Adjust the norm for the Glorot Normalization
+            Adjust the norm for the Glorot Normalization.  
         alphas:
             # deprecated
             Compute the power laws (alpha) of the weight matrices. 
@@ -922,9 +964,11 @@ class WeightWatcher(object):
            
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
-                logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
+                logger.debug("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                self.apply_normalize_Wmats(ww_layer, params)
                 self.apply_esd(ww_layer, params)
+                
                 
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
@@ -1236,17 +1280,18 @@ class WeightWatcher(object):
         
         return [fft_coefs], N, M, n_comp
 
+    # not used
     def normalize_evals(self, evals, N, M):
-        """DEPRECATED: Normalize the eigenvalues W by N and receptive field size (if needed)"""
+        """Normalizee evals matrix by 1/N"""
         logger.debug(" normalzing evals, N, M {},{},{}".format(N, M))
-        return evals / np.sqrt(N)
+        return evals / N
 
     def glorot_norm_fix(self, W, N, M, rf_size):
-        """Apply Glorot Normalization Fix"""
+        """Apply Glorot Normalization Fix """
 
         kappa = np.sqrt(2 / ((N + M) * rf_size))
         W = W / kappa
-        return W 
+        return W , 1/kappa
 
     def pytorch_norm_fix(self, W, N, M, rf_size):
         """Apply pytorch Channel Normalization Fix
@@ -1280,7 +1325,7 @@ class WeightWatcher(object):
     
     def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params=DEFAULT_PARAMS):
         """Compute the eigenvalues for all weights of the NxM skipping layer, num evals ized weight matrices (N >= M), 
-            combined into a single, sorted, numpy array
+            combined into a single, sorted, numpy array.  
     
         see: combined_eigenvalues()
         
@@ -1298,17 +1343,8 @@ class WeightWatcher(object):
             for  W in Wmats:
     
                 M, N = np.min(W.shape), np.max(W.shape)
-    
                 Q = N / M
-                check, checkTF = self.glorot_norm_check(W, N, M, count) 
-    
-                # assume receptive field size is count
-                if glorot_fix:
-                    W = self.glorot_norm_fix(W, N, M, count)
-                elif conv2d_norm:
-                    # probably never needed since we always fix for glorot
-                    W = W * np.sqrt(count / 2.0) 
-                
+               
                 Wrand = W.flatten()
                 np.random.shuffle(Wrand)
                 W = Wrand.reshape(W.shape)
@@ -1319,10 +1355,7 @@ class WeightWatcher(object):
                 sv = np.sort(sv)[-n_comp:]    
                 
                 # sv = svd.singular_values_
-                evals = sv * sv
-                if normalize:
-                    evals = evals / N
-                 
+                evals = sv * sv 
                 all_evals.extend(evals)
                                        
         return np.sort(np.array(all_evals))
@@ -1469,7 +1502,6 @@ class WeightWatcher(object):
             logger.error("Can not find layer name {} in valid layer_names {}".format(layer, layer_names))
             return []
     
-        logger.info("Getting ESD for layer {} ".format(layer))
         logger.info("Getting ESD for layer {} ".format(layer))
 
         layer_iter = WWLayerIterator(model=model, filters=[layer], params=params)     

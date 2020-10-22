@@ -203,8 +203,6 @@ class Test_VGG11(unittest.TestCase):
 		"""Test that alphas are computed and values are within thresholds
 		"""
 		details = self.watcher.analyze(layers=[5], ww2x=True, randomize=False, plot=False, mp_fit=False)
-		print("test_compute_alphas:  details:")
-		print(details[['layer_id', 'alpha']])
 		#d = self.watcher.get_details(results=results)
 		a = details.alpha.to_numpy()
 		self.assertAlmostEqual(a[0],1.65014, places=4)
@@ -213,20 +211,12 @@ class Test_VGG11(unittest.TestCase):
  		
 		# spectral norm
 		a = details.spectral_norm.to_numpy()
-		print("------------FIX THIS--------------")
-		print(a[0], a[1], a[2])
-		#self.assertAlmostEqual(a[0],20.2149, places=4)
-		#self.assertAlmostEqual(a[1],24.8158, places=4)
-		#self.assertAlmostEqual(a[2],19.3795, places=4)
+		self.assertAlmostEqual(a[0],20.2149, places=4)
+		self.assertAlmostEqual(a[1],24.8158, places=4)
+		self.assertAlmostEqual(a[2],19.3795, places=4)
 		
 		
 
-# TODO: test the input option match older options and work properly
-# 
-# 	def test_normalize(self):
-# 		"""Test that weight matrices are normalized as expected
-# 		"""
-# 
 
 	def test_getESD(self):
 		"""Test that eigenvalues are available 

@@ -27,3 +27,4 @@ __all__ = ["__name__", "__version__", "__license__", "__description__",
 
 from .constants import *
 from .weightwatcher import WeightWatcher
+

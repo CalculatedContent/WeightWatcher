@@ -1577,23 +1577,27 @@ class WeightWatcher(object):
             fit_law = 'QC SSD'
             
             #Even if the quarter circle applies, still plot the MP_fit
-            plot_density(to_plot, s1, Q, method = "MP")
-            plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
-            plt.title("MP ESD, sigma auto-fit ")
-            plt.show()
+            if plot:
+                plot_density(to_plot, s1, Q, method = "MP")
+                plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
+                plt.title("MP ESD, sigma auto-fit ")
+                plt.show()
             
         else:
             fit_law = 'MP ESD'
 #        
+
         plot_density_and_fit(model=None, eigenvalues=to_plot, layer=layer_id,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot)
-        title = fit_law+" "+title+"\n Q={:0.3} ".format(Q)
-        title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
-        title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
-        title = title + r"$\#$ spikes={}".format(num_spikes)
-
-        plt.title(title)
-        plt.show()
+        
+        if plot:
+            title = fit_law+" "+title+"\n Q={:0.3} ".format(Q)
+            title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
+            title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
+            title = title + r"$\#$ spikes={}".format(num_spikes)
+    
+            plt.title(title)
+            plt.show()
             
         return num_spikes, sigma_mp, mp_softrank
 

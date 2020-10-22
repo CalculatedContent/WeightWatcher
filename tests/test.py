@@ -218,24 +218,16 @@ class Test_VGG11(unittest.TestCase):
 		#self.assertAlmostEqual(a[0],20.2149, places=4)
 		#self.assertAlmostEqual(a[1],24.8158, places=4)
 		#self.assertAlmostEqual(a[2],19.3795, places=4)
+		
+		
 
-
-# 	def test_compute_soft_rank(self):
-# 		"""Test that soft ranks are computed and values are within thresholds
-# 		"""
-# 
-# 	def test_weighted_alpha(self):
-# 		"""Test that weight alpha computed as expected and values are within thresholds
-# 		"""
-# 
-# 	def test_compound_averages(self):
-# 		"""Test that compound averagesa computed as expected and values are within thresholds
-# 		"""
+# TODO: test the input option match older options and work properly
 # 
 # 	def test_normalize(self):
 # 		"""Test that weight matrices are normalized as expected
 # 		"""
 # 
+
 	def test_getESD(self):
 		"""Test that eigenvalues are available 
 		"""
@@ -250,8 +242,8 @@ class Test_VGG11(unittest.TestCase):
  		
 		print("----test_density_fit-----")
 		print("PLOT STILL PLOTTING..FIX")
-		#details = self.watcher.analyze(layers = [10], randomize=False, plot=False, mp_fit=True)
-		#print(details)
+		details = self.watcher.analyze(layers = [10], randomize=False, plot=False, mp_fit=True)
+		print(details)
  
 		#df = df.reset_index()
 		#self.assertAlmostEqual(df.loc[0, 'sigma_mp'], 1.00, places=2) #sigma_mp

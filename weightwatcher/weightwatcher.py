@@ -509,11 +509,11 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {} type {} not supported".format(layer_id, name, the_type))
             return False
         
-        elif min_evals and M * rf < min_evals:
+        elif min_evals and M * rf <= min_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   
-        elif max_evals and N * rf > max_evals:
+        elif max_evals and N * rf >= max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         

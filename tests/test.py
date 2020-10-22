@@ -165,16 +165,21 @@ class Test_VGG11(unittest.TestCase):
 		print("test_min_matrix_shape")
 		details = self.watcher.describe(min_evals=30)
 		print(details)
-		
 
+		for nev in details.num_evals:
+			self.assertGreaterEqual(nev, 30)
+		
 
 	def test_max_matrix_shape(self):
 		"""Test that analyzes skips matrices larger than  MAX matrix shape
 		"""
 
 		print("test_max_matrix_shape")
-		details = self.watcher.describe(max_evals=100)
+		details = self.watcher.describe(max_evals=1000)
 		print(details)
+		
+		for nev in details.num_evals:
+			self.assertLessEqual(nev, 1000)
 		
 
 	def test_describe_model(self):
@@ -239,8 +244,6 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(len(esd), 576)
 
 
-
- 
 	def test_density_fit(self):
 		"""Test the fitted sigma from the density fit
 		"""

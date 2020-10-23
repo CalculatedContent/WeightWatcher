@@ -52,19 +52,37 @@ class Test_VGG11(unittest.TestCase):
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
 			
 			
-	def test_all_columns(self):
+	def test_analyze_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
 		"""
- 		
+	
 		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
- 
+
 		
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes".split(',')
 
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
- 
+		
+	def test_mp_fit_columns(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+		details = self.watcher.analyze(mp_fit=True)
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+
+		columns = ["num_spikes", "sigma_mp", "mp_softrank"]
+		
+		for key in columns:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+		
+		
+	#TODO: implement
+	def test_random_mp_fit_columns_(self):
+		"""N/A yet"""
+		self.assertTrue(True)
+		
  
 	def test_model_layer_types_ww2x(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
@@ -217,6 +235,25 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(a[2],19.3795, places=4)
 		
 		
+	def test_get_details(self):
+		"""Test that alphas are computed and values are within thresholds
+		"""
+		actual_details = self.watcher.analyze(layers=[5])
+		expected_details = self.watcher.get_details()
+		
+		self.assertEqual(actual_details, expected_details)
+		
+		
+	def test_get_summary(self):
+		"""Test that alphas are computed and values are within thresholds
+		"""
+		details = self.watcher.analyze(layers=[5])
+		returned_summary = self.watcher.get_summary(details)
+		
+		print(returned_summary)
+		
+		saved_summary = self.watcher.get_summary()
+		self.assertEqual(returned_summary, saved_summary)
 
 
 	def test_getESD(self):

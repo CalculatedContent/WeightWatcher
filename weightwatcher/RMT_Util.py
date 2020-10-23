@@ -136,11 +136,11 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer="",
     if Q == 1:
         to_fit = np.sqrt(eigenvalues)
         label = r"$\rho_{emp}(\nu)$"
-        title = " W{} SSD, QC Sigma={}" 
+        title = " W{} SSD, QC Sigma={:0.3}" 
     else:
         to_fit = eigenvalues
         label = r'$\rho_{emp}(\lambda)$'
-        title = " W{} ESD, MP Sigma={0,.3}f" 
+        title = " W{} ESD, MP Sigma={:0.3}f" 
         
     if plot:
         plt.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);

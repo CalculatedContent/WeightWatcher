@@ -557,6 +557,7 @@ class WeightWatcher(object):
 
     def __init__(self, model=None, log=True):
         self.model = self.load_model(model)
+        self.details = None
         # self.setup_custom_logger(log, logger)     
         logger.info(self.banner())
 
@@ -871,13 +872,14 @@ class WeightWatcher(object):
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
               
-        alpha, xmin, xmax, D, sigma = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, title="", sample=sample, sample_size=sample_size)
+        alpha, xmin, xmax, D, sigma, num_pl_spikes = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, title="", sample=sample, sample_size=sample_size)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
         ww_layer.add_column('xmax', xmax)
         ww_layer.add_column('D', D)
         ww_layer.add_column('sigma', sigma)
+        ww_layer.add_column('num_pl_spikes', num_pl_spikes)
 
         return ww_layer
 
@@ -987,7 +989,31 @@ class WeightWatcher(object):
                 # TODO: add find correlation traps here
                 details = details.append(ww_layer.get_row(), ignore_index=True)
 
+        self.details = details
         return details
+    
+    def get_details(self):
+        """get the current details, created by analyze"""
+        return self.details
+    
+    def get_summary(self, details):
+        """Return metric averages, as dict, if available """
+        
+        summary = {}
+        if details is None:
+            details = self.details
+        
+        columns = []  
+        if details is not None:
+             columns = details.columns
+            
+        metrics = ["log_norm","alpha","alpha_weighted","log_alpha_norm", "log_spectral_norm","stable_rank","mp_softrank"]
+        for metric in metrics:
+            if metric in columns:
+                summary[metric]=details[metric].mean()
+                
+        return summary
+
     
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
@@ -1273,6 +1299,7 @@ class WeightWatcher(object):
         sigma = fit.sigma
         xmin = fit.xmin
         xmax = fit.xmax
+        num_pl_spikes = len(evals[evals>=fit.xmin])
 
         if plot:
             fig2 = fit.plot_pdf(color='b', linewidth=2)
@@ -1313,7 +1340,7 @@ class WeightWatcher(object):
             plt.legend()
             plt.show() 
                           
-        return alpha, xmin, xmax, D, sigma
+        return alpha, xmin, xmax, D, sigma, num_pl_spikes
     
     
     def get_ESD(self, model=None, layer=None, params=DEFAULT_PARAMS):
@@ -1466,6 +1493,8 @@ class WeightWatcher(object):
             
         return num_spikes, sigma_mp, mp_softrank
 
+        
+        
         
         
 

@@ -966,7 +966,7 @@ class WeightWatcher(object):
            
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.debug("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 
                 self.apply_normalize_Wmats(ww_layer, params)
                 self.apply_esd(ww_layer, params)
@@ -975,13 +975,13 @@ class WeightWatcher(object):
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
                     if params['mp_fit']:
-                        logger.info("MP Fitting: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        logger.info("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
                     
                     if params['randomize'] or params['mp_fit']:
-                        logger.debug("Randomizing: {} {} ".format(ww_layer.layer_id, ww_layer.name))
+                        logger.info("Randomizing Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                         self.apply_random_esd(ww_layer, params)
-                        logger.debug("MP Fitting Random: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        logger.info("MP Fitting Random layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=True, params=params)
                     
                     self.apply_norm_metrics(ww_layer, params)
@@ -1206,7 +1206,7 @@ class WeightWatcher(object):
                 np.random.shuffle(Wrand)
                 W = Wrand.reshape(W.shape)
                 W = W.astype(float)
-                logger.info("Running Randomized Full SVD")
+                logger.debug("Running Randomized Full SVD")
                 sv = np.linalg.svd(W, compute_uv=False)
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]    
@@ -1265,7 +1265,7 @@ class WeightWatcher(object):
          """
              
         num_evals = len(evals)
-        logger.info("fitting power law on {} eigenvalues".format(num_evals))
+        logger.debug("fitting power law on {} eigenvalues".format(num_evals))
         
         # TODO: replace this with a robust sampler / stimator
         # requires a lot of refactoring below
@@ -1400,14 +1400,15 @@ class WeightWatcher(object):
         log_alpha_norm = np.log10(np.sum( [ ev**alpha for ev in evals]))
         
         stable_rank = norm / spectral_norm
-                     
-        ww_layer.add_column('norm', norm)
-        ww_layer.add_column('log_norm', log_norm)
-        ww_layer.add_column('spectral_norm', spectral_norm)
-        ww_layer.add_column('log_spectral_norm', log_spectral_norm)
-        ww_layer.add_column('alpha_weighted', alpha_weighted)
-        ww_layer.add_column('log_alpha_norm', log_alpha_norm)
-        ww_layer.add_column('stable_rank', stable_rank)
+                    
+        ww_layer.add_column(METRICS.NORM, norm)
+        ww_layer.add_column(METRICS.LOG_NORM, log_norm)
+        ww_layer.add_column(METRICS.SPECTRAL_NORM, spectral_norm)
+        ww_layer.add_column(METRICS.LOG_SPECTRAL_NORM, log_spectral_norm)
+        ww_layer.add_column(METRICS.ALPHA, alpha)
+        ww_layer.add_column(METRICS.ALPHA_WEIGHTED, alpha_weighted)
+        ww_layer.add_column(METRICS.LOG_ALPHA_NORM, log_alpha_norm)
+        ww_layer.add_column(METRICS.STABLE_RANK, stable_rank)
 
         return ww_layer
     
@@ -1440,7 +1441,7 @@ class WeightWatcher(object):
         else:
             ww_layer.add_column('num_spikes', num_spikes)
             ww_layer.add_column('sigma_mp', sigma_mp)
-            ww_layer.add_column('mp_softrank', mp_softrank)
+            ww_layer.add_column(METRICS.MP_SOFTRANK, mp_softrank)
             
         return 
 

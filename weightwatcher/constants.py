@@ -41,6 +41,20 @@ class PLOT(IntFlag):
     POWERLAW = auto()
     ESD = auto()
     ESDLOG = auto()
+    
+    
+class METRICS():
+    NORM = "norm"
+    LOG_NORM = "log_norm"
+    ALPHA = "alpha"
+    ALPHA_WEIGHTED = "alpha_weighted"
+    LOG_ALPHA_NORM = "log_alpha_norm"
+    SPECTRAL_NORM = "log_spectral_norm"
+    LOG_SPECTRAL_NORM = "log_spectral_norm"
+    STABLE_RANK = "stable_rank"
+    MP_SOFTRANK = "mp_softrank"
+
+
 
     
 class XMAX(IntFlag):

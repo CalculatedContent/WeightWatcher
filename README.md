@@ -112,7 +112,7 @@ details=watcher.analyze(layers=[ww.LAYER_TYPE.CONV2D])
 details=watcher.analyze(layers=[20])
 ```
 
-#### minimum, maximum nuymber of eigenvalues  of the layer weight matrix
+#### minimum, maximum number of eigenvalues  of the layer weight matrix
 
 Sets the minimum and maximum size of the weight matrices analyzed.
 Setting max is useful for a quick debugging.
@@ -123,8 +123,7 @@ details = watcher.analyze(min_evals=50, max_evals=500)
 
 #### plots (for each layer)
 
-Create log-log plots for each layer weight matrix to observe how well
-the power law fits work
+Create ESD plots for each layer weight matrix to observe how well the power law fits work
 
 ```python
 details = watcher.analyze(plot=True)
@@ -135,10 +134,19 @@ details = watcher.analyze(plot=True)
 The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
 This is good way to visualize the correlations in the true ESD.
 
-
 ```python
 details = watcher.analyze(randomize=True, plot=True)
 ```
+
+#### fit ESDs to a Marchenko-Pastur (MP) distrbution
+
+Attempts to the fit the ESD to an MP dist. and reports the num_spikes, mp_sigma, and mp_sofrank.
+Also works for randomized ESD
+
+```python
+details = watcher.analyze(mp_fit=True, plot=True)
+```
+
 
 #### get the ESD for a specific layer, for visualization or further analysis
 

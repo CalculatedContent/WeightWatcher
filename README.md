@@ -100,18 +100,16 @@ distances(model_1, model_2)
 ```python
 ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.DENSE
 ```
-
 as
 
 ```python
-results = watcher.analyze(layers=[ww.LAYER_TYPE.CONV2D])
+details=watcher.analyze(layers=[ww.LAYER_TYPE.CONV2D])
 
 ```
 
 #### filter by ids or name
-
 ```python
-results = watcher.analyze(layers=[20])
+details=watcher.analyze(layers=[20])
 ```
 
 #### minimum, maximum nuymber of eigenvalues  of the layer weight matrix

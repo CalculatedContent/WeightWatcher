@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import division, print_function
 
-__name__ = "WeightWatcher"
-__version__ = "0.2.7"
+__name__ = "weightwatcher"
+__version__ = "0.4.0"
 __license__ = "Apache License, Version 2.0"
 __description__ = "Analyze weight matrices of Deep Neural Networks"
 __url__ = "https://calculationconsulting.com/"
@@ -28,3 +27,4 @@ __all__ = ["__name__", "__version__", "__license__", "__description__",
 
 from .constants import *
 from .weightwatcher import WeightWatcher
+

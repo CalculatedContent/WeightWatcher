@@ -14,17 +14,55 @@
 
 from enum import IntFlag, auto, Enum
 
+
 class LAYER_TYPE(IntFlag):
+    UNKNOWN = auto()
     DENSE = auto()
     CONV1D = auto()
     CONV2D = auto()
+    FLATTENED = auto()
+    EMBEDDING = auto()
+    NORM = auto()
 
+    
+class FRAMEWORK(IntFlag):
+    UNKNOWN = auto()
+    PYTORCH = auto()
+    KERAS = auto()
+    
+
+class CHANNELS(IntFlag):
+    UNKNOWN = auto()
+    FIRST = auto()
+    LAST = auto()
+
+    
 class PLOT(IntFlag):
     POWERLAW = auto()
     ESD = auto()
     ESDLOG = auto()
+    
+    
+class METRICS():
+    NORM = "norm"
+    LOG_NORM = "log_norm"
+    ALPHA = "alpha"
+    ALPHA_WEIGHTED = "alpha_weighted"
+    LOG_ALPHA_NORM = "log_alpha_norm"
+    SPECTRAL_NORM = "spectral_norm"
+    LOG_SPECTRAL_NORM = "log_spectral_norm"
+    STABLE_RANK = "stable_rank"
+    MP_SOFTRANK = "mp_softrank"
 
-class LEVEL(Enum):
-    SLICE = auto()
-    LAYER = auto()
-    NETWORK = auto()
+
+
+    
+class XMAX(IntFlag):
+    UNKNOWN = auto()
+    AUTO = auto()
+    PEAK = auto()
+
+
+class XMIN(IntFlag):
+    UNKNOWN = auto()
+    AUTO = auto()

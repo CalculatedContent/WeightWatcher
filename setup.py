@@ -1,7 +1,6 @@
 from setuptools import setup
 import weightwatcher as ww
 
-
 #try:
 #    import pypandoc
 #    readme = pypandoc.convert('README.md', 'rst')
@@ -35,12 +34,11 @@ setup(
     packages = ["weightwatcher"],
     include_package_data = True,
     test_suite = 'tests',
-    python_requires = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
+    python_requires = ">= 3.3.*",
     install_requires = ['numpy',
                         'matplotlib',
                         'powerlaw',
                         'tensorflow',
-                        'keras',
                         'sklearn',
                         'pandas'],
     entry_points = '''
@@ -56,13 +54,7 @@ setup(
         "Operating System :: OS Independent",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
     ],
-    keywords = "Deep Learning Keras Tensorflow pytorch CNN DNN Neural Networks",
+    keywords = "Deep Learning Keras Tensorflow pytorch Deep Learning DNN Neural Networks",
 )

@@ -102,7 +102,6 @@ twine==3.1.1
 urllib3==1.25.7
 wcwidth==0.1.7
 webencodings==0.5.1
-WeightWatcher==0.2.5
 Werkzeug==0.16.0
 widgetsnbextension==3.5.1
 wrapt==1.11.2

@@ -133,6 +133,27 @@ watcher.analyze()
 esd = watcher.get_ESD()
 ```
 
+#### describe a model 
+Describe a model and report the details dataframe, without analyzing it
+
+```python
+details = watcher.describe(model=model)
+```
+
+#### get summary
+Get the average metrics, as a summary (dict), from the given (or current) details dataframe
+
+```python
+details = watcher.analyze(model=model)
+summary = watcher.get_summary(model)
+```
+or just
+```python
+watcher.analyze()
+summary = watcher.get_summary()
+```
+
+
 #### compare 2 models 
 The new distances method reports the distances between 2 models, such as the norm between the  initial weight matrices and the final, trained weight matrices
 

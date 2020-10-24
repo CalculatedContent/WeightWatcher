@@ -140,13 +140,19 @@ details = watcher.analyze(randomize=True, plot=True)
 
 #### fit ESDs to a Marchenko-Pastur (MP) distrbution
 
-Attempts to the fit the ESD to an MP dist. and reports the num_spikes, mp_sigma, and mp_sofrank.
-Also works for randomized ESD
+Attempts to the fit the ESD to an MP dist.
 
 ```python
 details = watcher.analyze(mp_fit=True, plot=True)
 ```
-
+and reports the 
+```python
+num_spikes, mp_sigma, and mp_sofrank.
+```
+Also works for randomized ESD and reports
+```python
+rand_num_spikes, rand_mp_sigma, and rand_mp_sofrank.
+```
 
 #### get the ESD for a specific layer, for visualization or further analysis
 

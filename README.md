@@ -90,7 +90,7 @@ describe(self, model=None, layers=[], min_evals=0, max_evals=None,
          plot=True, randomize=True, mp_fit=True, ww2x=False):
 ...
 get_details()
-get_summary(details)
+get_summary(details) or get_summary()
 get_ESD()
 ...
 distances(self, model_1, model_2)

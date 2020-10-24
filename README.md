@@ -58,6 +58,9 @@ summary = watcher.get_summary(details)
 ```
 
 It is as easy to run and generates a pandas dataframe with details (and plots) for each layer
+
+![Sample Details Dataframe](sample-ww-details.png)
+
 and summary dict of generalization metrics
 
 ```python

@@ -129,7 +129,7 @@ Create ESD plots for each layer weight matrix to observe how well the power law 
 details = watcher.analyze(plot=True)
 ```
 
-#### compare to randomized layer
+#### compare layer ESD to randomized W matrix
 
 The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
 This is good way to visualize the correlations in the true ESD.
@@ -147,11 +147,11 @@ details = watcher.analyze(mp_fit=True, plot=True)
 ```
 and reports the 
 ```python
-num_spikes, mp_sigma, and mp_sofrank.
+num_spikes, mp_sigma, and mp_sofrank
 ```
 Also works for randomized ESD and reports
 ```python
-rand_num_spikes, rand_mp_sigma, and rand_mp_sofrank.
+rand_num_spikes, rand_mp_sigma, and rand_mp_sofrank
 ```
 
 #### get the ESD for a specific layer, for visualization or further analysis

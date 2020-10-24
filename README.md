@@ -2,9 +2,7 @@
 
 ## Weight Watcher  
 
-### the Stat Mech Edition
-
-Current Version: 0.2.7
+### Current Version: 0.4
 
 **Weight Watcher** analyzes the Fat Tails in the  weight matrices of Deep Neural Networks (DNNs).
 
@@ -18,12 +16,15 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 
 
 ### Types of Capacity Metrics:
-There are 2 metrics availabe. The average **log Norm**, which is much faster but less accurate.
-The average **weighted alpha** is more accurate but much slower because it needs to both compute the SVD of the layer weight matrices, and thenaa
-fit the singluar/eigenvalues to a power law.
+There are 2 general types metrics availabe. 
 
-- log Norm (default, fast, less accurate)
-- weighted alpaha (slow, more accurate)
+- alpha (the average power law exponent)
+- weighted alpha / log_alpha-Norm (scale adjusted alpha metrics)
+
+
+The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth.  
+The average **weighted alpha** is suitable for DNNs of differing depths.
+
 
 Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
@@ -67,9 +68,8 @@ watcher.print_results()
 The analyze function has several features described below
 
 ```python
-def analyze(self, model=None, layers=[], min_size=50, max_size=0,
-                compute_alphas=False, compute_lognorms=True,
-                plot=False):
+def analyze(self, model=None, layers=[], min_evals=0, max_evals=0,
+                plot=True, randomize=True, mp_fit=True):
 ...
 ```
 
@@ -85,55 +85,45 @@ import torchvision.models as models
 
 model = models.vgg19_bn(pretrained=True)
 watcher = ww.WeightWatcher(model=model)
-results = watcher.analyze(alphas=True)
-data.append({"name": "vgg19bntorch", "summary": watcher.get_summary()})
-
-
-### data:
-{'name': 'vgg19bntorch',
-  'summary': {'lognorm': 0.81850576,
-   'lognorm_compound': 0.9365272010550088,
-   'alpha': 2.9646726379493287,
-   'alpha_compound': 2.847975521455623,
-   'alpha_weighted': 1.1588882728052485,
-   'alpha_weighted_compound': 1.5002343912892515}},
+details = watcher.analyze()
+summary = watcher.get_summary(details)
 ```
 
+It is as easy to run and generates a pandas dataframe with details (and plots) for each layer
+and summary dict of generalization metrics
 
-#### Capacity Metrics (evarages over all layers):
-- lognorm:  average log norm, fast
-- alpha_weight:  average weighted alpha, slow
+```python
+    {'log_norm': 2.11,
+      'alpha': 3.06,
+      'alpha_weighted': 2.78,
+      'log_alpha_norm': 3.21,
+      'log_spectral_norm': 0.89,
+      'stable_rank': 20.90,
+      'mp_softrank': 0.52}]
+```
 
-- alpha:  average alpha, not weighted  (slow, not as useful)
+Options include:
 
-Compound averages: 
-
-  Same as above, but averages are computed slightly differently. This will be desrcibed in an upcoming paper.
-
-Results are also provided for every layer; see [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
-
-### Additional options
- 
 #### filter by layer types 
 
 ```python
-results = watcher.analyze(layers=ww.LAYER_TYPE.CONV1D|ww.LAYER_TYPE.DENSE)
+results = watcher.analyze(layers=[ww.LAYER_TYPE.CONV2D])
 
 ```
 
-#### filter by ids
+#### filter by ids or name
 
 ```python
 results = watcher.analyze(layers=[20])
 ```
 
-#### minimum, maximum size of weight matrix
+#### minimum, maximum nuymber of eigenvalues  of the layer weight matrix
 
 Sets the minimum and maximum size of the weight matrices analyzed.
 Setting max is useful for a quick debugging.
 
 ```python
-results = watcher.analyze(min_size=50, max_size=500)
+details = watcher.analyze(min_evals=50, max_evals=500)
 ```
 
 #### plots (for weight_alpha=True)
@@ -142,11 +132,8 @@ Create log-log plots for each layer weight matrix to observe how well
 the power law fits work
 
 ```python
-results = watcher.analyze(compute_alphas=True, plot=True)
+details = watcher.analyze(plot=True)
 ```
-
-
-## Links
 
 [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
 
@@ -154,34 +141,49 @@ results = watcher.analyze(compute_alphas=True, plot=True)
 
 [Calculated Content Blog](https://calculatedcontent.com)
 
----
-
-[Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
-
-[Traditional and Heavy Tailed Self Regularization in Neural Network Models](https://arxiv.org/abs/1901.08276)
-
-Notebook for above 2 papers (https://github.com/CalculatedContent/ImplicitSelfRegularization)
-
-[Recent talk (presented at NERSC Summer 2018)](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
 
 ---
+This tool is based on state-of-the-art research done in collaboration with UC Berkeley:
 
-[Heavy-Tailed Universality Predicts Trends in Test Accuracies for Very Large Pre-Trained Deep Neural Networks](https://arxiv.org/abs/1901.08278)
 
-Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
+- [Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
 
-[Latest Talk (presented at UC Berkeley/ICSI 12/13/2018)](https://www.youtube.com/watch?v=6Zgul4oygMc)
+- [Traditional and Heavy Tailed Self Regularization in Neural Network Models](https://arxiv.org/abs/1901.08276)
 
-[ICML 2019 Theoretical Physics Workshop Paper](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/ICMLPhysicsWorkshop/icml_prl_TPDLW2019_fin.pdf)
+  - Notebook for above 2 papers (https://github.com/CalculatedContent/ImplicitSelfRegularization)
+
+- [ICML 2019 Theoretical Physics Workshop Paper](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/ICMLPhysicsWorkshop/icml_prl_TPDLW2019_fin.pdf)
+
+- [Heavy-Tailed Universality Predicts Trends in Test Accuracies for Very Large Pre-Trained Deep Neural Networks](https://arxiv.org/abs/1901.08278)
+
+  - Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
+
 
 ---
+and has been presented at Stanford, UC Berkeley, etc:
 
-[KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
-Knowledge from Production-Scale Neural Networks](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)  (slides only, video coming soon)
+- [NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
+- [UC Berkeley/ICSI 12/13/2018](https://www.youtube.com/watch?v=6Zgul4oygMc)
 
-[Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
+- [Institute for Pure & Applied Mathematics (IPAM)](https://www.youtube.com/watch?v=fmVuNRKsQa8)
+- [Physics Informed Machine Learning](https://www.youtube.com/watch?v=eXhwLtjtUsI)
 
-[Aggregate Intellect Podcast](https://aisc.ai.science/events/2019-11-06)
+---
+and major AI  conferences like ICML, KDD, etc.
+
+- [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)   
+
+- [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)
+---
+
+and has been the subject  many popular podcasts
+
+- [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
+
+- [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
+
+- [Aggregate Intellect Podcast](https://aisc.ai.science/events/2019-11-06)
+
 
 ---
 

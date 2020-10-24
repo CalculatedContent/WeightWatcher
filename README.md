@@ -72,7 +72,7 @@ def analyze(self, model=None, layers=[], min_evals=0, max_evals=0,
 and in the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
 
 
-### weighted alpha (SLOW)
+### Example using VGG19 BN
 Power Law fit, here with pyTorch example
 
 ```python

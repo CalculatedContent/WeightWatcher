@@ -16,14 +16,12 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 
 
 ### Types of Capacity Metrics:
-There are 2 general types metrics availabe. 
+There are 2 basic types metrics we use
 
 - alpha (the average power law exponent)
-- weighted alpha / log_alpha-Norm (scale adjusted alpha metrics)
+- weighted alpha / log_alpha_norm (scale adjusted alpha metrics)
 
-
-The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth.  
-The average **weighted alpha** is suitable for DNNs of differing depths.
+The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing depths.
 
 
 Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.

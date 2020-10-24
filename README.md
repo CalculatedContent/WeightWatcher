@@ -31,15 +31,14 @@ Notice: we *did not peek* at the ImageNet test data to build this plot.
 
 ### Frameworks supported
 
-- Keras
+- Tensorflow 2.x / Keras
 - PyTorch
-
+- HuggingFace 
 
 ### Layers supported 
 
 - Dense / Linear / Fully Connected (and Conv1D)
 - Conv2D
-
 
 
 ## Installation
@@ -54,11 +53,10 @@ Weight Watcher works with both Keras and pyTorch models.
 
 ```python
 import weightwatcher as ww
-watcher = ww.WeightWatcher(model=model)
-results = watcher.analyze()
 
-watcher.get_summary()
-watcher.print_results()
+watcher = ww.WeightWatcher(model=model)
+details = watcher.analyze()
+watcher.get_summary(details)
 ```
 
 ## Advanced Usage 

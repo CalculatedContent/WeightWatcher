@@ -80,19 +80,20 @@ and will be made available shortly in a [Jupyter book](https://charlesmartin14.g
 
 ## Advanced Usage 
 
-The analyze function has several features described below
+The watcher object has several functions and analyze features described below
 
 ```python
-def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
-                plot=True, randomize=True, mp_fit=True, ww2x=False):
+analyze( model=None, layers=[], min_evals=0, max_evals=None,
+	 plot=True, randomize=True, mp_fit=True, ww2x=False):
 ...
-def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
-                plot=True, randomize=True, mp_fit=True, ww2x=False):
+describe(self, model=None, layers=[], min_evals=0, max_evals=None,
+         plot=True, randomize=True, mp_fit=True, ww2x=False):
 ...
-def get-details(self)
-def get_summary(self, details)
+get_details()
+et_summary(details)
+get_ESD()
 ...
-def distances(self, model_1, model_2)
+distances(self, model_1, model_2)
 
 
 ```

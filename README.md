@@ -14,7 +14,6 @@ This relies upon recent research into the [Heavy (Fat) Tailed Self Regularizatio
 The tool lets one compute a averager capacity, or quality, metric for a series of  DNNs, trained on the same data, but with different hyperparameters, or even different but related architectures. For example, it can predict that VGG19_BN generalizes better than VGG19, and better than VGG16_BN, VGG16, etc.  
 
 
-
 ### Types of Capacity Metrics:
 There are 2 basic types metrics we use
 
@@ -22,7 +21,6 @@ There are 2 basic types metrics we use
 - weighted alpha / log_alpha_norm (scale adjusted alpha metrics)
 
 The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing depths.
-
 
 Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
@@ -48,13 +46,6 @@ pip install weightwatcher
 ```
 
 ## Usage
-
-
-
-
-
-### Example using VGG19 BN
-Power Law fit, here with pyTorch example
 
 ```python
 import weightwatcher as ww
@@ -116,7 +107,7 @@ Setting max is useful for a quick debugging.
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
 
-#### plots (for weight_alpha=True)
+#### plots (for each layer)
 
 Create log-log plots for each layer weight matrix to observe how well
 the power law fits work
@@ -124,6 +115,42 @@ the power law fits work
 ```python
 details = watcher.analyze(plot=True)
 ```
+
+#### compare to randomized layer
+
+The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
+This is good way to visualize the correlations in the true ESD.
+
+
+```python
+details = watcher.analyze(randomize=True, plot=True)
+```
+
+#### get the ESD for a specific layer, for visualization or further analysis
+
+```python
+watcher.analyze()
+esd = watcher.get_ESD()
+```
+
+#### compare 2 models 
+The new distances method reports the distances between 2 models, such as the norm between the  initial weight matrices and the final, trained weight matrices
+
+```python
+details = watcher.distances(initial_model, trained_model)
+```
+
+#### compatability with version 0.2x
+
+The new 0.4 version of weightwatcher treats each layer as a single, unified set of eigenvalues.
+In contrast, the 0.2x versions split the Conv2D layers into n slices, 1 for each receptive field.
+The ww2x option provides results which are back-compatable with the 0.2x version of weightwatcher,
+with details provide for each slice for each layer.
+
+```python
+details = watcher.analyze(ww2x=True)
+```
+
 
 [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
 

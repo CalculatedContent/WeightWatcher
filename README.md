@@ -93,9 +93,7 @@ get_details()
 get_summary(details) or get_summary()
 get_ESD()
 ...
-distances(self, model_1, model_2)
-
-
+distances(model_1, model_2)
 ```
 
 #### filter by layer types 

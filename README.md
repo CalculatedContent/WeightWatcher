@@ -49,27 +49,8 @@ pip install weightwatcher
 
 ## Usage
 
-Weight Watcher works with both Keras and pyTorch models.
 
-```python
-import weightwatcher as ww
 
-watcher = ww.WeightWatcher(model=model)
-details = watcher.analyze()
-summary = watcher.get_summary(details)
-```
-
-## Advanced Usage 
-
-The analyze function has several features described below
-
-```python
-def analyze(self, model=None, layers=[], min_evals=0, max_evals=0,
-                plot=True, randomize=True, mp_fit=True):
-...
-```
-
-and in the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
 
 
 ### Example using VGG19 BN
@@ -98,7 +79,20 @@ and summary dict of generalization metrics
       'mp_softrank': 0.52}]
 ```
 
-Options include:
+
+More examples are include the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
+
+and will be made available shortly in a [Jupyter book](https://charlesmartin14.github.io/weightwatcher-book/intro.html)
+
+## Advanced Usage 
+
+The analyze function has several features described below
+
+```python
+def analyze(self, model=None, layers=[], min_evals=0, max_evals=0,
+                plot=True, randomize=True, mp_fit=True):
+...
+```
 
 #### filter by layer types 
 

@@ -4,6 +4,8 @@ import sys
 import pickle, time
 from copy import deepcopy
 from shutil import copy
+import warnings
+
 
 import numpy as np
 import matplotlib
@@ -369,7 +371,6 @@ def best_dist(fit):
 #### Using Kernel Density Estimator
 
 
-import warnings
 
 
 def marchenko_pastur_fun(x, Q, sigma=1):

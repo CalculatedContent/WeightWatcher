@@ -97,6 +97,11 @@ distances(model_1, model_2)
 ```
 
 #### filter by layer types 
+```python
+ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.DENSE
+```
+
+as
 
 ```python
 results = watcher.analyze(layers=[ww.LAYER_TYPE.CONV2D])

@@ -996,7 +996,7 @@ class WeightWatcher(object):
         """get the current details, created by analyze"""
         return self.details
     
-    def get_summary(self, details):
+    def get_summary(self, details=None):
         """Return metric averages, as dict, if available """
         
         summary = {}

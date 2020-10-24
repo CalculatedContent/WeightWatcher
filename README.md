@@ -56,7 +56,7 @@ import weightwatcher as ww
 
 watcher = ww.WeightWatcher(model=model)
 details = watcher.analyze()
-watcher.get_summary(details)
+summary = watcher.get_summary(details)
 ```
 
 ## Advanced Usage 

@@ -49,7 +49,7 @@ class METRICS():
     ALPHA = "alpha"
     ALPHA_WEIGHTED = "alpha_weighted"
     LOG_ALPHA_NORM = "log_alpha_norm"
-    SPECTRAL_NORM = "log_spectral_norm"
+    SPECTRAL_NORM = "spectral_norm"
     LOG_SPECTRAL_NORM = "log_spectral_norm"
     STABLE_RANK = "stable_rank"
     MP_SOFTRANK = "mp_softrank"

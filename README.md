@@ -224,7 +224,6 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
   - Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
 
-
 ---
 and has been presented at Stanford, UC Berkeley, etc:
 
@@ -241,19 +240,34 @@ and major AI  conferences like ICML, KDD, etc.
 
 - [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)
 ---
+#### KDD2019 Workshop
 
 and has been the subject  many popular podcasts
 
 - [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
 
 - [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
+=======
+[KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
+Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
+
+[KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+
+----
 
 - [Aggregate Intellect Podcast](https://aisc.ai.science/events/2019-11-06)
 
 
 ---
+#### Latest paper and results
 
-## Release
+[Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
+
+[Repo for latest paper](https://github.com/CalculatedContent/ww-trends-2020)
+
+[Talk on latest results, Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
+
+## How to Release
 
 Publishing to the PyPI repository:
 
@@ -279,6 +293,12 @@ twine upload dist/*
 ## License
 
 [Apache License 2.0](LICENSE.txt)
+
+## Slack Channel
+
+We have a slack channel for the tool if you need help
+For an invite, please send an email to charles@calculationconsulting.com
+
 
 #### Contributors
 

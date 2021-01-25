@@ -255,7 +255,9 @@ Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1
 
 ----
 
-- [Aggregate Intellect Podcast](https://aisc.ai.science/events/2019-11-06)
+- [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
+
+- [Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
 
 
 ---

@@ -228,15 +228,15 @@ twine upload dist/*
 # 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
 ```
 
-## License
+### License
 
 [Apache License 2.0](LICENSE.txt)
 
 
-
-
-
 ---
+
+### Academic Presentations and Media Appearances
+
 This tool is based on state-of-the-art research done in collaboration with UC Berkeley:
 
 

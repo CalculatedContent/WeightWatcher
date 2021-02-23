@@ -271,18 +271,18 @@ and major AI  conferences like ICML, KDD, etc.
 
 #### KDD2019 Workshop
 
-and has been the subject  many popular podcasts
-
-- [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
-
-- [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
-=======
 [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
 Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
 
 [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
 
-----
+#### Popular Popdcasts ands Blogs
+
+and has been the subject  many popular podcasts
+
+- [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
+
+- [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
 
 - [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
 

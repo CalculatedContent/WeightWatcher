@@ -267,7 +267,8 @@ and major AI  conferences like ICML, KDD, etc.
 - [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)   
 
 - [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)
----
+
+
 #### KDD2019 Workshop
 
 and has been the subject  many popular podcasts

@@ -201,14 +201,42 @@ details = watcher.analyze(ww2x=True)
 ```
 
 
+
 [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
 
-[Calculation Consulting homepage](https://calculationconsulting.com)
 
-[Calculated Content Blog](https://calculatedcontent.com)
+## How to Release
+
+Publishing to the PyPI repository:
+
+```sh
+# 1. Check in the latest code with the correct revision number (__version__ in __init__.py)
+vi weightwatcher/__init__.py # Increse release number, remove -dev to revision number
+git commit
+# 2. Check out latest version from the repo in a fresh directory
+cd ~/temp/
+git clone https://github.com/CalculatedContent/WeightWatcher
+cd WeightWatcher/
+# 3. Use the latest version of the tools
+python -m pip install --upgrade setuptools wheel twine
+# 4. Create the package
+python setup.py sdist bdist_wheel
+# 5. Test the package
+twine check dist/*
+# 6. Upload the package to PyPI
+twine upload dist/*
+# 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
+```
+
+### License
+
+[Apache License 2.0](LICENSE.txt)
 
 
 ---
+
+### Academic Presentations and Media Appearances
+
 This tool is based on state-of-the-art research done in collaboration with UC Berkeley:
 
 
@@ -239,24 +267,28 @@ and major AI  conferences like ICML, KDD, etc.
 - [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)   
 
 - [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)
----
+
+
 #### KDD2019 Workshop
+
+[KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
+Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
+
+[KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+
+#### Popular Popdcasts ands Blogs
 
 and has been the subject  many popular podcasts
 
 - [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
 
 - [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
-=======
-[KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
-Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
 
-[KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+- [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
 
-----
+- [Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
 
-- [Aggregate Intellect Podcast](https://aisc.ai.science/events/2019-11-06)
-
+- [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 
 ---
 #### Latest paper and results
@@ -267,32 +299,6 @@ Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1
 
 [Talk on latest results, Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
 
-## How to Release
-
-Publishing to the PyPI repository:
-
-```sh
-# 1. Check in the latest code with the correct revision number (__version__ in __init__.py)
-vi weightwatcher/__init__.py # Increse release number, remove -dev to revision number
-git commit
-# 2. Check out latest version from the repo in a fresh directory
-cd ~/temp/
-git clone https://github.com/CalculatedContent/WeightWatcher
-cd WeightWatcher/
-# 3. Use the latest version of the tools
-python -m pip install --upgrade setuptools wheel twine
-# 4. Create the package
-python setup.py sdist bdist_wheel
-# 5. Test the package
-twine check dist/*
-# 6. Upload the package to PyPI
-twine upload dist/*
-# 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
-```
-
-## License
-
-[Apache License 2.0](LICENSE.txt)
 
 ## Slack Channel
 
@@ -306,3 +312,9 @@ For an invite, please send an email to charles@calculationconsulting.com
 [Calculation Consulting](https://calculationconsulting.com)
 
 [Serena Peng](https://www.linkedin.com/in/serenapeng)
+
+#### Consulting Practice
+
+[Calculation Consulting homepage](https://calculationconsulting.com)
+
+[Calculated Content Blog](https://calculatedcontent.com)

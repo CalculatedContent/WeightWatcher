@@ -293,11 +293,11 @@ and has been the subject  many popular podcasts
 ---
 #### Latest paper and results
 
+[Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
+
 [Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
 
-[Repo for latest paper](https://github.com/CalculatedContent/ww-trends-2020)
-
-[Talk on latest results, Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
+[Repo for latest paper, published in Nature Communications](https://github.com/CalculatedContent/ww-trends-2021)
 
 #### 2021 Short Presentations
 

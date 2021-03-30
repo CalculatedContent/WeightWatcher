@@ -34,14 +34,10 @@ import torch.nn as nn
 # building on the commend line
 # see: https://stackoverflow.com/questions/14132789/relative-imports-for-the-billionth-time
 #
-if __package__ is None or __package__ == '':
-    # uses current directory visibility
-    from RMT_Util import *
-    from constants import *
-else:
-    # uses current package visibility
-    from .RMT_Util import *
-    from .constants import *
+
+from .RMT_Util import *
+from .constants import *
+
 
 # TODO:  allow configuring custom logging
 import logging
@@ -51,9 +47,9 @@ logger = logging.getLogger('weightwatcher')  # ww.__name__
 mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
 
-MAX_NUM_EVALS = 1000
+MAX_NUM_EVALS = 50000
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True}
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False}
     
 
 def main():
@@ -496,6 +492,8 @@ class WWLayerIterator(ModelIterator):
         
         min_evals = self.params.get('min_evals')
         max_evals = self.params.get('max_evals')
+
+        ww2x = self.params.get('ww2x')
         
         logger.debug("layer_supported  N {} max evals {}".format(N, max_evals))
         
@@ -514,11 +512,20 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {} type {} not supported".format(layer_id, name, the_type))
             return False
         
-        elif min_evals and M * rf <= min_evals:
+        
+        elif ww2x and min_evals and M  <  min_evals:
+            logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M, min_evals))
+            return False
+                  
+        elif ww2x and max_evals and N  >  max_evals:
+            logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N, max_evals))
+            return False
+
+        elif (not ww2x) and min_evals and M * rf < min_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   
-        elif max_evals and N * rf >= max_evals:
+        elif (not ww2x) and max_evals and N * rf > max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         
@@ -871,8 +878,11 @@ class WeightWatcher(object):
         plot = params['plot']
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
+        savefig = params['savefig']
               
-        alpha, xmin, xmax, D, sigma, num_pl_spikes = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, title="", sample=sample, sample_size=sample_size)
+        layer_name = "Layer {}".format(layer_id)
+        alpha, xmin, xmax, D, sigma, num_pl_spikes = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, \
+                                                                           sample=sample, sample_size=sample_size, savefig=savefig)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -886,8 +896,8 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, randomize=False, 
-                mp_fit=False, conv2d_fft=False,conv2d_norm=True, fit_bulk=False, ww2x=False):#, params=DEFAULT_PARAMS):
+                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True, fit_bulk=False, ww2x=False):
         """
         Analyze the weight matrices of a model.
 
@@ -919,11 +929,13 @@ class WeightWatcher(object):
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
         conv2d_fft:
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
-            Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max
+            Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max  N/A yet
         fit_bulk: 
             Attempt to fit bulk region of ESD only  N/A yet
         ww2x:
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
+        savefig: 
+            Save the figures generated in png files.  Default: False
         device: N/A yet
             if 'gpu'  use torch.svd()
             else 'cpu' use np.linalg.svd
@@ -950,6 +962,7 @@ class WeightWatcher(object):
         params['glorot_fix'] = glorot_fix
         params['conv2d_norm'] = conv2d_norm
         params['ww2x'] = ww2x
+        params['savefig'] = savefig
 
             
         logger.info("params {}".format(params))
@@ -1018,8 +1031,8 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, mp_fit=False, conv2d_fft=False,
-                conv2d_norm=True, fit_bulk=False,  ww2x=False):
+                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True, fit_bulk=False, ww2x=False):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1029,14 +1042,20 @@ class WeightWatcher(object):
         
         if min_size or max_size:
             logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
-        
+
         params = DEFAULT_PARAMS
-        params['min_evals'] = min_evals
+        params['min_evals'] = min_evals 
         params['max_evals'] = max_evals
         params['plot'] = plot
+        params['randomize'] = randomize
+        params['mp_fit'] = mp_fit
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
-        params['conv2d_norm'] = conv2d_norm 
+        params['conv2d_norm'] = conv2d_norm
+        params['ww2x'] = ww2x
+        params['savefig'] = savefig
+
+
             
         logger.info("params {}".format(params))
         if not self.valid_params(params):
@@ -1055,7 +1074,11 @@ class WeightWatcher(object):
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
-                ww_layer.add_column('num_evals', ww_layer.M * ww_layer.rf)
+                if ww2x:
+                    ww_layer.add_column('num_evals', ww_layer.M)
+                else:
+                    ww_layer.add_column('num_evals', ww_layer.M * ww_layer.rf)
+
                 details = details.append(ww_layer.get_row(), ignore_index=True)
 
         return details
@@ -1220,6 +1243,8 @@ class WeightWatcher(object):
     def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
+        savefig = params['savefig']
+
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
         title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
@@ -1234,6 +1259,8 @@ class WeightWatcher(object):
         plt.title(title)   
         plt.xlabel(r" Eigenvalues $(\lambda)$")               
         plt.legend()
+        if savefig:
+            plt.savefig("ww.randesd.1.png")
         plt.show()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1243,6 +1270,8 @@ class WeightWatcher(object):
         plt.title(title)   
         plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         plt.legend()
+        if savefig:
+            plt.savefig("ww.randesd.2.png")
         plt.show()
         
     # Mmybe should be static function    
@@ -1253,7 +1282,7 @@ class WeightWatcher(object):
         tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
         return np.count_nonzero(sv > tolerance, axis=-1)
             
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, title="", sample=False, sample_size=None):
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", sample=False, sample_size=None, savefig=False):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1302,42 +1331,57 @@ class WeightWatcher(object):
         num_pl_spikes = len(evals[evals>=fit.xmin])
 
         if plot:
-            fig2 = fit.plot_pdf(color='b', linewidth=2)
-            fit.power_law.plot_pdf(color='b', linestyle='--', ax=fig2)
-            fit.plot_ccdf(color='r', linewidth=2, ax=fig2)
-            fit.power_law.plot_ccdf(color='r', linestyle='--', ax=fig2)
+            fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
+            plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin)
+            fig2 = fit.plot_pdf(color='r', linewidth=2)
+            fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
         
-            title = "Power law fit for {}\n".format(title) 
-            title = title + r"$\alpha$={0:.3f}; ".format(alpha) + r"KS_distance={0:.3f}".format(D) + "\n"
+            title = "Log-Log ESD for {}\n".format(layer_name) 
+            title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \
+                r'$D_{KS}=$'+"{0:.3f}; ".format(D) + \
+                r"$\lambda_{min}=$"+"{0:.3f}".format(xmin) + "\n"
+
             plt.title(title)
+            plt.legend()
+            if savefig:
+                plt.savefig("ww.esd1.png")
             plt.show()
     
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
             plt.hist(evals, bins=num_bins, density=True)
-            plt.title(r"ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
-            plt.axvline(x=fit.xmin, color='red', label='xmin')
+            title = "Lin-Lin ESD for {}".format(layer_name) 
+            plt.title(title)
+            plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             plt.legend()
+            if savefig:
+                plt.savefig("ww.esd2.png")
             plt.show()
 
             # plot log eigenvalue histogram
             nonzero_evals = evals[evals > 0.0]
             plt.hist(np.log10(nonzero_evals), bins=100, density=True)
-            plt.title(r"Log10 ESD (Empirical Spectral Density) $\rho(\lambda)$" + "\nfor {} ".format(title))                  
-            plt.axvline(x=np.log10(fit.xmin), color='red')
-            plt.axvline(x=np.log10(fit.xmax), color='orange', label='xmax')
+            title = "Log-Lin ESD for {}".format(layer_name) 
+            plt.title(title)
+            plt.axvline(x=np.log10(fit.xmin), color='red', label=r'$\lambda_{xmin}$')
+            plt.axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
             plt.legend()
+            if savefig:
+                plt.savefig("ww.esd3.png")
             plt.show()
     
             # plot xmins vs D
             
-            plt.plot(fit.xmins, fit.Ds, label=r'$D$')
-            plt.axvline(x=fit.xmin, color='red', label='xmin')
-            plt.plot(fit.xmins, fit.sigmas / fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
+            plt.plot(fit.xmins, fit.Ds, label=r'$D_{KS}$')
+            plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
+            #plt.plot(fit.xmins, fit.sigmas / fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
             plt.xlabel(r'$x_{min}$')
-            plt.ylabel(r'$D,\sigma,\alpha$')
-            plt.title("current xmin={:0.3}".format(fit.xmin))
+            plt.ylabel(r'$D_{KS}$')
+            title = r'$D_{KS}$' + ' vs.' + r'$x_{min},\;\lambda_{xmin}=$'
+            plt.title(title+"{:0.3}".format(fit.xmin))
             plt.legend()
+            if savefig:
+                plt.savefig("ww.esd4.png")
             plt.show() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes
@@ -1420,19 +1464,19 @@ class WeightWatcher(object):
 
         layer_id = ww_layer.layer_id
         name = ww_layer.name or ""
-        layer_id_name = "{} {}".format(layer_id, name)
+        layer_name = "{} {}".format(layer_id, name)
         
         if random:
-            title = "Layer {} randomize W".format(layer_id_name)
+            title = "Layer {} randomize W".format(layer_name)
             evals = ww_layer.rand_evals
         else:
-            title = "Layer {} W".format(layer_id_name)
+            title = "Layer {} W".format(layer_name)
             evals = ww_layer.evals
 
         N, M = ww_layer.N, ww_layer.M
         
 
-        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, title, layer_id_name, params['plot'])
+        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, layer_name, params['plot'], params['savefig'])
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -1445,7 +1489,7 @@ class WeightWatcher(object):
             
         return 
 
-    def mp_fit(self, evals, N, M, title, layer_id, plot):
+    def mp_fit(self, evals, N, M, layer_name, plot, savefig):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank """
         
         Q = N/M
@@ -1473,23 +1517,27 @@ class WeightWatcher(object):
             if plot:
                 plot_density(to_plot, s1, Q, method = "MP")
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
-                plt.title("MP ESD, sigma auto-fit ")
+                plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
+                if savefig:
+                    plt.savefig("ww.mpfit1.png")
                 plt.show()
             
         else:
             fit_law = 'MP ESD'
 #        
 
-        plot_density_and_fit(model=None, eigenvalues=to_plot, layer=layer_id,
+        plot_density_and_fit(model=None, eigenvalues=to_plot, layer=layer_name,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot)
         
         if plot:
-            title = fit_law+" "+title+"\n Q={:0.3} ".format(Q)
+            title = fit_law+" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
             title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
             title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
             title = title + r"$\#$ spikes={}".format(num_spikes)
     
             plt.title(title)
+            if savefig:
+                plt.savefig("ww.mpfit2.png")
             plt.show()
             
         return num_spikes, sigma_mp, mp_softrank

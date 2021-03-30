@@ -2,7 +2,7 @@
 
 ## Weight Watcher  
 
-### Current Version: 0.4.1
+### Current Version / Release: 0.4.1
 
 **Weight Watcher** analyzes the Fat Tails in the  weight matrices of Deep Neural Networks (DNNs).
 

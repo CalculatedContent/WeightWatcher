@@ -276,7 +276,7 @@ Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1
 
 [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
 
-#### Popular Popdcasts ands Blogs
+#### Popular Popdcasts and Blogs
 
 and has been the subject  many popular podcasts
 
@@ -293,11 +293,19 @@ and has been the subject  many popular podcasts
 ---
 #### Latest paper and results
 
-[Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
+[Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
 
-[Repo for latest paper](https://github.com/CalculatedContent/ww-trends-2020)
+[(Early Prepreint) Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
 
-[Talk on latest results, Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
+[Repo for latest paper, published in Nature Communications](https://github.com/CalculatedContent/ww-trends-2021)
+
+#### 2021 Short Presentations
+
+[MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
+
+[PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
+
+
 
 
 ## Slack Channel

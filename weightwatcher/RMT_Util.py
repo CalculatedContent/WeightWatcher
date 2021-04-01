@@ -502,3 +502,14 @@ def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.3, 1.05, 0.1),
 #         
 #     return pd.DataFrame(df_output, columns = ['spikes', 'sigma', 'F_norm'])
 
+
+def plot_loghist(x, bins, xmin):
+    hist, bins = np.histogram(x, bins=bins)
+    logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
+    plt.hist(x, bins=logbins, density=True)
+
+    if xmin:
+        plt.axvline(xmin, color='r', label=r'$\lambda_{min}$')
+
+    plt.xscale('log')
+    

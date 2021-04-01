@@ -202,7 +202,13 @@ details = watcher.analyze(ww2x=True)
 
 #### Known issues
 
-rankloss is currently not working , may be always set to 0 
+- rankloss is currently not working , may be always set to 0 
+
+- the embedded powerlaw packages may show warning messages; you can ignore these
+<pre>
+   /home/xander/anaconda3/envs/my_model/lib/python3.7/site-packages/powerlaw.py:700: RuntimeWarning: divide by zero encountered in true_divide
+  (Theoretical_CDF * (1 - Theoretical_CDF))
+</pre>
 
 
 [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)

@@ -2,7 +2,7 @@
 
 ## Weight Watcher  
 
-### Current Version: 0.4.1
+### Current Version / Release: 0.4.1
 
 **Weight Watcher** analyzes the Fat Tails in the  weight matrices of Deep Neural Networks (DNNs).
 
@@ -200,6 +200,9 @@ with details provide for each slice for each layer.
 details = watcher.analyze(ww2x=True)
 ```
 
+#### Known issues
+
+rankloss is currently not working , may be always set to 0 
 
 
 [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)

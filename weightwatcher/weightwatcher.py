@@ -881,8 +881,7 @@ class WeightWatcher(object):
         savefig = params['savefig']
               
         layer_name = "Layer {}".format(layer_id)
-        alpha, xmin, xmax, D, sigma, num_pl_spikes = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, \
-                                                                           sample=sample, sample_size=sample_size, savefig=savefig)
+        alpha, xmin, xmax, D, sigma, num_pl_spikes = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savefig=savefig)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1245,6 +1244,7 @@ class WeightWatcher(object):
           
         savefig = params['savefig']
 
+        layer_id = ww_layer.layer_id
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
         title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
@@ -1260,7 +1260,7 @@ class WeightWatcher(object):
         plt.xlabel(r" Eigenvalues $(\lambda)$")               
         plt.legend()
         if savefig:
-            plt.savefig("ww.randesd.1.png")
+            plt.savefig("ww.layer{}.randesd.1.png".format(layer_id))
         plt.show()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1271,7 +1271,7 @@ class WeightWatcher(object):
         plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         plt.legend()
         if savefig:
-            plt.savefig("ww.randesd.2.png")
+            plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
         plt.show()
         
     # Mmybe should be static function    
@@ -1282,7 +1282,7 @@ class WeightWatcher(object):
         tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
         return np.count_nonzero(sv > tolerance, axis=-1)
             
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", sample=False, sample_size=None, savefig=False):
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, savefig=False):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1344,7 +1344,7 @@ class WeightWatcher(object):
             plt.title(title)
             plt.legend()
             if savefig:
-                plt.savefig("ww.esd1.png")
+                plt.savefig("ww.layer{}.esd.png".format(layer_id))
             plt.show()
     
             # plot eigenvalue histogram
@@ -1355,7 +1355,7 @@ class WeightWatcher(object):
             plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             plt.legend()
             if savefig:
-                plt.savefig("ww.esd2.png")
+                plt.savefig("ww.layer{}.esd2.png".format(layer_id))
             plt.show()
 
             # plot log eigenvalue histogram
@@ -1367,7 +1367,7 @@ class WeightWatcher(object):
             plt.axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
             plt.legend()
             if savefig:
-                plt.savefig("ww.esd3.png")
+                plt.savefig("ww.layer{}.esd3.png".format(layer_id))
             plt.show()
     
             # plot xmins vs D
@@ -1381,7 +1381,7 @@ class WeightWatcher(object):
             plt.title(title+"{:0.3}".format(fit.xmin))
             plt.legend()
             if savefig:
-                plt.savefig("ww.esd4.png")
+                plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes
@@ -1476,7 +1476,7 @@ class WeightWatcher(object):
         N, M = ww_layer.N, ww_layer.M
         
 
-        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, layer_name, params['plot'], params['savefig'])
+        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, layer_name, layer_id, params['plot'], params['savefig'])
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -1489,7 +1489,7 @@ class WeightWatcher(object):
             
         return 
 
-    def mp_fit(self, evals, N, M, layer_name, plot, savefig):
+    def mp_fit(self, evals, N, M, layer_name, layer_id, plot, savefig):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank """
         
         Q = N/M
@@ -1515,18 +1515,18 @@ class WeightWatcher(object):
             
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, s1, Q, method = "MP")
+                plot_density(to_plot, layer_id=layer_id, Q=Q, sigma=s1, method=="MP")
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
-                    plt.savefig("ww.mpfit1.png")
+                    plt.savefig("ww.layer{}.mpfit1.png".formt(layer_id))
                 plt.show()
             
         else:
             fit_law = 'MP ESD'
 #        
 
-        plot_density_and_fit(model=None, eigenvalues=to_plot, layer=layer_name,
+        plot_density_and_fit(model=None, eigenvalues=to_plot, layer=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot)
         
         if plot:
@@ -1537,7 +1537,7 @@ class WeightWatcher(object):
     
             plt.title(title)
             if savefig:
-                plt.savefig("ww.mpfit2.png")
+                plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
             plt.show()
             
         return num_spikes, sigma_mp, mp_softrank

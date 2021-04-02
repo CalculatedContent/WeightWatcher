@@ -1515,7 +1515,7 @@ class WeightWatcher(object):
             
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, layer_id=layer_id, Q=Q, sigma=s1, method=="MP")
+                plot_density(to_plot, layer_id=layer_id, Q=Q, sigma=s1, method="MP")
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:

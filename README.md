@@ -18,8 +18,8 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 We compute several Scale and Shape metrics for each layer, including:
 
 #### Scale Metrics
-- log Frobeinusn norm 
-- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{X}\Vert">
+- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}">
+- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{\infty}">
 
 - Stable Rank 
 - MP Soft Rank

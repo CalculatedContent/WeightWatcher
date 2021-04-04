@@ -148,7 +148,7 @@ Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , o
 
 The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
 
- - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\langle\alpha}\rangle\sim\Delta(\theta)">
+ - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\langle\alpha\rangle\sim\Delta(\theta)">
 
 whereas the summary metric **weighed alpha** can predict the generalization error **&Delta;**  when varying hyperparmeters **&theta;**  and depth **L**
  

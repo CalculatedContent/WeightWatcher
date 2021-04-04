@@ -48,7 +48,6 @@ and summary dict of generalization metrics
       'mp_softrank': 0.52}]
 ```
 
-
 ### Layer Details: Capacity Metrics:
 
 WW computes several Scale and Shape metrics for each layer Weight matrix **W**.  These are reported in a **details dataframe**,  including:
@@ -161,6 +160,8 @@ whereas the summary metric **weighed alpha** can predict the generalization erro
 Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
 
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
+
+This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 

@@ -15,10 +15,22 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 
 
 ### Types of Capacity Metrics:
-There are 2 basic types metrics we use
+We compute several Scale and Shape metrics for each layer, including:
 
-- alpha (the average power law exponent)
-- weighted alpha / log_alpha_norm (scale adjusted alpha metrics)
+#### Scale Metrics
+- log FrobeinusnNorm 
+- log Spectral norm 
+- Stable Rank 
+- MP Soft Rank
+
+#### Shape Matrics
+
+ - PL expoent alpha \\( \alpha \\) 
+
+#### Scale-adjusted Shape Metrics
+
+- weighted alpha 
+- log alpha norm (Shatten norm)
 
 The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing depths.
 
@@ -26,6 +38,11 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
+
+
+
+
+
 
 ### Frameworks supported
 

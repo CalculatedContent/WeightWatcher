@@ -15,17 +15,16 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 
 
 ### Types of Capacity Metrics:
-We compute several Scale and Shape metrics for each layer weight matrix **W**, including:
+We compute several Scale and Shape metrics for each layer weight matrix **W** from our Theory of Heavy Tailed Self-Regularization, including:
 
 #### Scale Metrics
-- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}">
-- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{F}=\lambda_{max}">
+- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}=\Vert\mathbf{X}\Vert_{F}">
+- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\lambda_{max}=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{\infty}">
 
-- Stable Rank 
+- Stable Rank:  <img src="https://render.githubusercontent.com/render/math?math=\dfrac{\Vert\mathbf{X}\Vert_{\infty}}{\Vert\mathbf{X}\Vert_{\infty}}">
 - MP Soft Rank
  
 #### Shape Metrics
-  From our Theory of Heavy Tailed Self-Regularization:
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
  - 
 #### Scale-adjusted Shape Metrics

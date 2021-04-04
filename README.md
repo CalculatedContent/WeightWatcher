@@ -25,7 +25,7 @@ We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-
 - MP Soft Rank:  
  
 #### Shape Metrics
- - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha,\;\rho(\lambda)\sim\lambda^{-\alpha}">
+ - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha,{ where }\rho(\lambda)\sim\lambda^{-\alpha}">
  - 
 #### Scale-adjusted Shape Metrics
 
@@ -38,8 +38,6 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
-
-
 
 
 

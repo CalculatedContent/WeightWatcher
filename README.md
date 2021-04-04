@@ -5,11 +5,12 @@
 ### Current Version / Release: 0.4.4
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
-• analyze pre/trained pyTorch models
-• inspect models that are difficult to train
-• gauge improvements in model performance
-• predict test accuracies across different models
-• detect potential problems when compressing or fine-tuning pretrained models
+
+- analyze pre/trained pyTorch models
+- inspect models that are difficult to train
+- gauge improvements in model performance
+- predict test accuracies across different models
+- detect potential problems when compressing or fine-tuning pretrained models
 
 It is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, using ideas from Random Matrix Theory (RMT), Statisti- cal Mechanics, and Strongly Correlated Systems
 

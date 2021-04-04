@@ -25,7 +25,8 @@ We compute several Scale and Shape metrics for each layer, including:
  
 #### Shape Matrics
 
- - PL exponent alpha <pre xml:lang="latex">\a]pha</pre>
+ - PL exponent alpha <img src="https://render.githubusercontent.com/render/math?math=(\alpha)">
+
  - 
 #### Scale-adjusted Shape Metrics
 

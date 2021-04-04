@@ -14,9 +14,40 @@
 
 It is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
-## Installaion and Usage
+## Installation
 
-<pre>See Below</pre>
+```sh
+pip install weightwatcher
+```
+
+## Usage
+
+```python
+import weightwatcher as ww
+import torchvision.models as models
+
+model = models.vgg19_bn(pretrained=True)
+watcher = ww.WeightWatcher(model=model)
+details = watcher.analyze()
+summary = watcher.get_summary(details)
+```
+
+It is as easy to run and generates a pandas dataframe with details (and plots) for each layer
+
+![Sample Details Dataframe](sample-ww-details.png)
+
+and summary dict of generalization metrics
+
+```python
+    {'log_norm': 2.11,
+      'alpha': 3.06,
+      'alpha_weighted': 2.78,
+      'log_alpha_norm': 3.21,
+      'log_spectral_norm': 0.89,
+      'stable_rank': 20.90,
+      'mp_softrank': 0.52}]
+```
+
 
 ### Layer Capacity Metrics:
 
@@ -99,44 +130,7 @@ Notice: we *did not peek* at the ImageNet test data to build this plot.
 - Conv2D
 
 
-## Installation
 
-```sh
-pip install weightwatcher
-```
-
-## Usage
-
-```python
-import weightwatcher as ww
-import torchvision.models as models
-
-model = models.vgg19_bn(pretrained=True)
-watcher = ww.WeightWatcher(model=model)
-details = watcher.analyze()
-summary = watcher.get_summary(details)
-```
-
-It is as easy to run and generates a pandas dataframe with details (and plots) for each layer
-
-![Sample Details Dataframe](sample-ww-details.png)
-
-and summary dict of generalization metrics
-
-```python
-    {'log_norm': 2.11,
-      'alpha': 3.06,
-      'alpha_weighted': 2.78,
-      'log_alpha_norm': 3.21,
-      'log_spectral_norm': 0.89,
-      'stable_rank': 20.90,
-      'mp_softrank': 0.52}]
-```
-
-
-More examples are include the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
-
-and will be made available shortly in a [Jupyter book](https://charlesmartin14.github.io/weightwatcher-book/intro.html)
 
 ## Advanced Usage 
 

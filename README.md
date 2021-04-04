@@ -70,7 +70,7 @@ WW computes several Scale and Shape metrics for each layer Weight matrix **W**. 
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
-### Summary Statitics
+### Summary Statistics: 
 The layer metrics are be averaged in the **summary** statistics:
 
 Get the average metrics, as a summary (dict), from the given (or current) details dataframe
@@ -84,6 +84,8 @@ or just
 watcher.analyze()
 summary = watcher.get_summary()
 ```
+
+The summary statistics can be used to gauge the test error of a series of pre/trained models, without needing access to training or test data.
 
 - average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&\theta;**, but of the same depth.
 - average **log spectral norm** is useful to compare models of different depths **L**

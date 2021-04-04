@@ -102,7 +102,7 @@ The watcher object has several functions and analyze features described below
 
 ```python
 analyze( model=None, layers=[], min_evals=0, max_evals=None,
-	 plot=True, randomize=True, mp_fit=True, ww2x=False):
+	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
 ...
 describe(self, model=None, layers=[], min_evals=0, max_evals=None,
          plot=True, randomize=True, mp_fit=True, ww2x=False):
@@ -238,6 +238,22 @@ with details provide for each slice for each layer.
 ```python
 details = watcher.analyze(ww2x=True)
 ```
+
+#### Save figures
+
+Saves the layer ESD plots for each layer 
+
+```python
+watcher.analyze(savefig=True)
+```
+
+generating 4 files per layer
+<pre>
+ww.layer#.esd1.png
+ww.layer#.esd2.png
+ww.layer#.esd3.png
+ww.layer#.esd4.png
+</pre>
 
 
 ### Frameworks supported

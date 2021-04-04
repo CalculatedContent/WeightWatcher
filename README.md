@@ -49,7 +49,7 @@ and summary dict of generalization metrics
 ```
 
 
-### Layer Capacity Metrics:
+### Layer Details: Capacity Metrics:
 
 WW computes several Scale and Shape metrics for each layer Weight matrix **W**.  These are reported in a **details dataframe**,  including:
 
@@ -70,26 +70,68 @@ WW computes several Scale and Shape metrics for each layer Weight matrix **W**. 
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
+### Summary Statitics
 The layer metrics are be averaged in the **summary** statistics:
+
+Get the average metrics, as a summary (dict), from the given (or current) details dataframe
+
+```python
+details = watcher.analyze(model=model)
+summary = watcher.get_summary(model)
+```
+or just
+```python
+watcher.analyze()
+summary = watcher.get_summary()
+```
 
 The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&\theta;**, but of the same depth.
 The average **log spectral norm** is useful to compare models of different depths **L**
 The average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&\theta;** and depths **L** simultaneously.
 
+## Advanced Usage 
 
-### Ploting and Fitting the Empirical Spectral Density (ESD)
+The watcher object has several functions and analyze features described below
 
-#### plot=True
+```python
+analyze( model=None, layers=[], min_evals=0, max_evals=None,
+	 plot=True, randomize=True, mp_fit=True, ww2x=False):
+...
+describe(self, model=None, layers=[], min_evals=0, max_evals=None,
+         plot=True, randomize=True, mp_fit=True, ww2x=False):
+...
+get_details()
+get_summary(details) or get_summary()
+get_ESD()
+...
+distances(model_1, model_2)
+```
+
+#### Ploting and Fitting the Empirical Spectral Density (ESD)
+
+WW creates plots for each layer weight matrix to observe how well the power law fits work
+
+
+```python
+details = watcher.analyze(plot=True)
+```
+
 For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD. 
 
 ![ESD](ESD-plots.png)
 
 
 ### Detecting OverTraining
-
-#### rand=True
-
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
+
+
+```python
+details = watcher.analyze(randomize=True, plot=True)
+```
+
+The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
+This is good way to visualize the correlations in the true ESD.
+
 
 Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a Correlation Trap.  
 ![Correlation Traps](correlation_trap.jpeg)
@@ -118,37 +160,8 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 
 
-### Frameworks supported
 
-- Tensorflow 2.x / Keras
-- PyTorch
-- HuggingFace 
-
-### Layers supported 
-
-- Dense / Linear / Fully Connected (and Conv1D)
-- Conv2D
-
-
-
-
-## Advanced Usage 
-
-The watcher object has several functions and analyze features described below
-
-```python
-analyze( model=None, layers=[], min_evals=0, max_evals=None,
-	 plot=True, randomize=True, mp_fit=True, ww2x=False):
-...
-describe(self, model=None, layers=[], min_evals=0, max_evals=None,
-         plot=True, randomize=True, mp_fit=True, ww2x=False):
-...
-get_details()
-get_summary(details) or get_summary()
-get_ESD()
-...
-distances(model_1, model_2)
-```
+### Additional Features
 
 #### filter by layer types 
 ```python
@@ -175,26 +188,10 @@ Setting max is useful for a quick debugging.
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
 
-#### plots (for each layer)
-
-Create ESD plots for each layer weight matrix to observe how well the power law fits work
-
-```python
-details = watcher.analyze(plot=True)
-```
-
-#### compare layer ESD to randomized W matrix
-
-The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
-This is good way to visualize the correlations in the true ESD.
-
-```python
-details = watcher.analyze(randomize=True, plot=True)
-```
 
 #### fit ESDs to a Marchenko-Pastur (MP) distrbution
 
-Attempts to the fit the ESD to an MP dist.
+The mp_fit option tells WW to fit each layer ESD as a Random Matrix as a Marchenko-Pastur (MP) distribution, as described in our papers on HT-SR.
 
 ```python
 details = watcher.analyze(mp_fit=True, plot=True)
@@ -207,6 +204,8 @@ Also works for randomized ESD and reports
 ```python
 rand_num_spikes, rand_mp_sigma, and rand_mp_sofrank
 ```
+
+
 
 #### get the ESD for a specific layer, for visualization or further analysis
 
@@ -222,18 +221,6 @@ Describe a model and report the details dataframe, without analyzing it
 details = watcher.describe(model=model)
 ```
 
-#### get summary
-Get the average metrics, as a summary (dict), from the given (or current) details dataframe
-
-```python
-details = watcher.analyze(model=model)
-summary = watcher.get_summary(model)
-```
-or just
-```python
-watcher.analyze()
-summary = watcher.get_summary()
-```
 
 
 #### compare 2 models 
@@ -254,7 +241,20 @@ with details provide for each slice for each layer.
 details = watcher.analyze(ww2x=True)
 ```
 
-#### Known issues
+
+### Frameworks supported
+
+- Tensorflow 2.x / Keras
+- PyTorch
+- HuggingFace 
+
+### Layers supported 
+
+- Dense / Linear / Fully Connected (and Conv1D)
+- Conv2D
+
+
+### Known issues
 
 - rankloss is currently not working , may be always set to 0 
 

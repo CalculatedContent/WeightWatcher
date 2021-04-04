@@ -15,11 +15,11 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 
 
 ### Types of Capacity Metrics:
-We compute several Scale and Shape metrics for each layer, including:
+We compute several Scale and Shape metrics for each layer weight matrix **W**, including:
 
 #### Scale Metrics
 - log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}">
-- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{\infty}=\lambda_{max}">
+- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{F}=\lambda_{max}">
 
 - Stable Rank 
 - MP Soft Rank

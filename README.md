@@ -18,8 +18,8 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **X=W<sup>T</sup>W**,  including:
 
 #### Scale Metrics
-- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}=\Vert\mathbf{X}\Vert_{F}">
-- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\lambda_{max}=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{\infty}">
+- Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}=\Vert\mathbf{X}\Vert_{F}">
+- Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\lambda_{max}=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{\infty}">
 
 - Stable Rank:  <img src="https://render.githubusercontent.com/render/math?math=R_{stable}=\Vert\mathbf{W}\Vert^{2}_{F}/\Vert\mathbf{W}\Vert^{2}_{\infty}">
 - MP Soft Rank:  <img src="https://render.githubusercontent.com/render/math?math=R_{MP}=\lambda_{MP}/\lambda_{max}">
@@ -30,7 +30,7 @@ We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-
 #### Scale-adjusted Shape Metrics
 
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\sum_{l}\alpha_{l}\log\lambda_{max}">
-- log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
+- log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
 The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing depths.
 

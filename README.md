@@ -48,7 +48,7 @@ and summary dict of generalization metrics
       'mp_softrank': 0.52}]
 ```
 
-### Layer Details: Capacity Metrics:
+### Layer Details: 
 
 WW computes several Scale and Shape metrics for each layer Weight matrix **W**.  These are reported in a **details dataframe**,  including:
 
@@ -117,7 +117,6 @@ distances(model_1, model_2)
 #### Ploting and Fitting the Empirical Spectral Density (ESD)
 
 WW creates plots for each layer weight matrix to observe how well the power law fits work
-
 
 ```python
 details = watcher.analyze(plot=True)

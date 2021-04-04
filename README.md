@@ -12,11 +12,10 @@
 - predict test accuracies across different models
 - detect potential problems when compressing or fine-tuning pretrained models
 
-It is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, using ideas from Random Matrix Theory (RMT), Statisti- cal Mechanics, and Strongly Correlated Systems
-
+It is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
 ### Layer Capacity Metrics:
-WW computes several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **W**,  including:
+WW computes several Scale and Shape metrics for each layer Weight matrix **W**,  including:
 
 #### Scale Metrics
 

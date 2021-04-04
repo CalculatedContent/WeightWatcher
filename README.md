@@ -92,7 +92,6 @@ summary = watcher.get_summary(model)
 ```
 or just
 ```python
-watcher.analyze()
 summary = watcher.get_summary()
 ```
 

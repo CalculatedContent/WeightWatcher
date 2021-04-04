@@ -70,6 +70,12 @@ WW computes several Scale and Shape metrics for each layer Weight matrix **W**. 
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
+#### Misc Details
+
+- N, M:  Matrix or Tensor Slice Dimensions
+- D:  Quality of the (Truncated) Power law fit (D is the Kolmogorov Smirnov Distance metric)
+- num_spikes:  number of spikes outside the bulk region of the ESD, when fit to an MP distribution
+
 ### Summary Statistics: 
 The layer metrics are be averaged in the **summary** statistics:
 
@@ -87,9 +93,9 @@ summary = watcher.get_summary()
 
 The summary statistics can be used to gauge the test error of a series of pre/trained models, without needing access to training or test data.
 
-- average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&\theta;**, but of the same depth.
+- average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, but of the same depth.
 - average **log spectral norm** is useful to compare models of different depths **L**
-- average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&\theta;** and depths **L** simultaneously.
+- average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously.
 
 ## Advanced Usage 
 

@@ -22,10 +22,10 @@ We compute several Scale and Shape metrics for each layer, including:
 - log Spectral norm 
 - Stable Rank 
 - MP Soft Rank
-
+ 
 #### Shape Matrics
 
- - PL expoent alpha \\( \alpha \\) 
+ - PL exponent alpha ```math \alpha```
 
 #### Scale-adjusted Shape Metrics
 

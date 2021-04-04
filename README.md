@@ -139,12 +139,10 @@ This is good way to visualize the correlations in the true ESD.
 details = watcher.analyze(randomize=True, plot=True)
 ```
 
-
 Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a Correlation Trap.  
 ![Correlation Traps](correlation_trap.jpeg)
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
-
 
 ### Predicting the Generalization Error
 
@@ -165,8 +163,6 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
-
-
 
 ### Additional Features
 
@@ -195,7 +191,6 @@ Setting max is useful for a quick debugging.
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
 
-
 #### fit ESDs to a Marchenko-Pastur (MP) distrbution
 
 The mp_fit option tells WW to fit each layer ESD as a Random Matrix as a Marchenko-Pastur (MP) distribution, as described in our papers on HT-SR.
@@ -212,8 +207,6 @@ Also works for randomized ESD and reports
 rand_num_spikes, rand_mp_sigma, and rand_mp_sofrank
 ```
 
-
-
 #### get the ESD for a specific layer, for visualization or further analysis
 
 ```python
@@ -227,8 +220,6 @@ Describe a model and report the details dataframe, without analyzing it
 ```python
 details = watcher.describe(model=model)
 ```
-
-
 
 #### compare 2 models 
 The new distances method reports the distances between 2 models, such as the norm between the  initial weight matrices and the final, trained weight matrices

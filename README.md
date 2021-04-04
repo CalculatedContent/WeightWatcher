@@ -25,7 +25,7 @@ We compute several Scale and Shape metrics for each layer, including:
  
 #### Shape Matrics
 
- - PL exponent alpha ```math \alpha```
+ - PL exponent alpha $(\alpha)$
 
 #### Scale-adjusted Shape Metrics
 

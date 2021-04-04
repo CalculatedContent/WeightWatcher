@@ -42,9 +42,10 @@ Notice: we *did not peek* at the ImageNet test data to build this plot.
 
 ### Ploting and Fitting the Empirical Spectral Density (ESD)
 
-For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law.  The metrics (above) characterize the Shape and Scale of each ESD. 
-[ESD](ESD-plots.png)
+#### plot=True
+For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD. 
 
+![ESD](ESD-plots.png)
 
 
 ### Detecting OverTraining

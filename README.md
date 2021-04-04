@@ -15,11 +15,11 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 
 
 ### Types of Capacity Metrics:
-We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **X=W<sup>T</sup>W**,  including:
+We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **W**,  including:
 
 #### Scale Metrics
-- Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}=\Vert\mathbf{X}\Vert_{F}">
-- Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\lambda_{max}=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{\infty}">
+- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{W}\Vert^{2}_{F}">
+- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\lambda_{max}=\log_{10}\Vert\mathbf{W}\Vert^{2}_{\infty}">
 
 - Stable Rank:  <img src="https://render.githubusercontent.com/render/math?math=R_{stable}=\Vert\mathbf{W}\Vert^{2}_{F}/\Vert\mathbf{W}\Vert^{2}_{\infty}">
 - MP Soft Rank:  <img src="https://render.githubusercontent.com/render/math?math=R_{MP}=\lambda_{MP}/\lambda_{max}">

@@ -11,7 +11,7 @@ or even the entire series of ResNet models--without needing a test set !
 
 This relies upon recent research into the [Heavy (Fat) Tailed Self Regularization in DNNs](https://openreview.net/forum?id=SJeFNoRcFQ)
  
-The tool lets one compute a averager capacity, or quality, metric for a series of  DNNs, trained on the same data, but with different hyperparameters, or even different but related architectures. For example, it can predict that VGG19_BN generalizes better than VGG19, and better than VGG16_BN, VGG16, etc.  
+The tool lets one compute capacity, or quality, metrics for a ther layters of a pre/trained DNNs.  
 
 
 ### Types of Capacity Metrics:
@@ -30,15 +30,13 @@ We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-
  
 #### Scale-adjusted Shape Metrics
 
-- weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\sum_{l}\alpha_{l}\log\lambda_{max}">
+- weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=}\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
 The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing depths.
 
-Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
-![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
-Notice: we *did not peek* at the ImageNet test data to build this plot.
+
 
 ### Ploting and Fitting the Empirical Spectral Density (ESD)
 
@@ -57,6 +55,26 @@ Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the f
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
 
+
+### Predicting the Generalization Error
+
+WeightWatcher (WW)can be used to compare the test error for a series of models, trained on the similar dataset, but with different hyperparameters, or even different but related architectures.  
+
+Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average correspond to models that generalize better.
+
+The WW summary metric **alpha** can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
+
+ - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\langle\alpha}\rangle\sim\Delta(\theta)">
+
+whereas the summary metric ** weighed alpha** can predict the generalization error **&Delta;**  when varying hyperparmeters **&theta;**  and depth **L**
+ 
+ - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}\sim\Delta(\theta,\L)">
+
+Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
+
+![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
+
+Notice: we *did not peek* at the ImageNet test data to build this plot.
 
 
 ### Frameworks supported

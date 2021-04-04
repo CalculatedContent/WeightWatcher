@@ -42,8 +42,13 @@ Notice: we *did not peek* at the ImageNet test data to build this plot.
 
 ### Detecting OverTraining
 
-Correlation Traps
-![Correlation Traps](correlation_trap.jpeg)
+The weightwatcher tool can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
+
+Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a ![Correlation Traps](correlation_trap.jpeg)
+
+Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
+
+
 
 
 

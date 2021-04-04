@@ -18,14 +18,14 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **W**  including:
 
 #### Scale Metrics
-- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}=\Vert\mathbf{X}\Vert_{F}">
-- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\lambda_{max}=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{\infty}">
+- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\;\;\Vert\mathbf{W}\Vert^{2}_{F}=\Vert\mathbf{X}\Vert_{F}">
+- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\;\;\lambda_{max}=\Vert\mathbf{W}\Vert^{2}_{\infty}=\Vert\mathbf{X}\Vert_{\infty}">
 
-- Stable Rank:  <img src="https://render.githubusercontent.com/render/math?math=\mathcal{R}_{stable}=\Vert\mathbf{X}\Vert_{\infty}/\Vert\mathbf{X}\Vert_{\infty}">
+- Stable Rank:  <img src="https://render.githubusercontent.com/render/math?math=\;\;\mathcal{R}_{stable}=\Vert\mathbf{W}\Vert^{2}_{\infty}/\Vert\mathbf{W}\Vert^{2}_{\infty}">
 - MP Soft Rank:  
  
 #### Shape Metrics
- - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
+ - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\;\;\alpha">
  - 
 #### Scale-adjusted Shape Metrics
 

@@ -14,6 +14,10 @@
 
 It is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
+## Installaion and Usage
+
+<pre>See Below</pre>
+
 ### Layer Capacity Metrics:
 
 WW computes several Scale and Shape metrics for each layer Weight matrix **W**.  These are reported in a **details dataframe**,  including:

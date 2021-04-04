@@ -19,20 +19,19 @@ We compute several Scale and Shape metrics for each layer, including:
 
 #### Scale Metrics
 - log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}">
-- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{\infty}">
+- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{\infty}=\lambda_{max}">
 
 - Stable Rank 
 - MP Soft Rank
  
 #### Shape Metrics
-
+  From our Theory of Heavy Tailed Self-Regularization:
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
-
  - 
 #### Scale-adjusted Shape Metrics
 
-- weighted alpha 
-- log alpha norm (Shatten norm)
+- weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\sum_{l}\alpha_{l}\log\lambda_{max}">
+- log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{X}\Vert^{2}^{\alpha}_{\alpha}">
 
 The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing depths.
 

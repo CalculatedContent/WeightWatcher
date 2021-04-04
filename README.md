@@ -40,15 +40,21 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 
+### Ploting and Fitting the Empirical Spectral Density (ESD)
+
+For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law.  The metrics (above) characterize the Shape and Scale of each ESD. 
+[ESD](ESD-plots.png)
+
+
+
 ### Detecting OverTraining
 
-The weightwatcher tool can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
+Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
 
-Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a ![Correlation Traps](correlation_trap.jpeg)
+Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a Correlation Trap.  
+![Correlation Traps](correlation_trap.jpeg)
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
-
-
 
 
 

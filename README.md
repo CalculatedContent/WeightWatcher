@@ -26,7 +26,8 @@ We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-
 - MP Soft Rank:  <img src="https://render.githubusercontent.com/render/math?math=R_{MP}=\lambda_{MP}/\lambda_{max}">
  
 #### Shape Metrics
- - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha,\text{ where }\rho(\lambda)\sim\lambda^{-\alpha}">
+
+ - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
  
 #### Scale-adjusted Shape Metrics
 

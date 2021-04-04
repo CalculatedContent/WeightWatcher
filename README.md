@@ -47,6 +47,8 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 
 ### Detecting OverTraining
 
+#### rand=True
+
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
 
 Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a Correlation Trap.  

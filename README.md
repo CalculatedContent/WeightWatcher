@@ -30,12 +30,10 @@ We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-
  
 #### Scale-adjusted Shape Metrics
 
-- weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=}\alpha\log_{10}\lambda_{max}">
+- weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
 The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing depths.
-
-
 
 
 ### Ploting and Fitting the Empirical Spectral Density (ESD)
@@ -60,13 +58,13 @@ Weightwatcher will analyze your model, layer-by-layer, and show you where these 
 
 WeightWatcher (WW)can be used to compare the test error for a series of models, trained on the similar dataset, but with different hyperparameters, or even different but related architectures.  
 
-Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average correspond to models that generalize better.
+Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average, correspond to models that generalize better.
 
-The WW summary metric **alpha** can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
+The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
 
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\langle\alpha}\rangle\sim\Delta(\theta)">
 
-whereas the summary metric ** weighed alpha** can predict the generalization error **&Delta;**  when varying hyperparmeters **&theta;**  and depth **L**
+whereas the summary metric **weighed alpha** can predict the generalization error **&Delta;**  when varying hyperparmeters **&theta;**  and depth **L**
  
  - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}\sim\Delta(\theta,\L)">
 

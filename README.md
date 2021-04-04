@@ -265,8 +265,13 @@ details = watcher.analyze(ww2x=True)
   (Theoretical_CDF * (1 - Theoretical_CDF))
 </pre>
 
+### Demo Notebooks
 
-[Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
+[Basic Usage](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
+
+[Analyzing the VGG series](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
+
+[Using the ww2x option](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG-ww2x.ipynb)
 
 
 ## How to Release

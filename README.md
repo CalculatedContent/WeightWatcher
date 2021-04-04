@@ -15,9 +15,10 @@
 It is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
 ### Layer Capacity Metrics:
-WW computes several Scale and Shape metrics for each layer Weight matrix **W**,  including:
 
-#### Scale Metrics
+WW computes several Scale and Shape metrics for each layer Weight matrix **W**.  These are reported in a **details dataframe**,  including:
+
+#### Scale Metrics 
 
 - log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{W}\Vert^{2}_{F}">
 - log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\lambda_{max}=\log_{10}\Vert\mathbf{W}\Vert^{2}_{\infty}">
@@ -34,7 +35,11 @@ WW computes several Scale and Shape metrics for each layer Weight matrix **W**, 
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
-The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings, but of the same depth. The average **weighted alpha** is suitable for DNNs of differing hyperparemeter and depths.
+The layer metrics are be averaged in the **summary** statistics:
+
+The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&\theta;**, but of the same depth.
+The average **log spectral norm** is useful to compare models of different depths **L**
+The average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&\theta;** and depths **L** simultaneously.
 
 
 ### Ploting and Fitting the Empirical Spectral Density (ESD)

@@ -85,9 +85,9 @@ watcher.analyze()
 summary = watcher.get_summary()
 ```
 
-The average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&\theta;**, but of the same depth.
-The average **log spectral norm** is useful to compare models of different depths **L**
-The average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&\theta;** and depths **L** simultaneously.
+- average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&\theta;**, but of the same depth.
+- average **log spectral norm** is useful to compare models of different depths **L**
+- average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&\theta;** and depths **L** simultaneously.
 
 ## Advanced Usage 
 
@@ -124,13 +124,12 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 ### Detecting OverTraining
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
 
+The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
+This is good way to visualize the correlations in the true ESD.
 
 ```python
 details = watcher.analyze(randomize=True, plot=True)
 ```
-
-The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
-This is good way to visualize the correlations in the true ESD.
 
 
 Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a Correlation Trap.  

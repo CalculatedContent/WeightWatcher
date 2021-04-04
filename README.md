@@ -4,18 +4,18 @@
 
 ### Current Version / Release: 0.4.4
 
-**Weight Watcher** analyzes the Fat Tails in the  weight matrices of Deep Neural Networks (DNNs).
+**WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
+• analyze pre/trained pyTorch models
+• inspect models that are difficult to train
+• gauge improvements in model performance
+• predict test accuracies across different models
+• detect potential problems when compressing or fine-tuning pretrained models
 
-This tool can predict the trends in the generalization accuracy of a series of DNNs, such as VGG11, VGG13, ...,
-or even the entire series of ResNet models--without needing a test set !
-
-This relies upon recent research into the [Heavy (Fat) Tailed Self Regularization in DNNs](https://openreview.net/forum?id=SJeFNoRcFQ)
- 
-The tool lets one compute capacity, or quality, metrics for a ther layters of a pre/trained DNNs.  
+It is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, using ideas from Random Matrix Theory (RMT), Statisti- cal Mechanics, and Strongly Correlated Systems
 
 
-### Types of Capacity Metrics:
-We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **W**,  including:
+### Layer Capacity Metrics:
+WW computes several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **W**,  including:
 
 #### Scale Metrics
 

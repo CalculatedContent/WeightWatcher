@@ -15,7 +15,7 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 
 
 ### Types of Capacity Metrics:
-We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **W**  including:
+We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **X=W<sup>T</sup>W**,  including:
 
 #### Scale Metrics
 - log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\Vert\mathbf{W}\Vert^{2}_{F}=\Vert\mathbf{X}\Vert_{F}">
@@ -26,7 +26,7 @@ We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-
  
 #### Shape Metrics
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha,\text{ where }\rho(\lambda)\sim\lambda^{-\alpha}">
- - 
+ 
 #### Scale-adjusted Shape Metrics
 
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\sum_{l}\alpha_{l}\log\lambda_{max}">
@@ -38,7 +38,6 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
-
 
 
 

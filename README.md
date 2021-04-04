@@ -54,7 +54,9 @@ and summary dict of generalization metrics
 
 ### Layer Details: 
 
-WW computes several Scale and Shape metrics for each layer Weight matrix **W**.  These are reported in a **details dataframe**,  including:
+WW computes several Scale and Shape metrics for each layer Weight matrix **W**, as described in our papers (see below)
+
+These are reported in a **details dataframe**,  including:
 
 #### Scale Metrics 
 

@@ -18,6 +18,7 @@ The tool lets one compute a averager capacity, or quality, metric for a series o
 We compute several Scale and Shape metrics from our Theory of Heavy Tailed Self-Regularization for each layer Weight matrix **W**,  including:
 
 #### Scale Metrics
+
 - log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{W}\Vert^{2}_{F}">
 - log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\lambda_{max}=\log_{10}\Vert\mathbf{W}\Vert^{2}_{\infty}">
 
@@ -38,6 +39,16 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
+
+### Detecting OverTraining
+
+The weightwatcher tool can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
+
+Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a ![Correlation Traps](correlation_trap.jpeg)
+
+Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
+
+
 
 
 

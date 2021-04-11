@@ -156,7 +156,7 @@ details = watcher.analyze(randomize=True, plot=True)
 
 Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
 
-A **Correlation Trap** is characterized by  Fib (b); here the 
+A **Correlation Trap** is characterized by  Fig (b); here the 
 actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
 And for the random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
 ![Correlation Traps](correlation_trap.jpeg)

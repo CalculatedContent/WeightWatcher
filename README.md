@@ -141,7 +141,7 @@ The weightwatcher **alpha** metric can be used to detect when to apply early sto
 
 Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average alpha summary statistic.
 
-![Early Stopping](early_stopping.jpeg)
+![Early Stopping](early_stopping.png)
 
 We can see that as the training and test losses decrease, so does alpha. But when the test loss saturates and then starts to increase, alpha drops below 2.0.
 

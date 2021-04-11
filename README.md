@@ -160,11 +160,9 @@ A **Correlation Trap** is characterized by  Fib (b); here the
 <span style="color:green">actual (green)</span>
 and
 <span style="color:red">random (red)</span>
-ESDs look almost identical, except for a small shelf of correlation.  
-And for the 
+ESDs look almost identical, except for a small shelf of correlation.   And for the 
 <span style="color:red">random (red)</span>
-ESD, 
-<span style="color:orange">the largest eigenvalue (orange)</span> is far to the right of and seperated from the bulk of the ESD.
+ESD, <span style="color:orange">the largest eigenvalue (orange)</span> is far to the right of and seperated from the bulk of the ESD.
 ![Correlation Traps](correlation_trap.jpeg)
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.

@@ -157,12 +157,8 @@ details = watcher.analyze(randomize=True, plot=True)
 Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
 
 A **Correlation Trap** is characterized by  Fib (b); here the 
-<span style="color:green">actual (green)</span>
-and
-<span style="color:red">random (red)</span>
-ESDs look almost identical, except for a small shelf of correlation.   And for the 
-<span style="color:red">random (red)</span>
-ESD, <span style="color:orange">the largest eigenvalue (orange)</span> is far to the right of and seperated from the bulk of the ESD.
+actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
+And for the random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
 ![Correlation Traps](correlation_trap.jpeg)
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.

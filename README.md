@@ -139,11 +139,11 @@ Weightwatcher can detect the signatures of overtraining in specific layers of a 
 
 The weightwatcher **alpha** metric can be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be overtrained and early stopping is necesary.
 
-Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average alpha summary statistic.
+Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average **alpha** summary statistic.
 
 ![Early Stopping](early_stopping.png)
 
-We can see that as the training and test losses decrease, so does alpha. But when the test loss saturates and then starts to increase, alpha drops below 2.0.
+We can see that as the training and test losses decrease, so does **alpha**. But when the test loss saturates and then starts to increase, **alpha** drops below 2.0.
 
 #### Correlation Traps
 

@@ -53,6 +53,8 @@ class METRICS():
     LOG_SPECTRAL_NORM = "log_spectral_norm"
     STABLE_RANK = "stable_rank"
     MP_SOFTRANK = "mp_softrank"
+    MATRIX_RANK = "matrix_rank"
+    MATRIX_ENTROPY = "entropy"
 
 
 

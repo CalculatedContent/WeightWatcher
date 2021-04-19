@@ -39,10 +39,12 @@ from .RMT_Util import *
 from .constants import *
 
 
-# TODO:  allow configuring custom logging
+WW_NAME = 'weightwatcher'
 import logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger('weightwatcher')  # ww.__name__
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(WW_NAME) 
+logger.setLevel(logging.INFO)
 
 mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
@@ -562,32 +564,14 @@ class WW2xSliceIterator(WWLayerIterator):
     
 class WeightWatcher(object):
 
-    def __init__(self, model=None, log=True):
+    def __init__(self, model=None, log_level=None):
+        if log_level:
+            logger.setLevel(log_level)
+
         self.model = self.load_model(model)
         self.details = None
-        # self.setup_custom_logger(log, logger)     
         logger.info(self.banner())
 
-#     def setup_custom_logger(self, log, logger):
-#         formatter = logging.Formatter(fmt='%(asctime)s - %(levelname)s - %(module)s - %(message)s')
-#     
-#         handler = logging.StreamHandler()
-#         handler.setFormatter(formatter)
-#     
-#         if not logger:
-#            logger = logging.getLogger(__name__)
-#         
-#         if not logger.handlers: # do not register handlers more than once
-#             if log:
-#                 logging.setLevel(logging.INFO) 
-#                 console_handler = logging.StreamHandler()
-#                 formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-#                 console_handler.setFormatter(formatter)
-#                 self.logger.addHandler(console_handler)
-#             else:
-#                 self.logger.addHandler(logging.NullHandler())
-#   
-#         return logger
 
     def header(self):
         """WeightWatcher v0.1.dev0 by Calculation Consulting"""
@@ -1444,6 +1428,10 @@ class WeightWatcher(object):
         log_alpha_norm = np.log10(np.sum( [ ev**alpha for ev in evals]))
         
         stable_rank = norm / spectral_norm
+
+        N = ww_layer.N
+        hard_rank = matrix_rank(evals, N)
+        entropy = matrix_entropy(evals, N)
                     
         ww_layer.add_column(METRICS.NORM, norm)
         ww_layer.add_column(METRICS.LOG_NORM, log_norm)
@@ -1453,6 +1441,8 @@ class WeightWatcher(object):
         ww_layer.add_column(METRICS.ALPHA_WEIGHTED, alpha_weighted)
         ww_layer.add_column(METRICS.LOG_ALPHA_NORM, log_alpha_norm)
         ww_layer.add_column(METRICS.STABLE_RANK, stable_rank)
+        ww_layer.add_column(METRICS.MATRIX_RANK, hard_rank)
+        ww_layer.add_column(METRICS.MATRIX_ENTROPY, entropy)
 
         return ww_layer
     

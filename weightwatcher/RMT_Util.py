@@ -130,7 +130,6 @@ def hard_rank(W, sv):
 def get_shuffled_eigenvalues(W, layer=7, num=100):
     "get eigenvalues for this model, but shuffled, num times"
     
-    print("get_shuffled_eigenvalues")
     N, M = W.shape[0], W.shape[1]       
 
     if (N < M):
@@ -207,7 +206,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
     return sigma
 
 
-def plot_density(to_plot, sigma, Q, method="MP"):
+def plot_density(to_plot, sigma, Q, method="MP", color='blue'):
     """Method = 'MP' or 'QC'
     
     """
@@ -219,7 +218,7 @@ def plot_density(to_plot, sigma, Q, method="MP"):
     elif method == "QC":
         x, y = quarter_circle_pdf(x_min, x_max, sigma)
         
-    plt.hist(to_plot, bins=100, alpha=0.6, color='blue', density=True)
+    plt.hist(to_plot, bins=100, alpha=0.6, color=color, density=True)
     plt.plot(x, y, linewidth=1, color='r')  # , label = method + " fit")
     
     return None
@@ -500,7 +499,7 @@ def fit_density(evals, Q, bw=0.1, sigma0=None):
     return sigma1, infodict['fvec']
 
 
-def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.3, 1.05, 0.1),)):
+def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.3, 1.05, 0.1),) ):
     
     assert type(sigma_range) == tuple, ValueError("sigma_range must be tuple")
     assert type(sigma_range[0]) == slice

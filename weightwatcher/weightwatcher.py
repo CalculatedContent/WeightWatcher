@@ -1458,14 +1458,17 @@ class WeightWatcher(object):
         if random:
             title = "Layer {} randomize W".format(layer_name)
             evals = ww_layer.rand_evals
+            color='mediumorchid'
+            layer_name = "Random {}".format(layer_name)
         else:
             title = "Layer {} W".format(layer_name)
             evals = ww_layer.evals
+            color='blue'
 
         N, M = ww_layer.N, ww_layer.M
         
 
-        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, layer_name, layer_id, params['plot'], params['savefig'])
+        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, layer_name, layer_id, params['plot'], params['savefig'], color=color)
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -1478,7 +1481,7 @@ class WeightWatcher(object):
             
         return 
 
-    def mp_fit(self, evals, N, M, layer_name, layer_id, plot, savefig):
+    def mp_fit(self, evals, N, M, layer_name, layer_id, plot, savefig, color):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank """
         
         Q = N/M
@@ -1504,7 +1507,7 @@ class WeightWatcher(object):
             
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, Q=Q, sigma=s1, method="MP")
+                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color)
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
@@ -1516,7 +1519,7 @@ class WeightWatcher(object):
 #        
 
         plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
-                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot)
+                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color)
         
         if plot:
             title = fit_law+" for layer "+layer_name+"\n Q={:0.3} ".format(Q)

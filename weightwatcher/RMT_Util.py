@@ -150,7 +150,7 @@ def get_shuffled_eigenvalues(W, layer=7, num=100):
     return evals
 
 
-def plot_density_and_fit(eigenvalues=None, model=None, layer="",
+def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0,
                      Q=1.0, num_spikes=0, sigma=None,
                      alpha=0.25, color='blue', skip=False, verbose=True, plot=True):
     """Plot histogram of eigenvalues, for Q, and fit Marchenk Pastur.  

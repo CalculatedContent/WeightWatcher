@@ -1515,7 +1515,7 @@ class WeightWatcher(object):
             fit_law = 'MP ESD'
 #        
 
-        plot_density_and_fit(model=None, eigenvalues=to_plot, layer=layer_name, layer_id=0,
+        plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot)
         
         if plot:

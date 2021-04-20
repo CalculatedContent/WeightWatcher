@@ -11,6 +11,7 @@
 - gauge improvements in model performance
 - predict test accuracies across different models
 - detect potential problems when compressing or fine-tuning pretrained models
+- determine if a model has been overtrained, without looking at the test data
 
 
 #### From Research to Production

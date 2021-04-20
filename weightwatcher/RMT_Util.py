@@ -197,7 +197,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         x, mp = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
 
     if plot:
-        plt.title(title.format(layer, sigma))
+        plt.title(title.format(layer_name, sigma))
         plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
         
     if verbose:

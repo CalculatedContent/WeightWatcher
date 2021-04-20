@@ -19,8 +19,8 @@ class Test_VGG11(unittest.TestCase):
 		"""
 
 		cls.model = models.vgg11(pretrained=True)
-		cls.watcher = ww.WeightWatcher(model=cls.model, log=False)
-		logging.getLogger("weightwatcher").setLevel(logging.INFO)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		#logging.getLogger("weightwatcher").setLevel(logging.INFO)
 		
 	def setUp(self):
 		"""I run before every test in this class

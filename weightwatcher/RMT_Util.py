@@ -25,16 +25,43 @@ import tqdm
 
 
 # Trace Normalization
-def matrix_entropy(W):
-    """Matrix entropy of W real rectangular matrix, computed using the singular values; may be slow"""
-    W = W / np.trace(W)
-    m = W.shape[1]
-    u, sv, vh = svd(W)
-    
-    rank = np.linalg.matrix_rank(W)
-    p = sv * sv
-    p = p / np.sum(p)
-    
+#def matrix_entropy_(W):
+#   """Matrix entropy of W real rectangular matrix, computed using the singular values; may be slow"""
+#    W = W / np.trace(W)
+#    N, M  = np.min(W.shape), np.max(W.shape)
+#    u, sv, vh = svd(W)  
+#    
+#    evals  = sv * sv
+#    return matrix_entropy(evals, N)
+
+
+def matrix_rank(svals, N, tol=None):
+    """Matrix rank, computed from the singular values directly
+
+    svals are the singular values
+    N is the largest dimension of the matrix
+ 
+    re-implements np.linalg.matrix_rank(W) """
+    S = svals
+    if tol is None:
+        tol = np.max(S) * N * np.finfo(S.dtype).eps
+    return np.count_nonzero(S > tol)
+
+
+def calc_rank_loss(svals, N, tol=None):
+    """Rank loss for this matrix, from the singular values and the largest dim N."""
+
+    rank = matrix_rank(svals, N) #np.linalg.matrix_rank(W)
+    return len(svals) - rank
+
+def matrix_entropy(svals, N):
+    """Matrix entropy of real, computed using the singular values, and the dim N"""
+
+
+    rank = matrix_rank(svals, N) #np.linalg.matrix_rank(W)
+
+    evals = svals*svals
+    p = evals / np.sum(evals)
     if (rank == 1):
         rank = 1.000001
     entropy = -np.sum(p * np.log(p)) / np.log(rank) 

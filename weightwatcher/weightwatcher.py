@@ -718,8 +718,7 @@ class WeightWatcher(object):
             all_evals.extend(evals)
     
             max_sv = np.max([max_sv, np.max(sv)])
-            max_ev = np.max(evals)
-            rank_loss = 0  # rank_loss + self.calc_rank_loss(sv, M, max_ev)
+            rank_loss = rank_loss + calc_rank_loss(sv, N)
     
         return np.sort(np.array(all_evals)), max_sv, rank_loss
             
@@ -1258,13 +1257,13 @@ class WeightWatcher(object):
             plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
         plt.show()
         
-    # Mmybe should be static function    
-    def calc_rank_loss(self, singular_values, M, lambda_max):
-        """compute the rank loss for these singular given the tolerances
-        """
-        sv = singular_values
-        tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
-        return np.count_nonzero(sv > tolerance, axis=-1)
+    # MOves to RMT Util should be static function    
+    #def calc_rank_loss(self, singular_values, M, lambda_max):
+    #    """compute the rank loss for these singular given the tolerances
+    #    """
+    #    sv = singular_values
+    #    tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
+    #    return np.count_nonzero(sv > tolerance, axis=-1)
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, savefig=False):
         """Fit eigenvalues to powerlaw
@@ -1430,8 +1429,8 @@ class WeightWatcher(object):
         stable_rank = norm / spectral_norm
 
         N = ww_layer.N
-        hard_rank = matrix_rank(evals, N)
-        entropy = matrix_entropy(evals, N)
+        hard_rank = matrix_rank(np.sqrt(evals), N)
+        entropy = matrix_entropy(np.sqrt(evals), N)
                     
         ww_layer.add_column(METRICS.NORM, norm)
         ww_layer.add_column(METRICS.LOG_NORM, log_norm)

@@ -99,7 +99,7 @@ tqdm==4.41.1
 traitlets==4.3.3
 transformers==2.3.0
 twine==3.1.1
-urllib3==1.25.7
+urllib3==1.25.8
 wcwidth==0.1.7
 webencodings==0.5.1
 Werkzeug==0.16.0

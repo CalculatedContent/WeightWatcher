@@ -51,7 +51,7 @@ mpl_logger.setLevel(logging.WARNING)
 
 MAX_NUM_EVALS = 50000
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False}
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 'rescale':True , 'deltas':False}
     
 
 def main():
@@ -762,6 +762,9 @@ class WeightWatcher(object):
             new_Wmats.append(W)
     
         ww_layer.Wmats = new_Wmats
+
+        # TODO: set np linalg norm, <AVG over layers>
+        # change from NORM that is computed...
         return ww_layer
                 
         
@@ -829,7 +832,7 @@ class WeightWatcher(object):
             
         return ww_layer
     
-           
+    # Not used yet
     def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                     
@@ -879,7 +882,7 @@ class WeightWatcher(object):
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True, fit_bulk=False, ww2x=False):
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, deltas=False):
         """
         Analyze the weight matrices of a model.
 
@@ -901,28 +904,43 @@ class WeightWatcher(object):
         lognorms:
             # deprecated
             Compute the log norms of the weight matrices.
+            this is always computed now
         spectralnorms:
             # deprecated
-            Compute the spectral norm (max eigenvalue) of the weight matrices.
+            Compute the spectral norm (max eigenvalue) of the weight matrices.  
+            this is always computed now
         softranks:
             # deprecated
             Compute the soft norm (i.e. StableRank) of the weight matrices.
+            this is always computed now
         mp_fit:
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
-        conv2d_fft:
+            For square matrices, also applies the Quarter-Circle (QC) law
+        randomize:
+            Randomizes the W matrices, plots the ESD and fits to the MP distribution
+            Attempts to find Correlatkon Traps by computing the number of spikes for the randomized ESD 
+        conv2d_fft:  N/A yet
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
             Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max  N/A yet
-        fit_bulk: 
-            Attempt to fit bulk region of ESD only  N/A yet
         ww2x:
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
         savefig: 
             Save the figures generated in png files.  Default: False
-        device: N/A yet
-            if 'gpu'  use torch.svd()
-            else 'cpu' use np.linalg.svd
-        params:  
-            N/A as inputs: dictionary of default parameters, which can be set but will be over-written by 
+            if True, saves all figures to the current directory
+            N/A yet: If set to a folder name, creates and saves the imafes to this folder (i.e. savefig="images")
+        rescale: 
+            Rescale the ESDs when computing the MP fits (experimental should always be True
+            N/A yet: rescales the plots back to the original scale
+        deltaEs: 
+            Compute and plot the deltas of the eigenvalues; only works if plot=True. 
+            Plots both as a sequence of deltaEs and a histogram (level statistics
+        evecs:  N/A yet
+            Compute the eigenvectors and plots various metrics, including the vector entropy and localization statistics, 
+            both as a sequence (elbow plots) and as histograms
+            Warning:  this takes more memory
+            N/A yet
+        params:  N/A yet
+            a dictionary of default parameters, which can be set but will be over-written by 
         """
 
         model = model or self.model   
@@ -945,6 +963,8 @@ class WeightWatcher(object):
         params['conv2d_norm'] = conv2d_norm
         params['ww2x'] = ww2x
         params['savefig'] = savefig
+        params['rescale'] = rescale
+        params['deltaEs'] = deltas
 
             
         logger.info("params {}".format(params))
@@ -966,18 +986,26 @@ class WeightWatcher(object):
                 self.apply_normalize_Wmats(ww_layer, params)
                 self.apply_esd(ww_layer, params)
                 
-                
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
                     if params['mp_fit']:
                         logger.info("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
+
+                    if params['deltaEs'] and params['plot']:
+                        logger.info("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        self.apply_plot_deltaEs(ww_layer, random=False, params=params)
                     
-                    if params['randomize'] or params['mp_fit']:
+                    if params['randomize']:# params['mp_fit']:
                         logger.info("Randomizing Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                         self.apply_random_esd(ww_layer, params)
                         logger.info("MP Fitting Random layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=True, params=params)
+
+                        if params['deltaEs'] and params['plot']:
+                            logger.info("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
+                            self.apply_plot_deltaEs(ww_layer, random=True, params=params)
+                        
                     
                     self.apply_norm_metrics(ww_layer, params)
                     
@@ -1014,7 +1042,7 @@ class WeightWatcher(object):
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True, fit_bulk=False, ww2x=False):
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1036,6 +1064,7 @@ class WeightWatcher(object):
         params['conv2d_norm'] = conv2d_norm
         params['ww2x'] = ww2x
         params['savefig'] = savefig
+        params['rescale'] = rescale
 
 
             
@@ -1406,6 +1435,34 @@ class WeightWatcher(object):
             logger.info("Found {} eiganvalues for {} {}".format(len(esd), ww_layer.layer_id, ww_layer.name))     
             
         return esd
+
+    def get_Weights(self, model=None, layer=None, params=DEFAULT_PARAMS):
+        """Get the Weights for the layer, specified by id or name)"""
+        
+        model = self.model or model
+        
+        details = self.describe(model=model)
+        layer_ids = details['layer_id'].to_numpy()
+        layer_names = details['name'].to_numpy()
+        
+        if type(layer) is int and layer not in layer_ids:
+            logger.error("Can not find layer id {} in valid layer_ids {}".format(layer, layer_ids))
+            return []
+        
+        elif type(layer) is str and layer not in layer_names:
+            logger.error("Can not find layer name {} in valid layer_names {}".format(layer, layer_names))
+            return []
+    
+        logger.info("Getting Weights for layer {} ".format(layer))
+
+        layer_iter = WWLayerIterator(model=model, filters=[layer], params=params)     
+        details = pd.DataFrame(columns=['layer_id', 'name'])
+           
+        ww_layer = next(layer_iter)
+        assert(not ww_layer.skipped) 
+        assert(ww_layer.has_weights)
+        
+        return ww_layer.Wmats
     
     def apply_norm_metrics(self, ww_layer, params=DEFAULT_PARAMS):
         """Compute the norm metrics, as they depend on the eigenvalues"""
@@ -1446,7 +1503,57 @@ class WeightWatcher(object):
         return ww_layer
     
     
-    
+    # TODO: add x bulk max yellow line for bulk edge for random
+    def apply_plot_deltaEs(self, ww_layer, random=False, params=DEFAULT_PARAMS):
+        """Plot the deltas of the layer ESD, both in a sequence as a histogram (level statisitcs)"""
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name or ""
+        layer_name = "{} {}".format(layer_id, name)
+        savefig = params['savefig']
+
+        if random:
+            layer_name = "{} Randomized".format(layer_name)
+            title = "Layer {} W".format(layer_name)
+            evals = ww_layer.rand_evals
+            color='mediumorchid'
+            bulk_max = ww_layer.rand_bulk_max
+        else:
+            title = "Layer {} W".format(layer_name)
+            evals = ww_layer.evals
+            color='blue'
+
+        # sequence of deltas    
+        deltaEs = np.diff(evals)
+        logDeltaEs = np.log10(deltaEs)
+        x = np.arange(len(deltaEs))
+        eqn = r"$\log_{10}\Delta(\lambda)$"
+        plt.scatter(x,logDeltaEs, color=color)
+        
+        if not random:
+            idx = np.searchsorted(evals, ww_layer.xmin, side="left")        
+            plt.axvline(x=idx, color='red', label=r'$\lambda_{xmin}$')
+        else:
+            idx = np.searchsorted(evals, bulk_max, side="left")        
+            plt.axvline(x=idx, color='red', label=r'$\lambda_{+}$')
+
+        plt.title("Log Delta Es for Layer {}".format(layer_name))
+        plt.ylabel("Log Delta Es: "+eqn)
+        plt.legend()
+        if savefig:  
+            plt.savefig("ww.layer{}.deltaEs.png".formt(layer_id))         
+        plt.show()
+
+        
+        # level statistics (not mean adjusted because plotting log)
+        plt.hist(logDeltaEs, bins=100, color=color, density=True)
+        plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
+        plt.ylabel("density")
+        plt.xlabel(eqn)
+        plt.legend()
+        if savefig:  
+            plt.savefig("ww.layer{}.level-stats.png".formt(layer_id))         
+        plt.show()
+
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
         """Perform MP fit on random or actual random eigenvalues
         N/A yet"""
@@ -1456,58 +1563,74 @@ class WeightWatcher(object):
         layer_name = "{} {}".format(layer_id, name)
         
         if random:
-            title = "Layer {} randomize W".format(layer_name)
+            layer_name = "{} Randomized".format(layer_name)
+            title = "Layer {} W".format(layer_name)
             evals = ww_layer.rand_evals
             color='mediumorchid'
-            layer_name = "Random {}".format(layer_name)
         else:
             title = "Layer {} W".format(layer_name)
             evals = ww_layer.evals
             color='blue'
 
         N, M = ww_layer.N, ww_layer.M
-        
+        rf = ww_layer.rf
 
-        num_spikes, sigma_mp, mp_softrank = self.mp_fit(evals, N, M, layer_name, layer_id, params['plot'], params['savefig'], color=color)
+        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale = self.mp_fit(evals, N, M, rf, layer_name, layer_id, 
+                                                        params['plot'], params['savefig'], color, params['rescale'])
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
             ww_layer.add_column('rand_sigma_mp', sigma_mp)
             ww_layer.add_column('rand_mp_softrank', mp_softrank)
+            ww_layer.add_column('rand_W_scale', Wscale)
+            ww_layer.add_column('rand_bulk_max', bulk_max)
+            ww_layer.add_column('rand_bulk_min', bulk_min)
         else:
             ww_layer.add_column('num_spikes', num_spikes)
             ww_layer.add_column('sigma_mp', sigma_mp)
             ww_layer.add_column(METRICS.MP_SOFTRANK, mp_softrank)
-            
+            ww_layer.add_column('W_scale', Wscale)
+            ww_layer.add_column('bulk_max', bulk_max)
+            ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, layer_name, layer_id, plot, savefig, color):
-        """Automatic MP fit to evals, compute numner of spikes and mp_softrank """
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale):
+        """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M
         lambda_max = np.max(evals)
         
         to_plot = evals.copy()
+
+        Wscale=1.0
+        if rescale:
+            Wnorm = np.sqrt(np.sum(evals))
+            Wscale = np.sqrt(N*rf)/Wnorm
+            logger.info("rescaling {} ESD of W by {:0.2f}".format(layer_id, Wscale))
+
+        to_plot = (Wscale*Wscale)*to_plot
         
         bw = 0.1 
         s1, f1 = fit_density_with_range(to_plot, Q, bw = bw)
         sigma_mp = s1
         
-        bulk_edge = (s1 * (1 + 1/np.sqrt(Q)))**2
+        bulk_max = (s1 * (1 + 1/np.sqrt(Q)))**2
+        bulk_min = (s1 * (1 - 1/np.sqrt(Q)))**2
         
         #TODO: add Tracy Widom (TW) range
         
-        num_spikes = len(to_plot[to_plot > bulk_edge])
+        num_spikes = len(to_plot[to_plot > bulk_max])
         ratio_numofSpikes  = num_spikes / (M - 1)
         
-        mp_softrank = bulk_edge / lambda_max
-        
+        mp_softrank = bulk_max / lambda_max
+
+
         if Q == 1.0:
             fit_law = 'QC SSD'
             
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color)
+                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color)#, scale=Wscale)
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
@@ -1519,7 +1642,7 @@ class WeightWatcher(object):
 #        
 
         plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
-                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color)
+                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color)#, scale=Wscale)
         
         if plot:
             title = fit_law+" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
@@ -1532,7 +1655,9 @@ class WeightWatcher(object):
                 plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
             plt.show()
             
-        return num_spikes, sigma_mp, mp_softrank
+        bulk_max = bulk_max/(Wscale*Wscale)
+        bulk_min = bulk_min/(Wscale*Wscale)
+        return num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale
 
         
         

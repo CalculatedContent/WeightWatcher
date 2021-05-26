@@ -210,16 +210,19 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue'):
     """Method = 'MP' or 'QC'
     
     """
-    to_plot = np.sort(to_plot)
-    x_min, x_max = 0, np.max(to_plot)
-    
+
     if method == "MP":
+        to_plot = np.sort(to_plot)
+        x_min, x_max = 0, np.max(to_plot)
         x, y = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
     elif method == "QC":
+        to_plot = np.sort(to_plot)
+        x_min, x_max = 0, np.max(to_plot)
         x, y = quarter_circle_pdf(x_min, x_max, sigma)
         
-    plt.hist(to_plot, bins=100, alpha=0.6, color=color, density=True)
-    plt.plot(x, y, linewidth=1, color='r')  # , label = method + " fit")
+    plt.hist(to_plot, bins=100, alpha=0.6, color=color, density=True, label="ead")
+    plt.plot(x, y, linewidth=1, color='r', label = method + " fit")
+    plt.legend()
     
     return None
 
@@ -439,7 +442,15 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False):
     X_plot = xde[:, np.newaxis]
     log_dens = kde.score_samples(X_plot)
     yde = np.exp(log_dens)   
-    
+
+    # hack to try to fix fits
+    # remove areas where the density is almost zero
+    THRESH = 0.01
+    bad_ids = np.where(np.array(yde) < THRESH)[0]
+    good_ids = np.where(np.array(yde) > THRESH)[0]
+    xde = np.array(xde)[good_ids]
+    yde = np.array(yde)[good_ids]
+
     if Q == 1:
         # Quarter Cirle Law fit for this sigma
         xmp, ymp = quarter_circle_fun(xde, sigma=sigma)
@@ -455,13 +466,18 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False):
             # form residual, remove nan's 
             resid = ymp - yde
     #     resid = np.nan_to_num(resid)
-    
+
     if debug:
-        plt.plot(xde, yde)
-        plt.plot(xmp, ymp)
+        plt.plot(xde, yde, color='cyan')
+        plt.plot(xmp, ymp, color='orange')
+        plt.axhline(y=THRESH)
         plt.show()
         print("sigma {}  mean residual {}".format(sigma, np.mean(resid)))
 
+    # hack to try to fix fits
+    bad_zeros = np.zeros(len(bad_ids))
+    resid = np.concatenate((resid,bad_zeros))
+    
     if allresid:
         return resid
     else:
@@ -499,11 +515,12 @@ def fit_density(evals, Q, bw=0.1, sigma0=None):
     return sigma1, infodict['fvec']
 
 
-def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.3, 1.05, 0.1),) ):
+def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.1, 1.25, 0.01),) ):
     
     assert type(sigma_range) == tuple, ValueError("sigma_range must be tuple")
     assert type(sigma_range[0]) == slice
     
+
     if Q == 1:
         to_fit = np.sqrt(evals)
     else:

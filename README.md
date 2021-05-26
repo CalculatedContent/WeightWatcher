@@ -108,7 +108,7 @@ The watcher object has several functions and analyze features described below
 
 ```python
 analyze( model=None, layers=[], min_evals=0, max_evals=None,
-	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
+	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True, rescale=True):
 ...
 describe(self, model=None, layers=[], min_evals=0, max_evals=None,
          plot=True, randomize=True, mp_fit=True, ww2x=False):
@@ -132,6 +132,14 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 
 ![ESD](ESD-plots.png)
 
+#### Rescaling (new in ww0.4.7)
+
+<pre>analyze(..., rescale=True)</pre>
+
+Note that to perform the RMT / MP fits, the ESD (eigenvalues) are rescaled $dfrac{N}/{\Vert\mathbf{W}\Vert_{F}^{2}}$.  
+This rescaling is **not** used, however, to compute any (scale-dependent) metrics.
+
+To plot the original ESD, set rescale=False
 
 ### Detecting OverTraining
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.

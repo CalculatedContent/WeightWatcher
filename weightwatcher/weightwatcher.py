@@ -54,7 +54,8 @@ mpl_logger.setLevel(logging.WARNING)
 
 MAX_NUM_EVALS = 50000
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 'rescale':True , 'deltas':False}
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 
+                  'rescale':True , 'deltaEs':False, 'intra':False, 'combined':False}
     
 
 def main():
@@ -69,7 +70,7 @@ class WWLayer:
        Uses pythong metaprogramming to add result columns for the final details dataframe"""
        
     def __init__(self, layer, layer_id=-1, name=None,
-                 the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, skipped=False):
+                 the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, skipped=False, make_weights=True):
         self.layer = layer
         self.layer_id = layer_id  
         self.name = name
@@ -117,7 +118,10 @@ class WWLayer:
         
         # details, set by metaprogramming in apply_xxx() methods
         self.columns = []
-        self.make_weights()
+        
+        # don't make if we set the weights externally
+        if make_weights:
+            self.make_weights()
         
     def add_column(self, name, value):
         """Add column to the details dataframe"""
@@ -604,6 +608,66 @@ class WW2xSliceIterator(WWLayerIterator):
     def make_layer_iter_(self):
         return self.ww_slice_iter_()
     
+
+
+class WWIntraLayerIterator(WW2xSliceIterator):
+    """Iterator variant that iterates over N-1 layer pairs, forms ESD for cross correlations"""
+    from copy import deepcopy
+    
+    prev_layer = None
+
+    def ww_intralayer_iter_(self): 
+               
+        # TODO: detect the layer ordering and flip accordingly
+        # for  all layers the same way
+        def align_mats(W0, W1): 
+            logger.info("aligning {} {}".format(W0.shape, W1.shape))
+            # M x N
+            if W0.shape[0] > W0.shape[1]:
+                logger.debug("fliping W0")
+                W0 = np.transpose(W0)         
+            # N x M 
+            if W0.shape[1] !=  W1.shape[0]:
+                logger.debug("fliping W1 to match W0")
+                W1 = np.transpose(W1)
+                     
+            logger.info("aligned {} {}".format(W0.shape, W1.shape))
+            return W0, W1
+   ## Need to look at all W, currently just doing 1
+        for ww_layer in self.ww_layer_iter_():
+            if self.prev_layer is None:
+                self.prev_layer = deepcopy(ww_layer)
+            else:
+                name = "{} X {} ".format(self.prev_layer.layer_id, ww_layer.layer_id)
+                logger.info("Analyzing {}  ".format(name))
+
+                W0 = self.prev_layer.Wmats[0]                                                                  
+                W1 = ww_layer.Wmats[0]
+                W0, W1 = align_mats(W0, W1)
+                
+                self.prev_layer = deepcopy(ww_layer)
+                ww_intralayer = deepcopy(ww_layer)
+                ww_intralayer.name = name
+                
+                # NEED TO LOOK AT ALL LAYERS
+                ww_intralayer.count = 1
+                
+                if W0.shape[1]!=W1.shape[0]:
+                    logger.info(" {} not compatible, skipping".format(name))
+                else:            
+                    norm12 = np.linalg.norm(W0)*np.linalg.norm(W1)
+                    X = np.dot(W0,W1)/(norm12)
+                    ww_intralayer.Wmats = [X]
+                    ww_intralayer.N = np.max(X.shape)
+                    ww_intralayer.M = np.min(X.shape)
+                    
+                    ww_intralayer.add_column("Xflag", True)
+                  
+                    yield ww_intralayer
+
+                
+    def make_layer_iter_(self):
+        return self.ww_intralayer_iter_()
     
 class WeightWatcher(object):
 
@@ -925,7 +989,8 @@ class WeightWatcher(object):
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, deltas=False):
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
+                deltas=False, intra=False, combined=False):
         """
         Analyze the weight matrices of a model.
 
@@ -977,6 +1042,9 @@ class WeightWatcher(object):
         deltaEs: 
             Compute and plot the deltas of the eigenvalues; only works if plot=True. 
             Plots both as a sequence of deltaEs and a histogram (level statistics
+        intra:
+            Analyze IntraLayer Correlations
+            Experimental option
         evecs:  N/A yet
             Compute the eigenvectors and plots various metrics, including the vector entropy and localization statistics, 
             both as a sequence (elbow plots) and as histograms
@@ -1007,21 +1075,28 @@ class WeightWatcher(object):
         params['ww2x'] = ww2x
         params['savefig'] = savefig
         params['rescale'] = rescale
-        params['deltaEs'] = deltas
+        params['deltaEs'] = deltas 
+        params['intra'] = intra 
+        params['combined'] = combined
 
             
         logger.info("params {}".format(params))
         if not self.valid_params(params):
             logger.error("Error, params not valid: \n {}".format(params))
    
-        if ww2x:
+        if intra:
+            logger.info("Intra layer Analysis (experimental)")
+            layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
+        elif ww2x:
             logger.info("Using weightwatcher 0.2x style layer and slice iterator")
             layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
         else:
             layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
         
         details = pd.DataFrame(columns=['layer_id', 'name'])
-           
+        
+        combined = True
+        all_evals = [] 
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
@@ -1051,9 +1126,19 @@ class WeightWatcher(object):
                         
                     
                     self.apply_norm_metrics(ww_layer, params)
+                    #all_evals.extend(ww_layer.evals)
                     
                 # TODO: add find correlation traps here
                 details = details.append(ww_layer.get_row(), ignore_index=True)
+
+        # create combined layer, with dummy info
+        # this needs to be part of the layer iterator
+        #if combined:
+            #combo_layer = WWLayer(ww_layer.layer, layer_id=-1, framework=self.framework, skipped = False, name = "Combined Layer", the_type = LAYER_TYPE.COMBINED, make_weights=False)
+            #combo_layer.evals = all_evals
+            #self.apply_fit_powerlaw(combo_layer, params)
+            #details = details.append(ww_layer.get_row(), ignore_index=True)
+                    
 
         self.details = details
         return details
@@ -1085,7 +1170,8 @@ class WeightWatcher(object):
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True):
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
+                deltas=False, intra=False, combined=False):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1108,13 +1194,17 @@ class WeightWatcher(object):
         params['ww2x'] = ww2x
         params['savefig'] = savefig
         params['rescale'] = rescale
+        params['deltaEs'] = deltas 
+        params['intra'] = intra 
+        params['combined'] = combined
 
-
-            
         logger.info("params {}".format(params))
         if not self.valid_params(params):
             logger.error("Error, params not valid: \n {}".format(params))
    
+        if intra:
+            logger.info("Intra layer Analysis (experimental)")
+            layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
         if ww2x:
             logger.info("Using weightwatcher 0.2x style layer and slice iterator")
             layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
@@ -1124,15 +1214,18 @@ class WeightWatcher(object):
         
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
+        num_all_evals = 0
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
                 if ww2x:
-                    ww_layer.add_column('num_evals', ww_layer.M)
+                    num_evals = ww_layer.M
                 else:
-                    ww_layer.add_column('num_evals', ww_layer.M * ww_layer.rf)
+                    num_evals = ww_layer.M * ww_layer.rf
 
+                num_all_evals += num_evals    
+                ww_layer.add_column('num_evals', num_evals)
                 details = details.append(ww_layer.get_row(), ignore_index=True)
 
         return details

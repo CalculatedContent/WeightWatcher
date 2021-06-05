@@ -2,7 +2,7 @@
 
 ## Weight Watcher  
 
-### Current Version / Release: 0.4.6
+### Current Version / Release: 0.4.8
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
@@ -12,6 +12,7 @@
 - predict test accuracies across different models
 - detect potential problems when compressing or fine-tuning pretrained models
 - determine if a model has been overtrained, without looking at the test data
+- experimental support for intra-layer correlations
 
 
 #### From Research to Production

@@ -23,6 +23,7 @@ More details and demos can be found on the [Calculated Content Blog](https://cal
 ## Installation
 
 ```sh
+pip install onnx
 pip install weightwatcher
 ```
 

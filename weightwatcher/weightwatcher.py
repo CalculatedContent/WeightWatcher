@@ -197,7 +197,6 @@ class WWLayer:
             node = layer
             A = numpy_helper.to_array(node)
             if A is not None:
-                print(A.shape)
                 if len(A.shape)==4:
                     the_type = LAYER_TYPE.CONV2D
                 elif len(A.shape)==2 and len(A[0]==2):

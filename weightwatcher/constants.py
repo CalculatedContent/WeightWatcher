@@ -29,6 +29,7 @@ class FRAMEWORK(IntFlag):
     UNKNOWN = auto()
     PYTORCH = auto()
     KERAS = auto()
+    ONNX = auto()
     
 
 class CHANNELS(IntFlag):

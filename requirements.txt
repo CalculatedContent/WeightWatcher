@@ -106,3 +106,4 @@ Werkzeug==0.16.0
 widgetsnbextension==3.5.1
 wrapt==1.11.2
 zipp==0.6.0
+onnx==1.9.0

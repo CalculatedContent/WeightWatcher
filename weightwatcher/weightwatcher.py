@@ -29,6 +29,9 @@ from tensorflow.keras.models import load_model
 import torch
 import torch.nn as nn
 
+import onnx
+from onnx import numpy_helper
+
 #
 # this is use to allow editing in Eclipse but also
 # building on the commend line
@@ -80,6 +83,8 @@ class WWLayer:
             self.channels = CHANNELS.FIRST
         elif (self.framework == FRAMEWORK.PYTORCH):
             self.channels = CHANNELS.LAST
+        elif (self.framework == FRAMEWORK.ONNX):
+            self.channels = CHANNELS.FIRST
         
         # get the LAYER_TYPE
         self.the_type = self.layer_type(self.layer)
@@ -178,6 +183,23 @@ class WWLayer:
                 
         elif isinstance(layer, nn.LayerNorm):
             the_type = LAYER_TYPE.NORM
+
+        # ONNX
+        # the onnx op_typs seems to be mis-specified 
+        # so we will infer the layer type from the W shape
+        #
+        #elif isinstance(layer, list) and layer[0]==FRAMEWORK.ONNX:
+        elif isinstance(layer,onnx.onnx_ml_pb2.TensorProto):
+            node = layer
+            A = numpy_helper.to_array(node)
+            if A is not None:
+                print(A.shape)
+                if len(A.shape)==4:
+                    the_type = LAYER_TYPE.CONV2D
+                elif len(A.shape)==2 and len(A[0]==2):
+                    the_type = LAYER_TYPE.DENSE
+
+        # allow user to specify model type with file mapping
         
         # try to infer type (i.e for huggingface)
         elif typestr.endswith(".linear'>"):
@@ -215,7 +237,8 @@ class WWLayer:
         return self
         
     def get_weights_and_biases(self):
-        """extract the original weights (as a tensor) for the layer, and biases for the layer, if present"""
+        """extract the original weights (as a tensor) for the layer, and biases for the layer, if present
+        """
         
         has_weights, has_biases = False, False
         weights, biases = None, None
@@ -223,29 +246,40 @@ class WWLayer:
         if self.framework == FRAMEWORK.PYTORCH:
             if hasattr(self.layer, 'weight'):
                 w = [np.array(self.layer.weight.data.clone().cpu())]
-                has_weights = True
+                if len(w) == 1:
+                    weights = w[0]
+                    biases = None
+                    has_weights = True
+                elif len(w) == 2:
+                    weights = w[0]
+                    biases = w[1]
+                    has_weights = True
+                    has_biases = True
                 
         elif self.framework == FRAMEWORK.KERAS:
             w = self.layer.get_weights()
-            if(len(w) > 0):
-                has_weights = True
-                
-            if(len(w) > 1):
-                has_biases = True
-                
-        else:
-            logger.error("unknown framework: weighwatcher only supports keras (tf 2.x) or pytorch ")
-       
-        if has_weights:
             if len(w) == 1:
-                logger.debug("Linear weights shape  len(w){} type(w){}  w.shape {} ".format(len(w), type(w), w[0].shape))
                 weights = w[0]
                 biases = None
+                has_weights = True
             elif len(w) == 2:
                 weights = w[0]
                 biases = w[1]
-            else:
-                logger.error("unknown weights, with len(w)={} ".format(len(w)))
+                has_weights = True
+                has_biases = True
+
+        elif self.framework == FRAMEWORK.ONNX:
+            node = self.layer
+            w = [numpy_helper.to_array(node)]
+            if len(w) == 1:
+                weights = w[0]
+                biases = None
+                has_weights = True
+            elif len(w) == 2:
+                weights = w[0]
+                biases = w[1]
+                has_weights = True
+                has_biases = True
         
         return has_weights, weights, has_biases, biases  
       
@@ -281,7 +315,7 @@ class WWLayer:
             logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
         
         else:
-            logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, self.layer))
+            logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, type(self.layer)))
     
         self.N = N
         self.M = M
@@ -372,21 +406,30 @@ class ModelIterator:
         layer_iter = None
         
         if hasattr(model, 'layers'):
-
             def layer_iter_():
                 for layer in model.layers:
                         yield layer 
                         
             layer_iter = layer_iter_()
             framework = FRAMEWORK.KERAS
-        elif hasattr(model, 'modules'):
 
+        elif hasattr(model, 'modules'):
             def layer_iter_():
                 for layer in model.modules():
                         yield layer 
                         
             layer_iter = layer_iter_()    
             framework = FRAMEWORK.PYTORCH
+
+        elif isinstance(model, onnx.onnx_ml_pb2.ModelProto):
+            def layer_iter_():
+                for inode, node in enumerate(model.graph.initializer):
+                    #yield [FRAMEWORK.ONNX, model.graph.node[inode], node]
+                    yield node
+                        
+            layer_iter = layer_iter_()    
+            framework = FRAMEWORK.ONNX
+
         else:
             layer_iter = None
             framework = FRAMEWORK.UNKNOWN
@@ -1399,7 +1442,7 @@ class WeightWatcher(object):
         return alpha, xmin, xmax, D, sigma, num_pl_spikes
     
     
-    def get_ESD(self, model=None, layer=None, params=DEFAULT_PARAMS):
+    def get_ESD(self, model=None, layer=None, random=False, params=DEFAULT_PARAMS):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""
         
         model = self.model or model
@@ -1416,7 +1459,6 @@ class WeightWatcher(object):
             logger.error("Can not find layer name {} in valid layer_names {}".format(layer, layer_names))
             return []
     
-        logger.info("Getting ESD for layer {} ".format(layer))
 
         layer_iter = WWLayerIterator(model=model, filters=[layer], params=params)     
         details = pd.DataFrame(columns=['layer_id', 'name'])
@@ -1425,9 +1467,15 @@ class WeightWatcher(object):
         assert(not ww_layer.skipped) 
         assert(ww_layer.has_weights)
         
-        self.apply_esd(ww_layer, params)
-            
-        esd = ww_layer.evals
+        if not random:
+            logger.info("Getting ESD for layer {} ".format(layer))
+            self.apply_esd(ww_layer, params)
+            esd = ww_layer.evals
+        else:
+            logger.info("Getting Randomized ESD for layer {} ".format(layer))
+            self.apply_random_esd(ww_layer, params)
+            esd = ww_layer.rand_evals
+
         if esd is None or len(esd)==0:
             logger.warn("No eigenvalues found for {} {}".format(ww_layer.layer_id, ww_layer.name))
                 
@@ -1594,12 +1642,10 @@ class WeightWatcher(object):
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale):
+    def mp_fit(elf, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
-        Q = N/M
-        lambda_max = np.max(evals)
-        
+        Q = N/M        
         to_plot = evals.copy()
 
         Wscale=1.0
@@ -1609,6 +1655,7 @@ class WeightWatcher(object):
             logger.info("rescaling {} ESD of W by {:0.2f}".format(layer_id, Wscale))
 
         to_plot = (Wscale*Wscale)*to_plot
+        lambda_max = np.max(to_plot)
         
         bw = 0.1 
         s1, f1 = fit_density_with_range(to_plot, Q, bw = bw)
@@ -1640,7 +1687,7 @@ class WeightWatcher(object):
         else:
             fit_law = 'MP ESD'
 #        
-
+        logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
         plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color)#, scale=Wscale)
         

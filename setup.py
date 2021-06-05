@@ -40,6 +40,8 @@ setup(
                         'powerlaw',
                         'tensorflow',
                         'sklearn',
+                        'torch',
+                        'onnx',
                         'pandas'],
     entry_points = '''
         [console_scripts]

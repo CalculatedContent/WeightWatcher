@@ -23,8 +23,23 @@ More details and demos can be found on the [Calculated Content Blog](https://cal
 ## Installation
 
 ```sh
+pip install onnx
 pip install weightwatcher
 ```
+
+#### packages required
+
+<pre>
+numpy
+matplotlib
+powerlaw
+tensorflow
+sklearn
+torch
+onnx
+pandas
+</pre>
+
 
 ## Usage
 

@@ -6,7 +6,7 @@
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
-- analyze pre/trained pyTorch, Keras, and ONNX DNN models
+- analyze pre/trained pyTorch, Keras, and now *ONNX* DNN models
 - inspect models that are difficult to train
 - gauge improvements in model performance
 - predict test accuracies across different models
@@ -20,25 +20,11 @@ WeightWatcher is based on theoretical research (done injoint with UC Berkeley) i
 
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
-## Installation
+## Installation (now with ONNX)
 
 ```sh
-pip install onnx
-pip install weightwatcher
+pip install onnx weightwatcher
 ```
-
-#### packages required
-
-<pre>
-numpy
-matplotlib
-powerlaw
-tensorflow
-sklearn
-torch
-onnx
-pandas
-</pre>
 
 
 ## Usage

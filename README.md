@@ -26,6 +26,10 @@ More details and demos can be found on the [Calculated Content Blog](https://cal
 pip install weightwatcher
 ```
 
+#### requirements
+
+weightwatcher requires keras, torch and onnx
+
 ## Usage
 
 ```python

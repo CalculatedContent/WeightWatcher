@@ -21,6 +21,7 @@ WeightWatcher is based on theoretical research (done injoint with UC Berkeley) i
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
 ## Installation (now with ONNX)
+The onnx support broke the pypi installer...we are working to fix this..for now, please use:
 
 ```sh
 pip install onnx weightwatcher

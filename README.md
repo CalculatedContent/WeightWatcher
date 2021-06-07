@@ -2,11 +2,11 @@
 
 ## Weight Watcher  
 
-### Current Version / Release: 0.4.8
+### Current Version / Release: 0.4.7
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
-- analyze pre/trained pyTorch, Keras, and now *ONNX* DNN models (Conv2D and Dense layers)
+- analyze pre/trained pyTorch, Keras, DNN models (Conv2D and Dense layers)
 - inspect models that are difficult to train
 - gauge improvements in model performance
 - predict test accuracies across different models
@@ -20,11 +20,10 @@ WeightWatcher is based on theoretical research (done injoint with UC Berkeley) i
 
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
-## Installation (now with ONNX)
-The onnx support broke the pypi installer...we are working to fix this..for now, please use:
+## Installation 
 
 ```sh
-pip install onnx weightwatcher
+pip install  weightwatcher
 ```
 
 

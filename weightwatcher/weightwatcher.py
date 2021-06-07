@@ -65,6 +65,34 @@ def main():
     print("WeightWatcher command line support coming later. https://calculationconsulting.com")
 
 
+class ONNXLayer:
+    """Helper class to support ONNX layers
+    
+    Turns out the op_type is option, so we have to 
+    infers the layer_ type from the dimension of the weights 
+        [a,b,c,d]  ->  CONV2D 
+        [a,b]  ->  DENSE 
+                
+    """
+    
+    def __init__(self, inode, node):
+        self.node = node
+        self.layer_id = inode
+        self.name = node.name
+        self.dims = node.dims
+        self.the_type = LAYER_TYPE.UNKNOWN
+
+        if len(self.dims) == 4:
+            self.the_type = LAYER_TYPE.CONV2D
+        elif len(self.dims) == 2:
+            self.the_type = LAYER_TYPE.DENSE
+        else:
+            logger.debug("Unsupported ONNX Layer, dims = {}".format(self.dims))
+            
+    def get_weights(self):
+        return numpy_helper.to_array(self.node) 
+        
+        
 class WWLayer:
     """WW wrapper layer to Keras and PyTorch Layer layer objects
        Uses pythong metaprogramming to add result columns for the final details dataframe"""
@@ -189,18 +217,8 @@ class WWLayer:
             the_type = LAYER_TYPE.NORM
 
         # ONNX
-        # the onnx op_typs seems to be mis-specified 
-        # so we will infer the layer type from the W shape
-        #
-        #elif isinstance(layer, list) and layer[0]==FRAMEWORK.ONNX:
-        elif isinstance(layer,onnx.onnx_ml_pb2.TensorProto):
-            node = layer
-            A = numpy_helper.to_array(node)
-            if A is not None:
-                if len(A.shape)==4:
-                    the_type = LAYER_TYPE.CONV2D
-                elif len(A.shape)==2 and len(A[0]==2):
-                    the_type = LAYER_TYPE.DENSE
+        elif isinstance(layer,ONNXLayer):
+            the_type = layer.the_type
 
         # allow user to specify model type with file mapping
         
@@ -249,40 +267,45 @@ class WWLayer:
         if self.framework == FRAMEWORK.PYTORCH:
             if hasattr(self.layer, 'weight'):
                 w = [np.array(self.layer.weight.data.clone().cpu())]
-                if len(w) == 1:
+                if self.the_type==LAYER_TYPE.CONV2D:
                     weights = w[0]
                     biases = None
                     has_weights = True
-                elif len(w) == 2:
+                elif self.the_type==LAYER_TYPE.CONV1D:
                     weights = w[0]
-                    biases = w[1]
+                    biases = None
                     has_weights = True
-                    has_biases = True
+                elif self.the_type==LAYER_TYPE.DENSE:
+                    weights = w[0]
+                    #biases = w[1]
+                    has_weights = True
+                    #has_biases = True
+                else: 
+                    logger.warn("layer type {} not found ".format(str(self.the_type)))
+
                 
         elif self.framework == FRAMEWORK.KERAS:
             w = self.layer.get_weights()
-            if len(w) == 1:
+            if self.the_type==LAYER_TYPE.CONV2D:
                 weights = w[0]
                 biases = None
                 has_weights = True
-            elif len(w) == 2:
+            elif self.the_type==LAYER_TYPE.CONV1D:
+                weights = w[0]
+                biases = None
+                has_weights = True
+            elif self.the_type==LAYER_TYPE.DENSE:
                 weights = w[0]
                 biases = w[1]
                 has_weights = True
                 has_biases = True
+            else: 
+                logger.warn("layer type {} not found ".format(str(self.the_type)))
 
-        elif self.framework == FRAMEWORK.ONNX:
-            node = self.layer
-            w = [numpy_helper.to_array(node)]
-            if len(w) == 1:
-                weights = w[0]
-                biases = None
-                has_weights = True
-            elif len(w) == 2:
-                weights = w[0]
-                biases = w[1]
-                has_weights = True
-                has_biases = True
+        elif self.framework == FRAMEWORK.ONNX:      
+            onnx_layer = self.layer
+            weights = onnx_layer.get_weights()
+            has_weights = True
         
         return has_weights, weights, has_biases, biases  
       
@@ -375,6 +398,7 @@ class WWLayer:
         return Wmats, N, M, rf, channels    
 
 
+    
 class ModelIterator:
     """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available."""
 
@@ -427,8 +451,7 @@ class ModelIterator:
         elif isinstance(model, onnx.onnx_ml_pb2.ModelProto):
             def layer_iter_():
                 for inode, node in enumerate(model.graph.initializer):
-                    #yield [FRAMEWORK.ONNX, model.graph.node[inode], node]
-                    yield node
+                    yield ONNXLayer(inode, node)
                         
             layer_iter = layer_iter_()    
             framework = FRAMEWORK.ONNX

@@ -55,7 +55,7 @@ mpl_logger.setLevel(logging.WARNING)
 MAX_NUM_EVALS = 50000
 
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 
-                  'rescale':True , 'deltaEs':False, 'intra':False, 'combined':False}
+                  'rescale':True , 'deltaEs':False, 'intra':False, 'combined':False, 'conv2d_fft':False}
     
 
 def main():
@@ -98,7 +98,8 @@ class WWLayer:
        Uses pythong metaprogramming to add result columns for the final details dataframe"""
        
     def __init__(self, layer, layer_id=-1, name=None,
-                 the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, skipped=False, make_weights=True):
+                 the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, 
+                 skipped=False, make_weights=True, params=DEFAULT_PARAMS):
         self.layer = layer
         self.layer_id = layer_id  
         self.name = name
@@ -147,6 +148,11 @@ class WWLayer:
         # details, set by metaprogramming in apply_xxx() methods
         self.columns = []
         
+        # conv2d_fft
+        # only applies to Conv2D layers
+        # layer, this would be some kind of layer weight options
+        self.params = params
+        
         # don't make if we set the weights externally
         if make_weights:
             self.make_weights()
@@ -172,6 +178,14 @@ class WWLayer:
                     
         return data
     
+    
+    def __repr__(self):
+        return "WWLayer()"
+
+    def __str__(self):
+        return "WWLayer {}  {} {} {}  skipped {}".format(self.layer_id, self.name,
+                                                       self.framework.name, self.the_type.name, self.skipped)
+        
     def layer_type(self, layer):
         """Given a framework layer, determine the weightwatcher LAYER_TYPE
         This can detect basic Keras and PyTorch classes by type, and will try to infer the type otherwise. """
@@ -309,7 +323,7 @@ class WWLayer:
         
         return has_weights, weights, has_biases, biases  
       
-    def set_weight_matrices(self, weights, conv2d_fft=False, conv2d_norm=True):
+    def set_weight_matrices(self, weights):#, conv2d_fft=False, conv2d_norm=True):
         """extract the weight matrices from the framework layer weights (tensors)
         sets the weights and detailed properties on the ww (wrapper) layer 
     
@@ -320,6 +334,7 @@ class WWLayer:
             return 
         
         the_type = self.the_type
+        conv2d_fft = self.params['conv2d_fft']
         
         N, M, n_comp, rf = 0, 0, 0, None
         Wmats = []
@@ -333,9 +348,14 @@ class WWLayer:
             
         # TODO: reset channels nere ?    
         elif the_type == LAYER_TYPE.CONV2D:
-            Wmats, N, M, rf, channels = self.conv2D_Wmats(weights)
-            n_comp = M
-            self.channels = channels
+            if not conv2d_fft:
+                Wmats, N, M, rf, channels = self.conv2D_Wmats(weights)
+                n_comp = M
+                self.channels = channels
+            else:
+                Wmats, N, M, n_comp = self.get_conv2D_fft(weights)
+                self.channels = CHANNELS.UNKNOWN
+
             
         elif the_type == LAYER_TYPE.NORM:
             logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
@@ -351,12 +371,45 @@ class WWLayer:
         
         return 
         
-    def __repr__(self):
-        return "WWLayer()"
+        
+    def get_conv2D_fft(self, W, n=32):
+        """Compute FFT of Conv2D channels, to apply SVD later"""
+        
+        logger.info("get_conv2D_fft on W {}".format(W.shape))
 
-    def __str__(self):
-        return "WWLayer {}  {} {} {}  skipped {}".format(self.layer_id, self.name,
-                                                       self.framework.name, self.the_type.name, self.skipped)
+        # is pytorch or tensor style 
+        s = W.shape
+        logger.debug("    Conv2D SVD ({}): Analyzing ...".format(s))
+
+        N, M, imax, jmax = s[0], s[1], s[2], s[3]
+        # probably better just to check what col N is in 
+        if N + M >= imax + jmax:
+            logger.debug("[2,3] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))    
+            fft_axes = [2, 3]
+        else:
+            N, M, imax, jmax = imax, jmax, N, M          
+            fft_axes = [0, 1]
+            logger.debug("[1,2] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+
+        # Switch N, M if in wrong order
+        if N < M:
+            M, N = N, M
+
+        #  receptive_field / kernel size
+        rf = np.min([imax, jmax])
+        # aspect ratio
+        Q = N / M 
+        # num non-zero eigenvalues  rf is receptive field size (sorry calculated again here)
+        n_comp = rf * N * M
+        
+        logger.info("N={} M={} n_comp {} ".format(N, M, n_comp))
+
+        # run FFT on each channel
+        fft_grid = [n, n]
+        fft_coefs = np.fft.fft2(W, fft_grid, axes=fft_axes)
+        
+        return [fft_coefs], N, M, n_comp
+
     
     def conv2D_Wmats(self, Wtensor, channels=CHANNELS.UNKNOWN):
         """Extract W slices from a 4 layer_id conv2D tensor of shape: (N,M,i,j) or (M,N,i,j).  
@@ -535,7 +588,7 @@ class WWLayerIterator(ModelIterator):
         for curr_layer in self.model_iter:
             curr_id, self.k = self.k, self.k + 1
             
-            ww_layer = WWLayer(curr_layer, layer_id=curr_id, framework=self.framework)
+            ww_layer = WWLayer(curr_layer, layer_id=curr_id, framework=self.framework, params=self.params)
             
             self.apply_filters(ww_layer)
             
@@ -1052,6 +1105,7 @@ class WeightWatcher(object):
         conv2d_fft:  N/A yet
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
             Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max  N/A yet
+            Can not uses with ww2x
         ww2x:
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
         savefig: 
@@ -1094,6 +1148,7 @@ class WeightWatcher(object):
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
         params['conv2d_norm'] = conv2d_norm
+        params['conv2d_fft'] = conv2d_fft
         params['ww2x'] = ww2x
         params['savefig'] = savefig
         params['rescale'] = rescale
@@ -1105,6 +1160,7 @@ class WeightWatcher(object):
         logger.info("params {}".format(params))
         if not self.valid_params(params):
             logger.error("Error, params not valid: \n {}".format(params))
+            
    
         if intra:
             logger.info("Intra layer Analysis (experimental)")
@@ -1213,6 +1269,7 @@ class WeightWatcher(object):
         params['normalize'] = normalize
         params['glorot_fix'] = glorot_fix
         params['conv2d_norm'] = conv2d_norm
+        params['conv2d_fft'] = conv2d_fft
         params['ww2x'] = ww2x
         params['savefig'] = savefig
         params['rescale'] = rescale
@@ -1232,8 +1289,7 @@ class WeightWatcher(object):
             layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
         else:
             layer_iterator = WWLayerIterator(model, filters=layers, params=params)  
-   
-        
+            
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         num_all_evals = 0
@@ -1243,8 +1299,11 @@ class WeightWatcher(object):
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
                 if ww2x:
                     num_evals = ww_layer.M
+                elif conv2d_fft:
+                    num_evals = ww_layer.num_components
                 else:
                     num_evals = ww_layer.M * ww_layer.rf
+                    
 
                 num_all_evals += num_evals    
                 ww_layer.add_column('num_evals', num_evals)
@@ -1275,6 +1334,10 @@ class WeightWatcher(object):
         elif max_evals and max_evals < -1:
             logger.warn(" max_evals {} < -1 ".format(max_evals))
             valid = False
+            
+        if params.get('ww2x') and params.get('conv2d_fft'):
+            logger.warn("can not specify ww2x and conv2d_fft")
+            valid = False
         
         return valid
     
@@ -1291,43 +1354,7 @@ class WeightWatcher(object):
     
     
  # not used yet   
-    def get_conv2D_fft(self, W, n=32):
-        """Compute FFT of Conv2D channels, to apply SVD later"""
-        
-        logger.info("get_conv2D_fft on W {}".format(W.shape))
 
-        # is pytorch or tensor style 
-        s = W.shape
-        logger.debug("    Conv2D SVD ({}): Analyzing ...".format(s))
-
-        N, M, imax, jmax = s[0], s[1], s[2], s[3]
-        # probably better just to check what col N is in 
-        if N + M >= imax + jmax:
-            logger.debug("[2,3] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))    
-            fft_axes = [2, 3]
-        else:
-            N, M, imax, jmax = imax, jmax, N, M          
-            fft_axes = [0, 1]
-            logger.debug("[1,2] tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
-
-        # Switch N, M if in wrong order
-        if N < M:
-            M, N = N, M
-
-        #  receptive_field / kernel size
-        rf = np.min([imax, jmax])
-        # aspect ratio
-        Q = N / M 
-        # num non-zero eigenvalues  rf is receptive field size (sorry calculated again here)
-        n_comp = rf * N * M
-        
-        logger.info("N={} M={} n_comp {} ".format(N, M, n_comp))
-
-        # run FFT on each channel
-        fft_grid = [n, n]
-        fft_coefs = np.fft.fft2(W, fft_grid, axes=fft_axes)
-        
-        return [fft_coefs], N, M, n_comp
 
     # not used
     def normalize_evals(self, evals, N, M):

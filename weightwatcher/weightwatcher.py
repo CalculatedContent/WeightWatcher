@@ -56,7 +56,13 @@ MAX_NUM_EVALS = 50000
 
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 
                   'rescale':True , 'deltaEs':False, 'intra':False, 'combined':False, 'conv2d_fft':False}
-    
+
+TPL = 'truncated_power_law'
+POWER_LAW = 'power_law'
+LOG_NORMAL = 'lognormal'
+EXPONENTIAL = 'exponential'
+
+
 
 def main():
     """
@@ -1049,7 +1055,7 @@ class WeightWatcher(object):
         savefig = params['savefig']
               
         layer_name = "Layer {}".format(layer_id)
-        alpha, xmin, xmax, D, sigma, num_pl_spikes = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savefig=savefig)
+        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savefig=savefig)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1057,6 +1063,7 @@ class WeightWatcher(object):
         ww_layer.add_column('D', D)
         ww_layer.add_column('sigma', sigma)
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
+        ww_layer.add_column('best_fit', best_fit)
 
         return ww_layer
 
@@ -1520,12 +1527,28 @@ class WeightWatcher(object):
         else:
             fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=False)
             
+        
         alpha = fit.alpha 
         D = fit.D
         sigma = fit.sigma
         xmin = fit.xmin
         xmax = fit.xmax
         num_pl_spikes = len(evals[evals>=fit.xmin])
+        
+      
+        logger.debug("finding best distribution for fit")
+        all_dists = [TPL, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
+        Rs = [0.0]
+        dists = [TPL]
+        for dist in all_dists[1:]:
+            R, p = fit.distribution_compare(dist, TPL, normalized_ratio=True)
+           
+            if R > 0.1 and p > 0.05:
+                dists.append(dist)
+                Rs.append(R)
+                logger.info("compare dist={} R={} p={}".format(dist, R, p))
+        best_fit = dists[np.argmax(Rs)]
+               
 
         if plot:
             fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
@@ -1581,7 +1604,7 @@ class WeightWatcher(object):
                 plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show() 
                           
-        return alpha, xmin, xmax, D, sigma, num_pl_spikes
+        return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
     
     
     def get_ESD(self, model=None, layer=None, random=False, params=DEFAULT_PARAMS):

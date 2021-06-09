@@ -37,7 +37,7 @@ class CHANNELS(IntFlag):
     UNKNOWN = auto()
     FIRST = auto()
     LAST = auto()
-
+    
     
 class PLOT(IntFlag):
     POWERLAW = auto()

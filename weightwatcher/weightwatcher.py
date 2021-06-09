@@ -55,7 +55,7 @@ mpl_logger.setLevel(logging.WARNING)
 MAX_NUM_EVALS = 50000
 
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 
-                  'rescale':True , 'deltaEs':False, 'intra':False, 'combined':False, 'conv2d_fft':False}
+                  'rescale':True , 'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False}
 
 TPL = 'truncated_power_law'
 POWER_LAW = 'power_law'
@@ -104,23 +104,17 @@ class WWLayer:
        Uses pythong metaprogramming to add result columns for the final details dataframe"""
        
     def __init__(self, layer, layer_id=-1, name=None,
-                 the_type=LAYER_TYPE.UNKNOWN, framework=FRAMEWORK.UNKNOWN, 
+                 the_type=LAYER_TYPE.UNKNOWN, 
+                 framework=FRAMEWORK.UNKNOWN, 
+                 channels=CHANNELS.UNKNOWN,
                  skipped=False, make_weights=True, params=DEFAULT_PARAMS):
         self.layer = layer
         self.layer_id = layer_id  
         self.name = name
         self.skipped = skipped
         self.the_type = the_type
-        self.framework = framework
-        
-        self.channels = CHANNELS.UNKNOWN
-
-        if (self.framework == FRAMEWORK.KERAS):
-            self.channels = CHANNELS.FIRST
-        elif (self.framework == FRAMEWORK.PYTORCH):
-            self.channels = CHANNELS.LAST
-        elif (self.framework == FRAMEWORK.ONNX):
-            self.channels = CHANNELS.FIRST
+        self.framework = framework      
+        self.channels = channels
         
         # get the LAYER_TYPE
         self.the_type = self.layer_type(self.layer)
@@ -355,12 +349,10 @@ class WWLayer:
         # TODO: reset channels nere ?    
         elif the_type == LAYER_TYPE.CONV2D:
             if not conv2d_fft:
-                Wmats, N, M, rf, channels = self.conv2D_Wmats(weights)
+                Wmats, N, M, rf = self.conv2D_Wmats(weights, self.channels)
                 n_comp = M
-                self.channels = channels
             else:
                 Wmats, N, M, n_comp = self.get_conv2D_fft(weights)
-                self.channels = CHANNELS.UNKNOWN
 
             
         elif the_type == LAYER_TYPE.NORM:
@@ -417,6 +409,14 @@ class WWLayer:
         return [fft_coefs], N, M, n_comp
 
     
+    def channel_str(self, channel):
+        if channel==CHANNELS.FIRST:
+            return "FIRST"
+        elif channel==CHANNELS.LAST:
+            return "LAST"
+        else:
+            return "UNKNOWN"
+        
     def conv2D_Wmats(self, Wtensor, channels=CHANNELS.UNKNOWN):
         """Extract W slices from a 4 layer_id conv2D tensor of shape: (N,M,i,j) or (M,N,i,j).  
         Return ij (N x M) matrices, with receptive field size (rf) and channels flag (first or last)"""
@@ -429,32 +429,40 @@ class WWLayer:
         Wmats = []
         s = Wtensor.shape
         N, M, imax, jmax = s[0], s[1], s[2], s[3]
+        
         if N + M >= imax + jmax:
-            logger.debug("Channels Last tensor shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
-            
-            channels = CHANNELS.LAST
-            for i in range(imax):
-                for j in range(jmax):
-                    W = Wtensor[:, :, i, j]
-                    if N < M:
-                        W = W.T
-                    Wmats.append(W)
+            detected_channels = CHANNELS.LAST
         else:
-            N, M, imax, jmax = imax, jmax, N, M          
-            logger.debug("Channels First shape detected: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))
+            detected_channels = CHANNELS.FIRST
             
-            channels = CHANNELS.FIRST
-            for i in range(imax):
-                for j in range(jmax):
-                    W = Wtensor[i, j, :, :]
-                    if N < M:
-                        W = W.T
-                    Wmats.append(W)
+
+        if channels != CHANNELS.UNKNOWN and  detected_channels !=channels: 
+            logger.warn("warning, expected channels {},  detected channels {}".format(self.channel_str(channels),self.channel_str(detected_channels)))
+            channels = detected_channels
+
+        if channels == CHANNELS.LAST:
+            if N + M >= imax + jmax:
+                logger.debug("Channels Last tensor shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
+                for i in range(imax):
+                    for j in range(jmax):
+                        W = Wtensor[:, :, i, j]
+                        if N < M:
+                            W = W.T
+                        Wmats.append(W)
+            else:
+                N, M, imax, jmax = imax, jmax, N, M          
+                logger.debug("Channels First shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
+                for i in range(imax):
+                    for j in range(jmax):
+                        W = Wtensor[i, j, :, :]
+                        if N < M:
+                            W = W.T
+                        Wmats.append(W)
                     
         rf = imax * jmax  # receptive field size             
         logger.debug("get_conv2D_Wmats N={} M={} rf= {} channels = {}".format(N, M, rf, channels))
     
-        return Wmats, N, M, rf, channels    
+        return Wmats, N, M, rf
 
 
     
@@ -467,10 +475,27 @@ class ModelIterator:
         self.k = 0
         
         self.model = model
-        self.model_iter, self.framework = self.model_iter_(model) 
-        
+        self.framework = self.set_framework()
+        self.channels  = self.set_channels(params.get('channels'))
+            
+        self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()            
         
+        
+    def set_framework(self):
+        """infer the framework """
+        
+        framework = FRAMEWORK.UNKNOWN
+        if hasattr(self.model, 'layers'):
+            framework = FRAMEWORK.KERAS
+
+        elif hasattr(self.model, 'modules'):
+            framework = FRAMEWORK.PYTORCH
+
+        elif isinstance(self.model, onnx.onnx_ml_pb2.ModelProto):  
+            framework = FRAMEWORK.ONNX
+        return framework
+    
     def __iter__(self):
         return self
     
@@ -484,6 +509,8 @@ class ModelIterator:
             return curr_layer
         else:
             raise StopIteration()
+        
+    
     
     def model_iter_(self, model):
         """Return a generator for iterating over the layers in the model.  
@@ -491,40 +518,57 @@ class ModelIterator:
         Used by base class and child classes to iterate over the framework layers """
         layer_iter = None
         
-        if hasattr(model, 'layers'):
+        if self.framework == FRAMEWORK.KERAS:
             def layer_iter_():
                 for layer in model.layers:
                         yield layer 
-                        
             layer_iter = layer_iter_()
-            framework = FRAMEWORK.KERAS
+            
 
-        elif hasattr(model, 'modules'):
+        elif self.framework == FRAMEWORK.PYTORCH:
             def layer_iter_():
                 for layer in model.modules():
-                        yield layer 
-                        
+                        yield layer                        
             layer_iter = layer_iter_()    
-            framework = FRAMEWORK.PYTORCH
+            
 
-        elif isinstance(model, onnx.onnx_ml_pb2.ModelProto):
+        elif self.framework == FRAMEWORK.ONNX:
             def layer_iter_():
                 for inode, node in enumerate(model.graph.initializer):
-                    yield ONNXLayer(inode, node)
-                        
+                    yield ONNXLayer(inode, node)                        
             layer_iter = layer_iter_()    
-            framework = FRAMEWORK.ONNX
-
+            
         else:
             layer_iter = None
-            framework = FRAMEWORK.UNKNOWN
             
-        return layer_iter, framework
+        return layer_iter
                       
     def make_layer_iter_(self):
         """The layer iterator for this class / instance.
          Override this method to change the type of iterator used by the child class"""
         return self.model_iter
+    
+    def set_channels(self, channels=None):
+        """Set the channels flag for the framework, with the ability to override"""
+        
+        the_channel = CHANNELS.UNKNOWN
+        if channels is None:
+            if self.framework == FRAMEWORK.KERAS:
+                the_channel = CHANNELS.FIRST
+                
+            elif self.framework == FRAMEWORK.PYTORCH:
+                the_channel = CHANNELS.LAST
+                
+            elif self.framework == FRAMEWORK.ONNX:
+                the_channel = CHANNELS.FIRST
+        else:
+            if channels.lower()=='first':
+                the_channel=CHANNELS.FIRST
+                
+            elif channels.lower()=='last':
+                the_channel=CHANNELS.LAST
+                
+        return the_channel
 
 
 class WWLayerIterator(ModelIterator):
@@ -594,7 +638,10 @@ class WWLayerIterator(ModelIterator):
         for curr_layer in self.model_iter:
             curr_id, self.k = self.k, self.k + 1
             
-            ww_layer = WWLayer(curr_layer, layer_id=curr_id, framework=self.framework, params=self.params)
+            ww_layer = WWLayer(curr_layer, layer_id=curr_id, 
+                               framework=self.framework, 
+                               channels=self.channels,
+                               params=self.params)
             
             self.apply_filters(ww_layer)
             
@@ -1072,7 +1119,7 @@ class WeightWatcher(object):
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
-                deltas=False, intra=False, combined=False):
+                deltas=False, intra=False, channels=None):
         """
         Analyze the weight matrices of a model.
 
@@ -1128,6 +1175,8 @@ class WeightWatcher(object):
         intra:
             Analyze IntraLayer Correlations
             Experimental option
+        channels:
+            re/set the channels from the default for the framework
         evecs:  N/A yet
             Compute the eigenvectors and plots various metrics, including the vector entropy and localization statistics, 
             both as a sequence (elbow plots) and as histograms
@@ -1161,7 +1210,7 @@ class WeightWatcher(object):
         params['rescale'] = rescale
         params['deltaEs'] = deltas 
         params['intra'] = intra 
-        params['combined'] = combined
+        params['channels'] = channels
 
             
         logger.info("params {}".format(params))
@@ -1180,8 +1229,6 @@ class WeightWatcher(object):
         
         details = pd.DataFrame(columns=['layer_id', 'name'])
         
-        combined = True
-        all_evals = [] 
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
@@ -1216,15 +1263,6 @@ class WeightWatcher(object):
                 # TODO: add find correlation traps here
                 details = details.append(ww_layer.get_row(), ignore_index=True)
 
-        # create combined layer, with dummy info
-        # this needs to be part of the layer iterator
-        #if combined:
-            #combo_layer = WWLayer(ww_layer.layer, layer_id=-1, framework=self.framework, skipped = False, name = "Combined Layer", the_type = LAYER_TYPE.COMBINED, make_weights=False)
-            #combo_layer.evals = all_evals
-            #self.apply_fit_powerlaw(combo_layer, params)
-            #details = details.append(ww_layer.get_row(), ignore_index=True)
-                    
-
         self.details = details
         return details
     
@@ -1256,7 +1294,7 @@ class WeightWatcher(object):
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
-                deltas=False, intra=False, combined=False):
+                deltas=False, intra=False, channels=False):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1282,7 +1320,7 @@ class WeightWatcher(object):
         params['rescale'] = rescale
         params['deltaEs'] = deltas 
         params['intra'] = intra 
-        params['combined'] = combined
+        params['channels'] = channels
 
         logger.info("params {}".format(params))
         if not self.valid_params(params):
@@ -1346,6 +1384,12 @@ class WeightWatcher(object):
             logger.warn("can not specify ww2x and conv2d_fft")
             valid = False
         
+        channels = params.get('channels') 
+        if channels is not None and not isinstance(str,str):
+            if channels.lower() != 'first' and channels.lower() != 'last':
+                logger.warn("unknown channels {}".format(channels))
+                valid = False
+
         return valid
     
 #      # @deprecated

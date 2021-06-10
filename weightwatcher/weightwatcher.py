@@ -436,12 +436,12 @@ class WWLayer:
             detected_channels = CHANNELS.FIRST
             
 
-        if channels != CHANNELS.UNKNOWN and  detected_channels !=channels: 
-            logger.warn("warning, expected channels {},  detected channels {}".format(self.channel_str(channels),self.channel_str(detected_channels)))
+        if channels == CHANNELS.UNKNOWN :
+            logger.info("detected channels {}".format(self.channel_str(detected_channels)))
             channels = detected_channels
 
-        if channels == CHANNELS.LAST:
-            if N + M >= imax + jmax:
+        if detected_channels == channels:
+            if channels == CHANNELS.LAST:
                 logger.debug("Channels Last tensor shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
                 for i in range(imax):
                     for j in range(jmax):
@@ -449,8 +449,10 @@ class WWLayer:
                         if N < M:
                             W = W.T
                         Wmats.append(W)
-            else:
-                N, M, imax, jmax = imax, jmax, N, M          
+                        
+            else: #channels == CHANNELS.FIRST:
+                N, M, imax, jmax = imax, jmax, N, M   
+                # check this       
                 logger.debug("Channels First shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
                 for i in range(imax):
                     for j in range(jmax):
@@ -458,7 +460,34 @@ class WWLayer:
                         if N < M:
                             W = W.T
                         Wmats.append(W)
-                    
+                            
+        elif detected_channels != channels: 
+            logger.warn("warning, expected channels {},  detected channels {}".format(self.channel_str(channels),self.channel_str(detected_channels)))
+            # flip how we extract the WMats
+            # reverse of above extraction
+            if detected_channels == CHANNELS.LAST:
+                logger.debug("Flipping LAST to FIRST Channel, {}x{} (i,j)".format(N, M, imax, jmax))   
+                for i in range(imax):
+                    for j in range(jmax):
+                        W = Wtensor[i, j,:,:]
+                        if N < M:
+                            W = W.T
+                        Wmats.append(W)
+                        
+            else: #detected_channels == CHANNELS.FIRST:
+                logger.debug("Flipping FIRST to LAST Channel, {}x{} (i,j)".format(N, M, imax, jmax))                
+                N, M, imax, jmax = imax, jmax, N, M   
+                # check this       
+                for i in range(imax):
+                    for j in range(jmax):
+                        W = Wtensor[:, :, i, j]
+                        if N < M:
+                            W = W.T
+                        Wmats.append(W)
+            # final flip            
+            N, M, imax, jmax = s[0], s[1], s[2], s[3]
+           
+                
         rf = imax * jmax  # receptive field size             
         logger.debug("get_conv2D_Wmats N={} M={} rf= {} channels = {}".format(N, M, rf, channels))
     

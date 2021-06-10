@@ -466,26 +466,26 @@ class WWLayer:
             # flip how we extract the WMats
             # reverse of above extraction
             if detected_channels == CHANNELS.LAST:
-                logger.debug("Flipping LAST to FIRST Channel, {}x{} (i,j)".format(N, M, imax, jmax))   
-                for i in range(imax):
-                    for j in range(jmax):
+                logger.debug("Flipping LAST to FIRST Channel, {}x{} ()x{}".format(N, M, imax, jmax))   
+                for i in range(N):
+                    for j in range(M):
                         W = Wtensor[i, j,:,:]
-                        if N < M:
+                        if imax < jmax:
                             W = W.T
                         Wmats.append(W)
                         
             else: #detected_channels == CHANNELS.FIRST:
-                logger.debug("Flipping FIRST to LAST Channel, {}x{} (i,j)".format(N, M, imax, jmax))                
                 N, M, imax, jmax = imax, jmax, N, M   
+                logger.debug("Flipping FIRST to LAST Channel, {}x{} ()x{}".format(N, M, imax, jmax))                
                 # check this       
-                for i in range(imax):
-                    for j in range(jmax):
+                for i in range(N):
+                    for j in range(M):
                         W = Wtensor[:, :, i, j]
-                        if N < M:
+                        if imax < jmax:
                             W = W.T
                         Wmats.append(W)
             # final flip            
-            N, M, imax, jmax = s[0], s[1], s[2], s[3]
+            N, M, imax, jmax = imax, jmax, N, M   
            
                 
         rf = imax * jmax  # receptive field size             

@@ -346,7 +346,7 @@ class WWLayer:
             n_comp = M
             rf = 1
             
-        # TODO: reset channels nere ?    
+        # this is very slow with describe 
         elif the_type == LAYER_TYPE.CONV2D:
             if not conv2d_fft:
                 Wmats, N, M, rf = self.conv2D_Wmats(weights, self.channels)
@@ -1252,12 +1252,14 @@ class WeightWatcher(object):
         params['deltaEs'] = deltas 
         params['intra'] = intra 
         params['channels'] = channels
+        params['layers'] = layers
 
             
         logger.info("params {}".format(params))
         if not self.valid_params(params):
-            logger.error("Error, params not valid: \n {}".format(params))
-            
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
    
         if intra:
             logger.info("Intra layer Analysis (experimental)")
@@ -1362,10 +1364,13 @@ class WeightWatcher(object):
         params['deltaEs'] = deltas 
         params['intra'] = intra 
         params['channels'] = channels
+        params['layers'] = layers
 
         logger.info("params {}".format(params))
         if not self.valid_params(params):
-            logger.error("Error, params not valid: \n {}".format(params))
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
    
         if intra:
             logger.info("Intra layer Analysis (experimental)")
@@ -1402,6 +1407,7 @@ class WeightWatcher(object):
         
         valid = True
         
+        print("valid params: {}".format(params))
         xmin = params.get('xmin')
         if xmin and xmin not in [XMIN.UNKNOWN, XMIN.AUTO, XMIN.PEAK]:
             logger.warn("param xmin unknown, ignoring {}".format(xmin))
@@ -1426,6 +1432,7 @@ class WeightWatcher(object):
             logger.warn("can not specify ww2x and conv2d_fft")
             valid = False
             
+            
         # can not specify intra and conv2d_fft at same time
         if params.get('intra') and params.get('conv2d_fft'):
             logger.warn("can not specify intra and conv2d_fft")
@@ -1440,8 +1447,11 @@ class WeightWatcher(object):
 
         # layer ids must be all positive or all negative
         filters = params.get('layers') 
+        print("filters = {}".format(filters))
         if filters is not None:
-            filter_ids = [id for f in filters if type(f) is int]          
+            filter_ids = [int(f) for f in filters if type(f) is int]
+            print("filter_ids = {}".format(filter_ids))
+          
             if len(filter_ids) > 0:
                 if np.max(filter_ids) > 0 and np.min(filter_ids) < 0:
                     logger.warn("layer filter ids must be all > 0 or < 0: {}".format(filter_ids))

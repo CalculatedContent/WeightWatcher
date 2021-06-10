@@ -88,22 +88,28 @@ class Test_VGG11(unittest.TestCase):
 	def test_bad_params(self):
 		"""N/A yet"""
 		
-		# ww2x and conv2d_fft
-		details = self.watcher.describe(ww2x=True, conv2d_fft=True)
+		# only all positive or all negative layer id filters
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(layers=[-1,1])	
+						
+		# ww2x and conv2d_fft 
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(ww2x=True, conv2d_fft=True)	
 
-		# ww2x and intra
-		details = self.watcher.describe(ww2x=True, intra=True)
-
-		
-		self.assertTrue(True)
-		
+		# intra and conv2d_fft
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(intra=True, conv2d_fft=True)	
+				
+				
+		# min_evals > max_evals
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(min_evals=100, max_evals=10)	
  
 	def test_model_layer_types_ww2x(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
 		"""
  
 		details = self.watcher.describe(ww2x=True)
-		print(details)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
@@ -119,7 +125,6 @@ class Test_VGG11(unittest.TestCase):
 		"""
 
 		details = self.watcher.describe()
-		print(details)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)

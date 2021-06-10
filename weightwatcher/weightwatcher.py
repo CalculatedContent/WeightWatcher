@@ -590,7 +590,7 @@ class ModelIterator:
                 
             elif self.framework == FRAMEWORK.ONNX:
                 the_channel = CHANNELS.FIRST
-        else:
+        elif isinstance(channels, str):
             if channels.lower()=='first':
                 the_channel=CHANNELS.FIRST
                 
@@ -1433,7 +1433,7 @@ class WeightWatcher(object):
         
         # channels must be None, 'first', or 'last'
         channels = params.get('channels') 
-        if channels is not None and not isinstance(channels,str):
+        if channels is not None and isinstance(channels,str):
             if channels.lower() != 'first' and channels.lower() != 'last':
                 logger.warn("unknown channels {}".format(channels))
                 valid = False

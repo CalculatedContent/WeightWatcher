@@ -84,6 +84,19 @@ class Test_VGG11(unittest.TestCase):
 		"""N/A yet"""
 		self.assertTrue(True)
 		
+	#TODO: implement
+	def test_bad_params(self):
+		"""N/A yet"""
+		
+		# ww2x and conv2d_fft
+		details = self.watcher.describe(ww2x=True, conv2d_fft=True)
+
+		# ww2x and intra
+		details = self.watcher.describe(ww2x=True, intra=True)
+
+		
+		self.assertTrue(True)
+		
  
 	def test_model_layer_types_ww2x(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
@@ -229,9 +242,18 @@ class Test_VGG11(unittest.TestCase):
 		"""Test that alphas are computed and values are within thresholds
 		"""
 		details = self.watcher.describe(ww2x=True)
-		print(details)
 		self.assertEqual(len(details), 75)
 		
+		
+	def test_switch_channels(self):
+		"""Test user can switch the channels for a Conv2D layer
+		"""
+		details = self.watcher.describe(layers=[2],  channels='first')
+		self.assertEqual(details.N, 3)
+		self.assertEqual(details.M, 3)
+		self.assertEqual(details.rf, 3*64)
+		self.assertEqual(details.num_evals, 3*3*64)
+
  		
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds

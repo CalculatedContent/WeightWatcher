@@ -612,14 +612,24 @@ class WWLayerIterator(ModelIterator):
                 logger.info("skipping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
                 ww_layer.skipped = True
 
-                
+        
         if self.filter_ids is not None and len(self.filter_ids) > 0:
-            if ww_layer.layer_id in self.filter_ids:
-                logger.info("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
-                ww_layer.skipped = False
-            else:
-                logger.info("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
-                ww_layer.skipped = True
+            # keep positive layer ids
+            if np.min(self.filter_ids) > 0:
+                if ww_layer.layer_id in self.filter_ids:
+                    logger.info("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped = False
+                else:
+                    logger.info("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped = True
+            # or remove negative layer ids
+            elif np.min(self.filter_ids) < 0:
+                if -(ww_layer.layer_id) in self.filter_ids:
+                    logger.info("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped = True
+                else:
+                    logger.info("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped = False
 
 
                 
@@ -1125,6 +1135,8 @@ class WeightWatcher(object):
 
         layers:
             List of layer ids. If empty, analyze all layers (default)
+            If layer ids < 0, then skip the layers specified
+            All layer ids must be > 0 or < 0
         min_evals:
             Minimum number of evals (M*rf) 
         max_evals:
@@ -1175,7 +1187,7 @@ class WeightWatcher(object):
         intra:
             Analyze IntraLayer Correlations
             Experimental option
-        channels:
+        channels: None | 'fisrt' | 'last'
             re/set the channels from the default for the framework
         evecs:  N/A yet
             Compute the eigenvectors and plots various metrics, including the vector entropy and localization statistics, 
@@ -1357,7 +1369,7 @@ class WeightWatcher(object):
         return details
 
     def valid_params(self, params):
-        """Vlaidate the input parametersm, return True if valid, False otherwise"""
+        """Validate the input parametersm, return True if valid, False otherwise"""
         
         valid = True
         
@@ -1380,16 +1392,32 @@ class WeightWatcher(object):
             logger.warn(" max_evals {} < -1 ".format(max_evals))
             valid = False
             
+        # can not specify ww2x and conv2d_fft at same time
         if params.get('ww2x') and params.get('conv2d_fft'):
             logger.warn("can not specify ww2x and conv2d_fft")
             valid = False
+            
+        # can not specify intra and conv2d_fft at same time
+        if params.get('intra') and params.get('conv2d_fft'):
+            logger.warn("can not specify intra and conv2d_fft")
+            valid = False
         
+        # channels must be None, 'first', or 'last'
         channels = params.get('channels') 
-        if channels is not None and not isinstance(str,str):
+        if channels is not None and not isinstance(channels,str):
             if channels.lower() != 'first' and channels.lower() != 'last':
                 logger.warn("unknown channels {}".format(channels))
                 valid = False
 
+        # layer ids must be all positive or all negative
+        filters = params.get('layers') 
+        if filters is not None:
+            filter_ids = [id for f in filters if type(f) is int]          
+            if len(filter_ids) > 0:
+                if np.max(filter_ids) > 0 and np.min(filter_ids) < 0:
+                    logger.warn("layer filter ids must be all > 0 or < 0: {}".format(filter_ids))
+                    valid = False
+         
         return valid
     
 #      # @deprecated

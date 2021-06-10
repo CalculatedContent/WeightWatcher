@@ -161,6 +161,20 @@ class Test_VGG11(unittest.TestCase):
 		nonDenseCount = len(nonDenseLayers)
 		self.assertEquals(nonDenseCount, 0, "Filter has No dense layers: {} found".format(nonDenseCount))
 
+	def test_negative_filter_layer_ids(self):
+		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
+		"""
+		
+		details = self.watcher.describe(layers=[])
+		print(details)
+		
+		details = self.watcher.describe(layers=[-25,-28,-31])
+		print(details)
+		
+		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
+		denseCount = len(denseLayers)
+		self.assertEquals(denseCount, 0, " no dense layers, but {} found".format(denseCount))
+			
 
 	def test_filter_conv2D_layer_types(self):
 		"""Test that ww.LAYER_TYPE.CONV2D filter is applied only to CONV2D layers"

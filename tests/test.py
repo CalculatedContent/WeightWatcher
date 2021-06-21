@@ -113,12 +113,12 @@ class Test_VGG11(unittest.TestCase):
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
-		self.assertEquals(denseCount, 3, "3 dense layers, but {} found".format(denseCount))
+		self.assertEqual(denseCount, 3, "3 dense layers, but {} found".format(denseCount))
  			
 	
 		conv2DLayers = details[details.layer_type==str(LAYER_TYPE.CONV2D)]
 		conv2DCount = len(conv2DLayers)
-		self.assertEquals(conv2DCount, 8*9, "8*9 conv2D layers, but {} found".format(denseCount))
+		self.assertEqual(conv2DCount, 8*9, "8*9 conv2D layers, but {} found".format(denseCount))
 	
 	def test_all_layer_types(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
@@ -145,7 +145,7 @@ class Test_VGG11(unittest.TestCase):
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
 
-		self.assertEquals(denseCount, 3, "3 dense layers, but {} found".format(denseCount))
+		self.assertEqual(denseCount, 3, "3 dense layers, but {} found".format(denseCount))
 			
 		# Dense layers are analyzed
 		self.assertTrue((denseLayers.N > 0).all(axis=None), "All {} dense layers have a non zero N".format(denseCount))
@@ -154,7 +154,7 @@ class Test_VGG11(unittest.TestCase):
 		nonDenseLayers = details[details.layer_type!=str(LAYER_TYPE.DENSE)]
 		nonDenseCount = len(nonDenseLayers)
 
-		self.assertEquals(nonDenseCount, 0, "Filter has No dense layers: {} found".format(nonDenseCount))
+		self.assertEqual(nonDenseCount, 0, "Filter has No dense layers: {} found".format(nonDenseCount))
 
 		# Non Dense layers are NOT analyzed
 		self.assertTrue((nonDenseLayers.N == 0).all(axis=None), "All {} NON dense layers have a zero N".format(nonDenseCount))
@@ -173,11 +173,11 @@ class Test_VGG11(unittest.TestCase):
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
-		self.assertEquals(denseCount, 3, "3 dense layers, but {} found".format(denseCount))
+		self.assertEqual(denseCount, 3, "3 dense layers, but {} found".format(denseCount))
 			
 		nonDenseLayers = details[details.layer_type!=str(LAYER_TYPE.DENSE)]
 		nonDenseCount = len(nonDenseLayers)
-		self.assertEquals(nonDenseCount, 0, "Filter has No dense layers: {} found".format(nonDenseCount))
+		self.assertEqual(nonDenseCount, 0, "Filter has No dense layers: {} found".format(nonDenseCount))
 
 	def test_negative_filter_layer_ids(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
@@ -191,22 +191,22 @@ class Test_VGG11(unittest.TestCase):
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
-		self.assertEquals(denseCount, 0, " no dense layers, but {} found".format(denseCount))
+		self.assertEqual(denseCount, 0, " no dense layers, but {} found".format(denseCount))
 			
 
 	def test_filter_conv2D_layer_types(self):
 		"""Test that ww.LAYER_TYPE.CONV2D filter is applied only to CONV2D layers"
 		"""
 
-		details = self.watcher.describe(layers=ww.LAYER_TYPE.CONV2D)
+		details = self.watcher.describe(layers=[ww.LAYER_TYPE.CONV2D])
 		print(details)
 
 		conv2DLayers = details[details['layer_type']==str(LAYER_TYPE.CONV2D)]
 		conv2DCount = len(conv2DLayers)
-		self.assertEquals(conv2DCount, 8, "# conv2D layers: {} found".format(conv2DCount))
+		self.assertEqual(conv2DCount, 8, "# conv2D layers: {} found".format(conv2DCount))
 		nonConv2DLayers = details[details['layer_type']!=str(LAYER_TYPE.CONV2D)]
 		nonConv2DCount = len(nonConv2DLayers)
-		self.assertEquals(nonConv2DCount, 0, "VGG11 has non conv2D layers: {} found".format(nonConv2DCount))
+		self.assertEqual(nonConv2DCount, 0, "VGG11 has non conv2D layers: {} found".format(nonConv2DCount))
 
 	
 
@@ -254,10 +254,15 @@ class Test_VGG11(unittest.TestCase):
 		"""Test user can switch the channels for a Conv2D layer
 		"""
 		details = self.watcher.describe(layers=[2],  channels='first')
-		self.assertEqual(details.N, 3)
-		self.assertEqual(details.M, 3)
-		self.assertEqual(details.rf, 3*64)
-		self.assertEqual(details.num_evals, 3*3*64)
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		rf = details.rf.to_numpy()[0]
+		num_evals = details.num_evals.to_numpy()[0]
+		
+		self.assertEqual(N, 3)
+		self.assertEqual(M, 3)
+		self.assertEqual(rf, 3*64)
+		self.assertEqual(num_evals, 3*3*64)
 
  		
 	def test_compute_alphas(self):

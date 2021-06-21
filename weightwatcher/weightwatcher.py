@@ -32,6 +32,10 @@ import torch.nn as nn
 import onnx
 from onnx import numpy_helper
 
+import sklearn
+from sklearn.decomposition import TruncatedSVD
+    
+
 #
 # this is use to allow editing in Eclipse but also
 # building on the commend line
@@ -81,7 +85,8 @@ class ONNXLayer:
                 
     """
     
-    def __init__(self, inode, node):
+    def __init__(self, model, inode, node):
+        self.model = model
         self.node = node
         self.layer_id = inode
         self.name = node.name
@@ -97,6 +102,12 @@ class ONNXLayer:
             
     def get_weights(self):
         return numpy_helper.to_array(self.node) 
+    
+    def set_weights(self, idx, Wmats):
+        for W in Wmats:
+            T = numpy_helper.from_array(W)
+            self.model.graph.initializer[idx].CopyFrom(T)
+
         
         
 class WWLayer:
@@ -437,7 +448,7 @@ class WWLayer:
             
 
         if channels == CHANNELS.UNKNOWN :
-            logger.info("detected channels {}".format(self.channel_str(detected_channels)))
+            logger.debug("channles UNKNOWN, detected {}".format(self.channel_str(detected_channels)))
             channels = detected_channels
 
         if detected_channels == channels:
@@ -503,10 +514,15 @@ class ModelIterator:
         self.params = params
         self.k = 0
         
+        logger.debug("FRAMEWORKS: KERAS = {}  PYTORCH = {} ONNX = {} UNKNOWN = {} ".format(FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.ONNX, FRAMEWORK.UNKNOWN))
+        logger.debug("FIRST = {}  LAST = {} UNKNOWN = {} ".format(CHANNELS.FIRST, CHANNELS.LAST, CHANNELS.UNKNOWN))
+
         self.model = model
         self.framework = self.set_framework()
         self.channels  = self.set_channels(params.get('channels'))
-            
+        
+        logger.debug("MODEL ITERATOR, framework = {}, channels = {} ".format(self.framework, self.channels))
+
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()            
         
@@ -564,7 +580,7 @@ class ModelIterator:
         elif self.framework == FRAMEWORK.ONNX:
             def layer_iter_():
                 for inode, node in enumerate(model.graph.initializer):
-                    yield ONNXLayer(inode, node)                        
+                    yield ONNXLayer(model, inode, node)                        
             layer_iter = layer_iter_()    
             
         else:
@@ -579,7 +595,7 @@ class ModelIterator:
     
     def set_channels(self, channels=None):
         """Set the channels flag for the framework, with the ability to override"""
-        
+                
         the_channel = CHANNELS.UNKNOWN
         if channels is None:
             if self.framework == FRAMEWORK.KERAS:
@@ -1337,7 +1353,7 @@ class WeightWatcher(object):
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
-                deltas=False, intra=False, channels=False):
+                deltas=False, intra=False, channels=None):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1375,7 +1391,7 @@ class WeightWatcher(object):
         if intra:
             logger.info("Intra layer Analysis (experimental)")
             layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
-        if ww2x:
+        elif ww2x:
             logger.info("Using weightwatcher 0.2x style layer and slice iterator")
             layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
         else:
@@ -1405,9 +1421,7 @@ class WeightWatcher(object):
     def valid_params(self, params):
         """Validate the input parametersm, return True if valid, False otherwise"""
         
-        valid = True
-        
-        print("valid params: {}".format(params))
+        valid = True        
         xmin = params.get('xmin')
         if xmin and xmin not in [XMIN.UNKNOWN, XMIN.AUTO, XMIN.PEAK]:
             logger.warn("param xmin unknown, ignoring {}".format(xmin))
@@ -1447,10 +1461,8 @@ class WeightWatcher(object):
 
         # layer ids must be all positive or all negative
         filters = params.get('layers') 
-        print("filters = {}".format(filters))
         if filters is not None:
             filter_ids = [int(f) for f in filters if type(f) is int]
-            print("filter_ids = {}".format(filter_ids))
           
             if len(filter_ids) > 0:
                 if np.max(filter_ids) > 0 and np.min(filter_ids) < 0:
@@ -1983,9 +1995,221 @@ class WeightWatcher(object):
         return num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale
 
         
+    def smooth_W_alt(self, W, n_comp):
+        """Apply the SVD Smoothing Transform to W"
         
+        Not recommended because it computes ALL the eigenvectors 
         
+        Included for debugging the TruncatedSVD implementation
+        """       
         
+        N, M = np.max(W.shape), np.min(W.shape)
+    
+        # TODO: replace this with truncated SVD
+        # can't we just appky the svd transform...test
+        # keep this old method for historical comparison
+        u, s, vh = np.linalg.svd(W, compute_uv=True)
+        s[n_comp:]=0
+    
+        s = list(s)
+        s.extend([0]*(N-M))
+        s = np.array(s)
+        s = np.diag(s)
+        if u.shape[0] > vh.shape[0]:
+          smoothed_W = np.dot(np.dot(u,s)[:N,:M],vh)
+        else:
+          smoothed_W = np.dot(u, np.dot(s,vh)[:M,:N])
+    
+        return smoothed_W
+    
+    
+ 
+    def smooth_W(self, W, n_comp):
+        """Apply the sklearn TruncatedSVD method to each W, return smoothed W
+        
+        """
+                
+        svd = TruncatedSVD(n_components=n_comp, n_iter=7, random_state=42)
+        if W.shape[0]<W.shape[1]:
+            X = svd.fit_transform(W.T)
+            VT = svd.components_
+            smoothed_W = np.dot(X,VT).T     
 
+        else:
+            X = svd.fit_transform(W)
+            VT = svd.components_
+            smoothed_W = np.dot(X,VT)
+        
+        logger.debug("smoothed W {} -> {} n_comp={}".format(W.shape, smoothed_W.shape, n_comp))
+
+        return smoothed_W
+    
+    
+    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[]):
+        """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
+        
+        layers:
+            List of layer ids. If empty, analyze all layers (default)
+            If layer ids < 0, then skip the layers specified
+            All layer ids must be > 0 or < 0
+        
+        ww2x:
+            Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
+            
+        """
+        
+        model = model or self.model   
+         
+        params=DEFAULT_PARAMS
+        params['ww2x'] = ww2x
+        params['layers'] = layers
+        params['percent'] = percent
+
+        # check framework, return error if framework not supported
+        # need to access static method on  Model class
+
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+     
+        if ww2x:
+            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
+            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
+        else:
+            layer_iterator = WWLayerIterator(model, filters=layers, params=params)  
+            
+        
+        # iterate over layers
+        #   naive implementation uses just percent, not the actual tail
+        #   we eventually want to compute the eigenvectors and analyze them
+        #   here we do SVD
+        
+        for ww_layer in layer_iterator:
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                self.apply_svdsmoothing(ww_layer, params)
+        
+        logger.info("Returning smoothed model")
+        return model   
+
+    
+    def apply_svdsmoothing(self, ww_layer, params=DEFAULT_PARAMS):
+        """run truncated SVD on layer weight matrices and reconstruct the weight matrices  """
+        
+        percent = params['percent']
+      
+        layer = ww_layer.layer
+        layer_id = ww_layer.layer_id
+        layer_name = ww_layer.name
+        layer_type = ww_layer.the_type
+        framework = ww_layer.framework
+        channels = ww_layer.channels
+
+        
+        if framework not in [FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.ONNX]:
+            logger.error("Sorry, SVDSmoothing does not support this model framework ")
+            return 
+
+        if channels == CHANNELS.UNKNOWN:
+            log.error("Sorry, SVDSmoothing does not understand the channels for this layer, stopping ")
+            return 
+         
+        M = ww_layer.M
+        N = ww_layer.N
+        
+        n_comp = int(ww_layer.num_components*percent)
+        logger.info("apply truncated SVD on Layer {} {}, keeping {:0.2f}% percent , or ncomp={} out of {}. of the singular vectors".format(layer_id, layer_name, percent, n_comp, ww_layer.num_components))
+                 
+        # get the model weights and biases directly, converted to numpy arrays        
+        has_W, old_W, has_B, old_B = ww_layer.get_weights_and_biases()
+        
+        if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:          
+            new_W = self.smooth_W(old_W, n_comp) 
+            new_B = old_B
+            # did we flip W when analyzing ?
+            if new_W.shape != old_W.shape:
+                new_W=new_W.T
+                
+            self.replace_layer_weights(framework, layer_id, layer, new_W, new_B)
+
+                       
+        elif layer_type == [LAYER_TYPE.CONV2D]:                           
+            new_W = np.zeros_like(old_W)
+            new_B = old_B
+
+            if new_B is not None:
+                logger.warn("Something went wrong, Biases found for Conv2D layer, layer {} {} ".format(layer_id, layer_name))
+            
+            #[k,k,M,N]
+            if channels == CHANNELS.FIRST:
+                i_max, j_max, _, _ = new_W.shape
+                if rf != i_max*j_max:
+                    logger.warn("Channels FIRST not processed correctly W_slice.shape {}, rf={} ?".format(new_W.shape, rf))
+
+                for i in range(i_max):
+                    for j in range(j_max):   
+                        new_W[i,j,:,:] = self.smooth_W(old_W[i,j,:,:], n_comp)
+                 
+            #[N,M,k,k]
+            elif channels == CHANNELS.LAST:
+                _, _, i_max, j_max = new_W.shape
+                if rf != i_max*j_max:
+                    logger.warn("Channels LAST not processed correctly W_slice.shape {}, rf={} ?".format(new_W.shape, rf))
+
+                for i in range(i_max):
+                    for j in range(j_max):   
+                        new_W[:,:,i,j] = self.smooth_W(old_W[:,:,i,j], n_comp)
+                        
+            else:
+                logger.warn("Something went wrong, Channels not defined or detected for Conv2D layer, layer {} {} skipped ".format(layer_id, layer_name))
+            
+            self.replace_layer_weights(framework, layer_id, layer, new_W)
+    
+
+        else:
+            logger.warn("Something went wrong,UNKNOWN layer {} {} skipped ".format(layer_id, layer_name))
+
+        return ww_layer
+        
+        
+    def  replace_layer_weights(self, framework, idx, layer, W, B=None):
+        """Replace the old layer weights with the new weights
+        
+        framework:  FRAMEWORK.KERAS | FRAMEWORK.PYTORCH
+        
+        layer: is the framework layerm, not an instance of WWLayer
+        
+        new_W:  numpy array 
+        new_B:  numpy vector (array)
+        
+        
+        """
+        
+        if framework==FRAMEWORK.KERAS:
+            # (I think) this works for Dense and Conv2D, not sure about other layers
+            if B is not None:
+                W = [W, B]     
+            layer.set_weights(W)
+            
+        elif framework==FRAMEWORK.PYTORCH:
+            # see: https://discuss.pytorch.org/t/fix-bias-and-weights-of-a-layer/75120/4
+            # this may be deprecated
+            layer.weight.data = torch.from_numpy(W)
+            if B is not None:
+                layer.bias.data = torch.from_numpy(B)
+                
+        # See; https://github.com/onnx/onnx/issues/2978
+        elif framework==FRAMEWORK.ONNX:
+            if B is not None:
+                W = [W, B]   
+            layer.set_weights(idx, W)
+   
+        else:
+            logger.debug("Layer {} skipped, Layer Type {} not supported".format(layer_id, the_type))
+
+        return
    
         

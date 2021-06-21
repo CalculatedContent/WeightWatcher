@@ -605,7 +605,7 @@ class ModelIterator:
                 the_channel = CHANNELS.LAST
                 
             elif self.framework == FRAMEWORK.ONNX:
-                the_channel = CHANNELS.FIRST
+                the_channel = CHANNELS.LAST
         elif isinstance(channels, str):
             if channels.lower()=='first':
                 the_channel=CHANNELS.FIRST
@@ -2119,6 +2119,7 @@ class WeightWatcher(object):
          
         M = ww_layer.M
         N = ww_layer.N
+        rf = ww_layer.rf
         
         n_comp = int(ww_layer.num_components*percent)
         logger.info("apply truncated SVD on Layer {} {}, keeping {:0.2f}% percent , or ncomp={} out of {}. of the singular vectors".format(layer_id, layer_name, percent, n_comp, ww_layer.num_components))
@@ -2136,7 +2137,7 @@ class WeightWatcher(object):
             self.replace_layer_weights(framework, layer_id, layer, new_W, new_B)
 
                        
-        elif layer_type == [LAYER_TYPE.CONV2D]:                           
+        elif layer_type == LAYER_TYPE.CONV2D:                           
             new_W = np.zeros_like(old_W)
             new_B = old_B
 
@@ -2170,7 +2171,7 @@ class WeightWatcher(object):
     
 
         else:
-            logger.warn("Something went wrong,UNKNOWN layer {} {} skipped ".format(layer_id, layer_name))
+            logger.warn("Something went wrong,UNKNOWN layer {} {} skipped , type={}".format(layer_id, layer_name, layer_type))
 
         return ww_layer
         

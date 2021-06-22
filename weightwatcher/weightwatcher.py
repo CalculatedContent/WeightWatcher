@@ -103,10 +103,9 @@ class ONNXLayer:
     def get_weights(self):
         return numpy_helper.to_array(self.node) 
     
-    def set_weights(self, idx, Wmats):
-        for W in Wmats:
-            T = numpy_helper.from_array(W)
-            self.model.graph.initializer[idx].CopyFrom(T)
+    def set_weights(self, idx, W):
+        T = numpy_helper.from_array(W)
+        self.model.graph.initializer[idx].CopyFrom(T)
 
         
         
@@ -2204,11 +2203,11 @@ class WeightWatcher(object):
                 
         # See; https://github.com/onnx/onnx/issues/2978
         elif framework==FRAMEWORK.ONNX:
-            if B is not None:
-                W = [W, B]   
-            else:
-                W = [W]
-            layer.set_weights(W, idx)
+            #if B is not None:
+            #    W = [W, B]   
+            #else:
+            #    W = [W]
+            layer.set_weights(idx, W)
    
         else:
             logger.debug("Layer {} skipped, Layer Type {} not supported".format(layer_id, the_type))

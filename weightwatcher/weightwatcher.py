@@ -2206,7 +2206,7 @@ class WeightWatcher(object):
         elif framework==FRAMEWORK.ONNX:
             if B is not None:
                 W = [W, B]   
-            layer.set_weights(idx, W)
+            layer.set_weights(W, idx)
    
         else:
             logger.debug("Layer {} skipped, Layer Type {} not supported".format(layer_id, the_type))

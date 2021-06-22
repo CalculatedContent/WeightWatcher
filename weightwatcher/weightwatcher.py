@@ -2206,6 +2206,8 @@ class WeightWatcher(object):
         elif framework==FRAMEWORK.ONNX:
             if B is not None:
                 W = [W, B]   
+            else:
+                W = [W]
             layer.set_weights(W, idx)
    
         else:

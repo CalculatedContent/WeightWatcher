@@ -146,7 +146,7 @@ To plot the original ESD, set rescale=False
 ### Detecting OverTraining
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
 
-#### Eearly stopping
+#### Early stopping
 
 The weightwatcher **alpha** metric can be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be overtrained and early stopping is necesary.
 

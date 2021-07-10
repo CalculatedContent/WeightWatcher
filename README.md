@@ -146,7 +146,7 @@ To plot the original ESD, set rescale=False
 ### Detecting OverTraining
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
 
-#### Eearly stopping
+#### Early stopping
 
 The weightwatcher **alpha** metric can be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be overtrained and early stopping is necesary.
 
@@ -353,8 +353,15 @@ twine upload dist/*
 
 This tool is based on state-of-the-art research done in collaboration with UC Berkeley:
 
+#### Latest papers and talks
 
-- [Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
+- [(Latest Submission) Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
+
+- [(Nature paper) Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://www.nature.com/articles/s41467-021-24025-8)
+
+  - [Repo for Nature paper](https://github.com/CalculatedContent/ww-trends-2020)
+
+- [(JMLR in press) Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
 
 - [Traditional and Heavy Tailed Self Regularization in Neural Network Models](https://arxiv.org/abs/1901.08276)
 
@@ -374,6 +381,8 @@ and has been presented at Stanford, UC Berkeley, etc:
 
 - [Institute for Pure & Applied Mathematics (IPAM)](https://www.youtube.com/watch?v=fmVuNRKsQa8)
 - [Physics Informed Machine Learning](https://www.youtube.com/watch?v=eXhwLtjtUsI)
+
+- [Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
 
 ---
 and major AI  conferences like ICML, KDD, etc.
@@ -404,22 +413,13 @@ and has been the subject  many popular podcasts
 
 - [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 
----
-#### Latest paper and results
-
-[Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
-
-[(Early Prepreint) Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://arxiv.org/pdf/2002.06716.pdf)
-
-[Repo for latest paper, published in Nature Communications](https://github.com/CalculatedContent/ww-trends-2021)
+- [LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
 
 #### 2021 Short Presentations
 
 [MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
 
 [PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
-
-
 
 
 ## Slack Channel

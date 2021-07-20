@@ -305,7 +305,7 @@ class WWLayer:
                     has_weights = True
                     #has_biases = True
                 else: 
-                    logger.warn("layer type {} not found ".format(str(self.the_type)))
+                    logger.warn("layer: {} {}   type {} not found ".format(self.layer.name, str(self.layer),str(self.the_type)))
 
                 
         elif self.framework == FRAMEWORK.KERAS:
@@ -324,7 +324,7 @@ class WWLayer:
                 has_weights = True
                 has_biases = True
             else: 
-                logger.warn("layer type {} not found ".format(str(self.the_type)))
+                logger.warn("layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
 
         elif self.framework == FRAMEWORK.ONNX:      
             onnx_layer = self.layer
@@ -564,10 +564,20 @@ class ModelIterator:
         
         if self.framework == FRAMEWORK.KERAS:
             def layer_iter_():
+
+                def traverse_(layer):
+                    if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
+                        yield layer
+                        
+                    if hasattr(layer, 'submodules'):                        
+                        for sublayer in layer.submodules:
+                            yield from traverse_(sublayer)
+
                 for layer in model.layers:
-                        yield layer 
+                    yield from traverse_(layer)
+
             layer_iter = layer_iter_()
-            
+
 
         elif self.framework == FRAMEWORK.PYTORCH:
             def layer_iter_():

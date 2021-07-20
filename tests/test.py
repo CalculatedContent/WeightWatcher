@@ -9,6 +9,8 @@ from weightwatcher import  LAYER_TYPE
 import torchvision.models as models
 import pandas as pd
 
+from transformers import TFAutoModelForSequenceClassification
+
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
 class Test_VGG11(unittest.TestCase):
@@ -350,6 +352,28 @@ class Test_VGG11(unittest.TestCase):
 		print("test runtime warning: sqrt(-1)=", np.sqrt(-1.0))
 		assert(True)
 		
+
+class Test_TFBert(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		CHECKPOINT = "bert-base-uncased"
+		cls.model = TFAutoModelForSequenceClassification.from_pretrained(CHECKPOINT)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		pass
+
+	def test_num_layers(self):
+		"""Test that the Keras Iterator finds all the TFBert layers
+		"""
+		details = self.watcher.describe()
+		print("TESTING TF BERT")
+		self.assertTrue(len(details), 963)
 
 
 if __name__ == '__main__':

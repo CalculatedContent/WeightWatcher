@@ -305,7 +305,7 @@ class WWLayer:
                     has_weights = True
                     #has_biases = True
                 else: 
-                    logger.warn("layer: {} {}   type {} not found ".format(self.layer.name, str(self.layer),str(self.the_type)))
+                    logger.warn("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
 
                 
         elif self.framework == FRAMEWORK.KERAS:
@@ -324,7 +324,7 @@ class WWLayer:
                 has_weights = True
                 has_biases = True
             else: 
-                logger.warn("layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
+                logger.warn("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
 
         elif self.framework == FRAMEWORK.ONNX:      
             onnx_layer = self.layer

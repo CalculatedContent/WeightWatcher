@@ -299,17 +299,13 @@ class WWLayer:
                     weights = w[0]
                     biases = None
                     has_weights = True
-                elif self.the_type==LAYER_TYPE.EMBEDDING:
-                    weights = w[0]
-                    biases = None
-                    has_weights = True
                 elif self.the_type==LAYER_TYPE.DENSE:
                     weights = w[0]
                     #biases = w[1]
                     has_weights = True
                     #has_biases = True
                 else: 
-                    logger.warn("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
+                    logger.warn("layer {} type {} not found ".format(str(self.layer), str(self.the_type)))
 
                 
         elif self.framework == FRAMEWORK.KERAS:
@@ -322,18 +318,13 @@ class WWLayer:
                 weights = w[0]
                 biases = None
                 has_weights = True
-            elif self.the_type==LAYER_TYPE.EMBEDDING:
-                weights = w[0]
-                biases = None
-                has_weights = True
             elif self.the_type==LAYER_TYPE.DENSE:
                 weights = w[0]
                 biases = w[1]
                 has_weights = True
                 has_biases = True
             else: 
-                logger.warn("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
-                
+                logger.warn("layer {} type {} not found ".format(str(self.layer),str(self.the_type)))
 
         elif self.framework == FRAMEWORK.ONNX:      
             onnx_layer = self.layer
@@ -359,7 +350,7 @@ class WWLayer:
         Wmats = []
         
         # this may change if we treat Conv1D differently layer
-        if (the_type == LAYER_TYPE.DENSE or the_type == LAYER_TYPE.CONV1D or the_type==LAYER_TYPE.EMBEDDING):
+        if (the_type == LAYER_TYPE.DENSE or the_type == LAYER_TYPE.CONV1D):
             Wmats = [self.weights]
             N, M = np.max(Wmats[0].shape), np.min(Wmats[0].shape)
             n_comp = M
@@ -575,13 +566,12 @@ class ModelIterator:
             def layer_iter_():
 
                 def traverse_(layer):
-                    "not recursive, just iterate over all submodules if present"
                     if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
                         yield layer
-                    else:                        
+                        
+                    if hasattr(layer, 'submodules'):                        
                         for sublayer in layer.submodules:
-                            yield sublayer
-                    
+                            yield from traverse_(sublayer)
 
                 for layer in model.layers:
                     yield from traverse_(layer)
@@ -780,7 +770,7 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         
-        elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D, LAYER_TYPE.EMBEDDING]:
+        elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D]:
             supported = True
                         
         return supported

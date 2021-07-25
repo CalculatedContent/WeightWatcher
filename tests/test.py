@@ -11,6 +11,8 @@ import pandas as pd
 
 from transformers import TFAutoModelForSequenceClassification
 
+from tensorflow.keras.applications.vgg16 import VGG16
+
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
 class Test_VGG11(unittest.TestCase):
@@ -345,6 +347,18 @@ class Test_VGG11(unittest.TestCase):
 		#self.assertAlmostEqual(details.np_softrank, 0.203082, places = 6) 
 
 
+	def test_svd_smoothing(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+		print("----test_svd_smoothing-----")
+		self.watcher.SVDSmoothing(layers=[28])
+		esd = self.watcher.get_ESD(layer=28) 
+		print(len(esd))
+		num_comps = len(esd[esd>10**-10])
+		self.assertEqual(num_comps, 819)
+
+
 	def test_runtime_warnings(self):
 		"""Test that runtime warnings are still active
 		"""
@@ -370,10 +384,46 @@ class Test_TFBert(unittest.TestCase):
 
 	def test_num_layers(self):
 		"""Test that the Keras Iterator finds all the TFBert layers
+		72 layers for BERT
+		+ 1 for input. 1 for output
 		"""
 		details = self.watcher.describe()
 		print("TESTING TF BERT")
-		self.assertTrue(len(details), 963)
+		self.assertTrue(len(details), 74)
+
+
+
+
+class Test_Keras(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		cls.model = VGG16()
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		pass
+
+	def test_num_layers(self):
+		"""Test that the Keras on VGG11
+		"""
+		details = self.watcher.describe()
+		print("Testing Keras on VGG16")
+		self.assertTrue(len(details), 16)
+
+
+
+	def test_channels_first(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.describe()
+		M = details.iloc[0].M
+		N = details.iloc[0].N
+		self.assertTrue(M, 3)
+		self.assertTrue(N, 64)
 
 
 if __name__ == '__main__':

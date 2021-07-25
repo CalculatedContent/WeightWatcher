@@ -465,18 +465,18 @@ class WWLayer:
                 for i in range(imax):
                     for j in range(jmax):
                         W = Wtensor[:, :, i, j]
-                        if N < M:
+                        if W.shape[0] < W.shape[1]:
                             W = W.T
                         Wmats.append(W)
                         
-            else: #channels == CHANNELS.FIRST:
-                N, M, imax, jmax = imax, jmax, N, M   
+            else: #channels == CHANNELS.FIRST  # i, j, M, N
+                M, N, imax, jmax = imax, jmax, N, M
                 # check this       
                 logger.debug("Channels First shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
                 for i in range(imax):
                     for j in range(jmax):
                         W = Wtensor[i, j, :, :]
-                        if N < M:
+                        if W.shape[1] < W.shape[0]:
                             W = W.T
                         Wmats.append(W)
                             

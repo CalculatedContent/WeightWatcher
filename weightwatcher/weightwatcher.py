@@ -2016,10 +2016,7 @@ class WeightWatcher(object):
         
     def smooth_W_alt(self, W, n_comp):
         """Apply the SVD Smoothing Transform to W"
-        
-        Not recommended because it computes ALL the eigenvectors 
-        
-        Included for debugging the TruncatedSVD implementation
+        if n_comp < 0, then chomp off the top n_comp eiganvalues
         """       
         
         N, M = np.max(W.shape), np.min(W.shape)
@@ -2028,8 +2025,11 @@ class WeightWatcher(object):
         # can't we just appky the svd transform...test
         # keep this old method for historical comparison
         u, s, vh = np.linalg.svd(W, compute_uv=True)
-        s[n_comp:]=0
-    
+        if n_comp > 0:
+            s[n_comp:]=0
+        else:
+            s[:n_comp]=0
+
         s = list(s)
         s.extend([0]*(N-M))
         s = np.array(s)
@@ -2116,7 +2116,9 @@ class WeightWatcher(object):
 
     
     def apply_svdsmoothing(self, ww_layer, params=DEFAULT_PARAMS):
-        """run truncated SVD on layer weight matrices and reconstruct the weight matrices  """
+        """run truncated SVD on layer weight matrices and reconstruct the weight matrices 
+        keep all eigenvlues > percent*ncomp
+        if percent < 0, then keep those < than percent*ncomp"""
         
         percent = params['percent']
       
@@ -2147,7 +2149,15 @@ class WeightWatcher(object):
         has_W, old_W, has_B, old_B = ww_layer.get_weights_and_biases()
         
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:          
-            new_W = self.smooth_W(old_W, n_comp) 
+            if n_comp > 0:
+                new_W = self.smooth_W(old_W, n_comp) 
+            elif n_comp < 0:
+                logger.debug("Chomping off top {} singular values".format(-n_comp))
+                new_W = self.smooth_W_alt(old_W, n_comp) 
+            else:
+                logger.warning("Not smoothing {} {}, ncomp=0".format(layer_id, layer_name))
+                new_W  = old_W
+
             new_B = old_B
             # did we flip W when analyzing ?
             if new_W.shape != old_W.shape:

@@ -354,8 +354,18 @@ class Test_VGG11(unittest.TestCase):
 		print("----test_svd_smoothing-----")
 		self.watcher.SVDSmoothing(layers=[28])
 		esd = self.watcher.get_ESD(layer=28) 
-		print(len(esd))
 		num_comps = len(esd[esd>10**-10])
+		self.assertEqual(num_comps, 819)
+
+	def test_svd_smoothing_alt(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+		print("----test_svd_smoothing-----")
+		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
+		esd = self.watcher.get_ESD(layer=28) 
+		num_comps = len(esd[esd>10**-10])
+		print("num comps = {}".format(num_comps))
 		self.assertEqual(num_comps, 819)
 
 

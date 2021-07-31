@@ -556,3 +556,32 @@ def plot_loghist(x, bins, xmin):
 
     plt.xscale('log')
     
+    
+def permute_matrix(W):
+    """permute a matrix in a reversible way"""
+    
+    num_params = np.prod(W.shape)
+    vec = W.reshape(num_params)
+    p_ids = np.random.permutation(np.arange(num_params))
+    p_vec = vec[p_ids]
+    p_W = p_vec.reshape(W.shape)
+            
+    return p_W, p_ids
+
+
+def unpermute_matrix(W, p_ids):
+    """unpermute a matrix, using the original ids to permute it"""
+    
+    num_params = np.prod(W.shape)
+    vec = W.reshape(num_params)
+    unp_ids = np.argsort(p_ids)
+    unp_vec = vec[unp_ids]
+    unp_W = unp_vec.reshape(W.shape)
+    
+    return unp_W
+
+
+
+
+
+   

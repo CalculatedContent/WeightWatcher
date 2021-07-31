@@ -21,7 +21,6 @@ class Test_VGG11(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-
 		cls.model = models.vgg11(pretrained=True)
 		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
 		#logging.getLogger("weightwatcher").setLevel(logging.INFO)
@@ -352,6 +351,11 @@ class Test_VGG11(unittest.TestCase):
 		"""
  		
 		print("----test_svd_smoothing-----")
+
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+		\
+		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
 		self.watcher.SVDSmoothing(layers=[28])
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
@@ -362,6 +366,10 @@ class Test_VGG11(unittest.TestCase):
 		"""
  		
 		print("----test_svd_smoothing-----")
+
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+		
 		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
@@ -434,6 +442,33 @@ class Test_Keras(unittest.TestCase):
 		N = details.iloc[0].N
 		self.assertTrue(M, 3)
 		self.assertTrue(N, 64)
+
+from weightwatcher import RMT_Util
+import numpy as np
+
+class Test_RMT_Util(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		pass
+
+	def test_vector_entropy(self):
+		u = np.array([1,1,1,1])
+		actual_s = RMT_Util.vector_entropy(u)
+		expected_s = 0.14676266317373993
+		self.assertAlmostEqual(actual_s, expected_s,  places=6)
+	
+	def test_permute_matrix(self):
+		W = 2.0*np.arange(20).reshape(4,5)
+		p_W, p_ids = RMT_Util.permute_matrix(W)
+		unp_W = RMT_Util.unpermute_matrix(p_W, p_ids)
+		
+		np.testing.assert_array_equal(W, unp_W)
 
 
 if __name__ == '__main__':

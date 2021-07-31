@@ -44,6 +44,7 @@ from sklearn.decomposition import TruncatedSVD
 
 from .RMT_Util import *
 from .constants import *
+from numpy import vectorize
 
 
 WW_NAME = 'weightwatcher'
@@ -59,7 +60,9 @@ mpl_logger.setLevel(logging.WARNING)
 MAX_NUM_EVALS = 50000
 
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 
-                  'rescale':True , 'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False}
+                  'rescale':True , 'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
+                  'ww2x':False}
+#                'stacked':False, 'unified':False}
 
 TPL = 'truncated_power_law'
 POWER_LAW = 'power_law'
@@ -162,6 +165,11 @@ class WWLayer:
         # only applies to Conv2D layers
         # layer, this would be some kind of layer weight options
         self.params = params
+        
+        # original dimensions of the weight tensor for this layer
+        self.weight_dims = None
+        self.num_params = 0
+        self.W_permuations = []
         
         # don't make if we set the weights externally
         if make_weights:
@@ -386,6 +394,9 @@ class WWLayer:
         self.Wmats = Wmats
         self.num_components = n_comp
         
+        self.weight_dims = self.weights.shape
+        self.num_params = np.prod(self.weight_dims)
+        
         return 
         
         
@@ -511,7 +522,47 @@ class WWLayer:
         logger.debug("get_conv2D_Wmats N={} M={} rf= {} channels = {}".format(N, M, rf, channels))
     
         return Wmats, N, M, rf
+    
+    
 
+
+    def permute_Wmats(self):
+        """randomly permute the weights in a way they can unpermuted deterministically"""
+        
+        self.W_permuted_ids = []
+        p_Wmats = []
+        for W in self.Wmats:
+            p_W, p_ids = permute_matrix(W)
+            p_Wmats.append(p_W)
+            self.W_permuted_ids.append(p_ids)
+            
+        return p_Wmats
+            
+    def unpermute_Wmats(self, Wmats):
+        """unpremute the previously permuted, randomized weights"""
+        
+        unp_Wmats = []
+        for W, p_ids in zip(Wmats, self.W_permuted_ids):       
+            unp_W = unpermute_matrix(W, p_ids)
+            unp_Wmats.append(unp_W)
+            
+        self.W_permuted_ids = []
+            
+        return unp_Wmats
+    
+    def flatten_weights(self):
+        """Transform the original weights tensor into a vector"""
+        return self.weights.reshape(self.num_params)
+    
+    def unflatten_weights(self, vec):
+        """unflatten the vector back to the original tensor weights"""
+        return vec.reshape(self.weight_dims)
+    
+    def reset_weights(self, W):
+        """reset the layer framework weight tensor"""
+        logger.fatal("not implemented yet")
+        return
+    
 
     
 class ModelIterator:
@@ -1188,6 +1239,37 @@ class WeightWatcher(object):
 
         return ww_layer
 
+
+    def make_layer_iterator(self, model=None, layers=[], params=DEFAULT_PARAMS):
+        """Constructor for the Layer Iterator; See analyze(...)
+        
+        TODO: Add WWStackedLayersIterator
+         """
+    
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+   
+        #stacked = params['stacked']
+        intra = params['intra']
+        ww2x = params['ww2x']
+        
+        layer_iterator = None
+        if intra:
+            logger.info("Intra layer Analysis (experimental)")
+            layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
+        elif ww2x:
+            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
+            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
+        else:
+            layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
+    
+        return layer_iterator
+    
+    
+        
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
@@ -1296,14 +1378,7 @@ class WeightWatcher(object):
             logger.error(msg)
             raise Exception(msg)
    
-        if intra:
-            logger.info("Intra layer Analysis (experimental)")
-            layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
-        elif ww2x:
-            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
-            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
-        else:
-            layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)     
         
         details = pd.DataFrame(columns=['layer_id', 'name'])
         
@@ -1407,15 +1482,7 @@ class WeightWatcher(object):
             logger.error(msg)
             raise Exception(msg)
    
-        if intra:
-            logger.info("Intra layer Analysis (experimental)")
-            layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
-        elif ww2x:
-            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
-            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
-        else:
-            layer_iterator = WWLayerIterator(model, filters=layers, params=params)  
-            
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         num_all_evals = 0
@@ -1949,7 +2016,7 @@ class WeightWatcher(object):
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(elf, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale):
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M        
@@ -2093,11 +2160,8 @@ class WeightWatcher(object):
             logger.error(msg)
             raise Exception(msg)
      
-        if ww2x:
-            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
-            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
-        else:
-            layer_iterator = WWLayerIterator(model, filters=layers, params=params)  
+        #TODO: restrict to ww2x or intra
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
             
         
         # iterate over layers
@@ -2204,7 +2268,11 @@ class WeightWatcher(object):
 
         return ww_layer
         
-        
+
+
+
+
+    # TODO: put this on the layer itself
     def  replace_layer_weights(self, framework, idx, layer, W, B=None):
         """Replace the old layer weights with the new weights
         
@@ -2244,4 +2312,5 @@ class WeightWatcher(object):
 
         return
    
+
         

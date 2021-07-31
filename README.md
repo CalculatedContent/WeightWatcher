@@ -14,6 +14,14 @@
 - determine if a model has been overtrained, without looking at the test data
 - experimental support for intra-layer correlations
 
+### Experimental / Most Recent version    0.4.96
+
+You may install the latest / Trunk from testpypi
+
+python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
+
+Please try the latest testpypi before submitting bugs
+
 
 #### From Research to Production
 WeightWatcher is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.

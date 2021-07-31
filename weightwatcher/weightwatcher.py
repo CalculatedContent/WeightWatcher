@@ -1201,11 +1201,11 @@ class WeightWatcher(object):
         
         plt.title(name)
         plt.hist(evals, bins=100)
-        plt.show()
+        plt.show(); plt.clf()
         
         plt.title(name)
         plt.hist(np.log10(evals), bins=100)
-        plt.show()
+        plt.show(); plt.clf()
             
         return ww_layer
     
@@ -1674,7 +1674,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             plt.savefig("ww.layer{}.randesd.1.png".format(layer_id))
-        plt.show()
+        plt.show(); plt.clf()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
         plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
@@ -1685,7 +1685,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
-        plt.show()
+        plt.show(); plt.clf()
         
     # MOves to RMT Util should be static function    
     #def calc_rank_loss(self, singular_values, M, lambda_max):
@@ -1774,7 +1774,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            plt.show()
+            plt.show(); plt.clf()
     
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
@@ -1785,7 +1785,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd2.png".format(layer_id))
-            plt.show()
+            plt.show(); plt.clf()
 
             # plot log eigenvalue histogram
             nonzero_evals = evals[evals > 0.0]
@@ -1797,7 +1797,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd3.png".format(layer_id))
-            plt.show()
+            plt.show(); plt.clf()
     
             # plot xmins vs D
             
@@ -1811,7 +1811,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd4.png".format(layer_id))
-            plt.show() 
+            plt.show(); plt.clf() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
     
@@ -1962,8 +1962,8 @@ class WeightWatcher(object):
         plt.ylabel("Log Delta Es: "+eqn)
         plt.legend()
         if savefig:  
-            plt.savefig("ww.layer{}.deltaEs.png".formt(layer_id))         
-        plt.show()
+            plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
+        plt.show(); plt.clf()
 
         
         # level statistics (not mean adjusted because plotting log)
@@ -1973,8 +1973,8 @@ class WeightWatcher(object):
         plt.xlabel(eqn)
         plt.legend()
         if savefig:  
-            plt.savefig("ww.layer{}.level-stats.png".formt(layer_id))         
-        plt.show()
+            plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
+        plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
         """Perform MP fit on random or actual random eigenvalues
@@ -2055,8 +2055,8 @@ class WeightWatcher(object):
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
-                    plt.savefig("ww.layer{}.mpfit1.png".formt(layer_id))
-                plt.show()
+                    plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
+                plt.show(); plt.clf()
             
         else:
             fit_law = 'MP ESD'
@@ -2074,7 +2074,7 @@ class WeightWatcher(object):
             plt.title(title)
             if savefig:
                 plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
-            plt.show()
+            plt.show(); plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)
         bulk_min = bulk_min/(Wscale*Wscale)

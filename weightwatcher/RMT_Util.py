@@ -471,7 +471,7 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False):
         plt.plot(xde, yde, color='cyan')
         plt.plot(xmp, ymp, color='orange')
         plt.axhline(y=THRESH)
-        plt.show()
+        plt.show(); plt.clf()
         print("sigma {}  mean residual {}".format(sigma, np.mean(resid)))
 
     # hack to try to fix fits

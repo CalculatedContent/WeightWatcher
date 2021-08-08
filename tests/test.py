@@ -407,16 +407,12 @@ class Test_VGG11(unittest.TestCase):
 		
 	def test_randomize_mp_fits(self):
 		"""Test that the mp_fits works correctly for the randomized matrices
+		Note: the fits currently not consistent
 		"""
 		details = self.watcher.analyze(mp_fit=True,  randomize=True,  ww2x=False, rescale=True)
 		self.assertTrue((details.rand_sigma_mp < 1.10).all())
 		self.assertTrue((details.rand_sigma_mp > 0.96).all())
 		self.assertTrue((details.rand_num_spikes.to_numpy() < 80).all())
-		self.assertTrue(details.rand_num_spikes.to_numpy()[0]==11)
-		self.assertTrue(details.rand_num_spikes.to_numpy()[8]==1)
-		self.assertTrue(details.rand_num_spikes.to_numpy()[9]==1)
-		self.assertTrue(details.rand_num_spikes.to_numpy()[10]==0)
-
 		
 
 class Test_TFBert(unittest.TestCase):

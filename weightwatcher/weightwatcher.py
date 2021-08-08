@@ -1200,6 +1200,7 @@ class WeightWatcher(object):
         name = ww_layer.name
         
         if ax is None:
+            doClf = True
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].set_title(name)
@@ -1207,7 +1208,10 @@ class WeightWatcher(object):
         
         ax[1].set_title(name)
         ax[1].hist(np.log10(evals), bins=100)
-        plt.show(); plt.clf()
+        plt.show(); 
+        
+        if doClf:
+            plt.clf()
             
         return ww_layer
     
@@ -1669,6 +1673,7 @@ class WeightWatcher(object):
         max_rand_eval = np.max(rand_evals)
         
         if ax is None:
+            doClf = True
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].hist((nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1694,7 +1699,9 @@ class WeightWatcher(object):
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
             ax[1].get_figure().savefig("ww.layer{}.randesd.2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-        plt.show(); plt.clf()
+        plt.show(); 
+        if doClf:
+            plt.clf()
     
     # MOves to RMT Util should be static function    
     #def calc_rank_loss(self, singular_values, M, lambda_max):
@@ -1770,6 +1777,7 @@ class WeightWatcher(object):
 
         if plot:
             if ax is None:
+                doClf = True
                 fig, ax = plt.subplots(4, figsize=(10,40))
 
             fig2 = fit.plot_pdf(color='b', linewidth=0, ax = ax[0]) # invisbile
@@ -1829,7 +1837,10 @@ class WeightWatcher(object):
                 extent = ax[3].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 ax[3].get_figure().savefig("ww.layer{}.esd4.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-            plt.show(); plt.clf() 
+            plt.show(); 
+            
+            if doClf:
+                plt.clf() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
     
@@ -1969,6 +1980,7 @@ class WeightWatcher(object):
         eqn = r"$\log_{10}\Delta(\lambda)$"
         
         if ax is None:
+            doClf = True
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].scatter(x,logDeltaEs, color=color)
@@ -1999,7 +2011,10 @@ class WeightWatcher(object):
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
             ax[1].get_figure().savefig("ww.layer{}.level-stats.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-        plt.show(); plt.clf()
+        plt.show(); 
+        
+        if doClf:
+            plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
         """Perform MP fit on random or actual random eigenvalues
@@ -2072,6 +2087,7 @@ class WeightWatcher(object):
 
         if plot:
             if ax is None:
+                doClf = True
                 fig, ax = plt.subplots(2, figsize=(10,20))            
 
         if Q == 1.0:
@@ -2106,7 +2122,10 @@ class WeightWatcher(object):
                 extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 ax[1].get_figure().savefig("ww.layer{}.mpfit2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-            plt.show(); plt.clf()
+            plt.show(); 
+            
+            if doClf:
+                plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)
         bulk_min = bulk_min/(Wscale*Wscale)

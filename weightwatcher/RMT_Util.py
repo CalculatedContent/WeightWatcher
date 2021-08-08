@@ -475,6 +475,7 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False, ax = Non
     #     resid = np.nan_to_num(resid)
 
     if debug:
+        doClf = False
         if ax is None:
             doClf = True
             fig, ax = plt.subplots(figsize=(10,10))

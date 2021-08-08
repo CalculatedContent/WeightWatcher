@@ -1200,11 +1200,10 @@ class WeightWatcher(object):
         name = ww_layer.name
         
         if not ax:
-            fig, ax = plt.subplots(2)
+            fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].set_title(name)
         ax[0].hist(evals, bins=100)
-        plt.show(); plt.clf()
         
         ax[1].set_title(name)
         ax[1].hist(np.log10(evals), bins=100)
@@ -1670,7 +1669,7 @@ class WeightWatcher(object):
         max_rand_eval = np.max(rand_evals)
         
         if not ax:
-            fig, ax = plt.subplots(2)
+            fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].hist((nonzero_evals), bins=100, density=True, color='g', label='original')
         ax[0].hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
@@ -1679,8 +1678,9 @@ class WeightWatcher(object):
         ax[0].set_xlabel(r" Eigenvalues $(\lambda)$")               
         ax[0].legend()
         if savefig:
-            plt.savefig("ww.layer{}.randesd.1.png".format(layer_id))
-        plt.show(); plt.clf()
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            ax[0].get_figure().savefig("ww.layer{}.randesd.1.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
 
         ax[1].hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
         ax[1].hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
@@ -1690,7 +1690,10 @@ class WeightWatcher(object):
         ax[1].set_xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         ax[1].legend()
         if savefig:
-            plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            ax[1].get_figure().savefig("ww.layer{}.randesd.2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+
         plt.show(); plt.clf()
     
     # MOves to RMT Util should be static function    
@@ -1767,7 +1770,7 @@ class WeightWatcher(object):
 
         if plot:
             if not ax:
-                fig, ax = plt.subplots(4)
+                fig, ax = plt.subplots(4, figsize=(10,40))
 
             fig2 = fit.plot_pdf(color='b', linewidth=0, ax = ax[0]) # invisbile
             plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin, ax = ax[0])
@@ -1782,8 +1785,9 @@ class WeightWatcher(object):
             ax[0].set_title(title)
             ax[0].legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            plt.show(); plt.clf()
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                ax[0].get_figure().savefig("ww.layer{}.esd.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
     
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
@@ -1793,8 +1797,9 @@ class WeightWatcher(object):
             ax[1].axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             ax[1].legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd2.png".format(layer_id))
-            plt.show(); plt.clf()
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                ax[1].get_figure().savefig("ww.layer{}.esd2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
             # plot log eigenvalue histogram
             nonzero_evals = evals[evals > 0.0]
@@ -1805,8 +1810,9 @@ class WeightWatcher(object):
             ax[2].axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
             ax[2].legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd3.png".format(layer_id))
-            plt.show(); plt.clf()
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[2].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                ax[2].get_figure().savefig("ww.layer{}.esd3.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
     
             # plot xmins vs D
             
@@ -1819,7 +1825,10 @@ class WeightWatcher(object):
             ax[3].set_title(title+"{:0.3}".format(fit.xmin))
             ax[3].legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd4.png".format(layer_id))
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[3].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                ax[3].get_figure().savefig("ww.layer{}.esd4.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
+
             plt.show(); plt.clf() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
@@ -1960,7 +1969,7 @@ class WeightWatcher(object):
         eqn = r"$\log_{10}\Delta(\lambda)$"
         
         if not ax:
-            fig, ax = plt.subplots(2)
+            fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].scatter(x,logDeltaEs, color=color)
         
@@ -1975,9 +1984,9 @@ class WeightWatcher(object):
         ax[0].set_ylabel("Log Delta Es: "+eqn)
         ax[0].legend()
         if savefig:  
-            plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
-        plt.show(); plt.clf()
-
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            ax[0].get_figure().savefig("ww.layer{}.deltaEs.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
         
         # level statistics (not mean adjusted because plotting log)
         ax[1].hist(logDeltaEs, bins=100, color=color, density=True)
@@ -1986,7 +1995,10 @@ class WeightWatcher(object):
         ax[1].set_xlabel(eqn)
         ax[1].legend()
         if savefig:  
-            plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            ax[1].get_figure().savefig("ww.layer{}.level-stats.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+
         plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
@@ -2060,7 +2072,7 @@ class WeightWatcher(object):
 
         if plot:
             if not ax:
-                fig, ax = plt.subplots(2)            
+                fig, ax = plt.subplots(2, figsize=(10,20))            
 
         if Q == 1.0:
             fit_law = 'QC SSD'
@@ -2071,8 +2083,9 @@ class WeightWatcher(object):
                 ax[0].legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 ax[0].set_title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
-                    plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
-                plt.show(); plt.clf()
+                    # Save just the portion _inside_ the axis's boundaries
+                    extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                    ax[0].get_figure().savefig("ww.layer{}.mpfit1.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
             
         else:
             fit_law = 'MP ESD'
@@ -2089,7 +2102,10 @@ class WeightWatcher(object):
     
             ax[1].set_title(title)
             if savefig:
-                plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                ax[1].get_figure().savefig("ww.layer{}.mpfit2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+
             plt.show(); plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)

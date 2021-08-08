@@ -172,7 +172,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         
     if plot:
         if not ax:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(10,10))
         ax.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
         ax.legend()
     
@@ -223,7 +223,7 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue', ax = None):
         x, y = quarter_circle_pdf(x_min, x_max, sigma)
         
     if not ax:    
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10,10))
         
     ax.hist(to_plot, bins=100, alpha=0.6, color=color, density=True, label="ead")
     ax.plot(x, y, linewidth=1, color='r', label = method + " fit")
@@ -249,8 +249,10 @@ def scree_plot(model, weightfile, layer=2, color='blue', label='', ax = None):
     evs = matrix_eigenvalues(model, layer)
     eigvals = np.flip(np.sort(evs), axis=0)
     sing_vals = np.arange(len(eigvals)) + 1
+    
     if not ax:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10,10))
+        
     ax.plot(sing_vals, eigvals, color, linewidth=1, label=label)
 
 # # Soft / Stable Rank
@@ -474,7 +476,8 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False, ax = Non
 
     if debug:
         if not ax:
-            fig, ax = plt.subplots()
+            fig, ax = plt.subplots(figsize=(10,10))
+            
         ax.plot(xde, yde, color='cyan')
         ax.plot(xmp, ymp, color='orange')
         ax.axhline(y=THRESH)
@@ -557,7 +560,8 @@ def plot_loghist(x, bins, xmin, ax = None):
     hist, bins = np.histogram(x, bins=bins)
     logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
     if not ax:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(10,10))
+        
     ax.hist(x, bins=logbins, density=True)
 
     if xmin:

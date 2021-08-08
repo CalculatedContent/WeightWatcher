@@ -477,6 +477,7 @@ class WWLayer:
                     for j in range(jmax):
                         W = Wtensor[:, :, i, j]
                         if W.shape[0] < W.shape[1]:
+                            N, M = M, N
                             W = W.T
                         Wmats.append(W)
                         
@@ -488,6 +489,7 @@ class WWLayer:
                     for j in range(jmax):
                         W = Wtensor[i, j, :, :]
                         if W.shape[1] < W.shape[0]:
+                            N, M = M, N
                             W = W.T
                         Wmats.append(W)
                             

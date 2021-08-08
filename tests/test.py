@@ -384,6 +384,28 @@ class Test_VGG11(unittest.TestCase):
 		print("test runtime warning: sqrt(-1)=", np.sqrt(-1.0))
 		assert(True)
 		
+	def test_N_ge_M(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.describe()
+		M = details.M.to_numpy()
+		N = details.N.to_numpy()
+		self.assertTrue((N >= M).all)
+		
+		
+	def test_randomize_mp_fits(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.analyze(mp_fit=True,  randomize=True,  ww2x=False, rescale=True)
+		self.assertTrue((details.rand_sigma_mp < 1.01).all())
+		self.assertTrue((details.rand_sigma_mp > 0.96).all())
+		self.assertTrue((details.rand_num_spikes.to_numpy() < 80).all())
+		self.assertTrue(details.rand_num_spikes.to_numpy()[0]==11)
+		self.assertTrue(details.rand_num_spikes.to_numpy()[8]==1)
+		self.assertTrue(details.rand_num_spikes.to_numpy()[9]==1)
+		self.assertTrue(details.rand_num_spikes.to_numpy()[10]==0)
+
+		
 
 class Test_TFBert(unittest.TestCase):
 
@@ -442,7 +464,38 @@ class Test_Keras(unittest.TestCase):
 		N = details.iloc[0].N
 		self.assertTrue(M, 3)
 		self.assertTrue(N, 64)
+		
+	def test_N_ge_M(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.describe()
+		M = details.M.to_numpy()
+		N = details.N.to_numpy()
+		self.assertTrue((N >= M).all)
 
+
+class Test_ResNet(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		cls.model = models.resnet18(pretrained=True)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		pass
+	
+	def test_N_ge_M(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.describe()
+		M = details.M.to_numpy()
+		N = details.N.to_numpy()
+		self.assertTrue((N >= M).all)
+		
+	
 from weightwatcher import RMT_Util
 import numpy as np
 

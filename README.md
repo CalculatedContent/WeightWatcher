@@ -14,7 +14,7 @@
 - determine if a model has been overtrained, without looking at the test data
 - experimental support for intra-layer correlations
 
-### Experimental / Most Recent version    0.4.96
+### Experimental / Most Recent version    0.4.98
 
 You may install the latest / Trunk from testpypi
 

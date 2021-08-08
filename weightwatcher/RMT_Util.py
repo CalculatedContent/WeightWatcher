@@ -459,8 +459,9 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False):
         # MP fit for this sigma
         xmp, ymp, a, b = marchenko_pastur_fun(xde, Q=Q, sigma=sigma)
 
-        if (b > max(xde)) | (a > xde[np.where(yde == max(yde))][0]) | (sigma > 1):
-            # print(xde[np.where(yde == max(yde))])
+        ### issue #60  change if statement
+        #if (b > max(xde)) | (a > xde[np.where(yde == max(yde))][0]) | (sigma > 1):
+        if (b < xde[np.where(yde == max(yde))][0] ) | (b > max(xde)) | (a > xde[np.where(yde == max(yde))][0]):
             resid = np.zeros(len(yde)) + 1000
         else:
             # form residual, remove nan's 
@@ -516,10 +517,15 @@ def fit_density(evals, Q, bw=0.1, sigma0=None):
 
 
 def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.1, 1.25, 0.01),) ):
-    
     assert type(sigma_range) == tuple, ValueError("sigma_range must be tuple")
     assert type(sigma_range[0]) == slice
-    
+
+    ### issue #60 fix
+    #   reset sigma range
+    sigma_scaling_factor = calc_sigma(Q, evals)
+    sigma_range = (slice(0.05 * sigma_scaling_factor, 2.0 * sigma_scaling_factor, 0.01 * sigma_scaling_factor),)
+    #
+    ###
 
     if Q == 1:
         to_fit = np.sqrt(evals)

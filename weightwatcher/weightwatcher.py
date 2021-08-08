@@ -886,7 +886,8 @@ class WWIntraLayerIterator(WW2xSliceIterator):
                      
             logger.info("aligned {} {}".format(W0.shape, W1.shape))
             return W0, W1
-   ## Need to look at all W, currently just doing 1
+   
+        ## Need to look at all W, currently just doing 1
         for ww_layer in self.ww_layer_iter_():
             if self.prev_layer is None:
                 self.prev_layer = deepcopy(ww_layer)
@@ -1072,8 +1073,8 @@ class WeightWatcher(object):
     
             # sv = svd.singular_values_
             evals = sv * sv
-            if normalize:
-                evals = evals / N
+            #if normalize:
+            #    evals = evals / N
     
             all_evals.extend(evals)
     
@@ -1585,7 +1586,7 @@ class WeightWatcher(object):
         W = W / kappa
         return W , 1/kappa
 
-    def pytorch_norm_fix(self, W, N, M, rf_size):
+#     def pytorch_norm_fix(self, W, N, M, rf_size):
         """Apply pytorch Channel Normalization Fix
 
         see: https://chsasank.github.io/vision/_modules/torchvision/models/vgg.html
@@ -2025,7 +2026,9 @@ class WeightWatcher(object):
         Wscale=1.0
         if rescale:
             Wnorm = np.sqrt(np.sum(evals))
-            Wscale = np.sqrt(N*rf)/Wnorm
+            ### issue #60 
+            #Wscale = np.sqrt(N*rf)/Wnorm
+            Wscale = np.sqrt(to_plot.shape[0])/Wnorm
             logger.info("rescaling {} ESD of W by {:0.2f}".format(layer_id, Wscale))
 
         to_plot = (Wscale*Wscale)*to_plot

@@ -1199,7 +1199,7 @@ class WeightWatcher(object):
         evals = ww_layer.evals
         name = ww_layer.name
         
-        if not ax:
+        if ax is None:
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].set_title(name)
@@ -1668,7 +1668,7 @@ class WeightWatcher(object):
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
         max_rand_eval = np.max(rand_evals)
         
-        if not ax:
+        if ax is None:
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].hist((nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1769,7 +1769,7 @@ class WeightWatcher(object):
                
 
         if plot:
-            if not ax:
+            if ax is None:
                 fig, ax = plt.subplots(4, figsize=(10,40))
 
             fig2 = fit.plot_pdf(color='b', linewidth=0, ax = ax[0]) # invisbile
@@ -1968,7 +1968,7 @@ class WeightWatcher(object):
         x = np.arange(len(deltaEs))
         eqn = r"$\log_{10}\Delta(\lambda)$"
         
-        if not ax:
+        if ax is None:
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].scatter(x,logDeltaEs, color=color)
@@ -2071,7 +2071,7 @@ class WeightWatcher(object):
         mp_softrank = bulk_max / lambda_max
 
         if plot:
-            if not ax:
+            if ax is None:
                 fig, ax = plt.subplots(2, figsize=(10,20))            
 
         if Q == 1.0:

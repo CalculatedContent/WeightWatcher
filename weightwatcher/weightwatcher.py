@@ -1767,7 +1767,7 @@ class WeightWatcher(object):
 
         if plot:
             if not ax:
-                fig, ax = subplots(4)
+                fig, ax = plt.subplots(4)
 
             fig2 = fit.plot_pdf(color='b', linewidth=0, ax = ax[0]) # invisbile
             plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin, ax = ax[0])

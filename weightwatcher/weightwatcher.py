@@ -1680,7 +1680,7 @@ class WeightWatcher(object):
         if savefig:
             # Save just the portion _inside_ the axis's boundaries
             extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            ax[0].get_figure().savefig("ww.layer{}.randesd.1.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+            ax[0].get_figure().savefig("ww.layer{}.randesd.1.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
         ax[1].hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
         ax[1].hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
@@ -1692,7 +1692,7 @@ class WeightWatcher(object):
         if savefig:
             # Save just the portion _inside_ the axis's boundaries
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            ax[1].get_figure().savefig("ww.layer{}.randesd.2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+            ax[1].get_figure().savefig("ww.layer{}.randesd.2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
         plt.show(); plt.clf()
     
@@ -1986,7 +1986,7 @@ class WeightWatcher(object):
         if savefig:  
             # Save just the portion _inside_ the axis's boundaries
             extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            ax[0].get_figure().savefig("ww.layer{}.deltaEs.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+            ax[0].get_figure().savefig("ww.layer{}.deltaEs.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
         
         # level statistics (not mean adjusted because plotting log)
         ax[1].hist(logDeltaEs, bins=100, color=color, density=True)
@@ -1997,7 +1997,7 @@ class WeightWatcher(object):
         if savefig:  
             # Save just the portion _inside_ the axis's boundaries
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            ax[1].get_figure().savefig("ww.layer{}.level-stats.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+            ax[1].get_figure().savefig("ww.layer{}.level-stats.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
         plt.show(); plt.clf()
 
@@ -2085,7 +2085,7 @@ class WeightWatcher(object):
                 if savefig:
                     # Save just the portion _inside_ the axis's boundaries
                     extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-                    ax[0].get_figure().savefig("ww.layer{}.mpfit1.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+                    ax[0].get_figure().savefig("ww.layer{}.mpfit1.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
             
         else:
             fit_law = 'MP ESD'
@@ -2104,7 +2104,7 @@ class WeightWatcher(object):
             if savefig:
                 # Save just the portion _inside_ the axis's boundaries
                 extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-                ax[1].get_figure().savefig("ww.layer{}.mpfit2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25)
+                ax[1].get_figure().savefig("ww.layer{}.mpfit2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
             plt.show(); plt.clf()
             

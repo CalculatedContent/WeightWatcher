@@ -391,13 +391,25 @@ class Test_VGG11(unittest.TestCase):
 		M = details.M.to_numpy()
 		N = details.N.to_numpy()
 		self.assertTrue((N >= M).all)
+	
+	def test_num_evals(self):
+		"""Test that the num evals is correct
+		"""
+		details = self.watcher.describe()		
+		self.assertTrue((details.M * details.rf == details.num_evals).all())
+		
+	def test_rf_value(self):
+		"""Test that the num evals is correct
+		"""
+		details = self.watcher.describe()		
+		self.assertTrue((details.rf.to_numpy()[0:8] == 9.0).all())
 		
 		
 	def test_randomize_mp_fits(self):
-		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""Test that the mp_fits works correctly for the randomized matrices
 		"""
 		details = self.watcher.analyze(mp_fit=True,  randomize=True,  ww2x=False, rescale=True)
-		self.assertTrue((details.rand_sigma_mp < 1.01).all())
+		self.assertTrue((details.rand_sigma_mp < 1.10).all())
 		self.assertTrue((details.rand_sigma_mp > 0.96).all())
 		self.assertTrue((details.rand_num_spikes.to_numpy() < 80).all())
 		self.assertTrue(details.rand_num_spikes.to_numpy()[0]==11)
@@ -494,6 +506,13 @@ class Test_ResNet(unittest.TestCase):
 		M = details.M.to_numpy()
 		N = details.N.to_numpy()
 		self.assertTrue((N >= M).all)
+		
+	def test_num_evals(self):
+		"""Test that the num evals is correct
+		"""
+		details = self.watcher.describe()		
+		self.assertTrue((details.M * details.rf == details.num_evals).all())
+		
 		
 	
 from weightwatcher import RMT_Util

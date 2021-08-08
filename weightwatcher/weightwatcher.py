@@ -1193,18 +1193,21 @@ class WeightWatcher(object):
         return ww_layer
     
     # Not used yet
-    def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS, ax = None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                     
         evals = ww_layer.evals
         name = ww_layer.name
         
-        plt.title(name)
-        plt.hist(evals, bins=100)
+        if not ax:
+            fig, ax = plt.subplots(2)
+            
+        ax[0].set_title(name)
+        ax[0].hist(evals, bins=100)
         plt.show(); plt.clf()
         
-        plt.title(name)
-        plt.hist(np.log10(evals), bins=100)
+        ax[1].set_title(name)
+        ax[1].hist(np.log10(evals), bins=100)
         plt.show(); plt.clf()
             
         return ww_layer
@@ -1652,7 +1655,7 @@ class WeightWatcher(object):
                                        
         return np.sort(np.array(all_evals))
    
-    def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS, ax = None):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
         savefig = params['savefig']
@@ -1665,28 +1668,31 @@ class WeightWatcher(object):
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
         max_rand_eval = np.max(rand_evals)
-
-        plt.hist((nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
-        plt.title(title)   
-        plt.xlabel(r" Eigenvalues $(\lambda)$")               
-        plt.legend()
+        
+        if not ax:
+            fig, ax = plt.subplots(2)
+            
+        ax[0].hist((nonzero_evals), bins=100, density=True, color='g', label='original')
+        ax[0].hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+        ax[0].axvline(x=(max_rand_eval), color='orange', label='max rand')
+        ax[0].set_title(title)   
+        ax[0].set_xlabel(r" Eigenvalues $(\lambda)$")               
+        ax[0].legend()
         if savefig:
             plt.savefig("ww.layer{}.randesd.1.png".format(layer_id))
         plt.show(); plt.clf()
 
-        plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
+        ax[1].hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
+        ax[1].hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+        ax[1].axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
         title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-        plt.title(title)   
-        plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
-        plt.legend()
+        ax[1].set_title(title)   
+        ax[1].set_xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
+        ax[1].legend()
         if savefig:
             plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
         plt.show(); plt.clf()
-        
+    
     # MOves to RMT Util should be static function    
     #def calc_rank_loss(self, singular_values, M, lambda_max):
     #    """compute the rank loss for these singular given the tolerances
@@ -1694,8 +1700,8 @@ class WeightWatcher(object):
     #    sv = singular_values
     #    tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
     #    return np.count_nonzero(sv > tolerance, axis=-1)
-            
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, savefig=False):
+    
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, savefig=False, ax = None):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1760,55 +1766,58 @@ class WeightWatcher(object):
                
 
         if plot:
-            fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
-            plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin)
-            fig2 = fit.plot_pdf(color='r', linewidth=2)
-            fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+            if not ax:
+                fig, ax = subplots(4)
+
+            fig2 = fit.plot_pdf(color='b', linewidth=0, ax = ax[0]) # invisbile
+            plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin, ax = ax[0])
+            fig2 = fit.plot_pdf(color='r', linewidth=2, ax = ax[0])
+            fit.power_law.plot_pdf(color='r', linestyle='--', ax = ax[0]) #ax=fig2)
         
             title = "Log-Log ESD for {}\n".format(layer_name) 
             title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \
                 r'$D_{KS}=$'+"{0:.3f}; ".format(D) + \
                 r"$\lambda_{min}=$"+"{0:.3f}".format(xmin) + "\n"
 
-            plt.title(title)
-            plt.legend()
+            ax[0].set_title(title)
+            ax[0].legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd.png".format(layer_id))
             plt.show(); plt.clf()
     
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
-            plt.hist(evals, bins=num_bins, density=True)
+            ax[1].hist(evals, bins=num_bins, density=True)
             title = "Lin-Lin ESD for {}".format(layer_name) 
-            plt.title(title)
-            plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
-            plt.legend()
+            ax[1].set_title(title)
+            ax[1].axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
+            ax[1].legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd2.png".format(layer_id))
             plt.show(); plt.clf()
 
             # plot log eigenvalue histogram
             nonzero_evals = evals[evals > 0.0]
-            plt.hist(np.log10(nonzero_evals), bins=100, density=True)
+            ax[2].hist(np.log10(nonzero_evals), bins=100, density=True)
             title = "Log-Lin ESD for {}".format(layer_name) 
-            plt.title(title)
-            plt.axvline(x=np.log10(fit.xmin), color='red', label=r'$\lambda_{xmin}$')
-            plt.axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
-            plt.legend()
+            ax[2].set_title(title)
+            ax[2].axvline(x=np.log10(fit.xmin), color='red', label=r'$\lambda_{xmin}$')
+            ax[2].axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
+            ax[2].legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd3.png".format(layer_id))
             plt.show(); plt.clf()
     
             # plot xmins vs D
             
-            plt.plot(fit.xmins, fit.Ds, label=r'$D_{KS}$')
-            plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
+            ax[3].plot(fit.xmins, fit.Ds, label=r'$D_{KS}$')
+            ax[3].axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             #plt.plot(fit.xmins, fit.sigmas / fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
-            plt.xlabel(r'$x_{min}$')
-            plt.ylabel(r'$D_{KS}$')
+            ax[3].set_xlabel(r'$x_{min}$')
+            ax[3].set_ylabel(r'$D_{KS}$')
             title = r'$D_{KS}$' + ' vs.' + r'$x_{min},\;\lambda_{xmin}=$'
-            plt.title(title+"{:0.3}".format(fit.xmin))
-            plt.legend()
+            ax[3].set_title(title+"{:0.3}".format(fit.xmin))
+            ax[3].legend()
             if savefig:
                 plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
@@ -1926,7 +1935,7 @@ class WeightWatcher(object):
     
     
     # TODO: add x bulk max yellow line for bulk edge for random
-    def apply_plot_deltaEs(self, ww_layer, random=False, params=DEFAULT_PARAMS):
+    def apply_plot_deltaEs(self, ww_layer, random=False, params=DEFAULT_PARAMS, ax = None):
         """Plot the deltas of the layer ESD, both in a sequence as a histogram (level statisitcs)"""
         layer_id = ww_layer.layer_id
         name = ww_layer.name or ""
@@ -1949,29 +1958,33 @@ class WeightWatcher(object):
         logDeltaEs = np.log10(deltaEs)
         x = np.arange(len(deltaEs))
         eqn = r"$\log_{10}\Delta(\lambda)$"
-        plt.scatter(x,logDeltaEs, color=color)
+        
+        if not ax:
+            fig, ax = plt.subplots(2)
+            
+        ax[0].scatter(x,logDeltaEs, color=color)
         
         if not random:
             idx = np.searchsorted(evals, ww_layer.xmin, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{xmin}$')
+            ax[0].axvline(x=idx, color='red', label=r'$\lambda_{xmin}$')
         else:
             idx = np.searchsorted(evals, bulk_max, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{+}$')
+            ax[0].axvline(x=idx, color='red', label=r'$\lambda_{+}$')
 
-        plt.title("Log Delta Es for Layer {}".format(layer_name))
-        plt.ylabel("Log Delta Es: "+eqn)
-        plt.legend()
+        ax[0].set_title("Log Delta Es for Layer {}".format(layer_name))
+        ax[0].set_ylabel("Log Delta Es: "+eqn)
+        ax[0].legend()
         if savefig:  
             plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
         plt.show(); plt.clf()
 
         
         # level statistics (not mean adjusted because plotting log)
-        plt.hist(logDeltaEs, bins=100, color=color, density=True)
-        plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
-        plt.ylabel("density")
-        plt.xlabel(eqn)
-        plt.legend()
+        ax[1].hist(logDeltaEs, bins=100, color=color, density=True)
+        ax[1].set_title("Log Level Statisitcs for Layer {}".format(layer_name))
+        ax[1].set_ylabel("density")
+        ax[1].set_xlabel(eqn)
+        ax[1].legend()
         if savefig:  
             plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
         plt.show(); plt.clf()
@@ -2016,7 +2029,7 @@ class WeightWatcher(object):
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale):
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale, ax = None):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M        
@@ -2045,15 +2058,18 @@ class WeightWatcher(object):
         
         mp_softrank = bulk_max / lambda_max
 
+        if plot:
+            if not ax:
+                fig, ax = plt.subplots(2)            
 
         if Q == 1.0:
             fit_law = 'QC SSD'
             
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color)#, scale=Wscale)
-                plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
-                plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
+                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, ax = ax[0])#, scale=Wscale)
+                ax[0].legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
+                ax[0].set_title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
                     plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
                 plt.show(); plt.clf()
@@ -2063,7 +2079,7 @@ class WeightWatcher(object):
 #        
         logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
         plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
-                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color)#, scale=Wscale)
+                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, ax = ax[1])#, scale=Wscale)
         
         if plot:
             title = fit_law+" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
@@ -2071,7 +2087,7 @@ class WeightWatcher(object):
             title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
             title = title + r"$\#$ spikes={}".format(num_spikes)
     
-            plt.title(title)
+            ax[1].set_title(title)
             if savefig:
                 plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
             plt.show(); plt.clf()

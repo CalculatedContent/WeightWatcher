@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys
+import sys, os
 import pickle, time
 from copy import deepcopy
 from shutil import copy
@@ -587,7 +587,13 @@ def unpermute_matrix(W, p_ids):
     return unp_W
 
 
+def save_fig(plt, figname, layer_id, savedir="ww-img"):
+    """Save the figure to the savedir directory. 
+       If directory is not present, create it
+       """
 
-
-
-   
+    figname = "{}/ww.layer{}.{}.png".format(savedir, layer_id, figname)
+    if not os.path.isdir(savedir):
+        os.mkdir(savedir)
+    plt.savefig(figname)
+    return 

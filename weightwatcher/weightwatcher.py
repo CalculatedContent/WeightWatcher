@@ -1325,7 +1325,8 @@ class WeightWatcher(object):
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
         savefig: 
             Save the figures generated in png files.  Default: False
-            if True, saves all figures to the current directory
+            if True, saves all figures to the default ww-img directory
+            if a String, then the folder is created (if not there) and images saved there
             N/A yet: If set to a folder name, creates and saves the imafes to this folder (i.e. savefig="images")
         rescale: 
             Rescale the ESDs when computing the MP fits (experimental should always be True
@@ -1676,7 +1677,8 @@ class WeightWatcher(object):
         plt.xlabel(r" Eigenvalues $(\lambda)$")               
         plt.legend()
         if savefig:
-            plt.savefig("ww.layer{}.randesd.1.png".format(layer_id))
+            #plt.savefig("ww.layer{}.esd.png".format(layer_id))
+            save_fig(plt, "randesd1", layer_id)
         plt.show(); plt.clf()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1687,7 +1689,8 @@ class WeightWatcher(object):
         plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         plt.legend()
         if savefig:
-            plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
+            #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
+            save_fig(plt, "randesd2", layer_id)
         plt.show(); plt.clf()
         
     # MOves to RMT Util should be static function    
@@ -1776,7 +1779,8 @@ class WeightWatcher(object):
             plt.title(title)
             plt.legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd.png".format(layer_id))
+                #plt.savefig("ww.layer{}.esd.png".format(layer_id))
+                save_fig(plt, "esd", layer_id)
             plt.show(); plt.clf()
     
             # plot eigenvalue histogram
@@ -1787,7 +1791,8 @@ class WeightWatcher(object):
             plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             plt.legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd2.png".format(layer_id))
+                #plt.savefig("ww.layer{}.esd2.png".format(layer_id))
+                save_fig(plt, "esd2", layer_id)
             plt.show(); plt.clf()
 
             # plot log eigenvalue histogram
@@ -1799,7 +1804,8 @@ class WeightWatcher(object):
             plt.axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
             plt.legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd3.png".format(layer_id))
+                #plt.savefig("ww.layer{}.esd3.png".format(layer_id))
+                save_fig(plt, "esd3", layer_id)
             plt.show(); plt.clf()
     
             # plot xmins vs D
@@ -1813,7 +1819,8 @@ class WeightWatcher(object):
             plt.title(title+"{:0.3}".format(fit.xmin))
             plt.legend()
             if savefig:
-                plt.savefig("ww.layer{}.esd4.png".format(layer_id))
+                save_fig(plt, "esd4", layer_id)
+                #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
@@ -1965,7 +1972,8 @@ class WeightWatcher(object):
         plt.ylabel("Log Delta Es: "+eqn)
         plt.legend()
         if savefig:  
-            plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
+            #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
+            save_fig(plt, "deltaEs", layer_id)
         plt.show(); plt.clf()
 
         
@@ -1976,7 +1984,8 @@ class WeightWatcher(object):
         plt.xlabel(eqn)
         plt.legend()
         if savefig:  
-            plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
+            #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
+            save_fig(plt, "level-stats", layer_id)
         plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
@@ -2065,7 +2074,8 @@ class WeightWatcher(object):
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
-                    plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
+                    #plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
+                    save_fig(plt, "mpfit1", layer_id)
                 plt.show(); plt.clf()
             
         else:
@@ -2083,7 +2093,8 @@ class WeightWatcher(object):
     
             plt.title(title)
             if savefig:
-                plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
+                #plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
+                save_fig(plt, "mpfit2", layer_id)
             plt.show(); plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)

@@ -2044,12 +2044,17 @@ class WeightWatcher(object):
         bulk_min = (s1 * (1 - 1/np.sqrt(Q)))**2
         
         #TODO: add Tracy Widom (TW) range
-        
-        num_spikes = len(to_plot[to_plot > bulk_max])
-        ratio_numofSpikes  = num_spikes / (M - 1)
-        
-        mp_softrank = bulk_max / lambda_max
+        #num_spikes = len(to_plot[to_plot > bulk_max])
 
+        TW = 1/np.sqrt(Q)*np.power(bulk_max, 2/3)*np.power(M, -2/3)
+        # Original "true" TW  should be divided by `np.power(Wscale, 2*2/3)`
+        # Then, the new TW should be scaled by `(Wscale**2)**2 = np.power(Wscale, 4)`. This gives 8/3
+        TW_delta = TW*np.power(Wscale, 8/3)
+        bulk_max_TW = bulk_max + np.sqrt(TW_delta)
+        num_spikes = len(to_plot[to_plot > bulk_max_TW])
+        
+        ratio_numofSpikes  = num_spikes / (M - 1)
+        mp_softrank = bulk_max / lambda_max
 
         if Q == 1.0:
             fit_law = 'QC SSD'

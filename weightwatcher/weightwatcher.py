@@ -1209,7 +1209,7 @@ class WeightWatcher(object):
         
         ax[1].set_title(name)
         ax[1].hist(np.log10(evals), bins=100)
-        plt.show(); 
+        plt.show()
         
         if doClf:
             plt.clf()
@@ -1701,7 +1701,7 @@ class WeightWatcher(object):
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
             ax[1].get_figure().savefig("ww.layer{}.randesd.2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-        plt.show(); 
+        plt.show()
         if doClf:
             plt.clf()
     
@@ -1840,7 +1840,7 @@ class WeightWatcher(object):
                 extent = ax[3].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 ax[3].get_figure().savefig("ww.layer{}.esd4.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-            plt.show(); 
+            plt.show()
             
             if doClf:
                 plt.clf() 
@@ -2015,7 +2015,7 @@ class WeightWatcher(object):
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
             ax[1].get_figure().savefig("ww.layer{}.level-stats.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-        plt.show(); 
+        plt.show()
         
         if doClf:
             plt.clf()
@@ -2127,7 +2127,7 @@ class WeightWatcher(object):
                 extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 ax[1].get_figure().savefig("ww.layer{}.mpfit2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-            plt.show(); 
+            plt.show()
             
             if doClf:
                 plt.clf()

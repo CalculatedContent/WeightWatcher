@@ -475,16 +475,16 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False, ax = Non
     #     resid = np.nan_to_num(resid)
 
     if debug:
-        doClf = False
+        doShowAndClf = False
         if ax is None:
-            doClf = True
+            doShowAndClf = True
             fig, ax = plt.subplots(figsize=(10,10))
             
         ax.plot(xde, yde, color='cyan')
         ax.plot(xmp, ymp, color='orange')
         ax.axhline(y=THRESH)
-        plt.show()
-        if doClf:
+        if doShowAndClf:
+            plt.show()
             plt.clf()
         print("sigma {}  mean residual {}".format(sigma, np.mean(resid)))
 

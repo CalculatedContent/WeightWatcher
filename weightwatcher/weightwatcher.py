@@ -1199,9 +1199,9 @@ class WeightWatcher(object):
         evals = ww_layer.evals
         name = ww_layer.name
         
-        doClf = False
+        doShowAndClf = False
         if ax is None:
-            doClf = True
+            doShowAndClf = True
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].set_title(name)
@@ -1209,9 +1209,9 @@ class WeightWatcher(object):
         
         ax[1].set_title(name)
         ax[1].hist(np.log10(evals), bins=100)
-        plt.show()
         
-        if doClf:
+        if doShowAndClf:
+            plt.show()
             plt.clf()
             
         return ww_layer
@@ -1673,9 +1673,9 @@ class WeightWatcher(object):
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
         max_rand_eval = np.max(rand_evals)
         
-        doClf = False
+        doShowAndClf = False
         if ax is None:
-            doClf = True
+            doShowAndClf = True
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].hist((nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1701,8 +1701,8 @@ class WeightWatcher(object):
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
             ax[1].get_figure().savefig("ww.layer{}.randesd.2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
 
-        plt.show()
-        if doClf:
+        if doShowAndClf:
+            plt.show()
             plt.clf()
     
     # MOves to RMT Util should be static function    
@@ -1778,9 +1778,9 @@ class WeightWatcher(object):
                
 
         if plot:
-            doClf = False
+            doShowAndClf = False
             if ax is None:
-                doClf = True
+                doShowAndClf = True
                 fig, ax = plt.subplots(4, figsize=(10,40))
 
             fig2 = fit.plot_pdf(color='b', linewidth=0, ax = ax[0]) # invisbile
@@ -1839,10 +1839,9 @@ class WeightWatcher(object):
                 # Save just the portion _inside_ the axis's boundaries
                 extent = ax[3].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 ax[3].get_figure().savefig("ww.layer{}.esd4.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
-
-            plt.show()
             
-            if doClf:
+            if doShowAndClf:
+                plt.show()
                 plt.clf() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
@@ -1982,9 +1981,9 @@ class WeightWatcher(object):
         x = np.arange(len(deltaEs))
         eqn = r"$\log_{10}\Delta(\lambda)$"
         
-        doClf = False
+        doShowAndClf = False
         if ax is None:
-            doClf = True
+            doShowAndClf = True
             fig, ax = plt.subplots(2, figsize=(10,20))
             
         ax[0].scatter(x,logDeltaEs, color=color)
@@ -2014,10 +2013,9 @@ class WeightWatcher(object):
             # Save just the portion _inside_ the axis's boundaries
             extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
             ax[1].get_figure().savefig("ww.layer{}.level-stats.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
-
-        plt.show()
         
-        if doClf:
+        if doShowAndClf:
+            plt.show()
             plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
@@ -2090,9 +2088,9 @@ class WeightWatcher(object):
         mp_softrank = bulk_max / lambda_max
 
         if plot:
-            doClf = False
+            doShowAndClf = False
             if ax is None:
-                doClf = True
+                doShowAndClf = True
                 fig, ax = plt.subplots(2, figsize=(10,20))            
 
         if Q == 1.0:
@@ -2126,10 +2124,9 @@ class WeightWatcher(object):
                 # Save just the portion _inside_ the axis's boundaries
                 extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
                 ax[1].get_figure().savefig("ww.layer{}.mpfit2.png".format(layer_id), bbox_inches=extent.expanded(1.1, 1.25))
-
-            plt.show()
             
-            if doClf:
+            if doShowAndClf:
+                plt.show()
                 plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)

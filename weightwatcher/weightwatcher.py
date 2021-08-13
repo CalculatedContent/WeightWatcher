@@ -58,8 +58,9 @@ mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
 
 MAX_NUM_EVALS = 50000
+DEF_SAVE_DIR = 'ww-img'
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':False, 
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':DEF_SAVE_DIR,
                   'rescale':True , 'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
                   'ww2x':False}
 #                'stacked':False, 'unified':False}
@@ -153,6 +154,9 @@ class WWLayer:
         # to be used for conv2d_fft approach
         self.inputs_shape = []
         self.outputs_shape = []
+        
+        # permute ids
+        self.permute_ids = []
         
         # evals 
         self.evals = None
@@ -1195,6 +1199,54 @@ class WeightWatcher(object):
             
         return ww_layer
     
+    
+    def apply_permute_W(self, ww_layer, params=DEFAULT_PARAMS):
+        """Randomize the layer weight matrices by using a deterministic permutation
+        This will replace the WMats ; they can be recovered by apply_unpermute_W()
+         """
+        
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name
+        
+        logger.debug("apply permute W  on Layer {} {} ".format(layer_id, name))                        
+        logger.debug("params {} ".format(params))
+    
+        Wmats, permute_ids = [], []
+        for W in ww_layer.Wmats:
+            W, p_ids = permute_matrix(W)
+            Wmats.append(W)
+            permute_ids.append(p_ids)
+                           
+        ww_layer.Wmats = Wmats
+        ww_layer.permute_ids = permute_ids
+        
+        return ww_layer
+    
+    
+      
+    def apply_unpermute_W(self, ww_layer, params=DEFAULT_PARAMS):
+        """Unpermute the layer weight matrices after the deterministic permutation
+        This will replace the WMats ; only works if applied after  apply_permute_W()
+         """
+        
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name
+        
+        logger.debug("apply unpermute W  on Layer {} {} ".format(layer_id, name))                        
+        logger.debug("params {} ".format(params))
+    
+        Wmats = []
+        for W, p_ids in zip(ww_layer.Wmats, ww_layer.permute_ids):
+            W = unpermute_matrix(W, p_ids)
+            Wmats.append(W)
+                           
+        ww_layer.Wmats = Wmats
+        ww_layer.permute_ids = []
+        
+        return ww_layer
+    
+    
+    
     # Not used yet
     def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
@@ -1227,8 +1279,9 @@ class WeightWatcher(object):
         plot = params['plot']
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
+
         savefig = params['savefig']
-              
+
         layer_name = "Layer {}".format(layer_id)
         alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savefig=savefig)
         
@@ -1248,7 +1301,11 @@ class WeightWatcher(object):
         
         TODO: Add WWStackedLayersIterator
          """
-    
+         
+        # this doesn't seem to work
+        if model is None:
+            model = self.model
+            
         logger.info("params {}".format(params))
         if not self.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
@@ -1276,7 +1333,7 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
+                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
                 deltas=False, intra=False, channels=None):
         """
@@ -1324,10 +1381,8 @@ class WeightWatcher(object):
         ww2x:
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
         savefig: 
-            Save the figures generated in png files.  Default: False
-            if True, saves all figures to the default ww-img directory
-            if a String, then the folder is created (if not there) and images saved there
-            N/A yet: If set to a folder name, creates and saves the imafes to this folder (i.e. savefig="images")
+            Save the figures generated in png files.  Default: save to ww-img
+            If set to a folder name, creates and saves the imafes to this folder (i.e. savefig="images")
         rescale: 
             Rescale the ESDs when computing the MP fits (experimental should always be True
             N/A yet: rescales the plots back to the original scale
@@ -1390,6 +1445,7 @@ class WeightWatcher(object):
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 
+                # maybe not necessary
                 self.apply_normalize_Wmats(ww_layer, params)
                 self.apply_esd(ww_layer, params)
                 
@@ -1449,7 +1505,7 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=False,
+                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
                 deltas=False, intra=False, channels=None):
         """
@@ -1559,6 +1615,14 @@ class WeightWatcher(object):
                     logger.warn("layer filter ids must be all > 0 or < 0: {}".format(filter_ids))
                     valid = False
          
+        savefig = params.get('savefig') 
+        if savefig and  isinstance(savefig,bool):
+            savefig = DEF_SAVE_DIR
+        if not isinstance(savefig,str):
+            valid = False
+        else:
+            logger.info("Saving all images to {}".format(savefig))
+
         return valid
     
 #      # @deprecated
@@ -1678,7 +1742,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            save_fig(plt, "randesd1", layer_id)
+            save_fig(plt, "randesd1", layer_id, savefig)
         plt.show(); plt.clf()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1690,7 +1754,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
-            save_fig(plt, "randesd2", layer_id)
+            save_fig(plt, "randesd2", layer_id, savefig)
         plt.show(); plt.clf()
         
     # MOves to RMT Util should be static function    
@@ -1701,7 +1765,7 @@ class WeightWatcher(object):
     #    tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, savefig=False):
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, savefig=DEF_SAVE_DIR):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1780,7 +1844,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-                save_fig(plt, "esd", layer_id)
+                save_fig(plt, "esd", layer_id, savefig)
             plt.show(); plt.clf()
     
             # plot eigenvalue histogram
@@ -1792,7 +1856,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd2.png".format(layer_id))
-                save_fig(plt, "esd2", layer_id)
+                save_fig(plt, "esd2", layer_id, savefig)
             plt.show(); plt.clf()
 
             # plot log eigenvalue histogram
@@ -1805,7 +1869,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd3.png".format(layer_id))
-                save_fig(plt, "esd3", layer_id)
+                save_fig(plt, "esd3", layer_id, savefig)
             plt.show(); plt.clf()
     
             # plot xmins vs D
@@ -1819,7 +1883,7 @@ class WeightWatcher(object):
             plt.title(title+"{:0.3}".format(fit.xmin))
             plt.legend()
             if savefig:
-                save_fig(plt, "esd4", layer_id)
+                save_fig(plt, "esd4", layer_id, savefig)
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
                           
@@ -2170,8 +2234,7 @@ class WeightWatcher(object):
         params=DEFAULT_PARAMS
         params['ww2x'] = ww2x
         params['layers'] = layers
-        params['percent'] = percent
-
+        
         # check framework, return error if framework not supported
         # need to access static method on  Model class
 
@@ -2194,18 +2257,23 @@ class WeightWatcher(object):
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 
-                self.apply_svdsmoothing(ww_layer, params)
+                params['num_smooth'] = int(percent*ww_layer.M)
+                self.apply_svd_smoothing(ww_layer, params)
         
         logger.info("Returning smoothed model")
         return model   
 
     
-    def apply_svdsmoothing(self, ww_layer, params=DEFAULT_PARAMS):
+   
+    
+        
+        
+    def apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS):
         """run truncated SVD on layer weight matrices and reconstruct the weight matrices 
         keep all eigenvlues > percent*ncomp
         if percent < 0, then keep those < than percent*ncomp"""
         
-        percent = params['percent']
+        num_smooth = params['num_smooth']
       
         layer = ww_layer.layer
         layer_id = ww_layer.layer_id
@@ -2227,8 +2295,8 @@ class WeightWatcher(object):
         N = ww_layer.N
         rf = ww_layer.rf
         
-        n_comp = int(ww_layer.num_components*percent)
-        logger.info("apply truncated SVD on Layer {} {}, keeping {:0.2f}% percent , or ncomp={} out of {}. of the singular vectors".format(layer_id, layer_name, percent, n_comp, ww_layer.num_components))
+        n_comp = num_smooth
+        logger.info("apply truncated SVD on Layer {} {}, keeping ncomp={} out of {}. of the singular vectors".format(layer_id, layer_name, n_comp, ww_layer.num_components))
                  
         # get the model weights and biases directly, converted to numpy arrays        
         has_W, old_W, has_B, old_B = ww_layer.get_weights_and_biases()
@@ -2291,10 +2359,22 @@ class WeightWatcher(object):
         
 
 
+    def apply_svd_sharpness(self, ww_layer, params=DEFAULT_PARAMS):
+        """run permute layer, run power law, identify and remove the spikes"""
+        
+        self.apply_permute_W(ww_layer, params)
+        self.apply_esd(ww_layer, params)
+        self.apply_mp_fit(ww_layer, random=False, params=params)
+        self.apply_unpermute_W(ww_layer, params)
+        
+        params['num_smooth'] = ww_layer.num_spikes
+        apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS)
+        
+        return ww_layer
 
 
     # TODO: put this on the layer itself
-    def  replace_layer_weights(self, framework, idx, layer, W, B=None):
+    def replace_layer_weights(self, framework, idx, layer, W, B=None):
         """Replace the old layer weights with the new weights
         
         framework:  FRAMEWORK.KERAS | FRAMEWORK.PYTORCH

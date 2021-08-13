@@ -107,6 +107,13 @@ class Test_VGG11(unittest.TestCase):
 		# min_evals > max_evals
 		with self.assertRaises(Exception) as context:
 			self.watcher.describe(min_evals=100, max_evals=10)	
+
+		# savefig is not a string or boolea
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(savefig=-1)	
+
+		self.watcher.describe(savefig=True)
+		self.watcher.describe(savefig='tmpdir')	
  
 	def test_model_layer_types_ww2x(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
@@ -313,6 +320,7 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(len(esd), 576)
 
 
+
 	def randomize(self):
 		"""Test randomize option
 		"""
@@ -413,6 +421,47 @@ class Test_VGG11(unittest.TestCase):
 		self.assertTrue((details.rand_sigma_mp < 1.10).all())
 		self.assertTrue((details.rand_sigma_mp > 0.96).all())
 		self.assertTrue((details.rand_num_spikes.to_numpy() < 80).all())
+		
+		
+	
+	def test_make_ww_iterator(self):
+		"""Test that we can make the ww layer iterator
+		"""
+		iterator = self.watcher.make_layer_iterator(model=self.model)
+		num = 0
+		for ww_layer in iterator:
+			self.assertTrue(ww_layer.layer_id>0)
+			num += 1
+		self.assertTrue(num==11)
+		
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		num = 0
+		for ww_layer in iterator:
+			self.assertTrue(ww_layer.layer_id==28)
+			num += 1
+		self.assertTrue(num==1)
+		
+		
+				
+	def test_permute_W(self):
+		"""Test that permute and unpermute methods work
+		"""
+		N, M = 4096, 4096
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		for ww_layer in iterator:
+			self.assertTrue(ww_layer.layer_id==28)
+			W = ww_layer.Wmats[0]
+			self.assertTrue(W.shape==(N,M))
+			
+			self.watcher.apply_permute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertTrue(W[0,0]!=W2[0,0])
+			
+			self.watcher.apply_unpermute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertTrue(W2.shape==(N,M))
+			self.assertTrue(W[0,0]==W2[0,0])
+			
 		
 
 class Test_TFBert(unittest.TestCase):

@@ -587,11 +587,11 @@ def unpermute_matrix(W, p_ids):
     return unp_W
 
 
-def save_fig(plt, figname, layer_id, savedir="ww-img"):
+def save_fig(plt, figname, layer_id, savedir):
     """Save the figure to the savedir directory. 
        If directory is not present, create it
        """
-
+    
     figname = "{}/ww.layer{}.{}.png".format(savedir, layer_id, figname)
     if not os.path.isdir(savedir):
         os.mkdir(savedir)

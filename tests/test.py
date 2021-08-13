@@ -373,7 +373,7 @@ class Test_VGG11(unittest.TestCase):
 		"""Test the svd smoothing on 1 lyaer of VGG
 		"""
  		
-		print("----test_svd_smoothing-----")
+		print("----test_svd_smoothing_alt-----")
 
 		self.model = models.vgg11(pretrained=True)
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
@@ -383,7 +383,24 @@ class Test_VGG11(unittest.TestCase):
 		num_comps = len(esd[esd>10**-10])
 		print("num comps = {}".format(num_comps))
 		self.assertEqual(num_comps, 819)
+		
+		
+	def test_svd_sharpness(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+		print("----test_svd_sharpness-----")
 
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+
+		esd_before = self.watcher.get_ESD(layer=28) 
+		
+		self.watcher.SVDSharpness(layers=[28])
+		esd_after = self.watcher.get_ESD(layer=28) 
+		
+		self.assertTrue(np.max(esd_before)>np.max(esd_after))
+		
 
 	def test_runtime_warnings(self):
 		"""Test that runtime warnings are still active
@@ -437,9 +454,9 @@ class Test_VGG11(unittest.TestCase):
 		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
 		num = 0
 		for ww_layer in iterator:
-			self.assertTrue(ww_layer.layer_id==28)
+			self.assertEqual(ww_layer.layer_id,28)
 			num += 1
-		self.assertTrue(num==1)
+		self.assertEqual(num,1)
 		
 		
 				
@@ -451,16 +468,16 @@ class Test_VGG11(unittest.TestCase):
 		for ww_layer in iterator:
 			self.assertTrue(ww_layer.layer_id==28)
 			W = ww_layer.Wmats[0]
-			self.assertTrue(W.shape==(N,M))
+			self.assertEqual(W.shape,(N,M))
 			
 			self.watcher.apply_permute_W(ww_layer)
 			W2 = ww_layer.Wmats[0]
-			self.assertTrue(W[0,0]!=W2[0,0])
+			self.assertEqual(W[0,0],W2[0,0])
 			
 			self.watcher.apply_unpermute_W(ww_layer)
 			W2 = ww_layer.Wmats[0]
-			self.assertTrue(W2.shape==(N,M))
-			self.assertTrue(W[0,0]==W2[0,0])
+			self.assertEqual(W2.shape,(N,M))
+			self.assertEqual(W[0,0],W2[0,0])
 			
 		
 
@@ -486,7 +503,7 @@ class Test_TFBert(unittest.TestCase):
 		"""
 		details = self.watcher.describe()
 		print("TESTING TF BERT")
-		self.assertTrue(len(details), 74)
+		self.assertEqual(len(details), 74)
 
 
 
@@ -509,7 +526,7 @@ class Test_Keras(unittest.TestCase):
 		"""
 		details = self.watcher.describe()
 		print("Testing Keras on VGG16")
-		self.assertTrue(len(details), 16)
+		self.assertEqual(len(details), 16)
 
 
 
@@ -519,8 +536,8 @@ class Test_Keras(unittest.TestCase):
 		details = self.watcher.describe()
 		M = details.iloc[0].M
 		N = details.iloc[0].N
-		self.assertTrue(M, 3)
-		self.assertTrue(N, 64)
+		self.assertEqual(M, 3)
+		self.assertEqual(N, 64)
 		
 	def test_N_ge_M(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers

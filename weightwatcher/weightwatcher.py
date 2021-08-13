@@ -2359,6 +2359,51 @@ class WeightWatcher(object):
         
 
 
+    def SVDSharpness(self, model=None,  ww2x=False, layers=[]):
+        """Apply the SVD Sharpness Transform to model
+        
+        layers:
+            List of layer ids. If empty, analyze all layers (default)
+            If layer ids < 0, then skip the layers specified
+            All layer ids must be > 0 or < 0
+        
+        ww2x:
+            Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
+            
+        """
+        
+        #TODO: check this
+        model = model or self.model   
+         
+        params=DEFAULT_PARAMS
+        params['ww2x'] = ww2x
+        params['layers'] = layers
+        params['plot'] = False
+        params['rescale'] = True
+
+        
+        # check framework, return error if framework not supported
+        # need to access static method on  Model class
+
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+     
+        #TODO: restrict to ww2x or intra
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
+            
+        for ww_layer in layer_iterator:
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                self.apply_svd_sharpness(ww_layer, params)
+        
+        logger.info("Returning sharpened model")
+        return model  
+    
+    
+    
     def apply_svd_sharpness(self, ww_layer, params=DEFAULT_PARAMS):
         """run permute layer, run power law, identify and remove the spikes"""
         
@@ -2368,7 +2413,9 @@ class WeightWatcher(object):
         self.apply_unpermute_W(ww_layer, params)
         
         params['num_smooth'] = ww_layer.num_spikes
-        apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS)
+        logger.debug("Detected {} spikes".format(ww_layer.num_spikes))
+        
+        self.apply_svd_smoothing(ww_layer, params)
         
         return ww_layer
 

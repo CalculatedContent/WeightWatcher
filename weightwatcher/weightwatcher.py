@@ -2172,15 +2172,30 @@ class WeightWatcher(object):
         """       
         
         N, M = np.max(W.shape), np.min(W.shape)
-    
+
         # TODO: replace this with truncated SVD
         # can't we just appky the svd transform...test
         # keep this old method for historical comparison
         u, s, vh = np.linalg.svd(W, compute_uv=True)
+        
+        logger.debug(" num s > 0 = {}  s[0]={}  s[-1]={}".format(len(s[s>0.0]), s[0], s[-1]))
+        
+        # s is ordered highest to lowest
+        # i.e.  
+        #    s = np.array([5,4,3,2,1])
+        #
+        # zero out all but the first n components
+        # s[2:]   [3, 2, 1] 
+        #
+        # zero out the last n components
+        # s[:2]   [5,4]
+        #
         if n_comp > 0:
-            s[n_comp:]=0
+            s[n_comp:]=0.0  
         else:
-            s[:n_comp]=0
+            s[:-n_comp]=0.0
+            
+        logger.debug(" num s > 0 = {}s[0]={}  s[-1]={}".format(len(s[s>0.0]), s[0], s[-1]))
 
         s = list(s)
         s.extend([0]*(N-M))
@@ -2308,10 +2323,10 @@ class WeightWatcher(object):
 
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
             if num_smooth > 0:
-                logger.info("Keeping top {} singular values".format(num_smooth))
+                logger.debug("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 
             elif num_smooth < 0:
-                logger.info("Chomping off top {} singular values".format(-num_smooth))
+                logger.debug("Chomping off top {} singular values".format(-num_smooth))
                 new_W = self.smooth_W_alt(old_W, num_smooth) 
             else:
                 logger.warning("Not smoothing {} {}, ncomp=0".format(layer_id, layer_name))
@@ -2324,10 +2339,14 @@ class WeightWatcher(object):
                 
             self.replace_layer_weights(framework, layer_id, layer, new_W, new_B)
 
-                       
+                    
+        # if not ww2x, then we need to divide num_smooth / rf   
         elif layer_type == LAYER_TYPE.CONV2D:                           
             new_W = np.zeros_like(old_W)
             new_B = old_B
+            
+            num_smooth = int(num_smooth/rf)
+
 
             if new_B is not None:
                 logger.warn("Something went wrong, Biases found for Conv2D layer, layer {} {} ".format(layer_id, layer_name))
@@ -2341,8 +2360,10 @@ class WeightWatcher(object):
                 for i in range(i_max):
                     for j in range(j_max):                         
                         if num_smooth > 0:
+                            logger.debug("Keeping top {} singular values".format(num_smooth))
                             new_W[i,j,:,:] = self.smooth_W(old_W[i,j,:,:], num_smooth)
                         elif num_smooth < 0:
+                            logger.debug("Chomping off top {} singular values".format(-num_smooth))
                             new_W[i,j,:,:] = self.smooth_W_alt(old_W[i,j,:,:], num_smooth)
                         else:
                             new_W[i,j,:,:] = old_W[i,j,:,:]
@@ -2356,8 +2377,10 @@ class WeightWatcher(object):
                 for i in range(i_max):
                     for j in range(j_max):   
                         if num_smooth > 0:
+                            logger.debug("Keeping top {} singular values".format(num_smooth))
                             new_W[:,:,i,j] = self.smooth_W(old_W[:,:,i,j], num_smooth)
                         elif num_smooth < 0:
+                            logger.debug("Chomping off top {} singular values".format(-num_smooth))
                             new_W[:,:,i,j] = self.smooth_W_alt(old_W[:,:,i,j], num_smooth)
                         else:
                             new_W[:,:,i,j] = old_W[:,:,i,j]

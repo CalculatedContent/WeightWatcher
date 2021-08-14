@@ -2037,7 +2037,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:  
             #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
-            save_fig(plt, "deltaEs", layer_id)
+            save_fig(plt, "deltaEs", layer_id, savefig)
         plt.show(); plt.clf()
 
         
@@ -2049,7 +2049,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:  
             #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
-            save_fig(plt, "level-stats", layer_id)
+            save_fig(plt, "level-stats", layer_id, savefig)
         plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
@@ -2139,7 +2139,7 @@ class WeightWatcher(object):
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
                     #plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
-                    save_fig(plt, "mpfit1", layer_id)
+                    save_fig(plt, "mpfit1", layer_id, savefig)
                 plt.show(); plt.clf()
             
         else:
@@ -2158,7 +2158,7 @@ class WeightWatcher(object):
             plt.title(title)
             if savefig:
                 #plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
-                save_fig(plt, "mpfit2", layer_id)
+                save_fig(plt, "mpfit2", layer_id, savefig)
             plt.show(); plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)
@@ -2296,17 +2296,20 @@ class WeightWatcher(object):
         rf = ww_layer.rf
         
         n_comp = num_smooth
+        if num_smooth < 0:
+            n_comp = M + num_smooth
+            
         logger.info("apply truncated SVD on Layer {} {}, keeping ncomp={} out of {}. of the singular vectors".format(layer_id, layer_name, n_comp, ww_layer.num_components))
                  
         # get the model weights and biases directly, converted to numpy arrays        
         has_W, old_W, has_B, old_B = ww_layer.get_weights_and_biases()
         
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:          
-            if n_comp > 0:
-                new_W = self.smooth_W(old_W, n_comp) 
-            elif n_comp < 0:
-                logger.debug("Chomping off top {} singular values".format(-n_comp))
-                new_W = self.smooth_W_alt(old_W, n_comp) 
+            if num_smooth > 0:
+                new_W = self.smooth_W(old_W, num_smooth) 
+            elif num_smooth < 0:
+                logger.debug("Chomping off top {} singular values".format(-num_smooth))
+                new_W = self.smooth_W_alt(old_W, num_smooth) 
             else:
                 logger.warning("Not smoothing {} {}, ncomp=0".format(layer_id, layer_name))
                 new_W  = old_W
@@ -2412,7 +2415,7 @@ class WeightWatcher(object):
         self.apply_mp_fit(ww_layer, random=False, params=params)
         self.apply_unpermute_W(ww_layer, params)
         
-        params['num_smooth'] = ww_layer.num_spikes
+        params['num_smooth'] = - ww_layer.num_spikes
         logger.debug("Detected {} spikes".format(ww_layer.num_spikes))
         
         self.apply_svd_smoothing(ww_layer, params)

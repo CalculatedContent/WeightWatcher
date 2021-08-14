@@ -2299,16 +2299,19 @@ class WeightWatcher(object):
         if num_smooth < 0:
             n_comp = M + num_smooth
             
-        logger.info("apply truncated SVD on Layer {} {}, keeping ncomp={} out of {}. of the singular vectors".format(layer_id, layer_name, n_comp, ww_layer.num_components))
+        logger.info("apply truncated SVD on Layer {} {}, with nsmooth={},  keeping ncomp={} out of {}. of the singular vectors".format(layer_id, layer_name, num_smooth, n_comp, ww_layer.num_components))
                  
         # get the model weights and biases directly, converted to numpy arrays        
         has_W, old_W, has_B, old_B = ww_layer.get_weights_and_biases()
         
-        if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:          
+        logger.info("LAYER TYPE  {} out of {} {} {} ".format(layer_type,LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING))          
+
+        if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
             if num_smooth > 0:
+                logger.info("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 
             elif num_smooth < 0:
-                logger.debug("Chomping off top {} singular values".format(-num_smooth))
+                logger.info("Chomping off top {} singular values".format(-num_smooth))
                 new_W = self.smooth_W_alt(old_W, num_smooth) 
             else:
                 logger.warning("Not smoothing {} {}, ncomp=0".format(layer_id, layer_name))
@@ -2336,8 +2339,13 @@ class WeightWatcher(object):
                     logger.warn("Channels FIRST not processed correctly W_slice.shape {}, rf={} ?".format(new_W.shape, rf))
 
                 for i in range(i_max):
-                    for j in range(j_max):   
-                        new_W[i,j,:,:] = self.smooth_W(old_W[i,j,:,:], n_comp)
+                    for j in range(j_max):                         
+                        if num_smooth > 0:
+                            new_W[i,j,:,:] = self.smooth_W(old_W[i,j,:,:], num_smooth)
+                        elif num_smooth < 0:
+                            new_W[i,j,:,:] = self.smooth_W_alt(old_W[i,j,:,:], num_smooth)
+                        else:
+                            new_W[i,j,:,:] = old_W[i,j,:,:]
                  
             #[N,M,k,k]
             elif channels == CHANNELS.LAST:
@@ -2347,7 +2355,12 @@ class WeightWatcher(object):
 
                 for i in range(i_max):
                     for j in range(j_max):   
-                        new_W[:,:,i,j] = self.smooth_W(old_W[:,:,i,j], n_comp)
+                        if num_smooth > 0:
+                            new_W[:,:,i,j] = self.smooth_W(old_W[:,:,i,j], num_smooth)
+                        elif num_smooth < 0:
+                            new_W[:,:,i,j] = self.smooth_W_alt(old_W[:,:,i,j], num_smooth)
+                        else:
+                            new_W[:,:,i,j] = old_W[:,:,i,j]
                         
             else:
                 logger.warn("Something went wrong, Channels not defined or detected for Conv2D layer, layer {} {} skipped ".format(layer_id, layer_name))

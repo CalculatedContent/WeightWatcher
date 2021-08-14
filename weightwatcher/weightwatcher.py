@@ -2272,7 +2272,7 @@ class WeightWatcher(object):
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 
-                params['num_smooth'] = int(percent*ww_layer.M)
+                params['num_smooth'] = int(percent*ww_layer.M*ww_layer.rf)
                 self.apply_svd_smoothing(ww_layer, params)
         
         logger.info("Returning smoothed model")

@@ -2345,9 +2345,8 @@ class WeightWatcher(object):
             new_W = np.zeros_like(old_W)
             new_B = old_B
             
-            num_smooth = int(num_smooth/rf)
-
-
+            num_smooth = int(np.ceil(num_smooth/rf))
+            
             if new_B is not None:
                 logger.warn("Something went wrong, Biases found for Conv2D layer, layer {} {} ".format(layer_id, layer_name))
             

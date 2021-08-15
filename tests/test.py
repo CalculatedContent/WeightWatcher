@@ -362,7 +362,7 @@ class Test_VGG11(unittest.TestCase):
 
 		self.model = models.vgg11(pretrained=True)
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
-		\
+		
 		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
 		self.watcher.SVDSmoothing(layers=[28])
 		esd = self.watcher.get_ESD(layer=28) 
@@ -399,7 +399,10 @@ class Test_VGG11(unittest.TestCase):
 		self.watcher.SVDSharpness(layers=[28])
 		esd_after = self.watcher.get_ESD(layer=28) 
 		
-		self.assertTrue(np.max(esd_before)>np.max(esd_after))
+		print("max esd before {}".format(np.max(esd_before)))
+		print("max esd after {}".format(np.max(esd_after)))
+
+		self.assertGreater(np.max(esd_before),np.max(esd_after))
 		
 
 	def test_runtime_warnings(self):
@@ -447,9 +450,9 @@ class Test_VGG11(unittest.TestCase):
 		iterator = self.watcher.make_layer_iterator(model=self.model)
 		num = 0
 		for ww_layer in iterator:
-			self.assertTrue(ww_layer.layer_id>0)
+			self.assertGreater(ww_layer.layer_id,0)
 			num += 1
-		self.assertTrue(num==11)
+		self.assertEqual(num,11)
 		
 		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
 		num = 0
@@ -466,13 +469,13 @@ class Test_VGG11(unittest.TestCase):
 		N, M = 4096, 4096
 		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
 		for ww_layer in iterator:
-			self.assertTrue(ww_layer.layer_id==28)
+			self.assertEqual(ww_layer.layer_id,28)
 			W = ww_layer.Wmats[0]
 			self.assertEqual(W.shape,(N,M))
 			
 			self.watcher.apply_permute_W(ww_layer)
 			W2 = ww_layer.Wmats[0]
-			self.assertEqual(W[0,0],W2[0,0])
+			self.assertNotEqual(W[0,0],W2[0,0])
 			
 			self.watcher.apply_unpermute_W(ww_layer)
 			W2 = ww_layer.Wmats[0]
@@ -500,6 +503,7 @@ class Test_TFBert(unittest.TestCase):
 		"""Test that the Keras Iterator finds all the TFBert layers
 		72 layers for BERT
 		+ 1 for input. 1 for output
+		Not sure why it is 76
 		"""
 		details = self.watcher.describe()
 		print("TESTING TF BERT")

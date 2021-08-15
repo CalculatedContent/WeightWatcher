@@ -396,6 +396,24 @@ class Test_VGG11(unittest.TestCase):
 		print("num comps = {}".format(num_comps))
 		self.assertEqual(num_comps, 3277)
 		
+	def test_svd_smoothing_alt2(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		
+		"""
+ 		
+		print("----test_svd_smoothing_alt2-----")
+
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+		
+		self.watcher.SVDSmoothing(layers=[28], percent=0.2)
+		esd = self.watcher.get_ESD(layer=28) 
+		num_comps = len(esd[esd>10**-10])
+		# 3277 = 4096 - 819
+		print("num comps = {}".format(num_comps))
+		self.assertEqual(num_comps, 819)
+		
+		
 		
 	def test_svd_sharpness(self):
 		"""Test the svd smoothing on 1 lyaer of VGG
@@ -414,7 +432,32 @@ class Test_VGG11(unittest.TestCase):
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
 
+		self.assertGreater(np.max(esd_before)-2.0,np.max(esd_after))
+		
+	
+		
+	def test_svd_sharpness2(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+		print("----test_svd_sharpness-----")
+
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+
+		esd_before = self.watcher.get_ESD(layer=8) 
+		
+		self.watcher.SVDSharpness(layers=[8])
+		esd_after = self.watcher.get_ESD(layer=8) 
+		
+		print("max esd before {}".format(np.max(esd_before)))
+		print("max esd after {}".format(np.max(esd_after)))
+
 		self.assertGreater(np.max(esd_before),np.max(esd_after))
+		
+	
+
+	
 		
 
 	def test_runtime_warnings(self):
@@ -449,7 +492,7 @@ class Test_VGG11(unittest.TestCase):
 		"""Test that the mp_fits works correctly for the randomized matrices
 		Note: the fits currently not consistent
 		"""
-		details = self.watcher.analyze(mp_fit=True,  randomize=True,  ww2x=False, rescale=True)
+		details = self.watcher.analyze(mp_fit=True,  randomize=True,  ww2x=False)
 		self.assertTrue((details.rand_sigma_mp < 1.10).all())
 		self.assertTrue((details.rand_sigma_mp > 0.96).all())
 		self.assertTrue((details.rand_num_spikes.to_numpy() < 80).all())

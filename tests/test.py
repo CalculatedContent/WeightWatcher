@@ -363,7 +363,7 @@ class Test_VGG11(unittest.TestCase):
 		self.model = models.vgg11(pretrained=True)
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
 		
-		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
+		# 819 =~ 4096*0.2
 		self.watcher.SVDSmoothing(layers=[28])
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
@@ -371,6 +371,17 @@ class Test_VGG11(unittest.TestCase):
 
 	def test_svd_smoothing_alt(self):
 		"""Test the svd smoothing on 1 lyaer of VGG
+		The intent is that test_svd_smoothing and test_svd_smoothing_lat are exactly the same
+		except that:
+
+		test_svd_smoothing() only applies TruncatedSVD, and can only keep the top N eigenvectors
+
+		whereas
+
+		test_svd_smoothing_alt() allows for a negative input, which throws away the top N eigenvectors
+
+		Note:  I changed the APi on these method recently and that may be the bug
+		this needs to be stabilzed for the ww.0.5 release
 		"""
  		
 		print("----test_svd_smoothing_alt-----")
@@ -381,8 +392,9 @@ class Test_VGG11(unittest.TestCase):
 		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
+		# 3277 = 4096 - 819
 		print("num comps = {}".format(num_comps))
-		self.assertEqual(num_comps, 819)
+		self.assertEqual(num_comps, 3277)
 		
 		
 	def test_svd_sharpness(self):

@@ -2139,7 +2139,9 @@ class WeightWatcher(object):
         TW = 1/np.sqrt(Q)*np.power(bulk_max, 2/3)*np.power(M, -2/3)
         # Original "true" TW  should be divided by `np.power(Wscale, 2*2/3)`
         # Then, the new TW should be scaled by `(Wscale**2)**2 = np.power(Wscale, 4)`. This gives 8/3
-        TW_delta = TW*np.power(Wscale, 8/3)
+        #
+        # CHM  I dont think we need this
+        TW_delta = TW#  U*np.power(Wscale, 8/3)
         bulk_max_TW = bulk_max + np.sqrt(TW_delta)
         
         logger.debug("bulk_max = {:0.3f}, bulk_max_TW = {:0.3f} ".format(bulk_max,bulk_max_TW))

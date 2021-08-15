@@ -60,7 +60,8 @@ mpl_logger.setLevel(logging.WARNING)
 MAX_NUM_EVALS = 50000
 DEF_SAVE_DIR = 'ww-img'
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 'savefig':DEF_SAVE_DIR,
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
+                  'savedir':DEF_SAVE_DIR, 'savefig':True,
                   'rescale':True , 'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
                   'ww2x':False}
 #                'stacked':False, 'unified':False}
@@ -1280,10 +1281,10 @@ class WeightWatcher(object):
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
 
-        savefig = params['savefig']
+        savedir = params['savedir']
 
         layer_name = "Layer {}".format(layer_id)
-        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savefig=savefig)
+        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1333,7 +1334,8 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=DEF_SAVE_DIR,
+                normalize=False, glorot_fix=False, plot=False, randomize=False,  
+                savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
                 deltas=False, intra=False, channels=None):
         """
@@ -1422,13 +1424,14 @@ class WeightWatcher(object):
         params['glorot_fix'] = glorot_fix
         params['conv2d_norm'] = conv2d_norm
         params['conv2d_fft'] = conv2d_fft
-        params['ww2x'] = ww2x
-        params['savefig'] = savefig
+        params['ww2x'] = ww2x   
         params['rescale'] = rescale
         params['deltaEs'] = deltas 
         params['intra'] = intra 
         params['channels'] = channels
         params['layers'] = layers
+        
+        params['savefig'] = savefig
 
             
         logger.info("params {}".format(params))
@@ -1505,7 +1508,8 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, randomize=False,  savefig=DEF_SAVE_DIR,
+                normalize=False, glorot_fix=False, plot=False, randomize=False,  
+                savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
                 deltas=False, intra=False, channels=None):
         """
@@ -1529,12 +1533,14 @@ class WeightWatcher(object):
         params['conv2d_norm'] = conv2d_norm
         params['conv2d_fft'] = conv2d_fft
         params['ww2x'] = ww2x
-        params['savefig'] = savefig
         params['rescale'] = rescale
         params['deltaEs'] = deltas 
         params['intra'] = intra 
         params['channels'] = channels
         params['layers'] = layers
+        
+        params['savefig'] = savefig
+
 
         logger.info("params {}".format(params))
         if not self.valid_params(params):
@@ -1615,13 +1621,15 @@ class WeightWatcher(object):
                     logger.warn("layer filter ids must be all > 0 or < 0: {}".format(filter_ids))
                     valid = False
          
-        savefig = params.get('savefig') 
-        if savefig and  isinstance(savefig,bool):
-            savefig = DEF_SAVE_DIR
-        if not isinstance(savefig,str):
-            valid = False
-        else:
-            logger.info("Saving all images to {}".format(savefig))
+        savefig = params.get('savefig')
+        savedir = params.get('savedir')
+        if savefig and isinstance(savefig,bool):
+            logger.info("Saving all images to {}".format(savedir))
+        elif savefig and isinstance(savefig,str):
+            params['savedir'] = savefig
+            logger.info("Saving all images to {}".format(savedir))
+        elif not isinstance(savefig,str) and not isinstance(savefig,bool):
+            valid = False            
 
         return valid
     
@@ -1724,6 +1732,7 @@ class WeightWatcher(object):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
         savefig = params['savefig']
+        savedir = params['savedir']
 
         layer_id = ww_layer.layer_id
         evals = ww_layer.evals
@@ -1742,7 +1751,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            save_fig(plt, "randesd1", layer_id, savefig)
+            save_fig(plt, "randesd1", layer_id, savedir)
         plt.show(); plt.clf()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -1754,7 +1763,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
-            save_fig(plt, "randesd2", layer_id, savefig)
+            save_fig(plt, "randesd2", layer_id, savedir)
         plt.show(); plt.clf()
         
     # MOves to RMT Util should be static function    
@@ -1765,7 +1774,8 @@ class WeightWatcher(object):
     #    tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, savefig=DEF_SAVE_DIR):
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
+                     savedir=DEF_SAVE_DIR, savefig=True):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1844,7 +1854,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-                save_fig(plt, "esd", layer_id, savefig)
+                save_fig(plt, "esd", layer_id, savedir)
             plt.show(); plt.clf()
     
             # plot eigenvalue histogram
@@ -1856,7 +1866,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd2.png".format(layer_id))
-                save_fig(plt, "esd2", layer_id, savefig)
+                save_fig(plt, "esd2", layer_id, savedir)
             plt.show(); plt.clf()
 
             # plot log eigenvalue histogram
@@ -1869,7 +1879,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd3.png".format(layer_id))
-                save_fig(plt, "esd3", layer_id, savefig)
+                save_fig(plt, "esd3", layer_id, savedir)
             plt.show(); plt.clf()
     
             # plot xmins vs D
@@ -1883,7 +1893,7 @@ class WeightWatcher(object):
             plt.title(title+"{:0.3}".format(fit.xmin))
             plt.legend()
             if savefig:
-                save_fig(plt, "esd4", layer_id, savefig)
+                save_fig(plt, "esd4", layer_id, savedir)
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
                           
@@ -2005,7 +2015,9 @@ class WeightWatcher(object):
         layer_id = ww_layer.layer_id
         name = ww_layer.name or ""
         layer_name = "{} {}".format(layer_id, name)
+        
         savefig = params['savefig']
+        savedir = params['savedir']
 
         if random:
             layer_name = "{} Randomized".format(layer_name)
@@ -2037,7 +2049,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:  
             #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
-            save_fig(plt, "deltaEs", layer_id, savefig)
+            save_fig(plt, "deltaEs", layer_id, savedir)
         plt.show(); plt.clf()
 
         
@@ -2049,7 +2061,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:  
             #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
-            save_fig(plt, "level-stats", layer_id, savefig)
+            save_fig(plt, "level-stats", layer_id, savedir)
         plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
@@ -2059,6 +2071,12 @@ class WeightWatcher(object):
         layer_id = ww_layer.layer_id
         name = ww_layer.name or ""
         layer_name = "{} {}".format(layer_id, name)
+        
+        savefig = params['savefig']
+        savedir = params['savedir']
+        plot = params['plot']
+        
+        rescale = params['rescale'] #should be True always
         
         if random:
             layer_name = "{} Randomized".format(layer_name)
@@ -2073,8 +2091,7 @@ class WeightWatcher(object):
         N, M = ww_layer.N, ww_layer.M
         rf = ww_layer.rf
 
-        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale = self.mp_fit(evals, N, M, rf, layer_name, layer_id, 
-                                                        params['plot'], params['savefig'], color, params['rescale'])
+        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale =  self.mp_fit(evals, N, M, rf, layer_name, layer_id, plot, savefig, savedir, color, rescale)
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -2092,7 +2109,7 @@ class WeightWatcher(object):
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, color, rescale):
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, savedir, color, rescale):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M        
@@ -2134,14 +2151,15 @@ class WeightWatcher(object):
         if Q == 1.0:
             fit_law = 'QC SSD'
             
+            #TODO: set cutoff 
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=np.sqrt(bulk_max_TW))#, scale=Wscale)
+                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=0.0)#, scale=Wscale)
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
                     #plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
-                    save_fig(plt, "mpfit1", layer_id, savefig)
+                    save_fig(plt, "mpfit1", layer_id, savedir)
                 plt.show(); plt.clf()
             
         else:
@@ -2159,7 +2177,7 @@ class WeightWatcher(object):
             plt.title(title)
             if savefig:
                 #plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
-                save_fig(plt, "mpfit2", layer_id, savefig)
+                save_fig(plt, "mpfit2", layer_id, savedir)
             plt.show(); plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)
@@ -2246,6 +2264,11 @@ class WeightWatcher(object):
         params=DEFAULT_PARAMS
         params['ww2x'] = ww2x
         params['layers'] = layers
+        
+        if ww2x:
+            msg = "ww2x not supported yet for SVDSharpness, ending"
+            logger.error(msg)
+            raise Exception(msg)
         
         # check framework, return error if framework not supported
         # need to access static method on  Model class
@@ -2394,7 +2417,7 @@ class WeightWatcher(object):
         
 
 
-    def SVDSharpness(self, model=None,  ww2x=False, layers=[]):
+    def SVDSharpness(self, model=None,  ww2x=False, layers=[], plot=False):
         """Apply the SVD Sharpness Transform to model
         
         layers:
@@ -2413,9 +2436,13 @@ class WeightWatcher(object):
         params=DEFAULT_PARAMS
         params['ww2x'] = ww2x
         params['layers'] = layers
-        params['plot'] = True
+        params['plot'] = plot
         params['rescale'] = True
 
+        if ww2x:
+            msg = "ww2x not supported yet for SVDSharpness, ending"
+            logger.error(msg)
+            raise Exception(msg)
         
         # check framework, return error if framework not supported
         # need to access static method on  Model class

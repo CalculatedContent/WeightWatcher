@@ -205,7 +205,9 @@ smoothed_model = watcher.SVDSmoothing(model=...)
 Sharpned models can be used when fine-tuning pre-trained models that have not been fully optimized yet.
 ```python
 sharpemed_model = watcher.SVDSharpness(model=...)
+```
 
+Sample notebooks are provided for each new feature
 
 ### Additional Features
 

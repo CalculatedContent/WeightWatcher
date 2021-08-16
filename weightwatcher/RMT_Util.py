@@ -163,6 +163,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
    
     if Q == 1:
         to_fit = np.sqrt(eigenvalues)
+        cutoff = np.sqrt(cutoff)
         label = r"$\rho_{emp}(\nu)$"
         title = " W{} SSD, QC Sigma={:0.3}" 
     else:
@@ -174,8 +175,8 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         plt.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
         plt.legend()
         
-    if cutoff > 0.0:
-        plt.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
+        if cutoff > 0.0:
+            plt.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
     
     if skip:
         return
@@ -219,6 +220,7 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0):
         x_min, x_max = 0, np.max(to_plot)
         x, y = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
     elif method == "QC":
+        cutoff = np.sqrt(cutoff)
         to_plot = np.sort(to_plot)
         x_min, x_max = 0, np.max(to_plot)
         x, y = quarter_circle_pdf(x_min, x_max, sigma)

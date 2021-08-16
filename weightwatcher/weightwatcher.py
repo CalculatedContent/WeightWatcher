@@ -728,10 +728,10 @@ class WWLayerIterator(ModelIterator):
           
         if self.filter_types is not None and len(self.filter_types) > 0:
             if ww_layer.the_type in self.filter_types:
-                logger.info("keeping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
+                logger.debug("keeping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
                 ww_layer.skipped = False
             else:
-                logger.info("skipping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
+                logger.debug("skipping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
                 ww_layer.skipped = True
 
         
@@ -739,28 +739,28 @@ class WWLayerIterator(ModelIterator):
             # keep positive layer ids
             if np.min(self.filter_ids) > 0:
                 if ww_layer.layer_id in self.filter_ids:
-                    logger.info("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    logger.debug("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
                     ww_layer.skipped = False
                 else:
-                    logger.info("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    logger.debug("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
                     ww_layer.skipped = True
             # or remove negative layer ids
             elif np.min(self.filter_ids) < 0:
                 if -(ww_layer.layer_id) in self.filter_ids:
-                    logger.info("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    logger.debug("skipping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
                     ww_layer.skipped = True
                 else:
-                    logger.info("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
+                    logger.debug("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
                     ww_layer.skipped = False
 
 
                 
         if self.filter_names is not None and len(self.filter_names) > 0:
             if ww_layer.name in self.filter_names:
-                logger.info("keeping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                logger.debug("keeping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
                 ww_layer.skipped = False
             else:
-                logger.info("skipping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                logger.debug("skipping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
                 ww_layer.skipped = True
      
         return ww_layer.skipped
@@ -1434,7 +1434,7 @@ class WeightWatcher(object):
         params['savefig'] = savefig
 
             
-        logger.info("params {}".format(params))
+        logger.debug("params {}".format(params))
         if not self.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
@@ -1446,7 +1446,7 @@ class WeightWatcher(object):
         
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.debug("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 
                 # maybe not necessary
                 self.apply_normalize_Wmats(ww_layer, params)
@@ -1455,21 +1455,21 @@ class WeightWatcher(object):
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
                     if params['mp_fit']:
-                        logger.info("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        logger.debug("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
 
                     if params['deltaEs'] and params['plot']:
-                        logger.info("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        logger.debug("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_plot_deltaEs(ww_layer, random=False, params=params)
                     
                     if params['randomize']:# params['mp_fit']:
-                        logger.info("Randomizing Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name))
+                        logger.debug("Randomizing Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                         self.apply_random_esd(ww_layer, params)
-                        logger.info("MP Fitting Random layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        logger.debug("MP Fitting Random layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=True, params=params)
 
                         if params['deltaEs'] and params['plot']:
-                            logger.info("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
+                            logger.debug("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                             self.apply_plot_deltaEs(ww_layer, random=True, params=params)
                         
                     
@@ -1834,7 +1834,7 @@ class WeightWatcher(object):
             if R > 0.1 and p > 0.05:
                 dists.append(dist)
                 Rs.append(R)
-                logger.info("compare dist={} R={} p={}".format(dist, R, p))
+                logger.debug("compare dist={} R={:0.3f} p={:0.3f}".format(dist, R, p))
         best_fit = dists[np.argmax(Rs)]
                
 
@@ -1937,7 +1937,7 @@ class WeightWatcher(object):
             logger.warn("No eigenvalues found for {} {}".format(ww_layer.layer_id, ww_layer.name))
                 
         else:
-            logger.info("Found {} eiganvalues for {} {}".format(len(esd), ww_layer.layer_id, ww_layer.name))     
+            logger.debug("Found {} eiganvalues for {} {}".format(len(esd), ww_layer.layer_id, ww_layer.name))     
             
         return esd
 
@@ -2120,7 +2120,7 @@ class WeightWatcher(object):
             ### issue #60 
             #Wscale = np.sqrt(N*rf)/Wnorm
             Wscale = np.sqrt(to_plot.shape[0])/Wnorm
-            logger.info("rescaling {} ESD of W by {:0.2f}".format(layer_id, Wscale))
+            #logger.info("rescaling {} ESD of W by {:0.2f}".format(layer_id, Wscale))
 
         to_plot = (Wscale*Wscale)*to_plot
         lambda_max = np.max(to_plot)
@@ -2155,7 +2155,7 @@ class WeightWatcher(object):
             #TODO: set cutoff 
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=0.0)#, scale=Wscale)
+                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=bulk_max_TW)#, scale=Wscale)
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
@@ -2166,7 +2166,7 @@ class WeightWatcher(object):
         else:
             fit_law = 'MP ESD'
 #        
-        logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
+        #logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
         plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
         

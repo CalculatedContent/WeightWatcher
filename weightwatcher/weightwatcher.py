@@ -61,8 +61,8 @@ MAX_NUM_EVALS = 50000
 DEF_SAVE_DIR = 'ww-img'
 
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
-                  'savedir':DEF_SAVE_DIR, 'savefig':True,
-                  'rescale':True , 'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
+                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True,
+                  'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
                   'ww2x':False}
 #                'stacked':False, 'unified':False}
 
@@ -1334,9 +1334,10 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, randomize=False,  
+                normalize=False, glorot_fix=False,
+                plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
                 deltas=False, intra=False, channels=None):
         """
         Analyze the weight matrices of a model.
@@ -1385,7 +1386,7 @@ class WeightWatcher(object):
         savefig: 
             Save the figures generated in png files.  Default: save to ww-img
             If set to a folder name, creates and saves the imafes to this folder (i.e. savefig="images")
-        rescale: 
+        rescale:  #deprecated, always True
             Rescale the ESDs when computing the MP fits (experimental should always be True
             N/A yet: rescales the plots back to the original scale
         deltaEs: 
@@ -1425,7 +1426,6 @@ class WeightWatcher(object):
         params['conv2d_norm'] = conv2d_norm
         params['conv2d_fft'] = conv2d_fft
         params['ww2x'] = ww2x   
-        params['rescale'] = rescale
         params['deltaEs'] = deltas 
         params['intra'] = intra 
         params['channels'] = channels
@@ -1510,7 +1510,7 @@ class WeightWatcher(object):
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, rescale=True, 
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
                 deltas=False, intra=False, channels=None):
         """
         Same as analyze() , but does not run the ESD or Power law fits
@@ -1533,7 +1533,6 @@ class WeightWatcher(object):
         params['conv2d_norm'] = conv2d_norm
         params['conv2d_fft'] = conv2d_fft
         params['ww2x'] = ww2x
-        params['rescale'] = rescale
         params['deltaEs'] = deltas 
         params['intra'] = intra 
         params['channels'] = channels
@@ -2439,7 +2438,6 @@ class WeightWatcher(object):
         params['ww2x'] = ww2x
         params['layers'] = layers
         params['plot'] = plot
-        params['rescale'] = True
 
         if ww2x:
             msg = "ww2x not supported yet for SVDSharpness, ending"

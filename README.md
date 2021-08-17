@@ -10,7 +10,11 @@
 - monitor models, and the model layers,  to see if they are over-trained or over-parameterized
 - predict test accuracies across different models, with or without training data
 - detect potential problems when compressing or fine-tuning pretrained models
-- correct problems, such as Correlation Traps, that may arise when the regularizers fail
+
+ad well several new experimental model transformations, including:
+
+- SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
+- SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
 
 ### Experimental / Most Recent version    0.5
 

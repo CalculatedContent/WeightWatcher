@@ -1293,6 +1293,14 @@ class WeightWatcher(object):
         ww_layer.add_column('sigma', sigma)
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
         ww_layer.add_column('best_fit', best_fit)
+        
+        status = ""
+        if alpha < 2.0:
+            status = "over-trained"
+        elif alpha > 6.0:
+            status = "under-trained"
+            
+        ww_layer.add_column('warning', status)
 
         return ww_layer
 

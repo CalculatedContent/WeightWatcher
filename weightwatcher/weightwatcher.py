@@ -2568,6 +2568,8 @@ class WeightWatcher(object):
           #V = V.T
           #X = weightMatrix @ V
           #smoothedMatrix = X @ V.T
+            
+        print("Unified matrix is of size " + str(smoothedMatrix.shape))
 
         # reshape smoothed matrix to a long vector once again
         smoothedVector = np.reshape(smoothedMatrix, (weightMatrix.size))
@@ -2586,7 +2588,12 @@ class WeightWatcher(object):
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 
+                layer = ww_layer.layer
+                layer_id = ww_layer.layer_id
+                layer_name = ww_layer.name
                 layer_type = ww_layer.the_type
+                framework = ww_layer.framework
+                channels = ww_layer.channels
 
                 # get the model weights and biases directly, converted to numpy arrays        
                 has_weights, weights, has_biases, biases = ww_layer.get_weights_and_biases()    
@@ -2618,10 +2625,8 @@ class WeightWatcher(object):
                         vectorIndex = vectorIndex + weightVectors[vectorNumber].size
 
                         vectorNumber += 1
-
-                    weightList = [weights, biases]
-
-                    layer.set_weights(weightList)
+                        
+                    self.replace_layer_weights(framework, layer_id, layer, weights, B=biases)
 
                 elif layer_type is LAYER_TYPE.DENSE:
 
@@ -2645,10 +2650,8 @@ class WeightWatcher(object):
 
                         vectorNumber += 1
 
-                    weightList = [weights, biases]
-
-                    layer.set_weights(weightList)
-    
-        # no need to return smoothed model - since model was passed by reference, the model has been smoothed. 
+                    self.replace_layer_weights(framework, layer_id, layer, weights, B=biases)
+                    
+        # if model was passed, then it's redundant to return smoothed model - since model was passed by reference, the model has already been smoothed. 
         # If that's undesired, one should do a copy of the model before calling this method
-        return(nComponents)
+        return(model, nComponents)

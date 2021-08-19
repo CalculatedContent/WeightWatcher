@@ -2322,9 +2322,6 @@ class WeightWatcher(object):
         return ww_layer
         
 
-
-
-
     # TODO: put this on the layer itself
     def  replace_layer_weights(self, framework, idx, layer, W, B=None):
         """Replace the old layer weights with the new weights
@@ -2364,6 +2361,294 @@ class WeightWatcher(object):
             logger.debug("Layer {} skipped, Layer Type {} not supported".format(layer_id, the_type))
 
         return
-   
-
+    
         
+    def unifiedSVDSmoothing(self, model=None, percent=0.2, ww2x=False, methodSelectComponents = "powerlaw_xmin", layers=[], smoothBias = True, normalizeVectors = True, doPlot = False, axes = None):
+        """Apply the Unified SVD Smoothing Transform (PARRA, 2021) to model; select components based on fixed percent of eigenvalues, or powerlaw_xmin, powerlaw_spikes, or mp_spikes
+        
+        layers:
+            List of layer ids. If empty, analyze all layers (default)
+            If layer ids < 0, then skip the layers specified
+            All layer ids must be > 0 or < 0
+        
+        ww2x:
+            Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
+            
+        """
+        
+        model = model or self.model   
+         
+        params=DEFAULT_PARAMS
+        params['ww2x'] = ww2x
+        params['layers'] = layers
+        params['percent'] = percent
+
+        # check framework, return error if framework not supported
+        # need to access static method on  Model class
+
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+     
+        #TODO: restrict to ww2x or intra
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
+                
+        vectorNumber = 0
+ 
+        weightVectors = []
+        mu = []
+        sd = []
+
+        # iterate over layers        
+        for ww_layer in layer_iterator:
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                layer_type = ww_layer.the_type
+
+                # get the model weights and biases directly, converted to numpy arrays        
+                has_W, weights, has_B, biases = ww_layer.get_weights_and_biases()    
+
+                # iterate over weight matrices
+                if layer_type is LAYER_TYPE.CONV2D:
+                     
+                    for inputChannel in range(0,weights.shape[2]):
+
+                        for kernelFilter in range(0,weights.shape[3]):
+
+                            weightVectors.append(np.reshape(weights[:,:,inputChannel,kernelFilter],(weights[:,:,inputChannel,kernelFilter].size)))
+
+                            if normalizeVectors:
+                                mu.append(np.mean(weightVectors[vectorNumber]))
+                                sd.append(np.std(weightVectors[vectorNumber]))
+                                weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                            vectorNumber += 1;
+ 
+                    # in MATLAB biases of conv2D are 4D, whereas here it's just a 1D Vector ? I deal with it as 2D matrix for now but this differs from my Matlab code
+                    if smoothBias:
+
+                        weightVectors.append(biases)
+
+                        if normalizeVectors:
+                            mu.append(np.mean(weightVectors[vectorNumber]))
+                            sd.append(np.std(weightVectors[vectorNumber]))
+                            weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                        vectorNumber += 1;
+ 
+                elif layer_type is LAYER_TYPE.DENSE:
+
+                    weightVectors.append(np.reshape(weights, (weights.size)))
+
+                    if normalizeVectors:
+                        mu.append(np.mean(weightVectors[vectorNumber]))
+                        sd.append(np.std(weightVectors[vectorNumber]))
+                        weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                    vectorNumber += 1;
+
+                    if smoothBias:
+
+                        weightVectors.append(biases)
+
+                        if normalizeVectors:
+                            mu.append(np.mean(weightVectors[vectorNumber]))
+                            sd.append(np.std(weightVectors[vectorNumber]))
+                            weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                        vectorNumber += 1;    
+                
+        # RESHAPE VECTORS INTO A SINGLE MATRIX, SMOOTH WEIGHTS
+ 
+        # this simply concatenates all the vectors of the cell array we created before into a single, very long 1D vector
+        weightVector = np.hstack(weightVectors)
+
+        # this gives us an approximation to the size that a square matrix should have in order to be able to reshape the long vector into a square matrix 
+        squareSize = int(np.ceil(np.sqrt(weightVector.size)))
+
+        # if the lenght of the 1D vector doesn't perfectly reshape into the approximated square matrix size (too short) we pad it at the end with zeros
+
+        # decides necessary length of padding
+        padding = int(np.power(squareSize,2) - weightVector.size)
+
+        # reshapes long 1D vector (plus padding if need be) into a square matrix 
+        weightMatrix = np.reshape(np.hstack([weightVector, np.zeros(padding)]),(squareSize,squareSize))
+
+        # sometimes when we normalize the vectors in the first part of the code, some values end being inf or nans because of division by 0 etc
+        # we change those values to zero here
+        if normalizeVectors:
+            weightMatrix[np.isinf(weightMatrix)] = 0
+            weightMatrix[np.isnan(weightMatrix)] = 0
+
+        # Now we need to find out the right amount of components and perform low rank decomposition   
+        if methodSelectComponents == "powerlaw_xmin":
+
+          # Get eigenvalues from matrix
+          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+
+          xmin = fit_powerlaw(_, eigenValues, plot=doPlot, ax = axes)[1]
+
+          nComponents = np.sum(eigenValues >= xmin) 
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:, eigenValues < xmin] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        elif methodSelectComponents == "powerlaw_spikes":
+
+          # learn how many singular values there are in the matrix
+          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+
+          powerlawSpikes = fit_powerlaw(_, eigenValues, plot=doPlot, ax = axes)[5]
+
+          nComponents = int(powerlawSpikes)  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,powerlawSpikes:weightMatrix.shape[0]] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        elif methodSelectComponents == "mp_spikes":
+
+          # learn how many singular values there are in the matrix
+          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+
+          mpSpikes = mp_fit(_, eigenValues, weightMatrix.shape[0], weightMatrix.shape[1], 1,"", "", doPlot, False, "blue", False, ax = axes)[0]
+
+          nComponents = int(mpSpikes)  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,mpSpikes:weightMatrix.shape[0]] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        elif methodSelectComponents == "percentage":
+
+          # learn how many singular values there are in the matrix
+          singularValues = weightMatrix.shape[0]
+
+          # decide how many components we are gonna use in the truncated SVD call based on the percentageKept parameter - typically 20%)
+          nComponents = np.int(np.round(percent * singularValues))
+          if nComponents < 1:
+              nComponents = 1
+
+          # do truncated SVD for smoothing weights in matrix
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,nComponents:weightMatrix.shape[0]] = 0
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        # reshape smoothed matrix to a long vector once again
+        smoothedVector = np.reshape(smoothedMatrix, (weightMatrix.size))
+
+        # remove padding from vector
+        smoothedVector = smoothedVector[0:smoothedVector.size-padding] 
+ 
+        # ROAM THROUGH LAYERS, RESHAPE THE CORRECT PARTS OF THE LONG VECTOR BACK INTO WEIGHT MATRICES
+        # for each "recovered" (reshaped) weight matrix, "unnormalize" using the previously saved mean and std per weight matrix
+
+        vectorNumber = 0;
+        vectorIndex = 0;
+
+        # iterate over layers        
+        for ww_layer in layer_iterator:
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                layer_type = ww_layer.the_type
+
+                # get the model weights and biases directly, converted to numpy arrays        
+                has_W, weights, has_B, biases = ww_layer.get_weights_and_biases()    
+
+                # iterate over weight matrices
+                if layer_type is LAYER_TYPE.CONV2D:
+ 
+                    for inputChannel in range(0,weights.shape[2]):
+
+                        for kernelFilter in range(0,weights.shape[3]):
+
+                            weights[:,:,inputChannel,kernelFilter] = np.reshape(smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size], weights[:,:,inputChannel,kernelFilter].shape)
+
+                            if normalizeVectors:
+                                weights[:,:,inputChannel,kernelFilter] = np.multiply(weights[:,:,inputChannel,kernelFilter], sd[vectorNumber]) + mu[vectorNumber]
+
+                            vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                            vectorNumber += 1
+
+                    # in MATLAB biases of conv2D are 4D, whereas here it's just a 1D Vector ? I deal with it as 2D matrix for now but this differs from my Matlab code
+                    if smoothBias:
+
+                        biases = smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size]
+
+                        if normalizeVectors:
+                            biases = np.multiply(biases, sd[vectorNumber]) + mu[vectorNumber]
+
+                        vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                        vectorNumber += 1
+
+                    weightList = [weights, biases]
+
+                    layer.set_weights(weightList)
+
+                elif layer_type is LAYER_TYPE.DENSE:
+
+                    weights = np.reshape(smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size], weights.shape)
+
+                    if normalizeVectors:
+                        weights = np.multiply(weights, sd[vectorNumber]) + mu[vectorNumber]
+
+                    vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                    vectorNumber += 1;
+
+                    if smoothBias:
+
+                        biases = smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size]
+
+                        if normalizeVectors:
+                            biases = np.multiply(biases, sd[vectorNumber]) + mu[vectorNumber]
+
+                        vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                        vectorNumber += 1
+
+                    weightList = [weights, biases]
+
+                    layer.set_weights(weightList)
+    
+        # no need to return smoothed model - since model was passed by reference, the model has been smoothed. 
+        # If that's undesired, one should do a copy of the model before calling this method
+        return(nComponents)

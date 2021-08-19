@@ -2409,11 +2409,11 @@ class WeightWatcher(object):
                 layer_type = ww_layer.the_type
 
                 # get the model weights and biases directly, converted to numpy arrays        
-                has_W, weights, has_B, biases = ww_layer.get_weights_and_biases()    
+                has_weights, weights, has_biases, biases = ww_layer.get_weights_and_biases()    
 
                 # iterate over weight matrices
                 if layer_type is LAYER_TYPE.CONV2D:
-                     
+                                         
                     for inputChannel in range(0,weights.shape[2]):
 
                         for kernelFilter in range(0,weights.shape[3]):
@@ -2428,8 +2428,8 @@ class WeightWatcher(object):
                             vectorNumber += 1;
  
                     # in MATLAB biases of conv2D are 4D, whereas here it's just a 1D Vector ? I deal with it as 2D matrix for now but this differs from my Matlab code
-                    if smoothBias:
-
+                    if smoothBias and has_biases:
+                        print(biases)
                         weightVectors.append(biases)
 
                         if normalizeVectors:
@@ -2450,7 +2450,7 @@ class WeightWatcher(object):
 
                     vectorNumber += 1;
 
-                    if smoothBias:
+                    if smoothBias and has_biases:
 
                         weightVectors.append(biases)
 
@@ -2489,7 +2489,7 @@ class WeightWatcher(object):
           # Get eigenvalues from matrix
           eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
-          xmin = fit_powerlaw(_, eigenValues, plot=doPlot, ax = axes)[1]
+          xmin = self.fit_powerlaw(eigenValues, plot=doPlot, ax = axes)[1]
 
           nComponents = np.sum(eigenValues >= xmin) 
 
@@ -2510,7 +2510,7 @@ class WeightWatcher(object):
           # learn how many singular values there are in the matrix
           eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
-          powerlawSpikes = fit_powerlaw(_, eigenValues, plot=doPlot, ax = axes)[5]
+          powerlawSpikes = self.fit_powerlaw(eigenValues, plot=doPlot, ax = axes)[5]
 
           nComponents = int(powerlawSpikes)  
 
@@ -2531,7 +2531,7 @@ class WeightWatcher(object):
           # learn how many singular values there are in the matrix
           eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
-          mpSpikes = mp_fit(_, eigenValues, weightMatrix.shape[0], weightMatrix.shape[1], 1,"", "", doPlot, False, "blue", False, ax = axes)[0]
+          mpSpikes = self.mp_fit(eigenValues, weightMatrix.shape[0], weightMatrix.shape[1], 1,"", "", doPlot, False, "blue", False, ax = axes)[0]
 
           nComponents = int(mpSpikes)  
 
@@ -2589,7 +2589,7 @@ class WeightWatcher(object):
                 layer_type = ww_layer.the_type
 
                 # get the model weights and biases directly, converted to numpy arrays        
-                has_W, weights, has_B, biases = ww_layer.get_weights_and_biases()    
+                has_weights, weights, has_biases, biases = ww_layer.get_weights_and_biases()    
 
                 # iterate over weight matrices
                 if layer_type is LAYER_TYPE.CONV2D:
@@ -2608,7 +2608,7 @@ class WeightWatcher(object):
                             vectorNumber += 1
 
                     # in MATLAB biases of conv2D are 4D, whereas here it's just a 1D Vector ? I deal with it as 2D matrix for now but this differs from my Matlab code
-                    if smoothBias:
+                    if smoothBias and has_biases:
 
                         biases = smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size]
 
@@ -2634,7 +2634,7 @@ class WeightWatcher(object):
 
                     vectorNumber += 1;
 
-                    if smoothBias:
+                    if smoothBias and has_biases:
 
                         biases = smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size]
 

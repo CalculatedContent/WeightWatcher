@@ -2580,6 +2580,9 @@ class WeightWatcher(object):
         # ROAM THROUGH LAYERS, RESHAPE THE CORRECT PARTS OF THE LONG VECTOR BACK INTO WEIGHT MATRICES
         # for each "recovered" (reshaped) weight matrix, "unnormalize" using the previously saved mean and std per weight matrix
 
+        #TODO: restrict to ww2x or intra
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
+
         vectorNumber = 0;
         vectorIndex = 0;
 
@@ -2649,9 +2652,9 @@ class WeightWatcher(object):
                         vectorIndex = vectorIndex + weightVectors[vectorNumber].size
 
                         vectorNumber += 1
-
-                    self.replace_layer_weights(framework, layer_id, layer, weights, B=biases)
                     
+                    self.replace_layer_weights(framework, layer_id, layer, weights, B=biases)
+                                        
         # if model was passed, then it's redundant to return smoothed model - since model was passed by reference, the model has already been smoothed. 
         # If that's undesired, one should do a copy of the model before calling this method
         return(model, nComponents)

@@ -2478,7 +2478,7 @@ class WeightWatcher(object):
 
         # reshapes long 1D vector (plus padding if need be) into a square matrix 
         weightMatrix = np.reshape(np.hstack([weightVector, np.zeros(padding)]),(squareSize,squareSize))
-        logger.info("Unified matrix is of size " + str(smoothedMatrix.shape))
+        logger.info("Unified matrix is of size " + str(weightMatrix.shape[0]) + "x" + str(weightMatrix.shape[1]))
 
         # sometimes when we normalize the vectors in the first part of the code, some values end being inf or nans because of division by 0 etc
         # we change those values to zero here

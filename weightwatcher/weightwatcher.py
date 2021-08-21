@@ -324,8 +324,9 @@ class WWLayer:
             w = self.layer.get_weights()
             if self.the_type==LAYER_TYPE.CONV2D:
                 weights = w[0]
-                biases = None
+                biases = w[1]
                 has_weights = True
+                has_biases = True
             elif self.the_type==LAYER_TYPE.CONV1D:
                 weights = w[0]
                 biases = None
@@ -2429,7 +2430,6 @@ class WeightWatcher(object):
  
                     # in MATLAB biases of conv2D are 4D, whereas here it's just a 1D Vector ? I deal with it as 2D matrix for now but this differs from my Matlab code
                     if smoothBias and has_biases:
-                        print(biases)
                         weightVectors.append(biases)
 
                         if normalizeVectors:

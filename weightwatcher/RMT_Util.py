@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys
+import sys, os
 import pickle, time
 from copy import deepcopy
 from shutil import copy
@@ -151,7 +151,7 @@ def get_shuffled_eigenvalues(W, layer=7, num=100):
 
 def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0,
                      Q=1.0, num_spikes=0, sigma=None,
-                     alpha=0.25, color='blue', skip=False, verbose=True, plot=True, ax = None):
+                     alpha=0.25, color='blue', skip=False, verbose=True, plot=True, cutoff=0.0, ax = None):
     """Plot histogram of eigenvalues, for Q, and fit Marchenk Pastur.  
     If no sigma, calculates from maximum eigenvalue (minus spikes)
     Can read keras weights from model if specified.  Does not read PyTorch
@@ -163,6 +163,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
    
     if Q == 1:
         to_fit = np.sqrt(eigenvalues)
+        cutoff = np.sqrt(cutoff)
         label = r"$\rho_{emp}(\nu)$"
         title = " W{} SSD, QC Sigma={:0.3}" 
     else:
@@ -175,6 +176,9 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
             fig, ax = plt.subplots(figsize=(10,10))
         ax.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
         ax.legend()
+        
+        if cutoff > 0.0:
+            ax.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
     
     if skip:
         return
@@ -208,7 +212,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
     return sigma
 
 
-def plot_density(to_plot, sigma, Q, method="MP", color='blue', ax = None):
+def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0, ax = None):
     """Method = 'MP' or 'QC'
     
     """
@@ -218,6 +222,7 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue', ax = None):
         x_min, x_max = 0, np.max(to_plot)
         x, y = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
     elif method == "QC":
+        cutoff = np.sqrt(cutoff)
         to_plot = np.sort(to_plot)
         x_min, x_max = 0, np.max(to_plot)
         x, y = quarter_circle_pdf(x_min, x_max, sigma)
@@ -228,6 +233,11 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue', ax = None):
     ax.hist(to_plot, bins=100, alpha=0.6, color=color, density=True, label="ead")
     ax.plot(x, y, linewidth=1, color='r', label = method + " fit")
     ax.legend()
+    
+    if cutoff > 0.0:
+        ax.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
+    
+    return None
 
 # # Scree Plots
 
@@ -466,8 +476,9 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False, ax = Non
         # MP fit for this sigma
         xmp, ymp, a, b = marchenko_pastur_fun(xde, Q=Q, sigma=sigma)
 
-        if (b > max(xde)) | (a > xde[np.where(yde == max(yde))][0]) | (sigma > 1):
-            # print(xde[np.where(yde == max(yde))])
+        ### issue #60  change if statement
+        #if (b > max(xde)) | (a > xde[np.where(yde == max(yde))][0]) | (sigma > 1):
+        if (b < xde[np.where(yde == max(yde))][0] ) | (b > max(xde)) | (a > xde[np.where(yde == max(yde))][0]):
             resid = np.zeros(len(yde)) + 1000
         else:
             # form residual, remove nan's 
@@ -530,10 +541,15 @@ def fit_density(evals, Q, bw=0.1, sigma0=None):
 
 
 def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.1, 1.25, 0.01),) ):
-    
     assert type(sigma_range) == tuple, ValueError("sigma_range must be tuple")
     assert type(sigma_range[0]) == slice
-    
+
+    ### issue #60 fix
+    #   reset sigma range
+    sigma_scaling_factor = calc_sigma(Q, evals)
+    sigma_range = (slice(0.05 * sigma_scaling_factor, 2.0 * sigma_scaling_factor, 0.01 * sigma_scaling_factor),)
+    #
+    ###
 
     if Q == 1:
         to_fit = np.sqrt(evals)
@@ -597,7 +613,13 @@ def unpermute_matrix(W, p_ids):
     return unp_W
 
 
-
-
-
-   
+def save_fig(ax, figname, layer_id, savedir, bboxInches):
+    """Save the figure to the savedir directory. 
+       If directory is not present, create it
+       """
+    
+    figname = "{}/ww.layer{}.{}.png".format(savedir, layer_id, figname)
+    if not os.path.isdir(savedir):
+        os.mkdir(savedir)
+    ax.get_figure().savefig(figname, bbox_inches=bboxInches)
+    return 

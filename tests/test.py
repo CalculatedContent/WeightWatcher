@@ -107,6 +107,13 @@ class Test_VGG11(unittest.TestCase):
 		# min_evals > max_evals
 		with self.assertRaises(Exception) as context:
 			self.watcher.describe(min_evals=100, max_evals=10)	
+
+		# savefig is not a string or boolea
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(savefig=-1)	
+
+		self.watcher.describe(savefig=True)
+		self.watcher.describe(savefig='tmpdir')	
  
 	def test_model_layer_types_ww2x(self):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
@@ -313,6 +320,7 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(len(esd), 576)
 
 
+
 	def randomize(self):
 		"""Test randomize option
 		"""
@@ -354,8 +362,8 @@ class Test_VGG11(unittest.TestCase):
 
 		self.model = models.vgg11(pretrained=True)
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
-		\
-		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
+		
+		# 819 =~ 4096*0.2
 		self.watcher.SVDSmoothing(layers=[28])
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
@@ -363,9 +371,20 @@ class Test_VGG11(unittest.TestCase):
 
 	def test_svd_smoothing_alt(self):
 		"""Test the svd smoothing on 1 lyaer of VGG
+		The intent is that test_svd_smoothing and test_svd_smoothing_lat are exactly the same
+		except that:
+
+		test_svd_smoothing() only applies TruncatedSVD, and can only keep the top N eigenvectors
+
+		whereas
+
+		test_svd_smoothing_alt() allows for a negative input, which throws away the top N eigenvectors
+
+		Note:  I changed the APi on these method recently and that may be the bug
+		this needs to be stabilzed for the ww.0.5 release
 		"""
  		
-		print("----test_svd_smoothing-----")
+		print("----test_svd_smoothing_alt-----")
 
 		self.model = models.vgg11(pretrained=True)
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
@@ -373,9 +392,73 @@ class Test_VGG11(unittest.TestCase):
 		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
+		# 3277 = 4096 - 819
+		print("num comps = {}".format(num_comps))
+		self.assertEqual(num_comps, 3277)
+		
+	def test_svd_smoothing_alt2(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		
+		"""
+ 		
+		print("----test_svd_smoothing_alt2-----")
+
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+		
+		self.watcher.SVDSmoothing(layers=[28], percent=0.2)
+		esd = self.watcher.get_ESD(layer=28) 
+		num_comps = len(esd[esd>10**-10])
+		# 3277 = 4096 - 819
 		print("num comps = {}".format(num_comps))
 		self.assertEqual(num_comps, 819)
+		
+		
+		
+	def test_svd_sharpness(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+		print("----test_svd_sharpness-----")
 
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+
+		esd_before = self.watcher.get_ESD(layer=28) 
+		
+		self.watcher.SVDSharpness(layers=[28])
+		esd_after = self.watcher.get_ESD(layer=28) 
+		
+		print("max esd before {}".format(np.max(esd_before)))
+		print("max esd after {}".format(np.max(esd_after)))
+
+		self.assertGreater(np.max(esd_before)-2.0,np.max(esd_after))
+		
+	
+		
+	def test_svd_sharpness2(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+		print("----test_svd_sharpness-----")
+
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+
+		esd_before = self.watcher.get_ESD(layer=8) 
+		
+		self.watcher.SVDSharpness(layers=[8])
+		esd_after = self.watcher.get_ESD(layer=8) 
+		
+		print("max esd before {}".format(np.max(esd_before)))
+		print("max esd after {}".format(np.max(esd_after)))
+
+		self.assertGreater(np.max(esd_before),np.max(esd_after))
+		
+	
+
+	
+		
 
 	def test_runtime_warnings(self):
 		"""Test that runtime warnings are still active
@@ -383,6 +466,77 @@ class Test_VGG11(unittest.TestCase):
 		import numpy as np
 		print("test runtime warning: sqrt(-1)=", np.sqrt(-1.0))
 		assert(True)
+		
+	def test_N_ge_M(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.describe()
+		M = details.M.to_numpy()
+		N = details.N.to_numpy()
+		self.assertTrue((N >= M).all)
+	
+	def test_num_evals(self):
+		"""Test that the num evals is correct
+		"""
+		details = self.watcher.describe()		
+		self.assertTrue((details.M * details.rf == details.num_evals).all())
+		
+	def test_rf_value(self):
+		"""Test that the num evals is correct
+		"""
+		details = self.watcher.describe()		
+		self.assertTrue((details.rf.to_numpy()[0:8] == 9.0).all())
+		
+		
+	def test_randomize_mp_fits(self):
+		"""Test that the mp_fits works correctly for the randomized matrices
+		Note: the fits currently not consistent
+		"""
+		details = self.watcher.analyze(mp_fit=True,  randomize=True,  ww2x=False)
+		self.assertTrue((details.rand_sigma_mp < 1.10).all())
+		self.assertTrue((details.rand_sigma_mp > 0.96).all())
+		self.assertTrue((details.rand_num_spikes.to_numpy() < 80).all())
+		
+		
+	
+	def test_make_ww_iterator(self):
+		"""Test that we can make the ww layer iterator
+		"""
+		iterator = self.watcher.make_layer_iterator(model=self.model)
+		num = 0
+		for ww_layer in iterator:
+			self.assertGreater(ww_layer.layer_id,0)
+			num += 1
+		self.assertEqual(num,11)
+		
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		num = 0
+		for ww_layer in iterator:
+			self.assertEqual(ww_layer.layer_id,28)
+			num += 1
+		self.assertEqual(num,1)
+		
+		
+				
+	def test_permute_W(self):
+		"""Test that permute and unpermute methods work
+		"""
+		N, M = 4096, 4096
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		for ww_layer in iterator:
+			self.assertEqual(ww_layer.layer_id,28)
+			W = ww_layer.Wmats[0]
+			self.assertEqual(W.shape,(N,M))
+			
+			self.watcher.apply_permute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertNotEqual(W[0,0],W2[0,0])
+			
+			self.watcher.apply_unpermute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertEqual(W2.shape,(N,M))
+			self.assertEqual(W[0,0],W2[0,0])
+			
 		
 
 class Test_TFBert(unittest.TestCase):
@@ -404,10 +558,11 @@ class Test_TFBert(unittest.TestCase):
 		"""Test that the Keras Iterator finds all the TFBert layers
 		72 layers for BERT
 		+ 1 for input. 1 for output
+		Not sure why it is 76
 		"""
 		details = self.watcher.describe()
 		print("TESTING TF BERT")
-		self.assertTrue(len(details), 74)
+		self.assertEqual(len(details), 74)
 
 
 
@@ -430,7 +585,7 @@ class Test_Keras(unittest.TestCase):
 		"""
 		details = self.watcher.describe()
 		print("Testing Keras on VGG16")
-		self.assertTrue(len(details), 16)
+		self.assertEqual(len(details), 16)
 
 
 
@@ -440,9 +595,47 @@ class Test_Keras(unittest.TestCase):
 		details = self.watcher.describe()
 		M = details.iloc[0].M
 		N = details.iloc[0].N
-		self.assertTrue(M, 3)
-		self.assertTrue(N, 64)
+		self.assertEqual(M, 3)
+		self.assertEqual(N, 64)
+		
+	def test_N_ge_M(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.describe()
+		M = details.M.to_numpy()
+		N = details.N.to_numpy()
+		self.assertTrue((N >= M).all)
 
+
+class Test_ResNet(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		cls.model = models.resnet18(pretrained=True)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		pass
+	
+	def test_N_ge_M(self):
+		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
+		"""
+		details = self.watcher.describe()
+		M = details.M.to_numpy()
+		N = details.N.to_numpy()
+		self.assertTrue((N >= M).all)
+		
+	def test_num_evals(self):
+		"""Test that the num evals is correct
+		"""
+		details = self.watcher.describe()		
+		self.assertTrue((details.M * details.rf == details.num_evals).all())
+		
+		
+	
 from weightwatcher import RMT_Util
 import numpy as np
 

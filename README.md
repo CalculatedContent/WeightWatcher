@@ -2,26 +2,28 @@
 
 ## Weight Watcher  
 
-### Current Version / Release: 0.4.7
+### Current Version / Release: 0.5.1
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
 - analyze pre/trained pyTorch, Keras, DNN models (Conv2D and Dense layers)
-- inspect models that are difficult to train
-- gauge improvements in model performance
-- predict test accuracies across different models
+- monitor models, and the model layers,  to see if they are over-trained or over-parameterized
+- predict test accuracies across different models, with or without training data
 - detect potential problems when compressing or fine-tuning pretrained models
-- determine if a model has been overtrained, without looking at the test data
-- experimental support for intra-layer correlations
+- layer warning labels: over-trained; under-trained
 
-### Experimental / Most Recent version    0.4.96
+ad well several new experimental model transformations, including:
+
+- SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
+- SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
+
+### Experimental / Most Recent version    0.5.x
 
 You may install the latest / Trunk from testpypi
 
 python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
 
-Please try the latest testpypi before submitting bugs
-
+The testpypi version usually has the most recent updates, including experimental methods qnd bug fixes
 
 #### From Research to Production
 WeightWatcher is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
@@ -118,7 +120,7 @@ The watcher object has several functions and analyze features described below
 
 ```python
 analyze( model=None, layers=[], min_evals=0, max_evals=None,
-	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True, rescale=True):
+	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
 ...
 describe(self, model=None, layers=[], min_evals=0, max_evals=None,
          plot=True, randomize=True, mp_fit=True, ww2x=False):
@@ -141,15 +143,6 @@ details = watcher.analyze(plot=True)
 For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD. 
 
 ![ESD](ESD-plots.png)
-
-#### Rescaling (new in ww0.4.7)
-
-<pre>analyze(..., rescale=True)</pre>
-
-Note that to perform the RMT / MP fits, the ESD (eigenvalues) are rescaled $dfrac{N}/{\Vert\mathbf{W}\Vert_{F}^{2}}$.  
-This rescaling is **not** used, however, to compute any (scale-dependent) metrics.
-
-To plot the original ESD, set rescale=False
 
 ### Detecting OverTraining
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
@@ -203,6 +196,23 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
+
+
+### SVDSmoothing and SVDSharpness Transforms 
+#### As descibed in our latest paper
+
+Smoothed models can be used to predict test accuracies, by evaluating the training accuracy on the smoothed model.
+```python
+smoothed_model = watcher.SVDSmoothing(model=...)
+```
+
+
+Sharpned models can be used when fine-tuning pre-trained models that have not been fully optimized yet.
+```python
+sharpemed_model = watcher.SVDSharpness(model=...)
+```
+
+Sample notebooks are provided for each new feature
 
 ### Additional Features
 

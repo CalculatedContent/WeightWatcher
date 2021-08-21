@@ -2111,7 +2111,9 @@ class WeightWatcher(object):
             fit_law = 'MP ESD'
 #        
         logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
-        plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
+    
+        if plot
+            plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, ax = ax[1])#, scale=Wscale)
         
         if plot:

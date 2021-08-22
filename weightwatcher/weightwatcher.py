@@ -329,8 +329,9 @@ class WWLayer:
             w = self.layer.get_weights()
             if self.the_type==LAYER_TYPE.CONV2D:
                 weights = w[0]
-                biases = None
+                biases = w[1]
                 has_weights = True
+                has_biases = True
             elif self.the_type==LAYER_TYPE.CONV1D:
                 weights = w[0]
                 biases = None
@@ -1249,19 +1250,26 @@ class WeightWatcher(object):
     
     
     # Not used yet
-    def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS, ax = None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                     
         evals = ww_layer.evals
         name = ww_layer.name
         
-        plt.title(name)
-        plt.hist(evals, bins=100)
-        plt.show(); plt.clf()
+        doShowAndClf = False
+        if ax is None:
+            doShowAndClf = True
+            fig, ax = plt.subplots(2, figsize=(10,20))
+            
+        ax[0].set_title(name)
+        ax[0].hist(evals, bins=100)
         
-        plt.title(name)
-        plt.hist(np.log10(evals), bins=100)
-        plt.show(); plt.clf()
+        ax[1].set_title(name)
+        ax[1].hist(np.log10(evals), bins=100)
+        
+        if doShowAndClf:
+            plt.show()
+            plt.clf()
             
         return ww_layer
     
@@ -1735,7 +1743,7 @@ class WeightWatcher(object):
                                        
         return np.sort(np.array(all_evals))
    
-    def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS, ax = None):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
         savefig = params['savefig']
@@ -1749,30 +1757,39 @@ class WeightWatcher(object):
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
         max_rand_eval = np.max(rand_evals)
-
-        plt.hist((nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
-        plt.title(title)   
-        plt.xlabel(r" Eigenvalues $(\lambda)$")               
-        plt.legend()
-        if savefig:
-            #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            save_fig(plt, "randesd1", layer_id, savedir)
-        plt.show(); plt.clf()
-
-        plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
-        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-        plt.title(title)   
-        plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
-        plt.legend()
-        if savefig:
-            #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
-            save_fig(plt, "randesd2", layer_id, savedir)
-        plt.show(); plt.clf()
         
+        doShowAndClf = False
+        if ax is None:
+            doShowAndClf = True
+            fig, ax = plt.subplots(2, figsize=(10,20))
+            
+        ax[0].hist((nonzero_evals), bins=100, density=True, color='g', label='original')
+        ax[0].hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+        ax[0].axvline(x=(max_rand_eval), color='orange', label='max rand')
+        ax[0].set_title(title)   
+        ax[0].set_xlabel(r" Eigenvalues $(\lambda)$")               
+        ax[0].legend()
+        if savefig:
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            save_fig(ax[0], "randesd1", layer_id, savedir, extent.expanded(1.1, 1.25))
+
+        ax[1].hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
+        ax[1].hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+        ax[1].axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
+        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
+        ax[1].set_title(title)   
+        ax[1].set_xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
+        ax[1].legend()
+        if savefig:
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            save_fig(ax[1], "randesd2", layer_id, savedir, extent.expanded(1.1, 1.25))
+
+        if doShowAndClf:
+            plt.show()
+            plt.clf()
+    
     # MOves to RMT Util should be static function    
     #def calc_rank_loss(self, singular_values, M, lambda_max):
     #    """compute the rank loss for these singular given the tolerances
@@ -1782,7 +1799,7 @@ class WeightWatcher(object):
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
-                     savedir=DEF_SAVE_DIR, savefig=True):
+                     savedir=DEF_SAVE_DIR, savefig=True, ax = None):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1847,62 +1864,71 @@ class WeightWatcher(object):
                
 
         if plot:
-            fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
-            plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin)
-            fig2 = fit.plot_pdf(color='r', linewidth=2)
-            fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+            doShowAndClf = False
+            if ax is None:
+                doShowAndClf = True
+                fig, ax = plt.subplots(4, figsize=(10,40))
+
+            fig2 = fit.plot_pdf(color='b', linewidth=0, ax = ax[0]) # invisbile
+            plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin, ax = ax[0])
+            fig2 = fit.plot_pdf(color='r', linewidth=2, ax = ax[0])
+            fit.power_law.plot_pdf(color='r', linestyle='--', ax = ax[0]) #ax=fig2)
         
             title = "Log-Log ESD for {}\n".format(layer_name) 
             title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \
                 r'$D_{KS}=$'+"{0:.3f}; ".format(D) + \
                 r"$\lambda_{min}=$"+"{0:.3f}".format(xmin) + "\n"
 
-            plt.title(title)
-            plt.legend()
+            ax[0].set_title(title)
+            ax[0].legend()
             if savefig:
-                #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-                save_fig(plt, "esd", layer_id, savedir)
-            plt.show(); plt.clf()
-    
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                save_fig(ax[0], "esd", layer_id, savedir, extent.expanded(1.1, 1.25))
+              
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
-            plt.hist(evals, bins=num_bins, density=True)
+            ax[1].hist(evals, bins=num_bins, density=True)
             title = "Lin-Lin ESD for {}".format(layer_name) 
-            plt.title(title)
-            plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
-            plt.legend()
+            ax[1].set_title(title)
+            ax[1].axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
+            ax[1].legend()
             if savefig:
-                #plt.savefig("ww.layer{}.esd2.png".format(layer_id))
-                save_fig(plt, "esd2", layer_id, savedir)
-            plt.show(); plt.clf()
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                save_fig(ax[1], "esd2", layer_id, savedir, extent.expanded(1.1, 1.25))
 
             # plot log eigenvalue histogram
             nonzero_evals = evals[evals > 0.0]
-            plt.hist(np.log10(nonzero_evals), bins=100, density=True)
+            ax[2].hist(np.log10(nonzero_evals), bins=100, density=True)
             title = "Log-Lin ESD for {}".format(layer_name) 
-            plt.title(title)
-            plt.axvline(x=np.log10(fit.xmin), color='red', label=r'$\lambda_{xmin}$')
-            plt.axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
-            plt.legend()
+            ax[2].set_title(title)
+            ax[2].axvline(x=np.log10(fit.xmin), color='red', label=r'$\lambda_{xmin}$')
+            ax[2].axvline(x=np.log10(fit.xmax), color='orange',  label=r'$\lambda_{xmax}$')
+            ax[2].legend()
             if savefig:
-                #plt.savefig("ww.layer{}.esd3.png".format(layer_id))
-                save_fig(plt, "esd3", layer_id, savedir)
-            plt.show(); plt.clf()
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[2].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                save_fig(ax[2], "esd3", layer_id, savedir, extent.expanded(1.1, 1.25))
     
             # plot xmins vs D
             
-            plt.plot(fit.xmins, fit.Ds, label=r'$D_{KS}$')
-            plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
+            ax[3].plot(fit.xmins, fit.Ds, label=r'$D_{KS}$')
+            ax[3].axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             #plt.plot(fit.xmins, fit.sigmas / fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
-            plt.xlabel(r'$x_{min}$')
-            plt.ylabel(r'$D_{KS}$')
+            ax[3].set_xlabel(r'$x_{min}$')
+            ax[3].set_ylabel(r'$D_{KS}$')
             title = r'$D_{KS}$' + ' vs.' + r'$x_{min},\;\lambda_{xmin}=$'
-            plt.title(title+"{:0.3}".format(fit.xmin))
-            plt.legend()
+            ax[3].set_title(title+"{:0.3}".format(fit.xmin))
+            ax[3].legend()
             if savefig:
-                save_fig(plt, "esd4", layer_id, savedir)
-                #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
-            plt.show(); plt.clf() 
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[3].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                save_fig(ax[3], "esd4", layer_id, savedir, extent.expanded(1.1, 1.25))
+
+            if doShowAndClf:
+                plt.show()
+                plt.clf() 
                           
         return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
     
@@ -2017,7 +2043,7 @@ class WeightWatcher(object):
     
     
     # TODO: add x bulk max yellow line for bulk edge for random
-    def apply_plot_deltaEs(self, ww_layer, random=False, params=DEFAULT_PARAMS):
+    def apply_plot_deltaEs(self, ww_layer, random=False, params=DEFAULT_PARAMS, ax = None):
         """Plot the deltas of the layer ESD, both in a sequence as a histogram (level statisitcs)"""
         layer_id = ww_layer.layer_id
         name = ww_layer.name or ""
@@ -2042,34 +2068,43 @@ class WeightWatcher(object):
         logDeltaEs = np.log10(deltaEs)
         x = np.arange(len(deltaEs))
         eqn = r"$\log_{10}\Delta(\lambda)$"
-        plt.scatter(x,logDeltaEs, color=color)
+        
+        doShowAndClf = False
+        if ax is None:
+            doShowAndClf = True
+            fig, ax = plt.subplots(2, figsize=(10,20))
+            
+        ax[0].scatter(x,logDeltaEs, color=color)
         
         if not random:
             idx = np.searchsorted(evals, ww_layer.xmin, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{xmin}$')
+            ax[0].axvline(x=idx, color='red', label=r'$\lambda_{xmin}$')
         else:
             idx = np.searchsorted(evals, bulk_max, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{+}$')
+            ax[0].axvline(x=idx, color='red', label=r'$\lambda_{+}$')
 
-        plt.title("Log Delta Es for Layer {}".format(layer_name))
-        plt.ylabel("Log Delta Es: "+eqn)
-        plt.legend()
+        ax[0].set_title("Log Delta Es for Layer {}".format(layer_name))
+        ax[0].set_ylabel("Log Delta Es: "+eqn)
+        ax[0].legend()
         if savefig:  
-            #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
-            save_fig(plt, "deltaEs", layer_id, savedir)
-        plt.show(); plt.clf()
-
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            save_fig(ax[0], "deltaEs", layer_id, savedir, extent.expanded(1.1, 1.25))
         
         # level statistics (not mean adjusted because plotting log)
-        plt.hist(logDeltaEs, bins=100, color=color, density=True)
-        plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
-        plt.ylabel("density")
-        plt.xlabel(eqn)
-        plt.legend()
+        ax[1].hist(logDeltaEs, bins=100, color=color, density=True)
+        ax[1].set_title("Log Level Statisitcs for Layer {}".format(layer_name))
+        ax[1].set_ylabel("density")
+        ax[1].set_xlabel(eqn)
+        ax[1].legend()
         if savefig:  
-            #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
-            save_fig(plt, "level-stats", layer_id, savedir)
-        plt.show(); plt.clf()
+            # Save just the portion _inside_ the axis's boundaries
+            extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            save_fig(ax[1], "level-stats", layer_id, savedir, extent.expanded(1.1, 1.25))
+
+        if doShowAndClf:
+            plt.show()
+            plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
         """Perform MP fit on random or actual random eigenvalues
@@ -2116,7 +2151,7 @@ class WeightWatcher(object):
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, savedir, color, rescale):
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, savedir, color, rescale, ax = None):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M        
@@ -2157,37 +2192,50 @@ class WeightWatcher(object):
         ratio_numofSpikes  = num_spikes / (M - 1)
         mp_softrank = bulk_max / lambda_max
 
+        if plot:
+            doShowAndClf = False
+            if ax is None:
+                doShowAndClf = True
+                fig, ax = plt.subplots(2, figsize=(10,20))            
+
         if Q == 1.0:
             fit_law = 'QC SSD'
             
             #TODO: set cutoff 
             #Even if the quarter circle applies, still plot the MP_fit
             if plot:
-                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=bulk_max_TW)#, scale=Wscale)
-                plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
-                plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
+                plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=bulk_max_TW, ax = ax[0])#, scale=Wscale)
+                ax[0].legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
+                ax[0].set_title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
-                    #plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
-                    save_fig(plt, "mpfit1", layer_id, savedir)
-                plt.show(); plt.clf()
+                    # Save just the portion _inside_ the axis's boundaries
+                    extent = ax[0].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                    save_fig(ax[0], "mpfit1", layer_id, savedir, extent.expanded(1.1, 1.25))
+
             
         else:
             fit_law = 'MP ESD'
 #        
         #logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
-        plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
-                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
+        if plot:
+            plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
+                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW, ax = ax[1])#, scale=Wscale)
         
         if plot:
             title = fit_law+" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
             title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
             title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
             title = title + r"$\#$ spikes={}".format(num_spikes)
-            plt.title(title)
+    
+            ax[1].set_title(title)
             if savefig:
-                #plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
-                save_fig(plt, "mpfit2", layer_id, savedir)
-            plt.show(); plt.clf()
+                # Save just the portion _inside_ the axis's boundaries
+                extent = ax[1].get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+                save_fig(ax[1], "mpfit2", layer_id, savedir, extent.expanded(1.1, 1.25))
+            
+            if doShowAndClf:
+                plt.show()
+                plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)
         bulk_min = bulk_min/(Wscale*Wscale)
@@ -2425,7 +2473,6 @@ class WeightWatcher(object):
         return ww_layer
         
 
-
     def SVDSharpness(self, model=None,  ww2x=False, layers=[], plot=False):
         """Apply the SVD Sharpness Transform to model
         
@@ -2529,6 +2576,298 @@ class WeightWatcher(object):
             logger.debug("Layer {} skipped, Layer Type {} not supported".format(layer_id, the_type))
 
         return
-   
-
+    
         
+    def unifiedSVDSmoothing(self, model=None, percent=0.2, ww2x=False, methodSelectComponents = "powerlaw_xmin", layers=[], smoothBias = True, normalizeVectors = True, doPlot = False, axes = None):
+        """Apply the Unified SVD Smoothing Transform (PARRA, 2021) to model; select components based on fixed percent of eigenvalues, or powerlaw_xmin, powerlaw_spikes, or mp_spikes
+        
+        layers:
+            List of layer ids. If empty, analyze all layers (default)
+            If layer ids < 0, then skip the layers specified
+            All layer ids must be > 0 or < 0
+        
+        ww2x:
+            Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
+            
+        """
+        
+        model = model or self.model   
+         
+        params=DEFAULT_PARAMS
+        params['ww2x'] = ww2x
+        params['layers'] = layers
+        params['percent'] = percent
+
+        # check framework, return error if framework not supported
+        # need to access static method on  Model class
+
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+     
+        #TODO: restrict to ww2x or intra
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
+                
+        vectorNumber = 0
+ 
+        weightVectors = []
+        mu = []
+        sd = []
+
+        # iterate over layers        
+        for ww_layer in layer_iterator:
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                layer_type = ww_layer.the_type
+
+                # get the model weights and biases directly, converted to numpy arrays        
+                has_weights, weights, has_biases, biases = ww_layer.get_weights_and_biases()    
+
+                # iterate over weight matrices
+                if layer_type is LAYER_TYPE.CONV2D:
+                                         
+                    for inputChannel in range(0,weights.shape[2]):
+
+                        for kernelFilter in range(0,weights.shape[3]):
+
+                            weightVectors.append(np.reshape(weights[:,:,inputChannel,kernelFilter],(weights[:,:,inputChannel,kernelFilter].size)))
+
+                            if normalizeVectors:
+                                mu.append(np.mean(weightVectors[vectorNumber]))
+                                sd.append(np.std(weightVectors[vectorNumber]))
+                                weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                            vectorNumber += 1;
+ 
+                    # in MATLAB biases of conv2D are 4D, whereas here it's just a 1D Vector ? I deal with it as 2D matrix for now but this differs from my Matlab code
+                    if smoothBias and has_biases:
+                        weightVectors.append(biases)
+
+                        if normalizeVectors:
+                            mu.append(np.mean(weightVectors[vectorNumber]))
+                            sd.append(np.std(weightVectors[vectorNumber]))
+                            weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                        vectorNumber += 1;
+ 
+                elif layer_type is LAYER_TYPE.DENSE:
+
+                    weightVectors.append(np.reshape(weights, (weights.size)))
+
+                    if normalizeVectors:
+                        mu.append(np.mean(weightVectors[vectorNumber]))
+                        sd.append(np.std(weightVectors[vectorNumber]))
+                        weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                    vectorNumber += 1;
+
+                    if smoothBias and has_biases:
+
+                        weightVectors.append(biases)
+
+                        if normalizeVectors:
+                            mu.append(np.mean(weightVectors[vectorNumber]))
+                            sd.append(np.std(weightVectors[vectorNumber]))
+                            weightVectors[vectorNumber] = np.divide((weightVectors[vectorNumber] - mu[vectorNumber]), sd[vectorNumber])
+
+                        vectorNumber += 1;    
+                
+        # RESHAPE VECTORS INTO A SINGLE MATRIX, SMOOTH WEIGHTS
+ 
+        # this simply concatenates all the vectors of the cell array we created before into a single, very long 1D vector
+        weightVector = np.hstack(weightVectors)
+
+        # this gives us an approximation to the size that a square matrix should have in order to be able to reshape the long vector into a square matrix 
+        squareSize = int(np.ceil(np.sqrt(weightVector.size)))
+
+        # if the lenght of the 1D vector doesn't perfectly reshape into the approximated square matrix size (too short) we pad it at the end with zeros
+
+        # decides necessary length of padding
+        padding = int(np.power(squareSize,2) - weightVector.size)
+
+        # reshapes long 1D vector (plus padding if need be) into a square matrix 
+        weightMatrix = np.reshape(np.hstack([weightVector, np.zeros(padding)]),(squareSize,squareSize))
+        logger.info("Unified matrix is of size " + str(weightMatrix.shape[0]) + "x" + str(weightMatrix.shape[1]))
+
+        # sometimes when we normalize the vectors in the first part of the code, some values end being inf or nans because of division by 0 etc
+        # we change those values to zero here
+        if normalizeVectors:
+            weightMatrix[np.isinf(weightMatrix)] = 0
+            weightMatrix[np.isnan(weightMatrix)] = 0
+
+        # Now we need to find out the right amount of components and perform low rank decomposition   
+        if methodSelectComponents == "powerlaw_xmin":
+
+          # Get eigenvalues from matrix
+          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+
+          xmin = self.fit_powerlaw(eigenValues, plot=doPlot, ax = axes)[1]
+
+          nComponents = np.sum(eigenValues >= xmin) 
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:, eigenValues < xmin] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        elif methodSelectComponents == "powerlaw_spikes":
+
+          # learn how many singular values there are in the matrix
+          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+
+          powerlawSpikes = self.fit_powerlaw(eigenValues, plot=doPlot, ax = axes)[5]
+
+          nComponents = int(powerlawSpikes)  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,powerlawSpikes:weightMatrix.shape[0]] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        elif methodSelectComponents == "mp_spikes":
+
+          # learn how many singular values there are in the matrix
+          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+
+          mpSpikes = self.mp_fit(eigenValues, weightMatrix.shape[0], weightMatrix.shape[1], 1,"", "", doPlot, False, "blue", False, ax = axes)[0]
+
+          nComponents = int(mpSpikes)  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,mpSpikes:weightMatrix.shape[0]] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        elif methodSelectComponents == "percentage":
+
+          # learn how many singular values there are in the matrix
+          singularValues = weightMatrix.shape[0]
+
+          # decide how many components we are gonna use in the truncated SVD call based on the percentageKept parameter - typically 20%)
+          nComponents = np.int(np.round(percent * singularValues))
+          if nComponents < 1:
+              nComponents = 1
+
+          # do truncated SVD for smoothing weights in matrix
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,nComponents:weightMatrix.shape[0]] = 0
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+            
+        # reshape smoothed matrix to a long vector once again
+        smoothedVector = np.reshape(smoothedMatrix, (weightMatrix.size))
+
+        # remove padding from vector
+        smoothedVector = smoothedVector[0:smoothedVector.size-padding] 
+ 
+        # ROAM THROUGH LAYERS, RESHAPE THE CORRECT PARTS OF THE LONG VECTOR BACK INTO WEIGHT MATRICES
+        # for each "recovered" (reshaped) weight matrix, "unnormalize" using the previously saved mean and std per weight matrix
+
+        #TODO: restrict to ww2x or intra
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
+
+        vectorNumber = 0;
+        vectorIndex = 0;
+
+        # iterate over layers        
+        for ww_layer in layer_iterator:
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                layer = ww_layer.layer
+                layer_id = ww_layer.layer_id
+                layer_name = ww_layer.name
+                layer_type = ww_layer.the_type
+                framework = ww_layer.framework
+                channels = ww_layer.channels
+
+                # get the model weights and biases directly, converted to numpy arrays        
+                has_weights, weights, has_biases, biases = ww_layer.get_weights_and_biases()    
+
+                # iterate over weight matrices
+                if layer_type is LAYER_TYPE.CONV2D:
+ 
+                    for inputChannel in range(0,weights.shape[2]):
+
+                        for kernelFilter in range(0,weights.shape[3]):
+
+                            weights[:,:,inputChannel,kernelFilter] = np.reshape(smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size], weights[:,:,inputChannel,kernelFilter].shape)
+
+                            if normalizeVectors:
+                                weights[:,:,inputChannel,kernelFilter] = np.multiply(weights[:,:,inputChannel,kernelFilter], sd[vectorNumber]) + mu[vectorNumber]
+
+                            vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                            vectorNumber += 1
+
+                    # in MATLAB biases of conv2D are 4D, whereas here it's just a 1D Vector ? I deal with it as 2D matrix for now but this differs from my Matlab code
+                    if smoothBias and has_biases:
+
+                        biases = smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size]
+
+                        if normalizeVectors:
+                            biases = np.multiply(biases, sd[vectorNumber]) + mu[vectorNumber]
+
+                        vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                        vectorNumber += 1
+                        
+                    self.replace_layer_weights(framework, layer_id, layer, weights, B=biases)
+
+                elif layer_type is LAYER_TYPE.DENSE:
+
+                    weights = np.reshape(smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size], weights.shape)
+
+                    if normalizeVectors:
+                        weights = np.multiply(weights, sd[vectorNumber]) + mu[vectorNumber]
+
+                    vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                    vectorNumber += 1;
+
+                    if smoothBias and has_biases:
+
+                        biases = smoothedVector[vectorIndex:vectorIndex + weightVectors[vectorNumber].size]
+
+                        if normalizeVectors:
+                            biases = np.multiply(biases, sd[vectorNumber]) + mu[vectorNumber]
+
+                        vectorIndex = vectorIndex + weightVectors[vectorNumber].size
+
+                        vectorNumber += 1
+                    
+                    self.replace_layer_weights(framework, layer_id, layer, weights, B=biases)
+                                        
+        # if model was passed, then it's redundant to return smoothed model - since model was passed by reference, the model has already been smoothed. 
+        # If that's undesired, one should do a copy of the model before calling this method
+        return(model, nComponents)

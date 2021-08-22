@@ -151,7 +151,7 @@ def get_shuffled_eigenvalues(W, layer=7, num=100):
 
 def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0,
                      Q=1.0, num_spikes=0, sigma=None,
-                     alpha=0.25, color='blue', skip=False, verbose=True, plot=True, cutoff=0.0):
+                     alpha=0.25, color='blue', skip=False, verbose=True, plot=True, cutoff=0.0, ax = None):
     """Plot histogram of eigenvalues, for Q, and fit Marchenk Pastur.  
     If no sigma, calculates from maximum eigenvalue (minus spikes)
     Can read keras weights from model if specified.  Does not read PyTorch
@@ -172,11 +172,13 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         title = " W{} ESD, MP Sigma={:0.3}f" 
         
     if plot:
-        plt.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
-        plt.legend()
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10,10))
+        ax.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
+        ax.legend()
         
         if cutoff > 0.0:
-            plt.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
+            ax.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
     
     if skip:
         return
@@ -200,8 +202,8 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         x, mp = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
 
     if plot:
-        plt.title(title.format(layer_name, sigma))
-        plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
+        ax.set_title(title.format(layer_name, sigma))
+        ax.plot(x, mp, linewidth=1, color='r', label="MP fit")
         
     if verbose:
         print("% spikes outside bulk {0:.2f}".format(percent_mass))
@@ -210,7 +212,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
     return sigma
 
 
-def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0):
+def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0, ax = None):
     """Method = 'MP' or 'QC'
     
     """
@@ -225,12 +227,15 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0):
         x_min, x_max = 0, np.max(to_plot)
         x, y = quarter_circle_pdf(x_min, x_max, sigma)
         
-    plt.hist(to_plot, bins=100, alpha=0.6, color=color, density=True, label="ead")
-    plt.plot(x, y, linewidth=1, color='r', label = method + " fit")
-    plt.legend()
+    if ax is None:    
+        fig, ax = plt.subplots(figsize=(10,10))
+        
+    ax.hist(to_plot, bins=100, alpha=0.6, color=color, density=True, label="ead")
+    ax.plot(x, y, linewidth=1, color='r', label = method + " fit")
+    ax.legend()
     
     if cutoff > 0.0:
-        plt.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
+        ax.axvline(x=cutoff, linewidth=1, color='r', ls='dashed')
     
     return None
 
@@ -249,12 +254,16 @@ def matrix_eigenvalues(model, layer=2):
 
 
 # TODO: refactor
-def scree_plot(model, weightfile, layer=2, color='blue', label=''):    
+def scree_plot(model, weightfile, layer=2, color='blue', label='', ax = None):    
     model.load_weights(weightfile)
     evs = matrix_eigenvalues(model, layer)
     eigvals = np.flip(np.sort(evs), axis=0)
     sing_vals = np.arange(len(eigvals)) + 1
-    plt.plot(sing_vals, eigvals, color, linewidth=1, label=label)
+    
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10,10))
+        
+    ax.plot(sing_vals, eigvals, color, linewidth=1, label=label)
 
 # # Soft / Stable Rank
 
@@ -433,7 +442,7 @@ def quarter_circle_fun(x, sigma=1):
     return x, val
 
 
-def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False):  
+def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False, ax = None):  
     "residual that floats sigma but NOT Q or num_spikes YET, 10% cutoff each edge"
     sigma = p
 
@@ -477,10 +486,17 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False):
     #     resid = np.nan_to_num(resid)
 
     if debug:
-        plt.plot(xde, yde, color='cyan')
-        plt.plot(xmp, ymp, color='orange')
-        plt.axhline(y=THRESH)
-        plt.show(); plt.clf()
+        doShowAndClf = False
+        if ax is None:
+            doShowAndClf = True
+            fig, ax = plt.subplots(figsize=(10,10))
+            
+        ax.plot(xde, yde, color='cyan')
+        ax.plot(xmp, ymp, color='orange')
+        ax.axhline(y=THRESH)
+        if doShowAndClf:
+            plt.show()
+            plt.clf()
         print("sigma {}  mean residual {}".format(sigma, np.mean(resid)))
 
     # hack to try to fix fits
@@ -560,16 +576,18 @@ def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.1, 1.25, 0.01)
 #     return pd.DataFrame(df_output, columns = ['spikes', 'sigma', 'F_norm'])
 
 
-def plot_loghist(x, bins, xmin):
+def plot_loghist(x, bins, xmin, ax = None):
     hist, bins = np.histogram(x, bins=bins)
     logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
-    plt.hist(x, bins=logbins, density=True)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(10,10))
+        
+    ax.hist(x, bins=logbins, density=True)
 
     if xmin:
-        plt.axvline(xmin, color='r', label=r'$\lambda_{min}$')
+        ax.axvline(xmin, color='r', label=r'$\lambda_{min}$')
 
-    plt.xscale('log')
-    
+    ax.set_xscale('log')    
     
 def permute_matrix(W):
     """permute a matrix in a reversible way"""
@@ -595,7 +613,7 @@ def unpermute_matrix(W, p_ids):
     return unp_W
 
 
-def save_fig(plt, figname, layer_id, savedir):
+def save_fig(ax, figname, layer_id, savedir, bboxInches):
     """Save the figure to the savedir directory. 
        If directory is not present, create it
        """
@@ -603,5 +621,5 @@ def save_fig(plt, figname, layer_id, savedir):
     figname = "{}/ww.layer{}.{}.png".format(savedir, layer_id, figname)
     if not os.path.isdir(savedir):
         os.mkdir(savedir)
-    plt.savefig(figname)
+    ax.get_figure().savefig(figname, bbox_inches=bboxInches)
     return 

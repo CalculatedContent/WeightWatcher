@@ -2356,10 +2356,6 @@ class WeightWatcher(object):
         return model   
 
     
-   
-    
-        
-        
     def apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS):
         """run truncated SVD on layer weight matrices and reconstruct the weight matrices 
         keep all eigenvlues > percent*ncomp
@@ -2692,6 +2688,19 @@ class WeightWatcher(object):
         weightMatrix = np.reshape(np.hstack([weightVector, np.zeros(padding)]),(squareSize,squareSize))
         logger.info("Unified matrix is of size " + str(weightMatrix.shape[0]) + "x" + str(weightMatrix.shape[1]))
 
+        if doPlot:
+            doShowAndClf = False
+            if axes is None:
+                doShowAndClf = True
+                fig, axes = plt.subplots(1, figsize=(10,10))            
+                axes.hist(eigenValues, bins=100, label="ESD")
+                axes.hist(get_shuffled_eigenvalues(weightMatrix), bins=100, label="Random ESD")              
+                axes.set_title("ESD vs randomized ESD")
+            else:
+                axes[0].hist(eigenValues, bins=100, label="ESD")
+                axes[0].hist(get_shuffled_eigenvalues(weightMatrix), bins=100, label="Random ESD")              
+                axes[0].set_title("ESD vs randomized ESD")
+            
         # sometimes when we normalize the vectors in the first part of the code, some values end being inf or nans because of division by 0 etc
         # we change those values to zero here
         if normalizeVectors:
@@ -2704,7 +2713,7 @@ class WeightWatcher(object):
           # Get eigenvalues from matrix
           eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
-          xmin = self.fit_powerlaw(eigenValues, plot=doPlot, ax = axes)[1]
+          xmin = self.fit_powerlaw(eigenValues, plot=doPlot, savefig=False, ax = axes)[1]
 
           nComponents = np.sum(eigenValues >= xmin) 
 
@@ -2725,7 +2734,7 @@ class WeightWatcher(object):
           # learn how many singular values there are in the matrix
           eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
-          powerlawSpikes = self.fit_powerlaw(eigenValues, plot=doPlot, ax = axes)[5]
+          powerlawSpikes = self.fit_powerlaw(eigenValues, plot=doPlot, savefig=False, ax = axes)[5]
 
           nComponents = int(powerlawSpikes)  
 
@@ -2746,7 +2755,7 @@ class WeightWatcher(object):
           # learn how many singular values there are in the matrix
           eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
-          mpSpikes = self.mp_fit(eigenValues, weightMatrix.shape[0], weightMatrix.shape[1], 1,"", "", doPlot, False, "blue", False, ax = axes)[0]
+          mpSpikes = self.mp_fit(eigenValues, weightMatrix.shape[0], weightMatrix.shape[1], 1,"", "", doPlot, False, "", "blue", False, ax = axes)[0]
 
           nComponents = int(mpSpikes)  
 
@@ -2761,7 +2770,7 @@ class WeightWatcher(object):
           #V = V.T
           #X = weightMatrix @ V
           #smoothedMatrix = X @ V.T
-
+            
         elif methodSelectComponents == "percentage":
 
           # learn how many singular values there are in the matrix

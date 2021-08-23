@@ -19,7 +19,7 @@ from scipy import optimize
 from sklearn.neighbors import KernelDensity
 
 import powerlaw
-import tqdm
+from tqdm import tqdm
 
 # ## Generalized Entropy
 

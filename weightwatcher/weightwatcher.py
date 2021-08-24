@@ -2855,7 +2855,7 @@ class WeightWatcher(object):
           #smoothedMatrix = X @ V.T
             
           # unshuffle smoothedMatrix  
-          smoothedMatrixAsVector = np.reshape(smoothedMatrix, smootherMatrix.size)
+          smoothedMatrixAsVector = np.reshape(smoothedMatrix, smoothedMatrix.size)
           reorderedVector = np.zeros(smoothedMatrixAsVector.size)
           reorderedVector[indexes] = smoothedMatrixAsVector
           smoothedMatrix = np.reshape(reorderedVector, smoothedMatrix.shape)

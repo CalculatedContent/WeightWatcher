@@ -35,6 +35,7 @@ from onnx import numpy_helper
 import sklearn
 from sklearn.decomposition import TruncatedSVD
     
+import random
 
 #
 # this is use to allow editing in Eclipse but also
@@ -2689,18 +2690,46 @@ class WeightWatcher(object):
         logger.info("Unified matrix is of size " + str(weightMatrix.shape[0]) + "x" + str(weightMatrix.shape[1]))
 
         if doPlot:
+            # create shuffled version of unified matrix
+            matrix_as_vector = np.reshape(weightMatrix, weightMatrix.size)
+            indexes = np.arange(0,matrix_as_vector.size).tolist()
+            random.shuffle(indexes)
+            shuffledMatrix = np.reshape(matrix_as_vector[indexes], weightMatrix.shape)
+            
+            # Get eigenvalues from matrix
+            _, eigenVectors = np.linalg.eig(weightMatrix)
+            eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+            shuffledEigenValues = np.power(sp.linalg.svdvals(shuffledMatrix),2) #get_shuffled_eigenvalues(weightMatrix, num=10)
+            singularValues = np.sqrt(eigenValues)
+            shuffledSingularValues = np.sqrt(shuffledEigenValues)
+          
             doShowAndClf = False
+
             if axes is None:
                 doShowAndClf = True
-                fig, axes = plt.subplots(1, figsize=(10,10))            
-                axes.hist(eigenValues, bins=100, label="ESD")
-                axes.hist(get_shuffled_eigenvalues(weightMatrix), bins=100, label="Random ESD")              
-                axes.set_title("ESD vs randomized ESD")
-            else:
-                axes[0].hist(eigenValues, bins=100, label="ESD")
-                axes[0].hist(get_shuffled_eigenvalues(weightMatrix), bins=100, label="Random ESD")              
-                axes[0].set_title("ESD vs randomized ESD")
+                fig, axes = plt.subplots(3, figsize=(10,30))            
             
+            locRatios = [localization_ratio(ev) for ev in eigenVectors]
+            eigenVectorsIndexes = np.arange(0, len(eigenVectors)) 
+                              
+            axes[-2].scatter(eigenVectorsIndexes, locRatios, label="LocRatios")
+            axes[-2].set_title("Localization ratios of eigenvectors")
+            axes[-2].legend()
+
+            axes[-1].hist(singularValues, bins=100, label="QC", color="blue", density=True)
+            axes[-1].hist(shuffledSingularValues, bins=100, label="Random QC", color="red", density=True, alpha=0.5)
+            axes[-1].set_title("Singular values vs randomized singular values")
+            axes[-1].legend()
+            
+            axes[-0].hist(np.log10(eigenValues), bins=100, label="ESD", color="blue", density=True)
+            axes[-0].hist(np.log10(shuffledEigenValues), bins=100, label="Random ESD", color="red", alpha=0.5, density=True) 
+            axes[-0].set_title("ESD vs randomized ESD")
+            axes[-0].legend()
+                
+            if doShowAndClf:
+                plt.show()
+                plt.clf()        
+
         # sometimes when we normalize the vectors in the first part of the code, some values end being inf or nans because of division by 0 etc
         # we change those values to zero here
         if normalizeVectors:
@@ -2709,9 +2738,9 @@ class WeightWatcher(object):
 
         # Now we need to find out the right amount of components and perform low rank decomposition   
         if methodSelectComponents == "powerlaw_xmin":
-
-          # Get eigenvalues from matrix
-          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+          if not doPlot:
+              # Get eigenvalues from matrix
+              eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
           xmin = self.fit_powerlaw(eigenValues, plot=doPlot, savefig=False, ax = axes)[1]
 
@@ -2731,8 +2760,9 @@ class WeightWatcher(object):
 
         elif methodSelectComponents == "powerlaw_spikes":
 
-          # learn how many singular values there are in the matrix
-          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+          if not doPlot:
+              # Get eigenvalues from matrix
+              eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
           powerlawSpikes = self.fit_powerlaw(eigenValues, plot=doPlot, savefig=False, ax = axes)[5]
 
@@ -2752,8 +2782,9 @@ class WeightWatcher(object):
 
         elif methodSelectComponents == "mp_spikes":
 
-          # learn how many singular values there are in the matrix
-          eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
+          if not doPlot:
+              # Get eigenvalues from matrix
+              eigenValues = np.power(sp.linalg.svdvals(weightMatrix),2)
 
           mpSpikes = self.mp_fit(eigenValues, weightMatrix.shape[0], weightMatrix.shape[1], 1,"", "", doPlot, False, "", "blue", False, ax = axes)[0]
 
@@ -2771,6 +2802,64 @@ class WeightWatcher(object):
           #X = weightMatrix @ V
           #smoothedMatrix = X @ V.T
             
+        elif methodSelectComponents == "localization_ratio":
+          threshold = 10
+        
+          if not doPlot:
+              # Get eigenvalues from matrix
+              eigenValues, eigenVectors = np.linalg.eig(weightMatrix)            
+              locRatios = [localization_ratio(ev) for ev in eigenVectors]
+            
+          arrayLocRatios = np.array(locRatios)
+  
+          nComponents = np.sum(arrayLocRatios > np.percentile(arrayLocRatios, threshold))  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,arrayLocRatios <= np.percentile(arrayLocRatios, threshold)] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+
+        elif methodSelectComponents == "randomize_percentage":
+          if not doPlot:
+              # create shuffled version of unified matrix
+              matrix_as_vector = np.reshape(weightMatrix, weightMatrix.size)
+              indexes = np.arange(0,matrix_as_vector.size).tolist()
+              random.shuffle(indexes)
+              shuffledMatrix = np.reshape(matrix_as_vector[indexes], weightMatrix.shape)  
+                
+          # learn how many singular values there are in the matrix
+          singularValues = shuffledMatrix.shape[0]
+
+          # decide how many components we are gonna use in the truncated SVD call based on the percentageKept parameter - typically 20%)
+          nComponents = np.int(np.round(percent * singularValues))
+          if nComponents < 1:
+              nComponents = 1
+
+          # do truncated SVD for smoothing weights in matrix
+          U, d, Vt = sp.linalg.svd(shuffledMatrix)
+          dm = sp.linalg.diagsvd(d, shuffledMatrix.shape[0],shuffledMatrix.shape[1])
+          dm[:,nComponents:shuffledMatrix.shape[0]] = 0
+          smoothedMatrix = U @ (dm @ Vt)
+          
+          # Another method
+          #_, _, V = sp.sparse.linalg.svds(weightMatrix, nComponents, which = 'LM')
+          #V = V.T
+          #X = weightMatrix @ V
+          #smoothedMatrix = X @ V.T
+            
+          # unshuffle smoothedMatrix  
+          smoothedMatrixAsVector = np.reshape(smoothedMatrix, smootherMatrix.size)
+          reorderedVector = np.zeros(smoothedMatrixAsVector.size)
+          reorderedVector[indexes] = smoothedMatrixAsVector
+          smoothedMatrix = np.reshape(reorderedVector, smoothedMatrix.shape)
+        
         elif methodSelectComponents == "percentage":
 
           # learn how many singular values there are in the matrix

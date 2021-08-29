@@ -2534,9 +2534,12 @@ class WeightWatcher(object):
     def localization_ratio(self, model=None, layers=[], savedir=None, savefig=True):
         
         model = model or self.model   
-         
+        
         params=DEFAULT_PARAMS
+        # TODO: ww2x is set to false
+        params['ww2x'] = False
         params['savefig'] = savefig
+        
         if savedir:
             params['savedir'] = savedir
         logger.info("params {}".format(params))
@@ -2562,32 +2565,47 @@ class WeightWatcher(object):
         if M>5000 or N>5000:
             logger.info("Skipping because the matrix is too large.")
             return
-            
-        Wmats = ww_layer.Wmats
         
-        # TODO: Apply this to conv2D layers. Now, it only applies to a linear layer
-        W = Wmats[0].astype(float)
+        Wmats = ww_layer.Wmats
+        if type(Wmats) is not list:
+            logger.debug("combined_eigenvalues: Wmats -> [WMmats]")
+            Wmats = [Wmats]
+
         savedir = params.get('savedir')
         savefig = params.get('savefig')
 
-        if W.shape[0]<=W.shape[1]:
-            X = np.matmul(W, W.T)
-        else:
-            X = np.matmul(W.T, W)
+        all_evals = []
+        all_loc_ratios = []
+        for  W in Wmats:
+    
+            W = W.astype(float)
+            if W.shape[0]<=W.shape[1]:
+                X = np.matmul(W, W.T)
+            else:
+                X = np.matmul(W.T, W)
 
-        eigs, V = np.linalg.eig(X)
-        loc_ratios = []
-        for col in range(min(M,N)):
-            loc_ratios.append(localization_ratio(V[:,col]))
+            evals, V = np.linalg.eig(X)
+            all_evals.extend(evals)
 
-        plt.scatter(np.arange(len(loc_ratios)), loc_ratios)
+            loc_ratios = []
+            for col in range(min(M,N)):
+                loc_ratios.append(localization_ratio(V[:,col]))
+            
+            all_loc_ratios.extend(loc_ratios)
+
+        zipped_lists = zip(all_evals, all_loc_ratios)
+        sorted_pairs = sorted(zipped_lists, reverse=True)
+        tuples = zip(*sorted_pairs)
+        all_evals, all_loc_ratios = [ list(tuple) for tuple in  tuples]
+
+        plt.scatter(np.arange(len(all_loc_ratios)), all_loc_ratios)
         plt.title("localization ratios")   
         plt.xlabel("eigenvalue index")               
         if savefig:
             save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
         plt.show(); plt.clf()
 
-        plt.scatter(np.arange(len(eigs)), eigs)
+        plt.scatter(np.arange(len(all_evals)), all_evals)
         plt.title("eigenvalues")   
         plt.xlabel("eigenvalue index")               
         if savefig:

@@ -2531,4 +2531,69 @@ class WeightWatcher(object):
         return
    
 
+    def localization_ratio(self, model=None, layers=[], savedir=None, savefig=True):
+        
+        model = model or self.model   
+         
+        params=DEFAULT_PARAMS
+        params['savefig'] = savefig
+        if savedir:
+            params['savedir'] = savedir
+        logger.info("params {}".format(params))
+
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
+        
+        for id, ww_layer in enumerate(layer_iterator):
+            if not ww_layer.skipped and ww_layer.has_weights:
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                self.apply_localization_ratio(ww_layer, params)
+        
+        logger.info("End plotting localization ratio.")
+        
+        return   
+
+
+    def apply_localization_ratio(self, ww_layer, params=DEFAULT_PARAMS):
+        
+        M = ww_layer.M
+        N = ww_layer.N    
+
+        if M>5000 or N>5000:
+            logger.info("Skipping because the matrix is too large.")
+            return
+            
+        Wmats = ww_layer.Wmats
+        
+        # TODO: Apply this to conv2D layers. Now, it only applies to a linear layer
+        W = Wmats[0].astype(float)
+        savedir = params.get('savedir')
+        savefig = params.get('savefig')
+
+        if W.shape[0]<=W.shape[1]:
+            X = np.matmul(W, W.T)
+        else:
+            X = np.matmul(W.T, W)
+
+        eigs, V = np.linalg.eig(X)
+        loc_ratios = []
+        for col in range(min(M,N)):
+            loc_ratios.append(localization_ratio(V[:,col]))
+
+        plt.scatter(np.arange(len(loc_ratios)), loc_ratios)
+        plt.title("localization ratios")   
+        plt.xlabel("eigenvalue index")               
+        if savefig:
+            save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
+        plt.show(); plt.clf()
+
+        plt.scatter(np.arange(len(eigs)), eigs)
+        plt.title("eigenvalues")   
+        plt.xlabel("eigenvalue index")               
+        if savefig:
+            save_fig(plt, "eigs", ww_layer.layer_id, savedir)
+        plt.show(); plt.clf()
+
+        return
+
         

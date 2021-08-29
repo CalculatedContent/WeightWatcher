@@ -1440,7 +1440,6 @@ class WeightWatcher(object):
         params['layers'] = layers
         
         params['savefig'] = savefig
-
             
         logger.debug("params {}".format(params))
         if not self.valid_params(params):
@@ -2531,17 +2530,23 @@ class WeightWatcher(object):
         return
    
 
-    def localization_ratio(self, model=None, layers=[], savedir=None, savefig=True):
+    def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
+                plot=True,  savefig=DEF_SAVE_DIR, channels=None):
+        """Seperate method to analyxe the eigenvectors of each layer
+        
+        ootions"""
         
         model = model or self.model   
         
         params=DEFAULT_PARAMS
-        # TODO: ww2x is set to false
-        params['ww2x'] = False
         params['savefig'] = savefig
         
-        if savedir:
-            params['savedir'] = savedir
+        logger.debug("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+   
         logger.info("params {}".format(params))
 
         layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
@@ -2549,35 +2554,41 @@ class WeightWatcher(object):
         for id, ww_layer in enumerate(layer_iterator):
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                self.apply_analyze_eigenvectors(ww_layer, params)
                 
-                self.apply_localization_ratio(ww_layer, params)
-        
-        logger.info("End plotting localization ratio.")
-        
         return   
 
 
-    def apply_localization_ratio(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_analyze_eigenvectors(self, ww_layer, params=DEFAULT_PARAMS):
+        """Compute and plot eigenvectors metrics: 
+
+        - vector_entropies
+        - localization_ratios
+        - participation_ratios
+        
+        Does not modify the ww_layer (yet)
+        
+        """
+        
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name or ""
+        layer_name = "{} {}".format(layer_id, name)
         
         M = ww_layer.M
         N = ww_layer.N    
-
-        if M>5000 or N>5000:
-            logger.info("Skipping because the matrix is too large.")
-            return
         
         Wmats = ww_layer.Wmats
         if type(Wmats) is not list:
-            logger.debug("combined_eigenvalues: Wmats -> [WMmats]")
             Wmats = [Wmats]
 
         savedir = params.get('savedir')
         savefig = params.get('savefig')
 
-        all_evals = []
-        all_loc_ratios = []
-        for  W in Wmats:
-    
+        vec_entropies = []
+        loc_ratios = []
+        part_ratios = []
+
+        for W in Wmats:
             W = W.astype(float)
             if W.shape[0]<=W.shape[1]:
                 X = np.matmul(W, W.T)
@@ -2585,33 +2596,38 @@ class WeightWatcher(object):
                 X = np.matmul(W.T, W)
 
             evals, V = np.linalg.eig(X)
-            all_evals.extend(evals)
+            assert(evals[0]>evals[-]) # check order of evals
 
             loc_ratios = []
-            for col in range(min(M,N)):
-                loc_ratios.append(localization_ratio(V[:,col]))
             
-            all_loc_ratios.extend(loc_ratios)
+            for col in range(min(M,N)):
+                vec_entropies.extend(discrete_entropy(V[:,col]))
+                loc_ratios.extend(localization_ratio(V[:,col]))
+                part_ratios.extend(participation_ratio(V[:,col]))
 
-        zipped_lists = zip(all_evals, all_loc_ratios)
-        sorted_pairs = sorted(zipped_lists, reverse=True)
-        tuples = zip(*sorted_pairs)
-        all_evals, all_loc_ratios = [ list(tuple) for tuple in  tuples]
-
-        plt.scatter(np.arange(len(all_loc_ratios)), all_loc_ratios)
-        plt.title("localization ratios")   
-        plt.xlabel("eigenvalue index")               
+      
+        plt.scatter(np.arange(len(vec_entropies)), vec_entropies)
+        plt.title("Vector_Entropies for {}".format(layer_name))   
+        plt.xlabel("index")               
+        if savefig:
+            save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
+        plt.show(); plt.clf()
+        
+        plt.scatter(np.arange(len(loc_ratios)), loc_ratios)
+        plt.title("Localization Ratios for {}".format(layer_name))    
+        plt.xlabel("index")               
+        if savefig:
+            save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
+        plt.show(); plt.clf()
+        
+        plt.scatter(np.arange(len(part_ratios)), part_ratios)
+        plt.title("Participation Ratios for {}".format(layer_name))   
+        plt.xlabel("index")               
         if savefig:
             save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
         plt.show(); plt.clf()
 
-        plt.scatter(np.arange(len(all_evals)), all_evals)
-        plt.title("eigenvalues")   
-        plt.xlabel("eigenvalue index")               
-        if savefig:
-            save_fig(plt, "eigs", ww_layer.layer_id, savedir)
-        plt.show(); plt.clf()
-
+       
         return
 
         

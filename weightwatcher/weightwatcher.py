@@ -2566,6 +2566,8 @@ class WeightWatcher(object):
         - localization_ratios
         - participation_ratios
         
+        Note:  no  normalization is applied
+        
         Does not modify the ww_layer (yet)
         
         """
@@ -2583,11 +2585,12 @@ class WeightWatcher(object):
 
         savedir = params.get('savedir')
         savefig = params.get('savefig')
+        all_evals = []
 
-        vec_entropies = []
-        loc_ratios = []
-        part_ratios = []
-
+        all_vec_entropies = []
+        all_loc_ratios = []
+        all_part_ratios = []
+        
         for W in Wmats:
             W = W.astype(float)
             if W.shape[0]<=W.shape[1]:
@@ -2596,35 +2599,51 @@ class WeightWatcher(object):
                 X = np.matmul(W.T, W)
 
             evals, V = np.linalg.eig(X)
-            assert(evals[0]>evals[-]) # check order of evals
+            all_evals.extend(evals)
 
+            vec_entropies = []
             loc_ratios = []
-            
+            part_ratios = []
+                
             for col in range(min(M,N)):
-                vec_entropies.extend(discrete_entropy(V[:,col]))
-                loc_ratios.extend(localization_ratio(V[:,col]))
-                part_ratios.extend(participation_ratio(V[:,col]))
+                vec_entropies.append(discrete_entropy(V[:,col]))
+                loc_ratios.append(localization_ratio(V[:,col]))
+                part_ratios.append(participation_ratio(V[:,col]))
 
-      
-        plt.scatter(np.arange(len(vec_entropies)), vec_entropies)
+            all_vec_entropies.extend(vec_entropies)
+            all_loc_ratios.extend(loc_ratios)  
+            all_part_ratios.extend(part_ratios)   
+                
+        
+        sort_ids = np.argsort(all_evals)
+        
+        data = np.array(all_vec_entropies)[sort_ids]
+        plt.scatter(np.arange(len(data)), data)
         plt.title("Vector_Entropies for {}".format(layer_name))   
-        plt.xlabel("index")               
+        plt.xlabel("index (increasing eigenvalues ->) ")       
+        plt.ylabel("Vector Entropy ")
         if savefig:
-            save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
+            save_fig(plt, "vec_entropy", ww_layer.layer_id, savedir)
         plt.show(); plt.clf()
         
-        plt.scatter(np.arange(len(loc_ratios)), loc_ratios)
+        
+        data = np.array(all_loc_ratios)[sort_ids]        
+        plt.scatter(np.arange(len(data)), data)
         plt.title("Localization Ratios for {}".format(layer_name))    
-        plt.xlabel("index")               
+        plt.xlabel("index (increasing eigenvalues ->) ")   
+        plt.ylabel("Localization Ratio ")            
         if savefig:
             save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
         plt.show(); plt.clf()
         
-        plt.scatter(np.arange(len(part_ratios)), part_ratios)
+        
+        data = np.array(all_part_ratios)[sort_ids]        
+        plt.scatter(np.arange(len(data)), data)
         plt.title("Participation Ratios for {}".format(layer_name))   
-        plt.xlabel("index")               
+        plt.xlabel("index (increasing eigenvalues ->) ")    
+        plt.ylabel("Participation Ratio ")          
         if savefig:
-            save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
+            save_fig(plt, "part_ratio", ww_layer.layer_id, savedir)
         plt.show(); plt.clf()
 
        

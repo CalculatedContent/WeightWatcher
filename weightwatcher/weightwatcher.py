@@ -61,7 +61,7 @@ MAX_NUM_EVALS = 50000
 DEF_SAVE_DIR = 'ww-img'
 
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
-                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True,
+                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
                   'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
                   'ww2x':False, 'vectors':False}
 #                'stacked':False, 'unified':False}

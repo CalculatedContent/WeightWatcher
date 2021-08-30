@@ -2690,7 +2690,7 @@ class WeightWatcher(object):
 
             arrays = [all_vec_entropies, all_loc_ratios, all_part_ratios]
             titles = ["Vector Entropies", "Localization Ratios", "Participation Ratios"]
-            names  = ['vec_entropy', 'loc_ration', 'part_ratio']
+            names  = ['vec_entropy', 'loc_ratio', 'part_ratio']
             
             #layer stats
             for name, arr in zip(names,arrays):     

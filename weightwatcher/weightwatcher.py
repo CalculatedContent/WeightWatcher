@@ -2642,17 +2642,17 @@ class WeightWatcher(object):
         
         data = np.array(all_vec_entropies)[sort_ids]
         axs[0].scatter(np.arange(len(data)), data, marker=".", label='vec entropy')
-        axs[0].set_ylabel("Vector Entropy ")        
+        axs[0].set_ylabel("Vector Entropies")        
         axs[0].label_outer()   
         
         data = np.array(all_loc_ratios)[sort_ids]        
         axs[1].scatter(np.arange(len(data)), data, marker=".", label='loc ratio')
-        axs[1].set_ylabel("Localization Ratio")            
+        axs[1].set_ylabel("Localization Ratios")            
         axs[1].label_outer()   
         
         data = np.array(all_part_ratios)[sort_ids]        
         axs[2].scatter(np.arange(len(data)), data, marker=".", label='part ratio')
-        axs[2].set_ylabel("Participation Ratio")  
+        axs[2].set_ylabel("Participation Ratios")  
         axs[2].label_outer()     
         
         data = np.array(all_evals)[sort_ids]        
@@ -2660,20 +2660,62 @@ class WeightWatcher(object):
         axs[3].set_ylabel("Eigenvalues")  
         axs[3].label_outer() 
     
-        data = np.array(all_evals)[sort_ids]        
+        sorted_evals = np.array(all_evals)[sort_ids]        
         if ww_layer.has_column('xmin'):
             xmin = ww_layer.xmin
             #find index of eigenvalue closest to xmin
-            xval = np.where(data<=xmin)[0][-1]
+            xval = np.where(sorted_evals < xmin)[0][-1]
             for ax in axs:
                 ax.axvline(x=xval, color='r', label='xmin')
                 ax.legend()
     
-  
         if savefig:
             save_fig(plt, "vector_metrics", ww_layer.layer_id, savedir)
         plt.show(); plt.clf()
 
+        # Histogram plots, similar to the JMLR paper
+        if ww_layer.has_column('xmin'):
+            xmin = ww_layer.xmin
+            #find index of eigenvalue closest to xmin
+            sorted_evals = np.array(all_evals)[sort_ids]        
+            bulk_ids = np.where(sorted_evals < xmin)[0]
+            tail_ids = np.where(sorted_evals >= xmin)[0]
+            
+            if len(bulk_ids)==0:
+                logger.warning("no bulk data to plot, xmin={:0.2f}".format(xmin))
+            if len(tail_ids)==0:
+                logger.warning("no tail data to plot, xmin={:0.2f}".format(xmin))
+
+
+            fig, axs = plt.subplots(3)
+            fig.suptitle("Vector Bulk/Tail Metrics for {}".format(layer_name))   
+            
+            arrays = [all_vec_entropies, all_loc_ratios, all_part_ratios]
+            titles = ["Vector Entropies", "Localization Ratios", "Participation Ratios"]
+            
+            for ix, ax in enumerate(axs):
+                arr = arrays[ix]
+                title = titles[ix]
+                
+                data = np.array(arr)[sort_ids]        
+                bulk_data = data[bulk_ids]
+                tail_data = data[tail_ids]
+                # should never happen
+                if len(bulk_data)>0:
+                    ax.hist(bulk_data, bins=100, color='blue', alpha=0.5, label='bulk', density=True)
+
+                # might happen
+                if len(tail_data) > 0:
+                    ax.hist(tail_data, bins=100, color='purple', alpha=0.5, label='tail', density=True)
+
+                ax.set_ylabel(title) 
+                ax.label_outer() 
+                ax.legend()
+            
+            if savefig:
+                save_fig(plt, "vector_histograms", ww_layer.layer_id, savedir)
+            plt.show(); plt.clf()
+       
        
         return
 

@@ -2617,33 +2617,26 @@ class WeightWatcher(object):
         
         sort_ids = np.argsort(all_evals)
         
-        data = np.array(all_vec_entropies)[sort_ids]
-        plt.scatter(np.arange(len(data)), data)
-        plt.title("Vector_Entropies for {}".format(layer_name))   
-        plt.xlabel("index (increasing eigenvalues ->) ")       
-        plt.ylabel("Vector Entropy ")
-        if savefig:
-            save_fig(plt, "vec_entropy", ww_layer.layer_id, savedir)
-        plt.show(); plt.clf()
+        fig, axs = plt.subplots(3)
+        fig.suptitle("Vector Localization Metrics for {}".format(layer_name))   
         
+        data = np.array(all_vec_entropies)[sort_ids]
+        axs[0].scatter(np.arange(len(data)), data, marker=".")
+        axs[0].set_ylabel("Vector Entropy ")        
+        axs[0].label_outer()   
         
         data = np.array(all_loc_ratios)[sort_ids]        
-        plt.scatter(np.arange(len(data)), data)
-        plt.title("Localization Ratios for {}".format(layer_name))    
-        plt.xlabel("index (increasing eigenvalues ->) ")   
-        plt.ylabel("Localization Ratio ")            
-        if savefig:
-            save_fig(plt, "loc_ratio", ww_layer.layer_id, savedir)
-        plt.show(); plt.clf()
-        
+        axs[1].scatter(np.arange(len(data)), data, marker=".")
+        axs[1].set_ylabel("Localization Ratio")            
+        axs[1].label_outer()   
         
         data = np.array(all_part_ratios)[sort_ids]        
-        plt.scatter(np.arange(len(data)), data)
-        plt.title("Participation Ratios for {}".format(layer_name))   
-        plt.xlabel("index (increasing eigenvalues ->) ")    
-        plt.ylabel("Participation Ratio ")          
+        axs[2].scatter(np.arange(len(data)), data, marker=".")
+        axs[2].set_ylabel("Participation Ratio")  
+        axs[2].label_outer()     
+  
         if savefig:
-            save_fig(plt, "part_ratio", ww_layer.layer_id, savedir)
+            save_fig(plt, "vector_metrics", ww_layer.layer_id, savedir)
         plt.show(); plt.clf()
 
        

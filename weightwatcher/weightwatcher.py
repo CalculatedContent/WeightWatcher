@@ -2617,7 +2617,7 @@ class WeightWatcher(object):
         
         sort_ids = np.argsort(all_evals)
         
-        fig, axs = plt.subplots(3)
+        fig, axs = plt.subplots(4)
         fig.suptitle("Vector Localization Metrics for {}".format(layer_name))   
         
         data = np.array(all_vec_entropies)[sort_ids]
@@ -2634,6 +2634,11 @@ class WeightWatcher(object):
         axs[2].scatter(np.arange(len(data)), data, marker=".")
         axs[2].set_ylabel("Participation Ratio")  
         axs[2].label_outer()     
+        
+        data = np.array(all_evals)[sort_ids]        
+        axs[3].scatter(np.arange(len(data)), data, marker=".")
+        axs[3].set_ylabel("Eigenvalues")  
+        axs[3].label_outer()     
   
         if savefig:
             save_fig(plt, "vector_metrics", ww_layer.layer_id, savedir)

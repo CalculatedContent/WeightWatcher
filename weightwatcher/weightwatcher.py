@@ -63,7 +63,7 @@ DEF_SAVE_DIR = 'ww-img'
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
                   'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True,
                   'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False}
+                  'ww2x':False, 'vectors':False}
 #                'stacked':False, 'unified':False}
 
 TPL = 'truncated_power_law'
@@ -184,6 +184,19 @@ class WWLayer:
         """Add column to the details dataframe"""
         self.columns.append(name)
         self.__dict__[name] = value
+        
+    def get_value(self, name):
+        """Get value of a column"""
+        return self.__dict__[name]
+    
+    def get_column(self, name):
+        """Get value of a column"""
+        return self.__dict__[name]
+    
+    # does not work ?
+    def has_column(self, name):
+        """Get value of a column"""
+        return name in self.__dict__
         
     def get_row(self):
         """get a details dataframe row from the columns and metadata"""
@@ -1346,7 +1359,7 @@ class WeightWatcher(object):
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
-                deltas=False, intra=False, channels=None):
+                deltas=False, intra=False, vectors=True, channels=None):
         """
         Analyze the weight matrices of a model.
 
@@ -1405,10 +1418,10 @@ class WeightWatcher(object):
             Experimental option
         channels: None | 'fisrt' | 'last'
             re/set the channels from the default for the framework
-        evecs:  N/A yet
+        vectors:  N/A yet
             Compute the eigenvectors and plots various metrics, including the vector entropy and localization statistics, 
             both as a sequence (elbow plots) and as histograms
-            Warning:  this takes more memory
+            Warning:  this takes more memory and some time
             N/A yet
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
@@ -1438,6 +1451,8 @@ class WeightWatcher(object):
         params['intra'] = intra 
         params['channels'] = channels
         params['layers'] = layers
+        params['vectors'] = vectors
+
         
         params['savefig'] = savefig
             
@@ -1466,9 +1481,14 @@ class WeightWatcher(object):
                         self.apply_mp_fit(ww_layer, random=False, params=params)
 
                     if params['deltaEs'] and params['plot']:
-                        logger.debug("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        logger.debug("Computing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_plot_deltaEs(ww_layer, random=False, params=params)
                     
+                    if params['vectors'] and params['plot']:
+                        logger.debug("Computing and Plotting Vector Localization Metrics: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        self.apply_analyze_eigenvectors(ww_layer, params=params)
+
+                        
                     if params['randomize']:# params['mp_fit']:
                         logger.debug("Randomizing Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                         self.apply_random_esd(ww_layer, params)
@@ -2616,29 +2636,39 @@ class WeightWatcher(object):
                 
         
         sort_ids = np.argsort(all_evals)
-        
+                
         fig, axs = plt.subplots(4)
         fig.suptitle("Vector Localization Metrics for {}".format(layer_name))   
         
         data = np.array(all_vec_entropies)[sort_ids]
-        axs[0].scatter(np.arange(len(data)), data, marker=".")
+        axs[0].scatter(np.arange(len(data)), data, marker=".", label='vec entropy')
         axs[0].set_ylabel("Vector Entropy ")        
         axs[0].label_outer()   
         
         data = np.array(all_loc_ratios)[sort_ids]        
-        axs[1].scatter(np.arange(len(data)), data, marker=".")
+        axs[1].scatter(np.arange(len(data)), data, marker=".", label='loc ratio')
         axs[1].set_ylabel("Localization Ratio")            
         axs[1].label_outer()   
         
         data = np.array(all_part_ratios)[sort_ids]        
-        axs[2].scatter(np.arange(len(data)), data, marker=".")
+        axs[2].scatter(np.arange(len(data)), data, marker=".", label='part ratio')
         axs[2].set_ylabel("Participation Ratio")  
         axs[2].label_outer()     
         
         data = np.array(all_evals)[sort_ids]        
-        axs[3].scatter(np.arange(len(data)), data, marker=".")
+        axs[3].scatter(np.arange(len(data)), data, marker=".", label='eigenvalue')
         axs[3].set_ylabel("Eigenvalues")  
-        axs[3].label_outer()     
+        axs[3].label_outer() 
+    
+        data = np.array(all_evals)[sort_ids]        
+        if ww_layer.has_column('xmin'):
+            xmin = ww_layer.xmin
+            #find index of eigenvalue closest to xmin
+            xval = np.where(data<=xmin)[0][-1]
+            for ax in axs:
+                ax.axvline(x=xval, color='r', label='xmin')
+                ax.legend()
+    
   
         if savefig:
             save_fig(plt, "vector_metrics", ww_layer.layer_id, savedir)

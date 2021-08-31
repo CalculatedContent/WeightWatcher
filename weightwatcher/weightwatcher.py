@@ -32,6 +32,8 @@ import torch.nn as nn
 import onnx
 from onnx import numpy_helper
 
+import pyRMT
+
 import sklearn
 from sklearn.decomposition import TruncatedSVD
     
@@ -60,10 +62,14 @@ mpl_logger.setLevel(logging.WARNING)
 MAX_NUM_EVALS = 50000
 DEF_SAVE_DIR = 'ww-img'
 
+SVD = 'svd' # TruncatedSVF
+RMT = 'rmt' # pyRMT / RIE
+    
+    
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
                   'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
                   'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False, 'vectors':False}
+                  'ww2x':False, 'vectors':False, 'smooth':None}
 #                'stacked':False, 'unified':False}
 
 TPL = 'truncated_power_law'
@@ -2253,6 +2259,7 @@ class WeightWatcher(object):
     
     
  
+    # these methods realy belong in RMTUtil
     def smooth_W(self, W, n_comp):
         """Apply the sklearn TruncatedSVD method to each W, return smoothed W
         
@@ -2274,7 +2281,13 @@ class WeightWatcher(object):
         return smoothed_W
     
     
-    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[]):
+    def clean_W(self, W):
+        """Apply pyRMT RIE cleaning method"""
+        
+        return pyRMT.optimalShrinkage(W)
+
+  
+    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:
@@ -2297,6 +2310,11 @@ class WeightWatcher(object):
             msg = "ww2x not supported yet for SVDSharpness, ending"
             logger.error(msg)
             raise Exception(msg)
+        
+        if method not in [SVD, RMT]:
+            logger.fatal("Unknown Smoothing method {}, stopping".format(method))
+        else:
+            params['smooth']=method
         
         # check framework, return error if framework not supported
         # need to access static method on  Model class
@@ -2358,6 +2376,9 @@ class WeightWatcher(object):
         N = ww_layer.N
         rf = ww_layer.rf
         
+        if params['smooth']==RMT:
+            logger.info("applying RMT method, ignoring num_smooth options")
+        
         n_comp = num_smooth
         if num_smooth < 0:
             n_comp = M + num_smooth
@@ -2370,6 +2391,9 @@ class WeightWatcher(object):
         logger.info("LAYER TYPE  {} out of {} {} {} ".format(layer_type,LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING))          
 
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
+            if params['smooth']==RMT:
+                logger.debug("using RMT smoothing method")
+                new_W = self.clean_W(old_W) 
             if num_smooth > 0:
                 logger.debug("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 

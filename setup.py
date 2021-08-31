@@ -36,13 +36,14 @@ setup(
     test_suite = 'tests',
     python_requires = ">= 3.3.*",
     install_requires = ['numpy',
+                        'pandas',
                         'matplotlib',
                         'powerlaw',
                         'tensorflow',
                         'sklearn',
                         'torch',
                         'onnx',
-                        'pandas'],
+                        'pyRMT'],
     entry_points = '''
         [console_scripts]
         weightwatcher=weightwatcher:main

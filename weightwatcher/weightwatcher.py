@@ -32,6 +32,8 @@ import torch.nn as nn
 import onnx
 from onnx import numpy_helper
 
+import pyRMT
+
 import sklearn
 from sklearn.decomposition import TruncatedSVD
     
@@ -60,6 +62,9 @@ mpl_logger.setLevel(logging.WARNING)
 
 MAX_NUM_EVALS = 50000
 DEF_SAVE_DIR = 'ww-img'
+
+SVD = 'svd' # TruncatedSVF
+RMT = 'rmt' # pyRMT / RIE
 
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
                   'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True,
@@ -2283,6 +2288,7 @@ class WeightWatcher(object):
     
     
  
+    # these methods realy belong in RMTUtil
     def smooth_W(self, W, n_comp):
         """Apply the sklearn TruncatedSVD method to each W, return smoothed W
         
@@ -2304,7 +2310,13 @@ class WeightWatcher(object):
         return smoothed_W
     
     
-    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[]):
+    def clean_W(self, W):
+        """Apply pyRMT RIE cleaning method"""
+        
+        return pyRMT.optimalShrinkage(W)
+
+  
+    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:
@@ -2327,6 +2339,11 @@ class WeightWatcher(object):
             msg = "ww2x not supported yet for SVDSharpness, ending"
             logger.error(msg)
             raise Exception(msg)
+        
+        if method not in [SVD, RMT]:
+            logger.fatal("Unknown Smoothing method {}, stopping".format(method))
+        else:
+            params['smooth']=method
         
         # check framework, return error if framework not supported
         # need to access static method on  Model class
@@ -2357,6 +2374,10 @@ class WeightWatcher(object):
         return model   
 
     
+   
+    
+        
+        
     def apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS):
         """run truncated SVD on layer weight matrices and reconstruct the weight matrices 
         keep all eigenvlues > percent*ncomp
@@ -2384,6 +2405,9 @@ class WeightWatcher(object):
         N = ww_layer.N
         rf = ww_layer.rf
         
+        if params['smooth']==RMT:
+            logger.info("applying RMT method, ignoring num_smooth options")
+        
         n_comp = num_smooth
         if num_smooth < 0:
             n_comp = M + num_smooth
@@ -2396,6 +2420,9 @@ class WeightWatcher(object):
         logger.info("LAYER TYPE  {} out of {} {} {} ".format(layer_type,LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING))          
 
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
+            if params['smooth']==RMT:
+                logger.debug("using RMT smoothing method")
+                new_W = self.clean_W(old_W) 
             if num_smooth > 0:
                 logger.debug("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 
@@ -2574,7 +2601,49 @@ class WeightWatcher(object):
 
         return
     
+    def tensorSmoothing(self, model=None, percent=0.2, ww2x=False, methodSelectComponents = "tucker", smoothBias = True, layers=[]):
+        model = model or self.model   
+         
+        params=DEFAULT_PARAMS
+        params['ww2x'] = ww2x
+        params['layers'] = layers
+        params['percent'] = percent
+
+        # check framework, return error if framework not supported
+        # need to access static method on  Model class
+
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+     
+        #TODO: restrict to ww2x or intra
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
         
+         # iterate over layers        
+        for ww_layer in layer_iterator:
+            if not ww_layer.skipped and ww_layer.has_weights:
+                
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                
+                # get the model weights and biases directly, converted to numpy arrays        
+                has_weights, weights, has_biases, biases = ww_layer.get_weights_and_biases()    
+                    
+                T = KruskalTensor(weights.shape, rank=3, regularize=1e-6, init='nvecs', X_data=weights)
+                weights = T.train_als(weights, tf.train.AdadeltaOptimizer(0.05), epochs=20000)
+
+                if smoothBias and has_biases:
+
+                    T = KruskalTensor(biases.shape, rank=3, regularize=1e-6, init='nvecs', X_data=biases)
+                    biases = T.train_als(biases, tf.train.AdadeltaOptimizer(0.05), epochs=20000)
+                
+                self.replace_layer_weights(framework, layer_id, layer, weights, B=biases)
+                        
+        # if model was passed, then it's redundant to return smoothed model - since model was passed by reference, the model has already been smoothed. 
+        # If that's undesired, one should do a copy of the model before calling this method
+        return(model)
+    
     def unifiedSVDSmoothing(self, model=None, percent=0.2, ww2x=False, methodSelectComponents = "powerlaw_xmin", layers=[], smoothBias = True, normalizeVectors = True, doPlot = False, axes = None):
         """Apply the Unified SVD Smoothing Transform (PARRA, 2021) to model; select components based on fixed percent of eigenvalues, or powerlaw_xmin, powerlaw_spikes, or mp_spikes
         
@@ -2803,7 +2872,7 @@ class WeightWatcher(object):
           #smoothedMatrix = X @ V.T
             
         elif methodSelectComponents == "localization_ratio":
-          threshold = 10
+          threshold = 90
         
           if not doPlot:
               # Get eigenvalues from matrix
@@ -2812,12 +2881,55 @@ class WeightWatcher(object):
             
           arrayLocRatios = np.array(locRatios)
   
-          nComponents = np.sum(arrayLocRatios > np.percentile(arrayLocRatios, threshold))  
+          nComponents = np.sum(arrayLocRatios <= np.percentile(arrayLocRatios, threshold))  
 
           # do truncated SVD for smoothing weights in matrix    
           U, d, Vt = sp.linalg.svd(weightMatrix)
           dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
-          dm[:,arrayLocRatios <= np.percentile(arrayLocRatios, threshold)] = 0     
+          dm[:,arrayLocRatios > np.percentile(arrayLocRatios, threshold)] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+        elif methodSelectComponents == "vector_entropy":
+          threshold = 90
+                 
+          # Get eigenvalues from matrix
+          eigenValues, eigenVectors = np.linalg.eig(weightMatrix)            
+          vecEntropy = [vector_entropy(ev) for ev in eigenVectors]
+
+          arrayVecEntropy = np.array(vecEntropy)
+  
+          nComponents = np.sum(arrayVecEntropy <= np.percentile(arrayVecEntropy, threshold))  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,arrayVecEntropy > np.percentile(arrayVecEntropy, threshold)] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+
+        elif methodSelectComponents == "participation_ratio":
+          threshold = 90
+        
+          # Get eigenvalues from matrix
+          eigenValues, eigenVectors = np.linalg.eig(weightMatrix)            
+          partRatios = [participation_ratio(ev) for ev in eigenVectors]
+
+          arrayPartRatios = np.array(partRatios)
+  
+          nComponents = np.sum(arrayPartRatios <= np.percentile(arrayPartRatios, threshold))  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
+          dm[:,arrayPartRatios > np.percentile(arrayPartRatios, threshold)] = 0     
+          smoothedMatrix = U @ (dm @ Vt)
+            
+        elif methodSelectComponents == "allComponents":
+
+          nComponents = weightMatrix.shape[0]  
+
+          # do truncated SVD for smoothing weights in matrix    
+          U, d, Vt = sp.linalg.svd(weightMatrix)
+          dm = sp.linalg.diagsvd(d, weightMatrix.shape[0],weightMatrix.shape[1])
           smoothedMatrix = U @ (dm @ Vt)
 
           # Another method
@@ -2826,6 +2938,20 @@ class WeightWatcher(object):
           #X = weightMatrix @ V
           #smoothedMatrix = X @ V.T
 
+        elif methodSelectComponents == "RMT":
+                    
+          nComponents = 0  
+
+          smoothedMatrix = pyRMT.optimalShrinkage(weightMatrix) 
+
+        elif methodSelectComponents == "largeValues":
+                    
+          nComponents = np.sum(weightMatrix >= np.percentile(weightMatrix, 90))
+
+          weightMatrix[weightMatrix < np.percentile(weightMatrix, 90)] = 0
+          
+          smoothedMatrix = weightMatrix
+
         elif methodSelectComponents == "randomize_percentage":
           if not doPlot:
               # create shuffled version of unified matrix
@@ -2833,7 +2959,7 @@ class WeightWatcher(object):
               indexes = np.arange(0,matrix_as_vector.size).tolist()
               random.shuffle(indexes)
               shuffledMatrix = np.reshape(matrix_as_vector[indexes], weightMatrix.shape)  
-                
+        
           # learn how many singular values there are in the matrix
           singularValues = shuffledMatrix.shape[0]
 

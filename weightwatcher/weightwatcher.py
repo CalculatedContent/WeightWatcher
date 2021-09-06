@@ -36,6 +36,9 @@ import pyRMT
 
 import sklearn
 from sklearn.decomposition import TruncatedSVD
+
+from copy import deepcopy
+
     
 
 #
@@ -58,24 +61,6 @@ logger.setLevel(logging.INFO)
 
 mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
-
-MAX_NUM_EVALS = 50000
-DEF_SAVE_DIR = 'ww-img'
-
-SVD = 'svd' # TruncatedSVF
-RMT = 'rmt' # pyRMT / RIE
-    
-    
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
-                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
-                  'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False, 'vectors':False, 'smooth':None}
-#                'stacked':False, 'unified':False}
-
-TPL = 'truncated_power_law'
-POWER_LAW = 'power_law'
-LOG_NORMAL = 'lognormal'
-EXPONENTIAL = 'exponential'
 
 
 
@@ -949,6 +934,83 @@ class WWIntraLayerIterator(WW2xSliceIterator):
     def make_layer_iter_(self):
         return self.ww_intralayer_iter_()
     
+    
+class WWStackedLayerIterator(WWLayerIterator):
+    """Iterator variant that stcaks all weight matrices into a single WWLayer
+    
+    Notes: 
+    - Only supports ww2x=False 
+    
+    - The layer can be analyzed, but does not yet support SVDSmoothing, etc 
+    
+    - Each layer matrix is normalized by the Frobenius norm  W=W/||W||_F
+
+    - Each layer matric is padded with zeros to the right,  i.e
+    
+        [1, 2, 0, 0, 0, 0]
+        [3, 4, 0, 0, 0, 0]
+        [5, 6, 7, 8, 0, 0]
+        [9, 9, 9, 9, 0, 0]
+        ...
+    
+    """
+
+    def ww_stacked_iter_(self):
+        
+        # find the maximum dimensions so we can pad the matrices
+        ww_stacked_layer = None
+        Wmats = []
+        for ww_layer in self.ww_layer_iter_():
+            
+            # Here, I just lazizy copy an older layer
+            # really, we should creat the WWLayer using the init() constructor
+            if ww_stacked_layer is None:
+                ww_stacked_layer =  deepcopy(ww_layer)
+                ww_stacked_layer.the_type =  LAYER_TYPE.STACKED
+                ww_stacked_layer.layer_id = 0  
+                ww_stacked_layer.name = "Stacked Layer"
+            Wmats.extend(ww_layer.Wmats)
+            
+        #  Layer Matrices  are padded with zeros 
+        #   i.e: [1,2,3,4, 0,0,0,0] so to the same width
+        # 
+        
+        Nmax  = int(np.max([np.max(W.shape) for W in Wmats]))
+        Mmin  = int(np.min([np.min(W.shape) for W in Wmats]))
+                        
+        Wmats_padded = []
+        for W in Wmats:             
+            Height, Width = W.shape[0], W.shape[1]
+            if Height > Width:
+                W = W.T
+                Height, Width = W.shape[0], W.shape[1]
+                
+            W = np.pad(W, ((0, 0), (0, Nmax-Width)) )
+            W = W/np.linalg.norm(W)
+            Wmats_padded.append(W)
+                
+        W_stacked = np.vstack(Wmats_padded)
+        N, M = W_stacked.shape[0],  W_stacked.shape[1]
+        if N < M:
+            W_stacked = W_stacked.T
+            N, M = W_stacked.shape[0],  W_stacked.shape[1]
+                    
+        ww_stacked_layer.Wmats = [W_stacked]
+    
+        # the effective M, used for Q, will be much smaller 
+        # if there are a huge number of zero eigenvalues 
+        
+        ww_stacked_layer.N = N
+        ww_stacked_layer.M = M
+        ww_stacked_layer.rf = 1
+        
+        yield ww_stacked_layer
+                
+    def make_layer_iter_(self):
+        return self.ww_stacked_iter_()
+    
+    
+    
 class WeightWatcher(object):
 
     def __init__(self, model=None, log_level=None):
@@ -1327,7 +1389,6 @@ class WeightWatcher(object):
     def make_layer_iterator(self, model=None, layers=[], params=DEFAULT_PARAMS):
         """Constructor for the Layer Iterator; See analyze(...)
         
-        TODO: Add WWStackedLayersIterator
          """
          
         # this doesn't seem to work
@@ -1343,10 +1404,14 @@ class WeightWatcher(object):
         #stacked = params['stacked']
         intra = params['intra']
         ww2x = params['ww2x']
+        stacked = params['stacked']
         
         layer_iterator = None
-        if intra:
-            logger.info("Intra layer Analysis (experimental)")
+        if stacked:
+            logger.info("Using Stacked Iterator (experimental)")
+            layer_iterator = WWStackedLayerIterator(model, filters=layers, params=params)    
+        elif intra:
+            logger.info("using Intra layer Analysis (experimental)")
             layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
         elif ww2x:
             logger.info("Using weightwatcher 0.2x style layer and slice iterator")
@@ -1544,7 +1609,7 @@ class WeightWatcher(object):
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
-                deltas=False, intra=False, channels=None):
+                deltas=False, intra=False, channels=None, stacked=False):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1570,7 +1635,8 @@ class WeightWatcher(object):
         params['intra'] = intra 
         params['channels'] = channels
         params['layers'] = layers
-        
+        params['stacked'] = stacked
+
         params['savefig'] = savefig
 
 

@@ -5,6 +5,8 @@ warnings.simplefilter(action='ignore', category=RuntimeWarning)
 import sys, logging
 import weightwatcher as ww
 from weightwatcher import  LAYER_TYPE 
+from weightwatcher import  DEFAULT_PARAMS 
+
 
 import torchvision.models as models
 import pandas as pd
@@ -500,7 +502,7 @@ class Test_VGG11(unittest.TestCase):
 		
 	
 	def test_make_ww_iterator(self):
-		"""Test that we can make the ww layer iterator
+		"""Test that we can make the default ww layer iterator
 		"""
 		iterator = self.watcher.make_layer_iterator(model=self.model)
 		num = 0
@@ -515,6 +517,38 @@ class Test_VGG11(unittest.TestCase):
 			self.assertEqual(ww_layer.layer_id,28)
 			num += 1
 		self.assertEqual(num,1)
+		
+		
+	def test_ww_stacked_layer_iterator(self):
+		"""Test Stacked Layer Iterator
+		"""
+				
+		params = DEFAULT_PARAMS
+		params['stacked'] = True
+		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
+		#TODO: get this to work!
+		#self.assertEqual(iterator.__class__.__name__, WWStackedLayerIterator)
+		num = 0
+		for ww_layer in iterator:
+			num+=1
+			
+		self.assertEqual(num,1)
+		self.assertEqual(ww_layer.name, "Stacked Layer")
+		self.assertEqual(ww_layer.layer_id,0)
+		self.assertEqual(ww_layer.N,29379)
+		self.assertEqual(ww_layer.M,25088)
+		self.assertEqual(ww_layer.rf,1)
+		
+	def test_ww_stacked_layer_details(self):
+		"""Test Stacked Layer Iterator
+		"""
+				
+		details = self.watcher.describe(model=self.model, stacked=True)
+		self.assertEqual(len(details),1)
+		self.assertEqual(details.N.to_numpy()[0],29379)
+		self.assertEqual(details.M.to_numpy()[0],25088)
+		self.assertEqual(details.rf.to_numpy()[0],1)
+		self.assertEqual(details.layer_type.to_numpy()[0],str(LAYER_TYPE.STACKED))
 		
 		
 				
@@ -537,6 +571,7 @@ class Test_VGG11(unittest.TestCase):
 			self.assertEqual(W2.shape,(N,M))
 			self.assertEqual(W[0,0],W2[0,0])
 			
+		
 		
 
 class Test_TFBert(unittest.TestCase):

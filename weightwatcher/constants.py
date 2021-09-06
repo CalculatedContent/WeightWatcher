@@ -15,9 +15,26 @@
 from enum import IntFlag, auto, Enum
 
 
+MAX_NUM_EVALS = 50000
+DEF_SAVE_DIR = 'ww-img'
+
+SVD = 'svd' # TruncatedSVF
+RMT = 'rmt' # pyRMT / RIE
+    
+    
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
+                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
+                  'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
+                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False}
+
+TPL = 'truncated_power_law'
+POWER_LAW = 'power_law'
+LOG_NORMAL = 'lognormal'
+EXPONENTIAL = 'exponential'
+
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()
-    COMBINED = auto()
+    STACKED = auto()
     DENSE = auto()
     CONV1D = auto()
     CONV2D = auto()

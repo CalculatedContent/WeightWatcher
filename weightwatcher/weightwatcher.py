@@ -996,13 +996,16 @@ class WWStackedLayerIterator(WWLayerIterator):
             N, M = W_stacked.shape[0],  W_stacked.shape[1]
                     
         ww_stacked_layer.Wmats = [W_stacked]
-    
-        # the effective M, used for Q, will be much smaller 
-        # if there are a huge number of zero eigenvalues 
-        
+
         ww_stacked_layer.N = N
         ww_stacked_layer.M = M
         ww_stacked_layer.rf = 1
+        
+        
+        # Thi needs to be reset and used properly , eventually
+        # the effective M, used for Q, will be much smaller 
+        # if there are a huge number of zero eigenvalues 
+        self.num_components = M  # default for full SVD, not used yet
         
         yield ww_stacked_layer
                 
@@ -1430,7 +1433,7 @@ class WeightWatcher(object):
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
-                deltas=False, intra=False, vectors=True, channels=None):
+                deltas=False, intra=False, vectors=True, channels=None, stacked=False):
         """
         Analyze the weight matrices of a model.
 
@@ -1489,11 +1492,14 @@ class WeightWatcher(object):
             Experimental option
         channels: None | 'fisrt' | 'last'
             re/set the channels from the default for the framework
-        vectors:  N/A yet
+        vectors:  
             Compute the eigenvectors and plots various metrics, including the vector entropy and localization statistics, 
             both as a sequence (elbow plots) and as histograms
             Warning:  this takes more memory and some time
-            N/A yet
+        stacked: (experimental)
+            Stack all the weight matrices into a single Layer, and analyze
+            Can be very slow.
+            
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
         """
@@ -1523,6 +1529,7 @@ class WeightWatcher(object):
         params['channels'] = channels
         params['layers'] = layers
         params['vectors'] = vectors
+        params['stacked'] = stacked
 
         
         params['savefig'] = savefig

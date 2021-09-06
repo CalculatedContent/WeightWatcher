@@ -538,6 +538,8 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(ww_layer.N,29379)
 		self.assertEqual(ww_layer.M,25088)
 		self.assertEqual(ww_layer.rf,1)
+		self.assertEqual(ww_layer.num_components,ww_layer.M)
+		
 		
 	def test_ww_stacked_layer_details(self):
 		"""Test Stacked Layer Iterator

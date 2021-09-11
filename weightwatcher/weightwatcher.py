@@ -1880,7 +1880,7 @@ class WeightWatcher(object):
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
-                     savedir=DEF_SAVE_DIR, savefig=True):
+                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1888,6 +1888,10 @@ class WeightWatcher(object):
                 'peak' , try to set by finding the peak of the ESD on a log scale
             
             if xmax is 'auto' or None, xmax = np.max(evals)
+            
+            svd_method = FULL_SVD (to add TRUNCATED_SVD with some cutoff)
+            thresh is a threshhold on the evals, to be used for very large matrices with lots of zeros
+            
                      
          """
              
@@ -1909,9 +1913,10 @@ class WeightWatcher(object):
             xmax = np.max(evals)
             
         if xmin == XMAX.AUTO  or xmin is None:
-            fit = powerlaw.Fit(evals, xmax=xmax, verbose=False)
+            nz_evals = evals[evals > thresh]
+            fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False)
         elif xmin == XMAX.PEAK :
-            nz_evals = evals[evals > 0.0]
+            nz_evals = evals[evals > thresh]
             num_bins = 100  # np.min([100, len(nz_evals)])
             h = np.histogram(np.log10(nz_evals), bins=num_bins)
             ih = np.argmax(h[0])

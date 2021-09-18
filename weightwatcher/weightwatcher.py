@@ -17,6 +17,7 @@ import logging
 
 import numpy as np
 import pandas as pd
+import scipy as sp
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -969,24 +970,42 @@ class WWStackedLayerIterator(WWLayerIterator):
                 ww_stacked_layer.the_type =  LAYER_TYPE.STACKED
                 ww_stacked_layer.layer_id = 0  
                 ww_stacked_layer.name = "Stacked Layer"
-            Wmats.extend(ww_layer.Wmats)
+                
+            # first attempt
+            #Wmats.extend(ww_layer.Wmats)
             
+            # second attempt
+            #  stack all the conv2d matrices horizontally first
+            if len(ww_layer.Wmats)>1:
+                W = np.hstack(ww_layer.Wmats)
+            else:
+                W = ww_layer.Wmats[0]   
+                
+            #N, M =  W.shape[0],  W.shape[1]
+            #if N < M:
+            #    W = W.T            
+            Wmats.append(W)
+             
         #  Layer Matrices  are padded with zeros 
         #   i.e: [1,2,3,4, 0,0,0,0] so to the same width
         # 
         
-        Nmax  = int(np.max([np.max(W.shape) for W in Wmats]))
-        Mmin  = int(np.min([np.min(W.shape) for W in Wmats]))
+        Ms = [int(W.shape[1]) for W in Wmats]
+        
+        Mmax, Mmin = np.max(Ms), np.min(Ms)
                         
         Wmats_padded = []
         for W in Wmats:             
             Height, Width = W.shape[0], W.shape[1]
-            if Height > Width:
-                W = W.T
-                Height, Width = W.shape[0], W.shape[1]
-                
-            W = np.pad(W, ((0, 0), (0, Nmax-Width)) )
-            W = W/np.linalg.norm(W)
+#            fixed above
+#            if Height > Width:
+#                W = W.T
+            #Height, Width = W.shape[0], W.shape[1]
+               
+            print(Mmax, Height, Width) 
+            #W = W/np.linalg.norm(W)
+            W = (W - np.median(W))/sp.stats.median_absolute_deviation(W)
+            W = np.pad(W, ((0, 0), (0, Mmax-Width)) ) 
             Wmats_padded.append(W)
                 
         W_stacked = np.vstack(Wmats_padded)
@@ -1013,6 +1032,7 @@ class WWStackedLayerIterator(WWLayerIterator):
         return self.ww_stacked_iter_()
     
     
+
     
 class WeightWatcher(object):
 
@@ -2472,7 +2492,7 @@ class WeightWatcher(object):
             if params['smooth']==RMT:
                 logger.debug("using RMT smoothing method")
                 new_W = self.clean_W(old_W) 
-            if num_smooth > 0:
+            elif num_smooth > 0:
                 logger.debug("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 
             elif num_smooth < 0:

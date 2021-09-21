@@ -1386,9 +1386,10 @@ class WeightWatcher(object):
         sample_size = None
 
         savedir = params['savedir']
+        robust_alpha = params['robust_alpha']
 
         layer_name = "Layer {}".format(layer_id)
-        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir)
+        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, robust_alpha=robust_alpha)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1453,7 +1454,7 @@ class WeightWatcher(object):
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
-                deltas=False, intra=False, vectors=True, channels=None, stacked=False):
+                deltas=False, intra=False, vectors=True, channels=None, stacked=False, robust_alpha=False):
         """
         Analyze the weight matrices of a model.
 
@@ -1553,6 +1554,7 @@ class WeightWatcher(object):
 
         
         params['savefig'] = savefig
+        params['robust_alpha'] = robust_alpha
             
         logger.debug("params {}".format(params))
         if not self.valid_params(params):
@@ -1900,7 +1902,7 @@ class WeightWatcher(object):
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
-                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH):
+                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=None, thresh=0., temperature=100, robust_alpha=False):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1914,6 +1916,8 @@ class WeightWatcher(object):
             
                      
          """
+        
+        print(f"threhold has been changed to {thresh}")
              
         num_evals = len(evals)
         logger.debug("fitting power law on {} eigenvalues".format(num_evals))
@@ -1953,6 +1957,14 @@ class WeightWatcher(object):
         xmin = fit.xmin
         xmax = fit.xmax
         num_pl_spikes = len(evals[evals>=fit.xmin])
+        
+        if robust_alpha:
+            # Here, we need to make sure that continuous_estimate is a float
+            assert isinstance(temperature, float) or isinstance(temperature, int)
+            # Softmin function
+            WeightsD = np.exp(-temperature*fit.Ds)/sum(np.exp(-temperature*fit.Ds))
+            # Weighted average
+            alpha = fit.alphas.dot(WeightsD)
         
       
         logger.debug("finding best distribution for fit")

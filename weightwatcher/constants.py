@@ -18,19 +18,24 @@ from enum import IntFlag, auto, Enum
 MAX_NUM_EVALS = 50000
 DEF_SAVE_DIR = 'ww-img'
 
-SVD = 'svd' # TruncatedSVF
+
+TRUNCATED_SVD = 'truncated_svd'
+FULL_SVD = 'full_svd'
+
+SVD = 'svd' # TruncatedSVD for Smoothing
 RMT = 'rmt' # pyRMT / RIE
-    
     
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
                   'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
                   'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False}
+                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False, 'svd_method':FULL_SVD}
 
 TPL = 'truncated_power_law'
 POWER_LAW = 'power_law'
 LOG_NORMAL = 'lognormal'
 EXPONENTIAL = 'exponential'
+
+EVALS_THRESH = 0.0
 
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()

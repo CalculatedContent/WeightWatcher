@@ -605,3 +605,26 @@ def save_fig(plt, figname, layer_id, savedir):
         os.mkdir(savedir)
     plt.savefig(figname)
     return 
+
+# https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d
+
+def jensen_shannon_distance(p, q):
+    """
+    method to compute the Jenson-Shannon Distance 
+    between two probability distributions
+    """
+
+    # convert the vectors into numpy arrays in case that they aren't
+    p = np.array(p)
+    q = np.array(q)
+
+    # calculate m
+    m = (p + q) / 2
+
+    # compute Jensen Shannon Divergence
+    divergence = (sp.stats.entropy(p, m) + sp.stats.entropy(q, m)) / 2
+
+    # compute the Jensen Shannon Distance
+    distance = np.sqrt(divergence)
+
+    return distance

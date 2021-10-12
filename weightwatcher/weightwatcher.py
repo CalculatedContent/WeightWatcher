@@ -1298,7 +1298,13 @@ class WeightWatcher(object):
      
         ww_layer.rand_evals = rand_evals
         ww_layer.add_column("max_rand_eval", np.max(rand_evals))
-        
+
+        # measure distance between random and non-random esd
+        #  https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d
+        evals = ww_layer.evals
+        dist = jensen_shannon_distance(evals, rand_evals)
+        ww_layer.add_column("rand_distance", dist)
+
         if params['plot']:
             self.plot_random_esd(ww_layer, params)
             

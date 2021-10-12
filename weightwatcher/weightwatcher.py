@@ -1002,7 +1002,6 @@ class WWStackedLayerIterator(WWLayerIterator):
 #                W = W.T
             #Height, Width = W.shape[0], W.shape[1]
                
-            print(Mmax, Height, Width) 
             #W = W/np.linalg.norm(W)
             W = (W - np.median(W))/sp.stats.median_absolute_deviation(W)
             W = np.pad(W, ((0, 0), (0, Mmax-Width)) ) 
@@ -1304,7 +1303,6 @@ class WeightWatcher(object):
         evals = ww_layer.evals
         rand_evals = self.random_eigenvalues(Wmats, n_comp, 1 , params)
         dist = jensen_shannon_distance(evals, rand_evals)
-        print(len(evals),len(rand_evals))
         ww_layer.add_column("rand_distance", dist)
 
         if params['plot']:
@@ -1394,9 +1392,9 @@ class WeightWatcher(object):
         sample_size = None
 
         savedir = params['savedir']
-
+        ff =  params['fix_fingers']
         layer_name = "Layer {}".format(layer_id)
-        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir)
+        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1461,7 +1459,7 @@ class WeightWatcher(object):
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
-                deltas=False, intra=False, vectors=True, channels=None, stacked=False):
+                deltas=False, intra=False, vectors=True, channels=None, stacked=False, fix_fingers=False):
         """
         Analyze the weight matrices of a model.
 
@@ -1527,6 +1525,9 @@ class WeightWatcher(object):
         stacked: (experimental)
             Stack all the weight matrices into a single Layer, and analyze
             Can be very slow.
+        fix_fingers: (fix fingers)
+            Attempts to fix the fingers / finite-size-effects which sometimes occurs layers with spuriously large alphas
+            Can be very slow.
             
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
@@ -1558,6 +1559,7 @@ class WeightWatcher(object):
         params['layers'] = layers
         params['vectors'] = vectors
         params['stacked'] = stacked
+        params['fix_fingers'] = fix_fingers
 
         
         params['savefig'] = savefig
@@ -1644,7 +1646,7 @@ class WeightWatcher(object):
                 normalize=False, glorot_fix=False, plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
-                deltas=False, intra=False, channels=None, stacked=False):
+                deltas=False, intra=False, channels=None, stacked=False, fix_fingers=False):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1671,6 +1673,7 @@ class WeightWatcher(object):
         params['channels'] = channels
         params['layers'] = layers
         params['stacked'] = stacked
+        params['fix_fingers'] = fix_fingers
 
         params['savefig'] = savefig
 
@@ -1908,7 +1911,7 @@ class WeightWatcher(object):
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
-                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH):
+                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False):
         """Fit eigenvalues to powerlaw
         
             if xmin is 
@@ -1925,7 +1928,11 @@ class WeightWatcher(object):
              
         num_evals = len(evals)
         logger.debug("fitting power law on {} eigenvalues".format(num_evals))
-        
+
+        if fix_fingers:
+            logger.debug("attempting to fix the fingers (finite-size-effects)")
+            xmin = XMAX.PEAK
+
         # TODO: replace this with a robust sampler / stimator
         # requires a lot of refactoring below
         if sample and  sample_size is None:
@@ -2173,7 +2180,7 @@ class WeightWatcher(object):
         logDeltaEs = np.log10(deltaEs)
         x = np.arange(len(deltaEs))
         eqn = r"$\log_{10}\Delta(\lambda)$"
-        plt.scatter(x,logDeltaEs, color=color)
+        plt.scatter(x,logDeltaEs, color=color, marker='.')
         
         if not random:
             idx = np.searchsorted(evals, ww_layer.xmin, side="left")        

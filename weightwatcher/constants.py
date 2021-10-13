@@ -22,13 +22,19 @@ DEF_SAVE_DIR = 'ww-img'
 TRUNCATED_SVD = 'truncated_svd'
 FULL_SVD = 'full_svd'
 
+# fi_ fingers options
+XMIN_PEAK = 'xmin_peak'
+CLIP_XMAX = 'clip_xmax'
+
 SVD = 'svd' # TruncatedSVD for Smoothing
 RMT = 'rmt' # pyRMT / RIE
     
 DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
                   'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
                   'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False, 'svd_method':FULL_SVD}
+                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False, 
+                  'svd_method':FULL_SVD,  'fix_fingers':None}
+
 
 TPL = 'truncated_power_law'
 POWER_LAW = 'power_law'
@@ -81,12 +87,11 @@ class METRICS():
     MATRIX_ENTROPY = "entropy"
 
 
-
+# XMAX, XMIN not really used
     
 class XMAX(IntFlag):
     UNKNOWN = auto()
     AUTO = auto()
-    PEAK = auto()
 
 
 class XMIN(IntFlag):

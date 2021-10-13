@@ -606,8 +606,35 @@ def save_fig(plt, figname, layer_id, savedir):
     plt.savefig(figname)
     return 
 
-# https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d
 
+def fit_clipped_powerlaw(evals, xmin=None, verbose=False):
+    """Fits a powerlaw only, not a truncate power law
+       clips off the max evals until a powerlaw is found, or stops half-way into the ESD
+       
+       Used to remove power-law tail fingers, which may result from finite size effects
+       
+       Assumes evalsa re in sort order"""
+       
+    assert(evals[-1]> evals[0])  
+    N = int(len(evals)/2)
+    for idx in range(1,N):
+        xmax = np.max(evals[-idx])
+         
+        fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+        print("fit alpha",fit.alpha)  
+        # stop when distribtion becomes power law
+        R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
+        if R > 0.0:
+            break
+            
+    if idx == N:
+        xmax = np.max(evals)
+        fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+     
+    return fit
+             
+        
+# https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d
 def jensen_shannon_distance(p, q):
     """
     method to compute the Jenson-Shannon Distance 

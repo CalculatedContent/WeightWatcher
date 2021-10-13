@@ -1929,9 +1929,6 @@ class WeightWatcher(object):
         num_evals = len(evals)
         logger.debug("fitting power law on {} eigenvalues".format(num_evals))
 
-        if fix_fingers:
-            logger.debug("attempting to fix the fingers (finite-size-effects)")
-            xmin = XMAX.PEAK
 
         # TODO: replace this with a robust sampler / stimator
         # requires a lot of refactoring below
@@ -1947,10 +1944,8 @@ class WeightWatcher(object):
         if xmax == XMAX.AUTO or xmax is XMAX.UNKNOWN or xmax is None:
             xmax = np.max(evals)
             
-        if xmin == XMAX.AUTO  or xmin is None:
-            nz_evals = evals[evals > thresh]
-            fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False)
-        elif xmin == XMAX.PEAK :
+        if fix_fingers==XMIN_PEAK:
+            logger.info("fix the fingers by setting xmin to the peak of the ESD")
             nz_evals = evals[evals > thresh]
             num_bins = 100  # np.min([100, len(nz_evals)])
             h = np.histogram(np.log10(nz_evals), bins=num_bins)
@@ -1958,8 +1953,17 @@ class WeightWatcher(object):
             xmin2 = 10 ** h[1][ih]
             xmin_range = (0.95 * xmin2, 1.05 * xmin2)
             fit = powerlaw.Fit(evals, xmin=xmin_range, xmax=xmax, verbose=False)   
+            
+        elif fix_fingers==CLIP_XMAX:
+            logger.info("fix the fingers by fitting a clipped power law")
+            fit = fit_clipped_powerlaw(evals, xmin=xmin, verbose=False)
+             
+        elif xmin == XMAX.AUTO  or xmin is None:
+            nz_evals = evals[evals > thresh]
+            fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False)
+
         else:
-            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=False)
+            fit = powerlaw.Fit(evals, xmin=xmin,  verbose=False)
             
         
         alpha = fit.alpha 
@@ -1989,6 +1993,7 @@ class WeightWatcher(object):
             plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin)
             fig2 = fit.plot_pdf(color='r', linewidth=2)
             fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+           # fit.truncated_power_law.plot_pdf(color='o', linestyle='--', ax=fig2)
         
             title = "Log-Log ESD for {}\n".format(layer_name) 
             title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \

@@ -34,8 +34,7 @@ More details and demos can be found on the [Calculated Content Blog](https://cal
 
 We strive to make all of our results 100% reproducible; this is not easy.
 
-
-Please Note;  to reproduce some older results, such as the Nature paper (which is actually 2 years old), use the **ww2x** option
+To reproduce some older results, such as the Nature paper (which is actually 2 years old), use the **ww2x** option
 
 ```sh
 watcher.analyze(..., ww2x=True, ...)

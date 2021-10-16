@@ -41,7 +41,7 @@ POWER_LAW = 'power_law'
 LOG_NORMAL = 'lognormal'
 EXPONENTIAL = 'exponential'
 
-EVALS_THRESH = 0.0
+EVALS_THRESH = 0.00001
 
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()

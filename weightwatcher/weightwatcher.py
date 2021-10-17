@@ -1301,9 +1301,10 @@ class WeightWatcher(object):
         # measure distance between random and non-random esd
         #  https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d
         evals = ww_layer.evals
-        rand_evals = self.random_eigenvalues(Wmats, n_comp, 1 , params)
-        dist = jensen_shannon_distance(evals, rand_evals)
-        ww_layer.add_column("rand_distance", dist)
+        if evals is not None and len(evals>0):
+            rand_evals = self.random_eigenvalues(Wmats, n_comp, 1 , params)
+            dist = jensen_shannon_distance(evals, rand_evals)
+            ww_layer.add_column("rand_distance", dist)
 
         if params['plot']:
             self.plot_random_esd(ww_layer, params)
@@ -1765,7 +1766,18 @@ class WeightWatcher(object):
             params['savedir'] = savefig
             logger.info("Saving all images to {}".format(savedir))
         elif not isinstance(savefig,str) and not isinstance(savefig,bool):
-            valid = False            
+            valid = False      
+            
+            
+        fix_fingers =  params['fix_fingers']
+        if fix_fingers:
+            if fix_fingers not in [XMIN_PEAK, CLIP_XMAX]:
+                logger.warning("Unknown how to fix fingers {}, deactivating".format(fix_fingers))
+            else:
+                logger.info("Fixing fingers using  {}".format(fix_fingers))
+                
+            
+              
 
         return valid
     
@@ -2807,10 +2819,15 @@ class WeightWatcher(object):
             if ww_layer.has_column('xmin'):
                 xmin = ww_layer.xmin
                 #find index of eigenvalue closest to xmin
-                xval = np.where(sorted_evals < xmin)[0][-1]
-                for ax in axs:
-                    ax.axvline(x=xval, color='r', label='xmin')
-                    ax.legend()
+                
+                xvals = np.where(sorted_evals < xmin)[0]
+                if len(xvals)>0:
+                    xval = xvals[-1]
+                    for ax in axs:
+                        ax.axvline(x=xval, color='r', label='xmin')
+                        ax.legend()
+                else:
+                    logger.warning("xmin can not be displayed")
         
             if savefig:
                 save_fig(plt, "vector_metrics", ww_layer.layer_id, savedir)

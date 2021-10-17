@@ -30,6 +30,19 @@ WeightWatcher is based on theoretical research (done injoint with UC Berkeley) i
 
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
+#### Reproducing Old Results
+
+We strive to make all of our results 100% reproducible; this is not easy.
+
+To reproduce some older results, such as the Nature paper (which is actually 2 years old), use the **ww2x** option
+
+```sh
+watcher.analyze(..., ww2x=True, ...)
+```
+
+If you are unable to reproduce the results, please file a bug and I will try to address it.
+
+
 ## Installation 
 
 ```sh

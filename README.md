@@ -99,13 +99,6 @@ The goal of the WeightWatcher project is find generalization metrics that most a
 
 All of these attempt to measure how on-random and/or non-heavy-tailed the layer ESDs are.  
 
-#### Direct Correlation Metrics 
-
- [See blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
-
-
-- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">
-
 
 
 #### Scale Metrics 
@@ -125,6 +118,13 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
+#### Direct Correlation Metrics 
+
+  The rand_distance metrics is a new, non-parameteric approach that appears to work well in early testing.
+ [See this recent blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
+
+- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">
+- 
 #### Misc Details
 
 - N, M:  Matrix or Tensor Slice Dimensions
@@ -233,6 +233,8 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
+
+**See also the recent rand_distance metric.**
 
 
 ### SVDSmoothing and SVDSharpness Transforms 

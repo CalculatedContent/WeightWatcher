@@ -101,7 +101,11 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 
 #### Direct Correlation Metrics 
 
-- rand_distance:  - [See blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
+ [See blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
+
+
+- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=divergence(\mathbF{W),random(\nathbf{W})">
+
 
 
 #### Scale Metrics 

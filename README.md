@@ -104,7 +104,7 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
  [See blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
 
 
-- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=\div(\mathbf{W},\mathbf{W})">
+- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">
 
 
 

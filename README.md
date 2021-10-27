@@ -84,6 +84,26 @@ WW computes several Scale and Shape metrics for each layer Weight matrix **W**, 
 
 These are reported in a **details dataframe**,  including:
 
+### Generalization Metrics
+
+The goal of the WeightWatcher project is find generalization metrics that most accurately reflect observed test accuracies, across many different models and architectures, and both pre-trained and during training.
+
+[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP random bulk, and, even more specifically, be heavy tailed. There are different layer metrics in weightwatcher for this, including:
+
+- rand_distance:  the  distance in distribution from the randomized layer
+- alpha:  the slope of the tail of the ESD, on a log-log scale
+- alpha-hat:  a scale-adjusted form of alpha (similar to the alpha-shatten-Norm)
+- stable-rank:  a norm-adjusted measure of the scale of the ESD
+- num_spikes:  the number of spikes outside the MP bulk region
+- etc
+
+All of these attempt to measure how on-random and/or non-heavy-tailed the layer ESDs are.  
+
+#### Direct Correlation Metrics 
+
+- rand_distance:  - [See blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
+
+
 #### Scale Metrics 
 
 - log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{W}\Vert^{2}_{F}">

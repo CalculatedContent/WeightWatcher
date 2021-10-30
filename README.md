@@ -472,6 +472,10 @@ and has been the subject  many popular podcasts
 
 [PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
 
+#### Recent talk(s) by Mike Mahoney, UC Berekely
+
+[IARAI, the Institute for Advanced Research in Artificial Intelligence](https://www.youtube.com/watch?v=Pirni67ZmRQ)
+
 
 ## Slack Channel
 

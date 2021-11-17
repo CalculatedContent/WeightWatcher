@@ -367,6 +367,21 @@ ww.layer#.esd4.png
   (Theoretical_CDF * (1 - Theoretical_CDF))
 </pre>
 
+#### Tips for First Time Users
+
+On using weightwatcher for the first time.  I recommend selecting at least 1 trained  model, and running weightwatcher with all analyze options on, including the plots,  to see
+- if the layers ESDs are well formed and heavy tailed
+- if any layers are nearly random, indicating they are not well trained
+- if all the power law a fits look reasonable, and xmin is small enough that the fit captures a good part of the tail of the ESD
+- 
+Moreover, the Power Laws fits, and the alpha fit, only work well when the ESDs are both heavy tailed, *and*( can be easily fit to a single power law.
+But sometimes the power law / alpha fits don't work.  This happens when
+- the ESD is random, not heavy tailed.  Here, alpha > 8 or larger.
+- the ESD is multimodal (rare, but does occur)
+- the ESD is heavy tailed, but not well described by a single power law.  In these cases , sometimes alpha only fits the the very last part of the tail, and is too large. This is easily seen on the Lin-Lin plots
+- 
+In any of these cases, I usually throw away alphas > 8 because they are spurious./. If you suspect your layers are undertrained, you have to look both at alpha and a plot of the ESD itself (to see if it is heavy tailed or just random-like)
+
 ### Demo Notebooks
 
 [Basic Usage](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)

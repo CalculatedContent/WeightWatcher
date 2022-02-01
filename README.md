@@ -78,11 +78,30 @@ and summary dict of generalization metrics
       'mp_softrank': 0.52}]
 ```
 
+### Tips for First Time Users (SEE BELOW)
+
 ### Layer Details: 
 
 WW computes several Scale and Shape metrics for each layer Weight matrix **W**, as described in our papers (see below)
 
 These are reported in a **details dataframe**,  including:
+
+### Generalization Metrics
+
+The goal of the WeightWatcher project is find generalization metrics that most accurately reflect observed test accuracies, across many different models and architectures, and both pre-trained and during training.
+
+[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP random bulk, and, even more specifically, be heavy tailed. There are different layer metrics in weightwatcher for this, including:
+
+- rand_distance:  the  distance in distribution from the randomized layer
+- alpha:  the slope of the tail of the ESD, on a log-log scale
+- alpha-hat:  a scale-adjusted form of alpha (similar to the alpha-shatten-Norm)
+- stable-rank:  a norm-adjusted measure of the scale of the ESD
+- num_spikes:  the number of spikes outside the MP bulk region
+- etc
+
+All of these attempt to measure how on-random and/or non-heavy-tailed the layer ESDs are.  
+
+
 
 #### Scale Metrics 
 
@@ -101,6 +120,13 @@ These are reported in a **details dataframe**,  including:
 - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
 - log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
+#### Direct Correlation Metrics 
+
+  The rand_distance metrics is a new, non-parameteric approach that appears to work well in early testing.
+ [See this recent blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
+
+- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">
+- 
 #### Misc Details
 
 - N, M:  Matrix or Tensor Slice Dimensions
@@ -209,6 +235,8 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
+
+**See also the recent rand_distance metric.**
 
 
 ### SVDSmoothing and SVDSharpness Transforms 
@@ -341,6 +369,21 @@ ww.layer#.esd4.png
   (Theoretical_CDF * (1 - Theoretical_CDF))
 </pre>
 
+### Tips for First Time Users
+
+On using weightwatcher for the first time.  I recommend selecting at least 1 trained  model, and running weightwatcher with all analyze options on, including the plots,  to see
+- if the layers ESDs are well formed and heavy tailed
+- if any layers are nearly random, indicating they are not well trained
+- if all the power law a fits look reasonable, and xmin is small enough that the fit captures a good part of the tail of the ESD
+
+Moreover, the Power Laws fits, and the alpha fit, only work well when the ESDs are both heavy tailed, *and*( can be easily fit to a single power law.
+But sometimes the power law / alpha fits don't work.  This happens when
+- the ESD is random, not heavy tailed.  Here, alpha > 8 or larger.
+- the ESD is multimodal (rare, but does occur)
+- the ESD is heavy tailed, but not well described by a single power law.  In these cases , sometimes alpha only fits the the very last part of the tail, and is too large. This is easily seen on the Lin-Lin plots
+
+In any of these cases, I usually throw away alphas > 8 because they are spurious./. If you suspect your layers are undertrained, you have to look both at alpha and a plot of the ESD itself (to see if it is heavy tailed or just random-like)
+
 ### Demo Notebooks
 
 [Basic Usage](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
@@ -445,6 +488,10 @@ and has been the subject  many popular podcasts
 [MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
 
 [PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
+
+#### Recent talk(s) by Mike Mahoney, UC Berekely
+
+[IARAI, the Institute for Advanced Research in Artificial Intelligence](https://www.youtube.com/watch?v=Pirni67ZmRQ)
 
 
 ## Slack Channel

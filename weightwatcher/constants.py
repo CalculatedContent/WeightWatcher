@@ -16,6 +16,8 @@ from enum import IntFlag, auto, Enum
 
 
 MAX_NUM_EVALS = 50000
+MIN_NUM_EVALS = 3
+
 DEF_SAVE_DIR = 'ww-img'
 
 
@@ -28,18 +30,30 @@ CLIP_XMAX = 'clip_xmax'
 
 SVD = 'svd' # TruncatedSVD for Smoothing
 RMT = 'rmt' # pyRMT / RIE
-    
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
-                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
-                  'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False, 
-                  'svd_method':FULL_SVD,  'fix_fingers':None}
-
 
 TPL = 'truncated_power_law'
 POWER_LAW = 'power_law'
 LOG_NORMAL = 'lognormal'
 EXPONENTIAL = 'exponential'
+    
+# STATUSes
+
+SUCCESS = 'success'
+FAILED = 'failed'
+OVER_TRAINED = 'over-traoined'
+UNDER_TRAINED = 'under-trained'
+
+UNKNOWN = 'unknown'
+
+
+DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
+                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
+                  'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
+                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False, 
+                  'svd_method':FULL_SVD,  'fix_fingers':None, 'fit':POWER_LAW}
+
+
+
 
 EVALS_THRESH = 0.00001
 

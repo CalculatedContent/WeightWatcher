@@ -351,26 +351,34 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(actual,expected, places=2)
 		
 		
-	def test_fix_fingers(self):
-		"""Test fix fingers xmin_peak and clip_xmax
+	def test_fix_fingers_xmin_peak(self):
+		"""Test fix fingers xmin_peak 
 		"""
 		self.model = models.vgg11(pretrained=True)
 		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
 		# default
 		details = self.watcher.analyze(layers=[5])
-		actual = details.alpha
+		actual = details.alpha.to_numpy()[0]
 		expected = 7.116304
+		print("ACTUAL {}".format(actual))
 		self.assertAlmostEqual(actual,expected, places=4)
 		
-		# XMIN_PARK
+		# XMIN_PEAK
 		details = self.watcher.analyze(layers=[5], fix_fingers='xmin_peak')
-		actual = details.alpha
+		actual = details.alpha[0]
+		actual = details.alpha.to_numpy()[0]
 		expected = 1.422195
 		self.assertAlmostEqual(actual,expected, places=4)
 		
+		
+	def test_fix_fingers_clip_xmax(self):
+		"""Test fix fingers clip_xmax
+		"""
+		self.model = models.vgg11(pretrained=True)	
+		
 		# CLIP_XMAX
 		details = self.watcher.analyze(layers=[5], fix_fingers='clip_xmax')
-		actual = details.alpha
+		actual = details.alpha.to_numpy()[0]
 		expected = 1.663549
 		self.assertAlmostEqual(actual,expected, places=4)
 		
@@ -575,10 +583,10 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(num,1)
 		self.assertEqual(ww_layer.name, "Stacked Layer")
 		self.assertEqual(ww_layer.layer_id,0)
-	#	self.assertEqual(ww_layer.N,29379)
-	#	self.assertEqual(ww_layer.M,25088)
+	#	self.assertEqual(ww_layer.N,29379) ?
+	#	self.assertEqual(ww_layer.M,25088) ?
 		self.assertEqual(ww_layer.rf,1)
-		self.assertEqual(ww_layer.num_components,ww_layer.M)
+	#	self.assertEqual(ww_layer.num_components,ww_layer.M)
 		
 		
 	def test_ww_stacked_layer_details(self):

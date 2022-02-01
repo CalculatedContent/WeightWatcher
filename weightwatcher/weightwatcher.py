@@ -885,19 +885,40 @@ class WWIntraLayerIterator(WW2xSliceIterator):
                
         # TODO: detect the layer ordering and flip accordingly
         # for  all layers the same way
-        def align_mats(W0, W1): 
-            logger.info("aligning {} {}".format(W0.shape, W1.shape))
-            # M x N
-            if W0.shape[0] > W0.shape[1]:
-                logger.debug("fliping W0")
-                W0 = np.transpose(W0)         
-            # N x M 
-            if W0.shape[1] !=  W1.shape[0]:
-                logger.debug("fliping W1 to match W0")
-                W1 = np.transpose(W1)
-                     
-            logger.info("aligned {} {}".format(W0.shape, W1.shape))
+        def align_mats(W0, W1):
+            """align the mats so that one can take X = np.dot(W0,W1)
+            
+            i.e:  W0.shape[1]==W1.shape[0] along the shared dinension  
+            """
+            
+            logger.info("aligning {} {}".format(W0.shape, W1.shape))      
+            N0, M0 = np.max(W0.shape),  np.min(W0.shape)
+            N1, M1 = np.max(W1.shape),  np.min(W1.shape)
+            
+            shapes = [W0.shape[0], W0.shape[1], W1.shape[0], W1.shape[1]]
+            N, M = np.max(shapes), np.min(shapes)
+            
+            # do these arrays share a dimension ?
+            shared_dim = None
+            for x in np.unique(shapes):
+                shapes.remove(x)
+            if len(shapes) > 0:
+                shared_dim = np.max(shapes)
+                    
+                logger.debug("found shared dim = {}".format(shared_dim))
+                    
+                if not shared_dim:
+                    logger.warning("Can not align W0={} with W1={}".format(W0.shape, W1.shape))
+                    return W0, W1
+                    
+                if W0.shape[1] != shared_dim:
+                    W0 = np.transpose(W0)
+                        
+                if W1.shape[0] != shared_dim:
+                    W1 = np.transpose(W1)
+                            
             return W0, W1
+                        
    
         ## Need to look at all W, currently just doing 1
         for ww_layer in self.ww_layer_iter_():
@@ -1395,7 +1416,10 @@ class WeightWatcher(object):
         savedir = params['savedir']
         ff =  params['fix_fingers']
         layer_name = "Layer {}".format(layer_id)
-        alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff)
+        
+        fit =  params['fit']
+        
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff, fit=fit)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1403,13 +1427,9 @@ class WeightWatcher(object):
         ww_layer.add_column('D', D)
         ww_layer.add_column('sigma', sigma)
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
-        ww_layer.add_column('best_fit', best_fit)
-        
-        status = ""
-        if alpha < 2.0:
-            status = "over-trained"
-        elif alpha > 6.0:
-            status = "under-trained"
+        ww_layer.add_column('best_fit', best_fit)       
+        ww_layer.add_column('Lambda', Lambda) #-1 for PL, 
+
             
         ww_layer.add_column('warning', status)
 
@@ -1777,6 +1797,10 @@ class WeightWatcher(object):
                 logger.info("Fixing fingers using  {}".format(fix_fingers))
                 
             
+        fit = params['fit']
+        if fit not in [POWER_LAW, TPL]:
+            logger.warning("Unknown fit type {}".format(fit))
+            valid = False
               
 
         return valid
@@ -1923,8 +1947,8 @@ class WeightWatcher(object):
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
-                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False):
-        """Fit eigenvalues to powerlaw
+                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit=POWER_LAW):
+        """Fit eigenvalues to powerlaw or truncated_power_lw
         
             if xmin is 
                 'auto' or None, , automatically set this with powerlaw method
@@ -1938,11 +1962,34 @@ class WeightWatcher(object):
                      
          """
              
+        status = None
+        
+        # defaults for failed status
+        alpha = -1
+        Lambda = -1
+        D = -1
+        sigma = -1
+        xmin = -1  # not set / error
+        xmax = None # or -1
+        num_pl_spikes = -1
+        best_fit = UNKNOWN
+    
+        # check    
         num_evals = len(evals)
-        logger.debug("fitting power law on {} eigenvalues".format(num_evals))
+        logger.debug("fitting {} on {} eigenvalues".format(fit, num_evals))
 
-
-        # TODO: replace this with a robust sampler / stimator
+        if num_evals < MIN_NUM_EVALS:  # 3
+            logger.warning("not enough eigenvalues, stopping")
+            status = FAILED
+            return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
+                          
+        # if Power law, Lambda=-1 
+        distribution = 'power_law'
+        if fit==TPL:
+            distribution = 'truncated_power_law'
+            
+        
+        # TODO: replace this with a robust sampler / estimator
         # requires a lot of refactoring below
         if sample and  sample_size is None:
             logger.info("setting sample size to default MAX_NUM_EVALS={}".format(MAX_NUM_EVALS))
@@ -1953,60 +2000,104 @@ class WeightWatcher(object):
             logger.info("chosing {} eigenvalues from {} ".format(sample_size, len(evals)))
             evals = np.random.choice(evals, size=sample_size)
                     
-        if xmax == XMAX.AUTO or xmax is XMAX.UNKNOWN or xmax is None:
+        if xmax == XMAX.AUTO or xmax is XMAX.UNKNOWN or xmax is None or xmax == -1:
             xmax = np.max(evals)
             
         if fix_fingers==XMIN_PEAK:
             logger.info("fix the fingers by setting xmin to the peak of the ESD")
-            nz_evals = evals[evals > thresh]
-            num_bins = 100  # np.min([100, len(nz_evals)])
-            h = np.histogram(np.log10(nz_evals), bins=num_bins)
-            ih = np.argmax(h[0])
-            xmin2 = 10 ** h[1][ih]
-            xmin_range = (0.95 * xmin2, 1.05 * xmin2)
-            fit = powerlaw.Fit(evals, xmin=xmin_range, xmax=xmax, verbose=False)   
-            
+            try:
+                nz_evals = evals[evals > thresh]
+                num_bins = 100  # np.min([100, len(nz_evals)])
+                h = np.histogram(np.log10(nz_evals), bins=num_bins)
+                ih = np.argmax(h[0])
+                xmin2 = 10 ** h[1][ih]
+                xmin_range = (0.95 * xmin2, 1.05 * xmin2)
+                fit = powerlaw.Fit(evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
+                status = SUCCESS 
+            except ValueError:
+                status = FAILED
+            except Exception:
+                status = FAILED
+                
         elif fix_fingers==CLIP_XMAX:
             logger.info("fix the fingers by fitting a clipped power law")
-            fit = fit_clipped_powerlaw(evals, xmin=xmin, verbose=False)
+            try:
+                fit = fit_clipped_powerlaw(evals, xmin=xmin, verbose=False)   
+                status = SUCCESS 
+            except ValueError:
+                status = FAILED
+            except Exception:
+                status = FAILED
              
-        elif xmin == XMAX.AUTO  or xmin is None:
-            nz_evals = evals[evals > thresh]
-            fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False)
+        elif xmin == XMAX.AUTO  or xmin is None or xmin == -1: 
+            #logger.debug("POWERLAW DEFAULT NO XMIN ")
+            try:
+                nz_evals = evals[evals > thresh]
+                fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False, distribution=distribution)  
+                status = SUCCESS 
+            except ValueError:
+                status = FAILED
+            except Exception:
+                status = FAILED
 
-        else:
-            fit = powerlaw.Fit(evals, xmin=xmin,  verbose=False)
+        else: 
+            #logger.debug("POWERLAW DEFAULT XMIN SET ")
+            try:
+                fit = powerlaw.Fit(evals, xmin=xmin,  verbose=False, distribution=distribution)  
+                status = SUCCESS 
+            except ValueError:
+                status = FAILED
+            except Exception:
+                status = FAILED
+                    
+        if isinstance(fit,str) or fit.alpha is None or np.isnan(fit.alpha):
+            status = FAILED
             
-        
-        alpha = fit.alpha 
-        D = fit.D
-        sigma = fit.sigma
-        xmin = fit.xmin
-        xmax = fit.xmax
-        num_pl_spikes = len(evals[evals>=fit.xmin])
-        
-      
-        logger.debug("finding best distribution for fit")
-        all_dists = [TPL, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
-        Rs = [0.0]
-        dists = [TPL]
-        for dist in all_dists[1:]:
-            R, p = fit.distribution_compare(dist, TPL, normalized_ratio=True)
-           
-            if R > 0.1 and p > 0.05:
-                dists.append(dist)
-                Rs.append(R)
-                logger.debug("compare dist={} R={:0.3f} p={:0.3f}".format(dist, R, p))
-        best_fit = dists[np.argmax(Rs)]
+        if status == FAILED:
+            logger.warning("power law fit failed, will still attempt plots")
+        else:
+            alpha = fit.alpha 
+            D = fit.D
+            sigma = fit.sigma
+            xmin = fit.xmin
+            xmax = fit.xmax
+            num_pl_spikes = len(evals[evals>=fit.xmin])
+            if fit==TPL:
+                Lambda = fit.Lambda
+          
+            logger.debug("finding best distribution for fit, TPL or other ?")
+            # we stil check againsgt TPL, even if using PL fit
+            all_dists = [TPL, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
+            Rs = [0.0]
+            dists = [TPL]
+            for dist in all_dists[1:]:
+                R, p = fit.distribution_compare(dist, TPL, normalized_ratio=True)
+               
+                if R > 0.1 and p > 0.05:
+                    dists.append(dist)
+                    Rs.append(R)
+                    logger.debug("compare dist={} R={:0.3f} p={:0.3f}".format(dist, R, p))
+            best_fit = dists[np.argmax(Rs)]
+            
+            # check status for over-trained, under-trained    
+            # maybe should remove this
+            if alpha < 2.0:
+                status = OVER_TRAINED
+            elif alpha > 6.0:
+                status = UNDER_TRAINED
                
 
         if plot:
-            fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
+            
+            if status==SUCCESS:
+                fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
+                fig2 = fit.plot_pdf(color='r', linewidth=2)
+                if fit==POWER_LAW:
+                    fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+                else:
+                    fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+            
             plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin)
-            fig2 = fit.plot_pdf(color='r', linewidth=2)
-            fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
-           # fit.truncated_power_law.plot_pdf(color='o', linestyle='--', ax=fig2)
-        
             title = "Log-Log ESD for {}\n".format(layer_name) 
             title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \
                 r'$D_{KS}=$'+"{0:.3f}; ".format(D) + \
@@ -2018,6 +2109,7 @@ class WeightWatcher(object):
                 #plt.savefig("ww.layer{}.esd.png".format(layer_id))
                 save_fig(plt, "esd", layer_id, savedir)
             plt.show(); plt.clf()
+                
     
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
@@ -2059,7 +2151,7 @@ class WeightWatcher(object):
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
                           
-        return alpha, xmin, xmax, D, sigma, num_pl_spikes, best_fit
+        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
     
     
     def get_ESD(self, model=None, layer=None, random=False, params=DEFAULT_PARAMS):

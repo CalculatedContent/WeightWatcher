@@ -609,27 +609,34 @@ def save_fig(plt, figname, layer_id, savedir):
 #TODO:
 # check alpha is decreasing
 def fit_clipped_powerlaw(evals, xmin=None, verbose=False, min_alpha=5.0):
-    """Fits a powerlaw only, not a truncate power law
+    """Fits a powerlaw only, not a truncated power law
        clips off the max evals until a powerlaw is found, or stops half-way into the ESD
        
        Used to remove power-law tail fingers, which may result from finite size effects
        
-       Assumes evalsa re in sort order
+       Assumes eval are in sort order
        
        Does not allow alpha to increase; only activates if alpha < min_alpha """
        
     assert(evals[-1]> evals[0])  
     N = int(len(evals)/4)
     xmax = np.max(evals)
-    prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+    if xmin is not None and xmin != -1:
+        prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+    else:
+        prev_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+        
     prev_alpha = prev_fit.alpha
-    
     first_fit = prev_fit
     
     for idx in range(1,N):
         xmax = np.max(evals[-idx])
          
-        fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+        if xmin is not None and xmin != -1:
+            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+        else:
+            fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+            
         print("fit alpha",fit.alpha)  
         
         if fit.alpha > prev_alpha:
@@ -640,7 +647,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, min_alpha=5.0):
             print("stopping")  
             break
         
-        # stop when distribtion becomes power law
+        # stop when distribution becomes power law
         R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
         if R > 0.0:
             break

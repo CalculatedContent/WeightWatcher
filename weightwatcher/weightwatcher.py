@@ -1417,9 +1417,9 @@ class WeightWatcher(object):
         ff =  params['fix_fingers']
         layer_name = "Layer {}".format(layer_id)
         
-        fit =  params['fit']
+        fit_type =  params['fit']
         
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff, fit=fit)
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff, fit_type=fit_type)
         
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1427,7 +1427,7 @@ class WeightWatcher(object):
         ww_layer.add_column('D', D)
         ww_layer.add_column('sigma', sigma)
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
-        ww_layer.add_column('best_fit', best_fit)       
+        ww_layer.add_column('best_fit', best_fit) 
         ww_layer.add_column('Lambda', Lambda) #-1 for PL, 
 
             
@@ -1450,7 +1450,8 @@ class WeightWatcher(object):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
-   
+        params = self.normalize_params(params)
+
         #stacked = params['stacked']
         intra = params['intra']
         ww2x = params['ww2x']
@@ -1480,7 +1481,8 @@ class WeightWatcher(object):
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
-                deltas=False, intra=False, vectors=True, channels=None, stacked=False, fix_fingers=False):
+                deltas=False, intra=False, vectors=True, channels=None, 
+                stacked=False, fix_fingers=False, fit=PL):
         """
         Analyze the weight matrices of a model.
 
@@ -1549,6 +1551,7 @@ class WeightWatcher(object):
         fix_fingers: (fix fingers)
             Attempts to fix the fingers / finite-size-effects which sometimes occurs layers with spuriously large alphas
             Can be very slow.
+        fit:  PL (power_law) or TPL (truncated_power_law)
             
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
@@ -1581,6 +1584,7 @@ class WeightWatcher(object):
         params['vectors'] = vectors
         params['stacked'] = stacked
         params['fix_fingers'] = fix_fingers
+        params['fit'] = fit
 
         
         params['savefig'] = savefig
@@ -1590,7 +1594,8 @@ class WeightWatcher(object):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
-   
+        params = self.normalize_params(params)
+        
         layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)     
         
         details = pd.DataFrame(columns=['layer_id', 'name'])
@@ -1704,7 +1709,8 @@ class WeightWatcher(object):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
-   
+        params = self.normalize_params(params)
+
         layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
@@ -1797,13 +1803,30 @@ class WeightWatcher(object):
                 logger.info("Fixing fingers using  {}".format(fix_fingers))
                 
             
-        fit = params['fit']
-        if fit not in [POWER_LAW, TPL]:
-            logger.warning("Unknown fit type {}".format(fit))
+        fit_type = params['fit']
+        if fit_type not in [PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW]:
+            logger.warning("Unknown fit type {}".format(fit_type))
             valid = False
-              
+            
+        if fit_type==E_TPL and fix_fingers is not None:
+            logger.warning("E-TPL set, fix_fingers being reset to XMIN_PEAK")
 
         return valid
+    
+    
+    def normalize_params(self, params):
+        """Reset params to allow some synatic sugar in the inputs"""
+        
+        fit_type = params['fit']
+        if fit_type==PL:
+            params['fit']=POWER_LAW
+        elif fit_type==TPL:
+            params['fit']=TRUNCATED_POWER_LAW
+        elif fit_type==E_TPL:
+            params['fit']=TRUNCATED_POWER_LAW
+            params['fix_fingers']=XMIN_PEAK
+            
+        return params
     
 #      # @deprecated
 #     def print_results(self, results=None):
@@ -1947,7 +1970,7 @@ class WeightWatcher(object):
     #    return np.count_nonzero(sv > tolerance, axis=-1)
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
-                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit=POWER_LAW):
+                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit_type=POWER_LAW):
         """Fit eigenvalues to powerlaw or truncated_power_lw
         
             if xmin is 
@@ -1974,9 +1997,10 @@ class WeightWatcher(object):
         num_pl_spikes = -1
         best_fit = UNKNOWN
     
+        
         # check    
         num_evals = len(evals)
-        logger.debug("fitting {} on {} eigenvalues".format(fit, num_evals))
+        logger.debug("fitting {} on {} eigenvalues".format(fit_type, num_evals))
 
         if num_evals < MIN_NUM_EVALS:  # 3
             logger.warning("not enough eigenvalues, stopping")
@@ -1985,7 +2009,7 @@ class WeightWatcher(object):
                           
         # if Power law, Lambda=-1 
         distribution = 'power_law'
-        if fit==TPL:
+        if fit_type==TRUNCATED_POWER_LAW:
             distribution = 'truncated_power_law'
             
         
@@ -2030,7 +2054,7 @@ class WeightWatcher(object):
                 status = FAILED
              
         elif xmin == XMAX.AUTO  or xmin is None or xmin == -1: 
-            #logger.debug("POWERLAW DEFAULT NO XMIN ")
+            logger.debug("powerlaw.Fit no xmin , distribution={} ".format(distribution))
             try:
                 nz_evals = evals[evals > thresh]
                 fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False, distribution=distribution)  
@@ -2050,7 +2074,7 @@ class WeightWatcher(object):
             except Exception:
                 status = FAILED
                     
-        if isinstance(fit,str) or fit.alpha is None or np.isnan(fit.alpha):
+        if fit is None or fit.alpha is None or np.isnan(fit.alpha):
             status = FAILED
             
         if status == FAILED:
@@ -2062,16 +2086,17 @@ class WeightWatcher(object):
             xmin = fit.xmin
             xmax = fit.xmax
             num_pl_spikes = len(evals[evals>=fit.xmin])
-            if fit==TPL:
-                Lambda = fit.Lambda
-          
+            if fit_type==TRUNCATED_POWER_LAW:
+                alpha = fit.truncated_power_law.alpha
+                Lambda = fit.truncated_power_law.Lambda
+                
             logger.debug("finding best distribution for fit, TPL or other ?")
             # we stil check againsgt TPL, even if using PL fit
-            all_dists = [TPL, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
+            all_dists = [TRUNCATED_POWER_LAW, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
             Rs = [0.0]
-            dists = [TPL]
+            dists = [TRUNCATED_POWER_LAW]
             for dist in all_dists[1:]:
-                R, p = fit.distribution_compare(dist, TPL, normalized_ratio=True)
+                R, p = fit.distribution_compare(dist, TRUNCATED_POWER_LAW, normalized_ratio=True)
                
                 if R > 0.1 and p > 0.05:
                     dists.append(dist)
@@ -2092,7 +2117,7 @@ class WeightWatcher(object):
             if status==SUCCESS:
                 fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
                 fig2 = fit.plot_pdf(color='r', linewidth=2)
-                if fit==POWER_LAW:
+                if fit_type==POWER_LAW:
                     fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
                 else:
                     fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
@@ -2546,6 +2571,7 @@ class WeightWatcher(object):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
+        params = self.normalize_params(params)
      
         #TODO: restrict to ww2x or intra
         layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
@@ -2725,6 +2751,8 @@ class WeightWatcher(object):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
+        params = self.normalize_params(params)
+
      
         #TODO: restrict to ww2x or intra
         layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
@@ -2812,7 +2840,8 @@ class WeightWatcher(object):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
-   
+        
+        params = self.normalize_params(params)
         logger.info("params {}".format(params))
 
         layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)

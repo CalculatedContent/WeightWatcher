@@ -6,6 +6,7 @@ import sys, logging
 import weightwatcher as ww
 from weightwatcher import  LAYER_TYPE 
 from weightwatcher import  DEFAULT_PARAMS 
+from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW 
 
 
 import torchvision.models as models
@@ -349,6 +350,60 @@ class Test_VGG11(unittest.TestCase):
 		actual = details.rand_distance[0]
 		expected = 0.29
 		self.assertAlmostEqual(actual,expected, places=2)
+		
+	def test_reset_params(self):
+		"""test that params are reset / normalized ()"""
+		
+		params = DEFAULT_PARAMS
+		params['fit']=PL
+		valid = self.watcher.valid_params(params)
+		self.assertTrue(valid)
+		params = self.watcher.normalize_params(params)
+		self.assertEqual(params['fit'], POWER_LAW)
+		
+		params = DEFAULT_PARAMS
+		params['fit']=TPL
+		valid = self.watcher.valid_params(params)
+		self.assertTrue(valid)
+		params = self.watcher.normalize_params(params)
+		self.assertEqual(params['fit'], TRUNCATED_POWER_LAW)
+					
+	def test_truncated_power_law_fit(self):
+		"""Test TPL fits
+		"""
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+		details= self.watcher.analyze(layers=[28], fit='TPL')
+		actual_alpha = details.alpha[0]
+		actual_Lambda = details.Lambda[0]
+
+		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
+
+		# these numbers have not been independently verified yet
+		expected_alpha = 2.1075
+		expected_Lambda =  0.01667
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=3)
+		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=3)
+		
+		
+	def test_extended_truncated_power_law_fit(self):
+		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
+		"""
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+		details= self.watcher.analyze(layers=[28], fit=E_TPL)
+		actual_alpha = details.alpha[0]
+		actual_Lambda = details.Lambda[0]
+
+		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
+		print(actual_alpha, actual_Lambda)	
+		
+		# these numbers have not been independently verified yet
+		expected_alpha = 2.07986
+		expected_Lambda =  0.01983
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=3)
+		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=3)
+		 
 		
 		
 	def test_fix_fingers_xmin_peak(self):

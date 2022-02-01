@@ -31,7 +31,10 @@ CLIP_XMAX = 'clip_xmax'
 SVD = 'svd' # TruncatedSVD for Smoothing
 RMT = 'rmt' # pyRMT / RIE
 
-TPL = 'truncated_power_law'
+PL = 'PL'
+TPL = 'TPL'
+E_TPL = 'E_TPL' #extended power law
+TRUNCATED_POWER_LAW = 'truncated_power_law'
 POWER_LAW = 'power_law'
 LOG_NORMAL = 'lognormal'
 EXPONENTIAL = 'exponential'

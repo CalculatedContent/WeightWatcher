@@ -1837,6 +1837,12 @@ class WeightWatcher(object):
         if fit_type==E_TPL and fix_fingers is not None:
             logger.warning("E-TPL set, fix_fingers being reset to XMIN_PEAK")
 
+
+        intra = params['intra']
+        if intra:
+            if params['randomize'] or params['vectors']:
+                logger.fatal("Can not set intra=True with randomize=Ttue or vectors=True at this time")
+                
         return valid
     
     

@@ -2067,7 +2067,7 @@ class WeightWatcher(object):
                 ih = np.argmax(h[0])
                 xmin2 = 10 ** h[1][ih]
                 xmin_range = (0.95 * xmin2, 1.05 * xmin2)
-                fit = powerlaw.Fit(evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
+                fit = powerlaw.Fit(nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED

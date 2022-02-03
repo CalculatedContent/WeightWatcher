@@ -876,7 +876,13 @@ class WW2xSliceIterator(WWLayerIterator):
 
 
 class WWIntraLayerIterator(WW2xSliceIterator):
-    """Iterator variant that iterates over N-1 layer pairs, forms ESD for cross correlations"""
+    """Iterator variant that iterates over N-1 layer pairs, forms ESD for cross correlations
+    
+    Note:  apply_esd computes eigenvalues
+           for intra-layer fits, we need the singular values of X, not the eigenvalues
+           so, for coinsistancy with other methods, we need to mix the notation
+    
+    """
     from copy import deepcopy
     
     prev_layer = None
@@ -939,11 +945,22 @@ class WWIntraLayerIterator(WW2xSliceIterator):
                 # NEED TO LOOK AT ALL LAYERS
                 ww_intralayer.count = 1
                 
+                sparsify=self.params[SPARSIFY]
+                
                 if W0.shape[1]!=W1.shape[0]:
                     logger.info(" {} not compatible, skipping".format(name))
                 else:            
-                    norm12 = np.linalg.norm(W0)*np.linalg.norm(W1)
-                    X = np.dot(W0,W1)/(norm12)
+                    norm12 = np.linalg.norm(W0)*np.linalg.norm(W1)  # probably wrong 
+                    if sparsify:
+                        logger.info("sparsifying overlaps")
+                        M = np.min(W1.shape[0])
+                        S = np.random.randint(2, size=M*M)
+                        S = S.reshape((M,M))
+                        norm12 = norm12+np.sqrt(np.linalg.norm(S)) # probably wrong 
+                        X = np.dot(np.dot(W0,S),W1)/(norm12)
+                    else:
+                        logger.info("direct overlaps")
+                        X = np.dot(W0,W1)/(norm12)
                     ww_intralayer.Wmats = [X]
                     ww_intralayer.N = np.max(X.shape)
                     ww_intralayer.M = np.min(X.shape)
@@ -1157,7 +1174,7 @@ class WeightWatcher(object):
             logger.error("Sorry, problem comparing models")
             raise Exception("Sorry, problem comparing models")
         
-        details.set_layer_id('layer_id', inplace=True)
+        details.set_index('layer_id', inplace=True)
         avg_dW = np.mean(details['delta_W'].to_numpy())
         return avg_dW, details
     
@@ -1203,7 +1220,12 @@ class WeightWatcher(object):
             #    sv = np.random.choice(sv, size=max_evals)
     
             # sv = svd.singular_values_
-            evals = sv * sv
+            if params['intra']:
+                evals = sv
+                sv  = np.sqrt(sv)
+            else:
+                evals = sv * sv
+            
             #if normalize:
             #    evals = evals / N
     
@@ -1429,8 +1451,7 @@ class WeightWatcher(object):
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
         ww_layer.add_column('best_fit', best_fit) 
         ww_layer.add_column('Lambda', Lambda) #-1 for PL, 
-
-            
+   
         ww_layer.add_column('warning', status)
 
         return ww_layer
@@ -1482,7 +1503,7 @@ class WeightWatcher(object):
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
                 deltas=False, intra=False, vectors=True, channels=None, 
-                stacked=False, fix_fingers=False, fit=PL):
+                stacked=False, fix_fingers=False, fit=PL, sparsify=True):
         """
         Analyze the weight matrices of a model.
 
@@ -1536,9 +1557,6 @@ class WeightWatcher(object):
         deltaEs: 
             Compute and plot the deltas of the eigenvalues; only works if plot=True. 
             Plots both as a sequence of deltaEs and a histogram (level statistics
-        intra:
-            Analyze IntraLayer Correlations
-            Experimental option
         channels: None | 'fisrt' | 'last'
             re/set the channels from the default for the framework
         vectors:  
@@ -1551,8 +1569,16 @@ class WeightWatcher(object):
         fix_fingers: (fix fingers)
             Attempts to fix the fingers / finite-size-effects which sometimes occurs layers with spuriously large alphas
             Can be very slow.
-        fit:  PL (power_law) or TPL (truncated_power_law)
-            
+        fit:  PL (power_law) or TPL (truncated_power_law), E_TPL (extended TPL)
+            In principle, we could return both, alpha and the TPL alpha, Lambda
+        intra:
+            Analyze IntraLayer Correlations
+            Experimental option
+        sparsify:  True (default) 
+            only relevant for intra
+            applies sparsify transformation to simulate ReLu(s) between layers
+            maybe we don't want for certain transformer layers ?
+          
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
         """
@@ -1585,8 +1611,8 @@ class WeightWatcher(object):
         params['stacked'] = stacked
         params['fix_fingers'] = fix_fingers
         params['fit'] = fit
+        params[SPARSIFY] = sparsify
 
-        
         params['savefig'] = savefig
             
         logger.debug("params {}".format(params))
@@ -1917,8 +1943,13 @@ class WeightWatcher(object):
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]    
                 
-                # sv = svd.singular_values_
-                evals = sv * sv 
+                # sv = svd.singular_values_']
+                
+                if params['intra']:
+                    evals = sv
+                    sv = np.sqrt(sv)
+                else:
+                    evals = sv * sv 
                 all_evals.extend(evals)
                                        
         return np.sort(np.array(all_evals))

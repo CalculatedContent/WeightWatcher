@@ -6,7 +6,7 @@ import sys, logging
 import weightwatcher as ww
 from weightwatcher import  LAYER_TYPE 
 from weightwatcher import  DEFAULT_PARAMS 
-from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW 
+from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW, LOG_NORMAL
 
 
 import torchvision.models as models
@@ -367,6 +367,40 @@ class Test_VGG11(unittest.TestCase):
 		self.assertTrue(valid)
 		params = self.watcher.normalize_params(params)
 		self.assertEqual(params['fit'], TRUNCATED_POWER_LAW)
+		
+		
+	def test_intra_power_law_fit(self):
+		"""Test PL fits on intra
+		"""
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+		details= self.watcher.analyze(layers=[25, 28],intra=True)
+		actual_alpha = details.alpha[0]
+		actual_best_fit = details.best_fit[0]
+		print(actual_alpha,actual_best_fit)
+
+		expected_alpha =  2.654 # not very accurate because of the sparisify transform
+		expected_best_fit = LOG_NORMAL
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
+		self.assertEqual(actual_best_fit, expected_best_fit)
+		
+		
+	def test_intra_power_law_fit2(self):
+		"""Test PL fits on intram, sparsify off, more accurate
+		WHy does this fail ?
+		"""
+		self.model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+		details= self.watcher.analyze(layers=[25, 28], intra=True, sparsify=False)
+		actual_alpha = details.alpha[0]
+		actual_best_fit = details.best_fit[0]
+		print(actual_alpha,actual_best_fit)
+
+
+		expected_alpha =  2.719
+		expected_best_fit = LOG_NORMAL
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
+		self.assertEqual(actual_best_fit, expected_best_fit)
 					
 	def test_truncated_power_law_fit(self):
 		"""Test TPL fits
@@ -396,7 +430,6 @@ class Test_VGG11(unittest.TestCase):
 		actual_Lambda = details.Lambda[0]
 
 		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
-		print(actual_alpha, actual_Lambda)	
 		
 		# these numbers have not been independently verified yet
 		expected_alpha = 2.07986
@@ -605,12 +638,25 @@ class Test_VGG11(unittest.TestCase):
 	def test_make_ww_iterator(self):
 		"""Test that we can make the default ww layer iterator
 		"""
+		details = self.watcher.describe()
+		actual_num_layers = len(details)
+		expected_num_layers = 11
+		expected_ids = details.layer_id.to_numpy().tolist()
+
+		self.assertEqual(actual_num_layers, expected_num_layers)
+		self.assertEqual(len(expected_ids), expected_num_layers)
+
+
 		iterator = self.watcher.make_layer_iterator(model=self.model)
 		num = 0
+		actual_ids = []
 		for ww_layer in iterator:
 			self.assertGreater(ww_layer.layer_id,0)
+			actual_ids.append(ww_layer.layer_id)
 			num += 1
 		self.assertEqual(num,11)
+		self.assertEqual(actual_ids,expected_ids)
+
 		
 		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
 		num = 0

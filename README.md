@@ -2,7 +2,7 @@
 
 ## Weight Watcher  
 
-### Current Version / Release: 0.5.1
+### Current Version / Release: 0.5.6
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
@@ -17,7 +17,7 @@ ad well several new experimental model transformations, including:
 - SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
 - SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
 
-### Experimental / Most Recent version    0.5.5
+### Experimental / Most Recent version    0.5.6
 
 You may install the latest / Trunk from testpypi
 
@@ -114,6 +114,8 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 #### Shape Metrics
 
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
+ - TPL. (alpha and Lambda) Truncated Power Law Fit
+ - E_TPL: (alpha and Lambda). Exteneded Truncated Power Law Fit
  
 #### Scale-adjusted Shape Metrics
 
@@ -125,8 +127,8 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
   The rand_distance metrics is a new, non-parameteric approach that appears to work well in early testing.
  [See this recent blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
 
-- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">
-- 
+- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">   Distance of layer ESD from the ideal RMT MP ESD
+
 #### Misc Details
 
 - N, M:  Matrix or Tensor Slice Dimensions
@@ -223,6 +225,8 @@ Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , o
 The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
 
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\langle\alpha\rangle\sim\Delta(\theta)">
+ - TPL exponent alpha, and decay term Lambda
+ - E_TPL exponent alpha, and decay term Lambda
 
 whereas the summary metric **weighed alpha** can predict the generalization error **&Delta;**  when varying hyperparmeters **&theta;**  and depth **L**
  
@@ -281,6 +285,15 @@ Setting max is useful for a quick debugging.
 ```python
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
+
+#### change the Power Law fitting proceedure
+
+To replicate results using TPL or E_TPL fits, use:
+
+```python
+details = watcher.analyze(fit='PL'|'TPL'|'E_TPL')
+```
+
 
 #### fit ESDs to a Marchenko-Pastur (MP) distrbution
 

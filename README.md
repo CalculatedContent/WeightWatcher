@@ -114,8 +114,10 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 #### Shape Metrics
 
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
+
+(advanced usage)
  - TPL. (alpha and Lambda) Truncated Power Law Fit
- - E_TPL: (alpha and Lambda). Exteneded Truncated Power Law Fit
+ - E_TPL: (alpha and Lambda). Extended Truncated Power Law Fit
  
 #### Scale-adjusted Shape Metrics
 

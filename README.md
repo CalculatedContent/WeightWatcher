@@ -2,6 +2,8 @@
 
 ## Weight Watcher  
 
+Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+
 ### Current Version / Release: 0.5.6
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
@@ -497,6 +499,9 @@ and has been the subject  many popular podcasts
   - [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 
 - [LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
+
+- [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+
 
 #### 2021 Short Presentations
 

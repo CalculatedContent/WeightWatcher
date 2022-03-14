@@ -468,6 +468,7 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
   - Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
 
+- [Rethinking generalization requires revisiting old ideas: statistical mechanics approaches and complex learning behavior](https://arxiv.org/abs/1710.09553)
 ---
 and has been presented at Stanford, UC Berkeley, etc:
 

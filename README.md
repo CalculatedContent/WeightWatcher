@@ -448,7 +448,9 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
 #### Latest papers and talks
 
-- [(Latest Submission) Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
+- [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
+
+- [Evaluating natural language processing models with robust generalization metrics that do not need access to any training or testing data](https://arxiv.org/abs/2202.02842)
 
 - [(Nature paper) Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://www.nature.com/articles/s41467-021-24025-8)
 

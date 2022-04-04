@@ -2,7 +2,7 @@
 
 ## Weight Watcher  
 
-Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)ca
 
 Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q)
 
@@ -260,7 +260,7 @@ smoothed_model = watcher.SVDSmoothing(model=...)
 ```
 
 
-Sharpned models can be used when fine-tuning pre-trained models that have not been fully optimized yet.
+Sharpened models can be used when fine-tuning pre-trained models that have not been fully optimized yet.
 ```python
 sharpemed_model = watcher.SVDSharpness(model=...)
 ```

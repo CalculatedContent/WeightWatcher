@@ -304,10 +304,11 @@ details = watcher.analyze(fit='PL'|'TPL'|'E_TPL')
 
 The details dataframe will now contain 2 quality metrics, and for each layer:
 - alpha: basically (but not exactly) the same PL exponent as before, useful for alpha > 2
-- Lambda, a new metric, now useful for alpha < 2.
-- 
+- Lambda, a new metric, now useful when the (TPL) alpha < 2.
+
 (The TPL fits correct a problem we have had when the PL fits over-estimate alpha for TPL layers)
-And as with the alpha metric, smaller Lambda implies better generalization.
+
+As with the alpha metric, smaller Lambda implies better generalization.
 
 
 #### fit ESDs to a Marchenko-Pastur (MP) distrbution

@@ -517,6 +517,8 @@ and has been the subject  many popular podcasts
 
 - [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
+- [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
+
 
 #### 2021 Short Presentations
 

@@ -194,6 +194,8 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 ![ESD](ESD-plots.png)
 
 ### Detecting OverTraining
+Note: This is experimental but we have seen some success here
+
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
 
 #### Early stopping

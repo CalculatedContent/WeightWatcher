@@ -492,6 +492,8 @@ and has been presented at Stanford, UC Berkeley, etc:
 
 - [Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
 
+- [Talk at UCL (UK) 2022](https://www.youtube.com/watch?v=sOXROWJ70Pg)
+
 ---
 
 #### KDD2019 Workshop

@@ -51,7 +51,7 @@ mpmath==1.1.0
 nbconvert==5.6.1
 nbformat==4.4.0
 notebook==6.0.2
-numpy==1.17.4
+numpy==1.22.0
 opt-einsum==3.1.0
 pandas==0.25.3
 pandocfilters==1.4.2

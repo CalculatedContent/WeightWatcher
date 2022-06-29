@@ -1,14 +1,23 @@
-<meta name="image" property="og:image" content="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png">
+<h1 align="center">Weight Watcher</h1>
 
-## Weight Watcher  
+<p align="center">
+    <a href="LICENSE" alt="License">
+        <img src="https://img.shields.io/badge/License-Apache-brightgreen.svg" /></a>
+     <a href="https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q" alt="slack">
+          <img src="https://img.shields.io/badge/Slack-WW-blue.svg" /></a>
+</p>
 
-Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)ca
+<br>
+<br>
 
-Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q)
+<details>
+  <summary>Recent talks: (Click to expand)</summary>
+  
+  * Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+  * For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
+</details>
 
-For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
-
-### Current Version / Release: 0.5.6
+## Current Version / Release: 0.5.6
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
@@ -55,7 +64,6 @@ If you are unable to reproduce the results, please file a bug and I will try to 
 pip install  weightwatcher
 ```
 
-
 ## Usage
 
 ```python
@@ -70,7 +78,7 @@ summary = watcher.get_summary(details)
 
 It is as easy to run and generates a pandas dataframe with details (and plots) for each layer
 
-![Sample Details Dataframe](sample-ww-details.png)
+![Sample Details Dataframe](imgs/sample-ww-details.png)
 
 and summary dict of generalization metrics
 
@@ -103,11 +111,8 @@ The goal of the WeightWatcher project is find generalization metrics that most a
 - alpha-hat:  a scale-adjusted form of alpha (similar to the alpha-shatten-Norm)
 - stable-rank:  a norm-adjusted measure of the scale of the ESD
 - num_spikes:  the number of spikes outside the MP bulk region
-- etc
 
 All of these attempt to measure how on-random and/or non-heavy-tailed the layer ESDs are.  
-
-
 
 #### Scale Metrics 
 
@@ -191,7 +196,7 @@ details = watcher.analyze(plot=True)
 
 For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD. 
 
-![ESD](ESD-plots.png)
+![ESD](imgs/ESD-plots.png)
 
 ### Detecting OverTraining
 Note: This is experimental but we have seen some success here
@@ -204,7 +209,7 @@ The weightwatcher **alpha** metric can be used to detect when to apply early sto
 
 Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average **alpha** summary statistic.
 
-![Early Stopping](early_stopping.png)
+![Early Stopping](imgs/early_stopping.png)
 
 We can see that as the training and test losses decrease, so does **alpha**. But when the test loss saturates and then starts to increase, **alpha** drops below 2.0.
 
@@ -222,7 +227,7 @@ Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the f
 A **Correlation Trap** is characterized by  Fig (b); here the 
 actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
 And for the random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
-![Correlation Traps](correlation_trap.jpeg)
+![Correlation Traps](imgs/correlation_trap.jpeg)
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
 
@@ -417,11 +422,11 @@ In any of these cases, I usually throw away alphas > 8 because they are spurious
 
 ### Demo Notebooks
 
-[Basic Usage](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
+[Basic Usage](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher.ipynb)
 
-[Analyzing the VGG series](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
+[Analyzing the VGG series](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher-VGG.ipynb)
 
-[Using the ww2x option](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG-ww2x.ipynb)
+[Using the ww2x option](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher-VGG-ww2x.ipynb)
 
 
 ## How to Release
@@ -447,98 +452,73 @@ twine upload dist/*
 # 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
 ```
 
-### License
-
-[Apache License 2.0](LICENSE.txt)
-
-
 ---
 
 ### Academic Presentations and Media Appearances
 
-This tool is based on state-of-the-art research done in collaboration with UC Berkeley:
+<details>
+  <summary>Papers/ Talks/ Additional Resources: (Click to expand)</summary>
+  
+* [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
 
-#### Latest papers and talks
+* [Evaluating natural language processing models with robust generalization metrics that do not need access to any training or testing data](https://arxiv.org/abs/2202.02842)
 
-- [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
+* [(Nature paper) Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://www.nature.com/articles/s41467-021-24025-8)
 
-- [Evaluating natural language processing models with robust generalization metrics that do not need access to any training or testing data](https://arxiv.org/abs/2202.02842)
+* [Repo for Nature paper](https://github.com/CalculatedContent/ww-trends-2020)
 
-- [(Nature paper) Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://www.nature.com/articles/s41467-021-24025-8)
+* [(JMLR in press) Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
 
-  - [Repo for Nature paper](https://github.com/CalculatedContent/ww-trends-2020)
+* [Traditional and Heavy Tailed Self Regularization in Neural Network Models](https://arxiv.org/abs/1901.08276)
 
-- [(JMLR in press) Implicit Self-Regularization in Deep Neural Networks: Evidence from Random Matrix Theory and Implications for Learning](https://arxiv.org/abs/1810.01075)
+* [Notebook for above 2 papers](https://github.com/CalculatedContent/ImplicitSelfRegularization)
 
-- [Traditional and Heavy Tailed Self Regularization in Neural Network Models](https://arxiv.org/abs/1901.08276)
+* [ICML 2019 Theoretical Physics Workshop Paper](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/ICMLPhysicsWorkshop/icml_prl_TPDLW2019_fin.pdf)
 
-  - Notebook for above 2 papers (https://github.com/CalculatedContent/ImplicitSelfRegularization)
+* [Heavy-Tailed Universality Predicts Trends in Test Accuracies for Very Large Pre-Trained Deep Neural Networks](https://arxiv.org/abs/1901.08278)
 
-- [ICML 2019 Theoretical Physics Workshop Paper](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/ICMLPhysicsWorkshop/icml_prl_TPDLW2019_fin.pdf)
+* [Notebook for paper](https://github.com/CalculatedContent/PredictingTestAccuracies)
 
-- [Heavy-Tailed Universality Predicts Trends in Test Accuracies for Very Large Pre-Trained Deep Neural Networks](https://arxiv.org/abs/1901.08278)
+* [Rethinking generalization requires revisiting old ideas: statistical mechanics approaches and complex learning behavior](https://arxiv.org/abs/1710.09553)
 
-  - Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
+* [NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
+* [UC Berkeley/ICSI 12/13/2018](https://www.youtube.com/watch?v=6Zgul4oygMc)
 
-- [Rethinking generalization requires revisiting old ideas: statistical mechanics approaches and complex learning behavior](https://arxiv.org/abs/1710.09553)
----
-and has been presented at Stanford, UC Berkeley, etc:
+* [Institute for Pure & Applied Mathematics (IPAM)](https://www.youtube.com/watch?v=fmVuNRKsQa8)
+* [Physics Informed Machine Learning](https://www.youtube.com/watch?v=eXhwLtjtUsI)
 
-- [NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
-- [UC Berkeley/ICSI 12/13/2018](https://www.youtube.com/watch?v=6Zgul4oygMc)
+* [Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
 
-- [Institute for Pure & Applied Mathematics (IPAM)](https://www.youtube.com/watch?v=fmVuNRKsQa8)
-- [Physics Informed Machine Learning](https://www.youtube.com/watch?v=eXhwLtjtUsI)
+* [Talk at UCL (UK) 2022](https://www.youtube.com/watch?v=sOXROWJ70Pg)
 
-- [Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
 
-- [Talk at UCL (UK) 2022](https://www.youtube.com/watch?v=sOXROWJ70Pg)
-
----
-
-#### KDD2019 Workshop
-
-[KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
+* [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
 Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
 
-[KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+* [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
 
-#### Popular Popdcasts and Blogs
+* [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
 
-and has been the subject  many popular podcasts
+* [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
 
-- [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
+* [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
 
-- [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
+* [Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
 
-- [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
+* [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 
-- [Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
+* [LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
 
-  - [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
+* [Our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
-- [LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
+* [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 
-- [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+* [MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
 
-- [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
+* [PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
 
-
-#### 2021 Short Presentations
-
-[MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
-
-[PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
-
-#### Recent talk(s) by Mike Mahoney, UC Berekely
-
-[IARAI, the Institute for Advanced Research in Artificial Intelligence](https://www.youtube.com/watch?v=Pirni67ZmRQ)
-
-
-## Slack Channel
-
-We have a slack channel for the tool if you need help
-For an invite, please send an email to charles@calculationconsulting.com
+* [IARAI, the Institute for Advanced Research in Artificial Intelligence](https://www.youtube.com/watch?v=Pirni67ZmRQ)
+</details>
 
 
 #### Contributors
@@ -553,3 +533,6 @@ For an invite, please send an email to charles@calculationconsulting.com
 [Calculation Consulting homepage](https://calculationconsulting.com)
 
 [Calculated Content Blog](https://calculatedcontent.com)
+
+
+For any queries, please send an email to charles@calculationconsulting.com

@@ -22,9 +22,16 @@ __author__ = "Calculation Consulting"
 __email__ = "info@calculationconsulting.com"
 __copyright__ = "Calculation Consulting"
 
-__all__ = ["__name__", "__version__", "__license__", "__description__",
-          "__url__", "__author__", "__email__", "__copyright__"]
+__all__ = [
+    "__name__",
+    "__version__",
+    "__license__",
+    "__description__",
+    "__url__",
+    "__author__",
+    "__email__",
+    "__copyright__",
+]
 
 from .constants import *
 from .weightwatcher import WeightWatcher
-

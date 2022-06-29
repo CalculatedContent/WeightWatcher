@@ -12,54 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from enum import IntFlag, auto, Enum
-
+from enum import Enum, IntFlag, auto
 
 MAX_NUM_EVALS = 50000
 MIN_NUM_EVALS = 3
 
-DEF_SAVE_DIR = 'ww-img'
+DEF_SAVE_DIR = "ww-img"
 
 
-TRUNCATED_SVD = 'truncated_svd'
-FULL_SVD = 'full_svd'
+TRUNCATED_SVD = "truncated_svd"
+FULL_SVD = "full_svd"
 
 # fi_ fingers options
-XMIN_PEAK = 'xmin_peak'
-CLIP_XMAX = 'clip_xmax'
+XMIN_PEAK = "xmin_peak"
+CLIP_XMAX = "clip_xmax"
 
-SVD = 'svd' # TruncatedSVD for Smoothing
-RMT = 'rmt' # pyRMT / RIE
+SVD = "svd"  # TruncatedSVD for Smoothing
+RMT = "rmt"  # pyRMT / RIE
 
-PL = 'PL'
-TPL = 'TPL'
-E_TPL = 'E_TPL' #extended power law
-TRUNCATED_POWER_LAW = 'truncated_power_law'
-POWER_LAW = 'power_law'
-LOG_NORMAL = 'lognormal'
-EXPONENTIAL = 'exponential'
-    
+PL = "PL"
+TPL = "TPL"
+E_TPL = "E_TPL"  # extended power law
+TRUNCATED_POWER_LAW = "truncated_power_law"
+POWER_LAW = "power_law"
+LOG_NORMAL = "lognormal"
+EXPONENTIAL = "exponential"
+
 # STATUSes
 
-SUCCESS = 'success'
-FAILED = 'failed'
-OVER_TRAINED = 'over-traoined'
-UNDER_TRAINED = 'under-trained'
+SUCCESS = "success"
+FAILED = "failed"
+OVER_TRAINED = "over-traoined"
+UNDER_TRAINED = "under-trained"
 
-UNKNOWN = 'unknown'
+UNKNOWN = "unknown"
 
-SPARSIFY = 'sparsify'
+SPARSIFY = "sparsify"
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
-                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
-                  'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False, 
-                  'svd_method':FULL_SVD,  'fix_fingers':None, 'fit':POWER_LAW, SPARSIFY: True}
-
-
+DEFAULT_PARAMS = {
+    "glorot_fix": False,
+    "normalize": False,
+    "conv2d_norm": True,
+    "randomize": True,
+    "savedir": DEF_SAVE_DIR,
+    "savefig": True,
+    "rescale": True,
+    "plot": False,
+    "deltaEs": False,
+    "intra": False,
+    "channels": None,
+    "conv2d_fft": False,
+    "ww2x": False,
+    "vectors": False,
+    "smooth": None,
+    "stacked": False,
+    "svd_method": FULL_SVD,
+    "fix_fingers": None,
+    "fit": POWER_LAW,
+    SPARSIFY: True,
+}
 
 
 EVALS_THRESH = 0.00001
+
 
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()
@@ -71,27 +86,27 @@ class LAYER_TYPE(IntFlag):
     EMBEDDING = auto()
     NORM = auto()
 
-    
+
 class FRAMEWORK(IntFlag):
     UNKNOWN = auto()
     PYTORCH = auto()
     KERAS = auto()
     ONNX = auto()
-    
+
 
 class CHANNELS(IntFlag):
     UNKNOWN = auto()
     FIRST = auto()
     LAST = auto()
-    
-    
+
+
 class PLOT(IntFlag):
     POWERLAW = auto()
     ESD = auto()
     ESDLOG = auto()
-    
-    
-class METRICS():
+
+
+class METRICS:
     NORM = "norm"
     LOG_NORM = "log_norm"
     ALPHA = "alpha"
@@ -106,7 +121,8 @@ class METRICS():
 
 
 # XMAX, XMIN not really used
-    
+
+
 class XMAX(IntFlag):
     UNKNOWN = auto()
     AUTO = auto()

@@ -1,54 +1,59 @@
+from os import path
+
 from setuptools import setup
+
 import weightwatcher as ww
 
-#try:
+# try:
 #    import pypandoc
 #    readme = pypandoc.convert('README.md', 'rst')
 #    readme = readme.replace("\r","")
-#except OSError as e:
+# except OSError as e:
 #    # pypandoc failed, use the short description as long description
 #    readme = ww.__description__
 
-from os import path
+
 this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+with open(path.join(this_directory, "README.md"), encoding="utf-8") as f:
     readme = f.read()
 
 setup(
-    name = ww.__name__,
-    version = ww.__version__,
-    url = ww.__url__,
+    name=ww.__name__,
+    version=ww.__version__,
+    url=ww.__url__,
     project_urls={
         "Documentation": "https://calculationconsulting.com/",
         "Code": "https://github.com/calculatedcontent/weightwatcher",
         "Issue tracker": "https://github.com/calculatedcontent/weightwatcher/issues",
     },
-    license = ww.__license__,
-    author = ww.__author__,
-    author_email = ww.__email__,
-    maintainer = ww.__author__,
-    maintainer_email = ww.__email__,
-    description = ww.__description__,
-    long_description = readme,
+    license=ww.__license__,
+    author=ww.__author__,
+    author_email=ww.__email__,
+    maintainer=ww.__author__,
+    maintainer_email=ww.__email__,
+    description=ww.__description__,
+    long_description=readme,
     long_description_content_type="text/markdown",
-    packages = ["weightwatcher"],
-    include_package_data = True,
-    test_suite = 'tests',
-    python_requires = ">= 3.3.*",
-    install_requires = ['numpy',
-                        'pandas',
-                        'matplotlib',
-                        'powerlaw',
-                        'tensorflow',
-                        'sklearn',
-                        'torch',
-                        'onnx',
-                        'pyRMT'],
-    entry_points = '''
+    packages=["weightwatcher"],
+    include_package_data=True,
+    test_suite="tests",
+    python_requires=">= 3.3.*",
+    install_requires=[
+        "numpy",
+        "pandas",
+        "matplotlib",
+        "powerlaw",
+        "tensorflow",
+        "sklearn",
+        "torch",
+        "onnx",
+        "pyRMT",
+    ],
+    entry_points="""
         [console_scripts]
         weightwatcher=weightwatcher:main
-    ''',
-    classifiers = [
+    """,
+    classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
@@ -59,5 +64,5 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3.7",
     ],
-    keywords = "Deep Learning Keras Tensorflow pytorch Deep Learning DNN Neural Networks",
+    keywords="Deep Learning Keras Tensorflow pytorch Deep Learning DNN Neural Networks",
 )

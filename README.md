@@ -251,7 +251,7 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
-This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
+This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher-VGG.ipynb)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 

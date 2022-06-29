@@ -248,7 +248,7 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
-This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher-VGG.ipynb)
+This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/tree/master/notebooks/WeightWatcher-VGG.ipynb)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 
@@ -419,11 +419,11 @@ In any of these cases, I usually throw away alphas > 8 because they are spurious
 
 ### Demo Notebooks
 
-[Basic Usage](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher.ipynb)
+[Basic Usage](https://github.com/CalculatedContent/WeightWatcher/tree/master/notebooks/WeightWatcher.ipynb)
 
-[Analyzing the VGG series](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher-VGG.ipynb)
+[Analyzing the VGG series](https://github.com/CalculatedContent/WeightWatcher/tree/master/notebooks/WeightWatcher-VGG.ipynb)
 
-[Using the ww2x option](https://github.com/CalculatedContent/WeightWatcher/blob/master/notebooks/WeightWatcher-VGG-ww2x.ipynb)
+[Using the ww2x option](https://github.com/CalculatedContent/WeightWatcher/tree/master/notebooks/WeightWatcher-VGG-ww2x.ipynb)
 
 
 ## How to Release

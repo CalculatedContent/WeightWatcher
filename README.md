@@ -58,7 +58,7 @@ If you are unable to reproduce the results, please file a bug and I will try to 
 ## Installation 
 
 ```sh
-pip install  weightwatcher
+pip install weightwatcher
 ```
 
 ## Usage

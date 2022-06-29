@@ -3,11 +3,11 @@
 <p align="center">
     <a href="LICENSE" alt="License">
         <img src="https://img.shields.io/badge/License-Apache-brightgreen.svg" /></a>
+     <img src="https://img.shields.io/badge/Release-0.5.6-yellow.svg" />
      <a href="https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q" alt="slack">
           <img src="https://img.shields.io/badge/Slack-WW-blue.svg" /></a>
 </p>
 
-<br>
 <br>
 
 <details>
@@ -17,8 +17,6 @@
   * For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 </details>
 
-## Current Version / Release: 0.5.6
-
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
 - analyze pre/trained pyTorch, Keras, DNN models (Conv2D and Dense layers)
@@ -27,7 +25,7 @@
 - detect potential problems when compressing or fine-tuning pretrained models
 - layer warning labels: over-trained; under-trained
 
-ad well several new experimental model transformations, including:
+and well several new experimental model transformations, including:
 
 - SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
 - SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
@@ -56,7 +54,6 @@ watcher.analyze(..., ww2x=True, ...)
 ```
 
 If you are unable to reproduce the results, please file a bug and I will try to address it.
-
 
 ## Installation 
 

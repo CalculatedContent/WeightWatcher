@@ -2,7 +2,13 @@
 
 ## Weight Watcher  
 
-### Current Version / Release: 0.5.1
+Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)ca
+
+Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q)
+
+For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
+
+### Current Version / Release: 0.5.6
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
@@ -17,7 +23,7 @@ ad well several new experimental model transformations, including:
 - SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
 - SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
 
-### Experimental / Most Recent version    0.5.5
+### Experimental / Most Recent version    0.5.6
 
 You may install the latest / Trunk from testpypi
 
@@ -34,10 +40,10 @@ More details and demos can be found on the [Calculated Content Blog](https://cal
 
 We strive to make all of our results 100% reproducible; this is not easy.
 
-To reproduce some older results, such as the Nature paper (which is actually 2 years old), use the **ww2x** option
+To reproduce some older results, such as the Nature paper (which is actually 2 years old), use the **ww2x** option and set the minimum number of eigenvlues to 50:
 
 ```sh
-watcher.analyze(..., ww2x=True, ...)
+watcher.analyze(..., ww2x=True, min_evls=50,  ...)
 ```
 
 If you are unable to reproduce the results, please file a bug and I will try to address it.
@@ -114,6 +120,10 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 #### Shape Metrics
 
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
+
+(advanced usage)
+ - TPL. (alpha and Lambda) Truncated Power Law Fit
+ - E_TPL: (alpha and Lambda). Extended Truncated Power Law Fit
  
 #### Scale-adjusted Shape Metrics
 
@@ -125,8 +135,8 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
   The rand_distance metrics is a new, non-parameteric approach that appears to work well in early testing.
  [See this recent blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
 
-- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">
-- 
+- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">   Distance of layer ESD from the ideal RMT MP ESD
+
 #### Misc Details
 
 - N, M:  Matrix or Tensor Slice Dimensions
@@ -184,6 +194,8 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 ![ESD](ESD-plots.png)
 
 ### Detecting OverTraining
+Note: This is experimental but we have seen some success here
+
 Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
 
 #### Early stopping
@@ -223,6 +235,8 @@ Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , o
 The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
 
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\langle\alpha\rangle\sim\Delta(\theta)">
+ - TPL exponent alpha, and decay term Lambda
+ - E_TPL exponent alpha, and decay term Lambda
 
 whereas the summary metric **weighed alpha** can predict the generalization error **&Delta;**  when varying hyperparmeters **&theta;**  and depth **L**
  
@@ -248,7 +262,7 @@ smoothed_model = watcher.SVDSmoothing(model=...)
 ```
 
 
-Sharpned models can be used when fine-tuning pre-trained models that have not been fully optimized yet.
+Sharpened models can be used when fine-tuning pre-trained models that have not been fully optimized yet.
 ```python
 sharpemed_model = watcher.SVDSharpness(model=...)
 ```
@@ -281,6 +295,23 @@ Setting max is useful for a quick debugging.
 ```python
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
+
+#### change the Power Law fitting proceedure
+
+To replicate results using TPL or E_TPL fits, use:
+
+```python
+details = watcher.analyze(fit='PL'|'TPL'|'E_TPL')
+```
+
+The details dataframe will now contain 2 quality metrics, and for each layer:
+- alpha: basically (but not exactly) the same PL exponent as before, useful for alpha > 2
+- Lambda, a new metric, now useful when the (TPL) alpha < 2.
+
+(The TPL fits correct a problem we have had when the PL fits over-estimate alpha for TPL layers)
+
+As with the alpha metric, smaller Lambda implies better generalization.
+
 
 #### fit ESDs to a Marchenko-Pastur (MP) distrbution
 
@@ -429,7 +460,9 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
 #### Latest papers and talks
 
-- [(Latest Submission) Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
+- [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
+
+- [Evaluating natural language processing models with robust generalization metrics that do not need access to any training or testing data](https://arxiv.org/abs/2202.02842)
 
 - [(Nature paper) Predicting trends in the quality of state-of-the-art neural networks without access to training or testing data](https://www.nature.com/articles/s41467-021-24025-8)
 
@@ -447,6 +480,7 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
   - Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
 
+- [Rethinking generalization requires revisiting old ideas: statistical mechanics approaches and complex learning behavior](https://arxiv.org/abs/1710.09553)
 ---
 and has been presented at Stanford, UC Berkeley, etc:
 
@@ -457,6 +491,8 @@ and has been presented at Stanford, UC Berkeley, etc:
 - [Physics Informed Machine Learning](https://www.youtube.com/watch?v=eXhwLtjtUsI)
 
 - [Talk at Stanford ICME 2020](https://www.youtube.com/watch?v=PQUItQi-B-I)
+
+- [Talk at UCL (UK) 2022](https://www.youtube.com/watch?v=sOXROWJ70Pg)
 
 ---
 
@@ -482,6 +518,11 @@ and has been the subject  many popular podcasts
   - [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 
 - [LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
+
+- [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+
+- [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
+
 
 #### 2021 Short Presentations
 

@@ -51,7 +51,7 @@ def matrix_rank(svals, N, tol=None):
 def calc_rank_loss(svals, N, tol=None):
     """Rank loss for this matrix, from the singular values and the largest dim N."""
 
-    rank = matrix_rank(svals, N) #np.linalg.matrix_rank(W)
+    rank = matrix_rank(svals, N, tol=tol) #np.linalg.matrix_rank(W)
     return len(svals) - rank
 
 def matrix_entropy(svals, N):
@@ -377,25 +377,28 @@ def best_dist(fit):
     distName = 'power_law'
     dist = "PL"
 
-    R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
-    if R > 0 and p <= 0.05:
-        distName = 'truncated_power_law'
-        dist = 'TPL'
-        
-    R, p = fit.distribution_compare(distName, 'exponential', normalized_ratio=True)
-    if R < 0 and p <= 0.05:
-        dist = 'EXP'
-        return dist
-
-    R, p = fit.distribution_compare(distName, 'stretched_exponential', normalized_ratio=True)
-    if R < 0 and p <= 0.05:
-        dist = 'S_EXP'
-        return dist
-        
-    R, p = fit.distribution_compare(distName, 'lognormal', normalized_ratio=True)
-    if R < 0 and p <= 0.05:
-        dist = 'LOG_N'
-        return dist
+    with warnings.catch_warnings():
+        warnings.simplefilter(action='ignore', category=RuntimeWarning)
+    
+        R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
+        if R > 0 and p <= 0.05:
+            distName = 'truncated_power_law'
+            dist = 'TPL'
+            
+        R, p = fit.distribution_compare(distName, 'exponential', normalized_ratio=True)
+        if R < 0 and p <= 0.05:
+            dist = 'EXP'
+            return dist
+    
+        R, p = fit.distribution_compare(distName, 'stretched_exponential', normalized_ratio=True)
+        if R < 0 and p <= 0.05:
+            dist = 'S_EXP'
+            return dist
+            
+        R, p = fit.distribution_compare(distName, 'lognormal', normalized_ratio=True)
+        if R < 0 and p <= 0.05:
+            dist = 'LOG_N'
+            return dist
 
     return dist
 
@@ -618,45 +621,50 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, min_alpha=5.0):
        
        Does not allow alpha to increase; only activates if alpha < min_alpha """
        
-    assert(evals[-1]> evals[0])  
-    N = int(len(evals)/4)
-    xmax = np.max(evals)
-    if xmin is not None and xmin != -1:
-        prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
-    else:
-        prev_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
-        
-    prev_alpha = prev_fit.alpha
-    first_fit = prev_fit
-    
-    for idx in range(1,N):
-        xmax = np.max(evals[-idx])
-         
+    fit = None
+    with warnings.catch_warnings():
+        warnings.simplefilter(action='ignore', category=RuntimeWarning)
+            
+        assert(evals[-1]> evals[0])  
+        N = int(len(evals)/4)
+        xmax = np.max(evals)
+       
         if xmin is not None and xmin != -1:
-            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+            prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
         else:
-            fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+            prev_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
             
-        print("fit alpha",fit.alpha)  
+        prev_alpha = prev_fit.alpha
+        first_fit = prev_fit
         
-        if fit.alpha > prev_alpha:
-            fit = prev_fit
-            break
-        
-        if fit.alpha <= min_alpha: 
-            print("stopping")  
-            break
-        
-        # stop when distribution becomes power law
-        R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
-        if R > 0.0:
-            break
-        
-        prev_fit = fit
-        prev_alpha = fit.alpha
+        for idx in range(1,N):
+            xmax = np.max(evals[-idx])
+             
+            if xmin is not None and xmin != -1:
+                fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+            else:
+                fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+                
+            print("fit alpha",fit.alpha)  
             
-    if idx == N:
-        fit = first_fit
+            if fit.alpha > prev_alpha:
+                fit = prev_fit
+                break
+            
+            if fit.alpha <= min_alpha: 
+                print("stopping")  
+                break
+            
+            # stop when distribution becomes power law
+            R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
+            if R > 0.0:
+                break
+            
+            prev_fit = fit
+            prev_alpha = fit.alpha
+                
+        if idx == N:
+            fit = first_fit
      
     return fit
              
@@ -682,3 +690,55 @@ def jensen_shannon_distance(p, q):
     distance = np.sqrt(divergence)
 
     return distance
+
+
+def rescale_eigenvalues(evals):
+    """Rescale eigenvalues by their Frobenius Norm"""
+    
+    M = len(evals)
+    Wnorm = np.sqrt(np.sum(evals))
+    Wscale = np.sqrt(M)/Wnorm
+    evals = (Wscale*Wscale)*evals
+    
+    return evals   
+
+def detX_constraint(evals, rescale=True):
+    """Identifies the number of eigenvalues necessary to best satisify the det X = 1 constraint
+    
+    Parameters
+    ----------
+    evals : float array
+        Eigenvalues, assumed to be in sort order, evals[0]<evals[-1]
+        
+    rescale: bool
+        Rescale the eigenvalues by the Frobenius Norm if not already rescaled
+    
+    Returns:
+    --------
+    
+        num_evals:  int
+        number of eigenvalues in the tail
+        
+        det_x_idx:  int
+        index of the first eigenvalue in the tail
+    
+    """
+
+    assert(evals[0]<evals[-1])
+    num_evals = len(evals)
+    idx = 0
+    
+
+    if rescale:
+        Wnorm = np.sqrt(np.sum(evals))
+        Wscale = np.sqrt(M)/Wnorm
+        evals = (Wscale*Wscale)*evals
+
+    for idx in range(len(evals)-1, 0, -1):
+        detX = np.prod(evals[idx:])
+        if detX < 1.0:
+            num_evals = len(evals) - idx 
+            break    
+    
+    
+    return num_evals, idx

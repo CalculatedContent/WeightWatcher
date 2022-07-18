@@ -7,9 +7,10 @@ import weightwatcher as ww
 from weightwatcher import  LAYER_TYPE 
 from weightwatcher import  DEFAULT_PARAMS 
 from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW, LOG_NORMAL
-
+from weightwatcher.constants import  *
 
 import torchvision.models as models
+import numpy as np
 import pandas as pd
 
 from transformers import TFAutoModelForSequenceClassification
@@ -25,7 +26,7 @@ class Test_VGG11(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		cls.model = models.vgg11(pretrained=True)
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		#logging.getLogger("weightwatcher").setLevel(logging.INFO)
 		
 	def setUp(self):
@@ -65,9 +66,7 @@ class Test_VGG11(unittest.TestCase):
 		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes".split(',')
-
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -263,20 +262,28 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(len(details), 75)
 		
 		
-	def test_switch_channels(self):
-		"""Test user can switch the channels for a Conv2D layer
+	def test_dimensions(self):
+		"""Test dimensions of Conv2D layer
 		"""
-		details = self.watcher.describe(layers=[2],  channels='first')
+		
+		# default	
+		details = self.watcher.describe(layers=[2])
 		N = details.N.to_numpy()[0]
 		M = details.M.to_numpy()[0]
 		rf = details.rf.to_numpy()[0]
 		num_evals = details.num_evals.to_numpy()[0]
+		print(N,M,rf,num_evals)
 		
-		self.assertEqual(N, 3)
-		self.assertEqual(M, 3)
-		self.assertEqual(rf, 3*64)
-		self.assertEqual(num_evals, 3*3*64)
-
+		self.assertEqual(N,64)
+		self.assertEqual(M,3)
+		self.assertEqual(rf,9)
+		self.assertEqual(num_evals,M*rf)
+		
+	def test_switch_channels(self):
+		"""Test user can switch the channels for a Conv2D layer
+		"""
+		
+		# not available yet, experimental
  		
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
@@ -325,27 +332,28 @@ class Test_VGG11(unittest.TestCase):
 
 
 	def test_randomize(self):
-		"""Test randomize option
+		"""Test randomize option : only checks that the right columns are present, not the values
 		"""
 		
-		print("----test_density_fit-----")
-		details = self.watcher.analyze(layers = [25], randomize=False, plot=False, mp_fit=False)
-		print(details.columns)
-		self.assertNotIn('max_rand_eval', details.columns)
-		
-		print("----test_density_fit-----")
-		details = self.watcher.analyze(layers = [25], randomize=True, plot=False, mp_fit=False)
-		print(details.rand_distance[0])
-		self.assertIn('max_rand_eval', details.columns)
-		
-		
+		rand_columns = ['max_rand_eval', 'rand_W_scale', 'rand_bulk_max',
+					 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank', 
+					 'rand_num_spikes', 'rand_sigma_mp']
+       
+		details = self.watcher.analyze(layers = [28], randomize=False)	
+		for column in rand_columns:
+			self.assertNotIn(column, details.columns)
+			
+		details = self.watcher.analyze(layers = [28], randomize=True)	
+		for column in rand_columns:	
+			self.assertIn(column, details.columns)
+
+
 				
 	def test_rand_distance(self):
 		"""Test rand distance
 		   Not very accuracte since it is random
 		"""
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+		
 		details= self.watcher.analyze(layers=[28], randomize=True)
 		actual = details.rand_distance[0]
 		expected = 0.29
@@ -372,9 +380,8 @@ class Test_VGG11(unittest.TestCase):
 	def test_intra_power_law_fit(self):
 		"""Test PL fits on intra
 		"""
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
-		details= self.watcher.analyze(layers=[25, 28],intra=True)
+
+		details= self.watcher.analyze(layers=[25, 28], intra=True, randomize=False, vectors=False)
 		actual_alpha = details.alpha[0]
 		actual_best_fit = details.best_fit[0]
 		print(actual_alpha,actual_best_fit)
@@ -387,17 +394,15 @@ class Test_VGG11(unittest.TestCase):
 		
 	def test_intra_power_law_fit2(self):
 		"""Test PL fits on intram, sparsify off, more accurate
-		WHy does this fail ?
-		"""
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+			"""
+			
 		details= self.watcher.analyze(layers=[25, 28], intra=True, sparsify=False)
 		actual_alpha = details.alpha[0]
 		actual_best_fit = details.best_fit[0]
 		print(actual_alpha,actual_best_fit)
 
 
-		expected_alpha =  2.719
+		expected_alpha =  2.719 # close to exact ?
 		expected_best_fit = LOG_NORMAL
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
 		self.assertEqual(actual_best_fit, expected_best_fit)
@@ -405,8 +410,11 @@ class Test_VGG11(unittest.TestCase):
 	def test_truncated_power_law_fit(self):
 		"""Test TPL fits
 		"""
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+		
+		# need model here; somehow self.model it gets corrupted by SVD smoothing
+		model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
+		
 		details= self.watcher.analyze(layers=[28], fit='TPL')
 		actual_alpha = details.alpha[0]
 		actual_Lambda = details.Lambda[0]
@@ -423,8 +431,6 @@ class Test_VGG11(unittest.TestCase):
 	def test_extended_truncated_power_law_fit(self):
 		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
 		"""
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
 		details= self.watcher.analyze(layers=[28], fit=E_TPL)
 		actual_alpha = details.alpha[0]
 		actual_Lambda = details.Lambda[0]
@@ -442,8 +448,7 @@ class Test_VGG11(unittest.TestCase):
 	def test_fix_fingers_xmin_peak(self):
 		"""Test fix fingers xmin_peak 
 		"""
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model,  log_level=logging.DEBUG)
+		
 		# default
 		details = self.watcher.analyze(layers=[5])
 		actual = details.alpha.to_numpy()[0]
@@ -462,7 +467,6 @@ class Test_VGG11(unittest.TestCase):
 	def test_fix_fingers_clip_xmax(self):
 		"""Test fix fingers clip_xmax
 		"""
-		self.model = models.vgg11(pretrained=True)	
 		
 		# CLIP_XMAX
 		details = self.watcher.analyze(layers=[5], fix_fingers='clip_xmax')
@@ -475,7 +479,7 @@ class Test_VGG11(unittest.TestCase):
 		
 	
 	def test_density_fit(self):
-		"""Test the fitted sigma from the density fit
+		"""Test the fitted sigma from the density fit: FIX
 		"""
  		
 		print("----test_density_fit-----")
@@ -493,11 +497,6 @@ class Test_VGG11(unittest.TestCase):
 	def test_svd_smoothing(self):
 		"""Test the svd smoothing on 1 lyaer of VGG
 		"""
- 		
-		print("----test_svd_smoothing-----")
-
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
 		
 		# 819 =~ 4096*0.2
 		self.watcher.SVDSmoothing(layers=[28])
@@ -518,12 +517,18 @@ class Test_VGG11(unittest.TestCase):
 
 		Note:  I changed the APi on these method recently and that may be the bug
 		this needs to be stabilzed for the ww.0.5 release
+		
+		---
+		
+		This fails in the total test, but works individually ?
+
 		"""
  		
 		print("----test_svd_smoothing_alt-----")
 
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+		# need model here; somehow self.model it gets corrupted by SVD smoothing
+		model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
 		esd = self.watcher.get_ESD(layer=28) 
@@ -533,14 +538,19 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(num_comps, 3277)
 		
 	def test_svd_smoothing_alt2(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
+		
+		---
+		
+		This fails in the total test, but works individually ?		
 		
 		"""
  		
 		print("----test_svd_smoothing_alt2-----")
-
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+		
+		# need model here; somehow self.model it gets corrupted by SVD smoothing
+		model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		self.watcher.SVDSmoothing(layers=[28], percent=0.2)
 		esd = self.watcher.get_ESD(layer=28) 
@@ -556,10 +566,7 @@ class Test_VGG11(unittest.TestCase):
 		"""
  		
 		print("----test_svd_sharpness-----")
-
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
-
+	
 		esd_before = self.watcher.get_ESD(layer=28) 
 		
 		self.watcher.SVDSharpness(layers=[28])
@@ -578,9 +585,9 @@ class Test_VGG11(unittest.TestCase):
  		
 		print("----test_svd_sharpness-----")
 
-		self.model = models.vgg11(pretrained=True)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
-
+		model = models.vgg11(pretrained=True)
+		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
+		
 		esd_before = self.watcher.get_ESD(layer=8) 
 		
 		self.watcher.SVDSharpness(layers=[8])
@@ -599,7 +606,6 @@ class Test_VGG11(unittest.TestCase):
 	def test_runtime_warnings(self):
 		"""Test that runtime warnings are still active
 		"""
-		import numpy as np
 		print("test runtime warning: sqrt(-1)=", np.sqrt(-1.0))
 		assert(True)
 		
@@ -733,7 +739,7 @@ class Test_TFBert(unittest.TestCase):
 		"""
 		CHECKPOINT = "bert-base-uncased"
 		cls.model = TFAutoModelForSequenceClassification.from_pretrained(CHECKPOINT)
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		
 	def setUp(self):
 		"""I run before every test in this class
@@ -759,7 +765,7 @@ class Test_Keras(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		cls.model = VGG16()
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		
 	def setUp(self):
 		"""I run before every test in this class
@@ -799,7 +805,7 @@ class Test_ResNet(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		cls.model = models.resnet18(pretrained=True)
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.DEBUG)
+		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		
 	def setUp(self):
 		"""I run before every test in this class

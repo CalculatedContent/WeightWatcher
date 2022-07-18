@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import sys, os
+import sys, os, re
 import logging
 
 import numpy as np
@@ -40,7 +40,11 @@ from sklearn.decomposition import TruncatedSVD
 
 from copy import deepcopy
 
-    
+# remove warnings from powerlaw unless testing
+import sys
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
 
 #
 # this is use to allow editing in Eclipse but also
@@ -127,7 +131,10 @@ class WWLayer:
         self.the_type = self.layer_type(self.layer)
         
         if self.name is None and hasattr(self.layer, 'name'):
-            name = self.layer.name
+            self.name = self.layer.name
+        elif self.name is None:
+            self.name = str(self.layer)
+            self.name = re.sub(r'\(.*', '', self.name)
 
         # original weights (tensor) and biases
         self.has_weights = False
@@ -171,6 +178,7 @@ class WWLayer:
         # don't make if we set the weights externally
         if make_weights:
             self.make_weights()
+            
         
     def add_column(self, name, value):
         """Add column to the details dataframe"""
@@ -327,7 +335,7 @@ class WWLayer:
                     has_weights = True
                     #has_biases = True
                 else: 
-                    logger.warn("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
+                    logger.info("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
 
                 
         elif self.framework == FRAMEWORK.KERAS:
@@ -350,7 +358,7 @@ class WWLayer:
                 has_weights = True
                 has_biases = True
             else: 
-                logger.warn("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
+                logger.info("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
                 
 
         elif self.framework == FRAMEWORK.ONNX:      
@@ -371,7 +379,7 @@ class WWLayer:
             return 
         
         the_type = self.the_type
-        conv2d_fft = self.params['conv2d_fft']
+        conv2d_fft = self.params[CONV2D_FFT]
         
         N, M, n_comp, rf = 0, 0, 0, None
         Wmats = []
@@ -387,10 +395,9 @@ class WWLayer:
         elif the_type == LAYER_TYPE.CONV2D:
             if not conv2d_fft:
                 Wmats, N, M, rf = self.conv2D_Wmats(weights, self.channels)
-                n_comp = M
+                n_comp = M*rf # TODO: bug fixed, check valid
             else:
                 Wmats, N, M, n_comp = self.get_conv2D_fft(weights)
-
             
         elif the_type == LAYER_TYPE.NORM:
             logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
@@ -411,7 +418,7 @@ class WWLayer:
         
         
     def get_conv2D_fft(self, W, n=32):
-        """Compute FFT of Conv2D channels, to apply SVD later"""
+        """Compute FFT of Conv2D CHANNELS, to apply SVD later"""
         
         logger.info("get_conv2D_fft on W {}".format(W.shape))
 
@@ -463,7 +470,7 @@ class WWLayer:
         
         logger.debug("conv2D_Wmats")
         
-        # TODO:  detect or use channels
+        # TODO:  detect or use CHANNELS
         # if channels specified ...
     
         Wmats = []
@@ -471,18 +478,18 @@ class WWLayer:
         N, M, imax, jmax = s[0], s[1], s[2], s[3]
         
         if N + M >= imax + jmax:
-            detected_channels = CHANNELS.LAST
+            detected_channels= CHANNELS.LAST
         else:
-            detected_channels = CHANNELS.FIRST
+            detected_channels= CHANNELS.FIRST
             
 
         if channels == CHANNELS.UNKNOWN :
-            logger.debug("channles UNKNOWN, detected {}".format(self.channel_str(detected_channels)))
-            channels = detected_channels
+            logger.debug("channels UNKNOWN, detected {}".format(self.channel_str(detected_channels)))
+            channels= detected_channels
 
         if detected_channels == channels:
             if channels == CHANNELS.LAST:
-                logger.debug("Channels Last tensor shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
+                logger.debug("channels Last tensor shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
                 for i in range(imax):
                     for j in range(jmax):
                         W = Wtensor[:, :, i, j]
@@ -494,7 +501,7 @@ class WWLayer:
             else: #channels == CHANNELS.FIRST  # i, j, M, N
                 M, N, imax, jmax = imax, jmax, N, M
                 # check this       
-                logger.debug("Channels First shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
+                logger.debug("channels First shape: {}x{} (NxM), {}x{} (i,j)".format(N, M, imax, jmax))                
                 for i in range(imax):
                     for j in range(jmax):
                         W = Wtensor[i, j, :, :]
@@ -503,8 +510,8 @@ class WWLayer:
                             W = W.T
                         Wmats.append(W)
                             
-        elif detected_channels != channels: 
-            logger.warn("warning, expected channels {},  detected channels {}".format(self.channel_str(channels),self.channel_str(detected_channels)))
+        elif detected_channels != channels:
+            logger.warning("warning, expected channels {},  detected channels {}".format(self.channel_str(channels),self.channel_str(detected_channels)))
             # flip how we extract the WMats
             # reverse of above extraction
             if detected_channels == CHANNELS.LAST:
@@ -531,7 +538,7 @@ class WWLayer:
            
                 
         rf = imax * jmax  # receptive field size             
-        logger.debug("get_conv2D_Wmats N={} M={} rf= {} channels = {}".format(N, M, rf, channels))
+        logger.debug("get_conv2D_Wmats N={} M={} rf= {} channels= {}".format(N, M, rf, channels))
     
         return Wmats, N, M, rf
     
@@ -590,9 +597,9 @@ class ModelIterator:
 
         self.model = model
         self.framework = self.set_framework()
-        self.channels  = self.set_channels(params.get('channels'))
+        self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
-        logger.debug("MODEL ITERATOR, framework = {}, channels = {} ".format(self.framework, self.channels))
+        logger.debug("MODEL ITERATOR, framework = {}, channels= {} ".format(self.framework, self.channels))
 
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()            
@@ -602,7 +609,7 @@ class ModelIterator:
         """infer the framework """
         
         framework = FRAMEWORK.UNKNOWN
-        if hasattr(self.model, 'layers'):
+        if hasattr(self.model, LAYERS):
             framework = FRAMEWORK.KERAS
 
         elif hasattr(self.model, 'modules'):
@@ -645,7 +652,6 @@ class ModelIterator:
                         for sublayer in layer.submodules:
                             yield sublayer
                     
-
                 for layer in model.layers:
                     yield from traverse_(layer)
 
@@ -688,7 +694,7 @@ class ModelIterator:
                 
             elif self.framework == FRAMEWORK.ONNX:
                 the_channel = CHANNELS.LAST
-        elif isinstance(channels, str):
+        elif channels(channels, str):
             if channels.lower()=='first':
                 the_channel=CHANNELS.FIRST
                 
@@ -725,7 +731,7 @@ class WWLayerIterator(ModelIterator):
                 logger.info("Filtering layer by name {}".format(f))
                 self.filter_names.append(f) 
             else:
-                logger.warn("unknown filter type {} detected and ignored".format(tf))
+                logger.warning("unknown filter type {} detected and ignored".format(tf))
                 
     def apply_filters(self, ww_layer):
         """Apply filters.  Set skipped False  if filter is applied to this layer, keeping the layer (or no filters, meaning all layers kept)"""
@@ -807,7 +813,7 @@ class WWLayerIterator(ModelIterator):
         min_evals = self.params.get('min_evals')
         max_evals = self.params.get('max_evals')
 
-        ww2x = self.params.get('ww2x')
+        ww2x = self.params.get(WW2X)
         
         logger.debug("layer_supported  N {} max evals {}".format(N, max_evals))
         
@@ -831,7 +837,7 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M, min_evals))
             return False
                   
-        elif ww2x and max_evals and N  >  max_evals:
+        elif ww2x and max_evals and M  >  max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N, max_evals))
             return False
 
@@ -839,7 +845,7 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   
-        elif (not ww2x) and max_evals and N * rf > max_evals:
+        elif (not ww2x) and max_evals and M * rf > max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         
@@ -1194,9 +1200,9 @@ class WeightWatcher(object):
         rank_loss = 0
     
         # TODO:  allow user to specify
-        normalize = params['normalize']
-        glorot_fix = params['glorot_fix']
-        conv2d_norm = params['conv2d_norm']  # True
+        normalize = params[NORMALIZE]
+        glorot_fix = params[GLOROT_FIX]
+        conv2d_norm = params[CONV2D_NORM]  # True
         
         if type(Wmats) is not list:
             logger.debug("combined_eigenvalues: Wmats -> [WMmats]")
@@ -1220,7 +1226,7 @@ class WeightWatcher(object):
             #    sv = np.random.choice(sv, size=max_evals)
     
             # sv = svd.singular_values_
-            if params['intra']:
+            if params[INTRA]:
                 evals = sv
                 sv  = np.sqrt(sv)
             else:
@@ -1232,7 +1238,7 @@ class WeightWatcher(object):
             all_evals.extend(evals)
     
             max_sv = np.max([max_sv, np.max(sv)])
-            rank_loss = rank_loss + calc_rank_loss(sv, N)
+            rank_loss = rank_loss + calc_rank_loss(sv, N)      
     
         return np.sort(np.array(all_evals)), max_sv, rank_loss
             
@@ -1240,9 +1246,9 @@ class WeightWatcher(object):
     def apply_normalize_Wmats(self, ww_layer, params=DEFAULT_PARAMS):
         """Normalize the W matrix or Wmats """
 
-        normalize = params['normalize']
-        glorot_fix = params['glorot_fix']
-        conv2d_norm = params['conv2d_norm']
+        normalize = params[NORMALIZE]
+        glorot_fix = params[GLOROT_FIX]
+        conv2d_norm = params[CONV2D_NORM]
         
         M = ww_layer.M
         N = ww_layer.N
@@ -1303,12 +1309,19 @@ class WeightWatcher(object):
         n_comp = ww_layer.num_components
                 
         evals, sv_max, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
+        
+        if params[TOLERANCE]:
+            tolerance = params[TOLERANCE]
+        else:
+            tolerance = WEAK_RANK_LOSS_TOLERANCE
+        weak_rank_loss = len(evals[evals<tolerance])
      
         ww_layer.evals = evals
         ww_layer.add_column("has_esd", True)
         ww_layer.add_column("num_evals", len(evals))
         ww_layer.add_column("sv_max", sv_max)
         ww_layer.add_column("rank_loss", rank_loss)
+        ww_layer.add_column("weak_rank_loss", weak_rank_loss)
         ww_layer.add_column("lambda_max", np.max(evals))
             
         return ww_layer
@@ -1349,7 +1362,7 @@ class WeightWatcher(object):
             dist = jensen_shannon_distance(evals, rand_evals)
             ww_layer.add_column("rand_distance", dist)
 
-        if params['plot']:
+        if params[PLOT]:
             self.plot_random_esd(ww_layer, params)
             
         return ww_layer
@@ -1401,6 +1414,43 @@ class WeightWatcher(object):
         return ww_layer
     
     
+        # Not used yet
+    def apply_detX(self, ww_layer, params=DEFAULT_PARAMS):
+        """Compute the detX constraint, and optionally plot """
+                    
+        plot = params[PLOT]           
+        savefig = params[SAVEFIG]
+        savedir = params[SAVEDIR]
+
+        evals = ww_layer.evals        
+        evals = rescale_eigenvalues(evals)
+        detX, detX_idx = detX_constraint(evals, rescale=False)
+        detX_val = evals[detX_idx]
+
+        ww_layer.add_column('detX_num', detX)  
+        ww_layer.add_column('detX_val', detX_val)  
+
+        if plot:
+            name = ww_layer.name
+            # fix rescaling to plot xmin
+
+            layer_id = ww_layer.layer_id  # where is the layer_id
+            plt.title(f"DetX constraint for {name}")
+            plt.xlabel("log10 eigenvalues (norm scaled)")
+            plt.hist(np.log10(evals), bins=100)
+            plt.axvline(np.log10(detX_val), color='purple', label=r"detX$=1$")
+            
+            if ww_layer.xmin:
+                xmin = ww_layer.xmin *  np.max(evals)/ww_layer.xmax
+                plt.axvline(np.log10(xmin), color='red', label=r"PL $\lambda_{min}$")
+                
+            plt.legend()
+            if savefig:
+                save_fig(plt, "detX", layer_id, savedir)
+            plt.show(); plt.clf()
+            
+        return ww_layer
+    
     
     # Not used yet
     def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
@@ -1431,15 +1481,15 @@ class WeightWatcher(object):
 
         xmin = None  # TODO: allow other xmin settings
         xmax = np.max(evals)
-        plot = params['plot']
+        plot = params[PLOT]
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
 
-        savedir = params['savedir']
-        ff =  params['fix_fingers']
+        savedir = params[SAVEDIR]
+        ff =  params[FIX_FINGERS]
         layer_name = "Layer {}".format(layer_id)
         
-        fit_type =  params['fit']
+        fit_type =  params[FIT]
         
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff, fit_type=fit_type)
         
@@ -1474,9 +1524,9 @@ class WeightWatcher(object):
         params = self.normalize_params(params)
 
         #stacked = params['stacked']
-        intra = params['intra']
-        ww2x = params['ww2x']
-        stacked = params['stacked']
+        intra = params[INTRA]
+        ww2x = params[WW2X]
+        stacked = params[STACKED]
         
         layer_iterator = None
         if stacked:
@@ -1496,88 +1546,104 @@ class WeightWatcher(object):
     
         
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
-    def analyze(self, model=None, layers=[], min_evals=0, max_evals=None,
+    def analyze(self, model=None, layers=[], 
+                min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None,  # deprecated
                 normalize=False, glorot_fix=False,
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
-                deltas=False, intra=False, vectors=True, channels=None, 
-                stacked=False, fix_fingers=False, fit=PL, sparsify=True):
+                deltas=False, intra=False, vectors=False, channels=None, 
+                stacked=False, fix_fingers=False, fit=PL, sparsify=True, 
+                detX=False, 
+                tolerance=WEAK_RANK_LOSS_TOLERANCE):
         """
         Analyze the weight matrices of a model.
 
+        Parameters
+        ----------
+        
         layers:
             List of layer ids. If empty, analyze all layers (default)
             If layer ids < 0, then skip the layers specified
             All layer ids must be > 0 or < 0
-        min_evals:
+            
+        min_evals:  int, default=50
             Minimum number of evals (M*rf) 
-        max_evals:
+            
+        max_evals:  int, default=10000
             Maximum number of evals (N*rf) (0 = no limit)
-        normalize:
+            
+        normalize:  bool, default: True
             Normalize the X matrix. Usually True for Keras, False for PyTorch.
             Ignored if glorot_norm is set
-        glorot_fix:
-            Adjust the norm for the Glorot Normalization.  
-        alphas:
-            # deprecated
-            Compute the power laws (alpha) of the weight matrices. 
-            Time consuming so disabled by default (use lognorm if you want speed)
-        lognorms:
-            # deprecated
-            Compute the log norms of the weight matrices.
-            this is always computed now
-        spectralnorms:
-            # deprecated
-            Compute the spectral norm (max eigenvalue) of the weight matrices.  
-            this is always computed now
-        softranks:
-            # deprecated
-            Compute the soft norm (i.e. StableRank) of the weight matrices.
-            this is always computed now
-        mp_fit:
+            
+        glorot_fix:  bool, default: False
+            Adjust the norm for the Glorot Normalization.
+              
+    
+        mp_fit:  bool, default: False
             Compute the best Marchenko-Pastur fit of each weight matrix ESD
             For square matrices, also applies the Quarter-Circle (QC) law
-        randomize:
+            
+        randomize:  bool, default: False
             Randomizes the W matrices, plots the ESD and fits to the MP distribution
-            Attempts to find Correlatkon Traps by computing the number of spikes for the randomized ESD 
+            Attempts to find Correlation Traps by computing the number of spikes for the randomized ESD 
+            
         conv2d_fft:  N/A yet
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
             Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max  N/A yet
             Can not uses with ww2x
-        ww2x:
+            
+        ww2x:  bool, default: False
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
-        savefig: 
+            
+        savefig:  string,  default: 
             Save the figures generated in png files.  Default: save to ww-img
             If set to a folder name, creates and saves the imafes to this folder (i.e. savefig="images")
+            
         rescale:  #deprecated, always True
             Rescale the ESDs when computing the MP fits (experimental should always be True
             N/A yet: rescales the plots back to the original scale
-        deltaEs: 
+            
+        deltaEs:  bool, default: False
             Compute and plot the deltas of the eigenvalues; only works if plot=True. 
             Plots both as a sequence of deltaEs and a histogram (level statistics
-        channels: None | 'fisrt' | 'last'
+            
+        channels: None | 'first' | 'last'
             re/set the channels from the default for the framework
-        vectors:  
+            
+        vectors:  bool, default: False
             Compute the eigenvectors and plots various metrics, including the vector entropy and localization statistics, 
             both as a sequence (elbow plots) and as histograms
             Warning:  this takes more memory and some time
-        stacked: (experimental)
+            
+        stacked:   bool, default: False  (experimental)
             Stack all the weight matrices into a single Layer, and analyze
             Can be very slow.
-        fix_fingers: (fix fingers)
+            
+        fix_fingers:  bool, default: False 
             Attempts to fix the fingers / finite-size-effects which sometimes occurs layers with spuriously large alphas
             Can be very slow.
-        fit:  PL (power_law) or TPL (truncated_power_law), E_TPL (extended TPL)
+            
+        fit:  string, default: 'PL'
+            PL (power_law) or TPL (truncated_power_law), E_TPL (extended TPL)
             In principle, we could return both, alpha and the TPL alpha, Lambda
-        intra:
+            
+        intra:  bool, default: False 
             Analyze IntraLayer Correlations
             Experimental option
-        sparsify:  True (default) 
+            
+        sparsify:  bool, default: True 
             only relevant for intra
             applies sparsify transformation to simulate ReLu(s) between layers
             maybe we don't want for certain transformer layers ?
+            
+        detX:  bool, default: False 
+            compute the Trace Log Norm / DetX=1 constraint, and plot if plot True
+            
+        tolerance: float, default 0.000001
+            sets 'weak_rank_loss' = number of  eigenvalues <= tolerance
           
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
@@ -1586,34 +1652,39 @@ class WeightWatcher(object):
         model = model or self.model   
         
         if min_size or max_size:
-            logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
+            logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
         # I need to figure this out
         # can not specify params on input yet
         # maybe just have a different analyze() that only uses this 
         
         params=DEFAULT_PARAMS
-        params['min_evals'] = min_evals 
-        params['max_evals'] = max_evals
-        params['plot'] = plot
-        params['randomize'] = randomize
-        params['mp_fit'] = mp_fit
-        params['normalize'] = normalize
-        params['glorot_fix'] = glorot_fix
-        params['conv2d_norm'] = conv2d_norm
-        params['conv2d_fft'] = conv2d_fft
-        params['ww2x'] = ww2x   
-        params['deltaEs'] = deltas 
-        params['intra'] = intra 
-        params['channels'] = channels
-        params['layers'] = layers
-        params['vectors'] = vectors
-        params['stacked'] = stacked
-        params['fix_fingers'] = fix_fingers
-        params['fit'] = fit
+        params[MIN_EVALS] = min_evals 
+        params[MAX_EVALS] = max_evals
+        params[PLOT] = plot
+        params[RANDOMIZE] = randomize
+        params[MP_FIT] = mp_fit
+        params[NORMALIZE] = normalize
+        params[GLOROT_FIT] = glorot_fix
+        params[CONV2D_NORM] = conv2d_norm
+        params[CONV2D_FFT] = conv2d_fft
+        params[WW2X] = ww2x   
+        params[DELTA_ES] = deltas 
+        params[INTRA] = intra 
+        params[CHANNELS_STR] = channels
+        params[LAYERS] = layers
+        params[VECTORS] = vectors
+        params[STACKED] = stacked
+        params[FIX_FINGERS] = fix_fingers
+        params[FIT] = fit
         params[SPARSIFY] = sparsify
+        params[DETX] = detX
+        params[TOLERANCE] = tolerance
 
-        params['savefig'] = savefig
+
+        params[SAVEFIG] = savefig
+        #params[SAVEDIR] = savedir
+
             
         logger.debug("params {}".format(params))
         if not self.valid_params(params):
@@ -1636,29 +1707,32 @@ class WeightWatcher(object):
                 
                 if ww_layer.evals is not None:
                     self.apply_fit_powerlaw(ww_layer, params)
-                    if params['mp_fit']:
+                    if params[MP_FIT]:
                         logger.debug("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
 
-                    if params['deltaEs'] and params['plot']:
+                    if params[DELTA_ES] and params[PLOT]:
                         logger.debug("Computing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_plot_deltaEs(ww_layer, random=False, params=params)
                     
-                    if params['vectors']:# and params['plot']:
+                    if params[VECTORS]:# and params[PLOT]:
                         logger.debug("Computing and Plotting Vector Localization Metrics: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_analyze_eigenvectors(ww_layer, params=params)
 
                         
-                    if params['randomize']:# params['mp_fit']:
+                    if params[RANDOMIZE]:# params['mp_fit']:
                         logger.debug("Randomizing Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                         self.apply_random_esd(ww_layer, params)
                         logger.debug("MP Fitting Random layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=True, params=params)
 
-                        if params['deltaEs'] and params['plot']:
+                        if params[DELTA_ES] and params[PLOT]:
                             logger.debug("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                             self.apply_plot_deltaEs(ww_layer, random=True, params=params)
                         
+                    if params[DETX]:
+                        logger.debug("Finding detX constaint: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
+                        self.apply_detX(ww_layer, params=params)
                     
                     self.apply_norm_metrics(ww_layer, params)
                     #all_evals.extend(ww_layer.evals)
@@ -1695,10 +1769,10 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, plot=False, randomize=False,  
+                normalize=False, glorot_fix=False, 
                 savefig=DEF_SAVE_DIR,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
-                deltas=False, intra=False, channels=None, stacked=False, fix_fingers=False):
+                conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
+                intra=False, channels=None, stacked=False, fix_fingers=False):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1707,27 +1781,25 @@ class WeightWatcher(object):
         model = model or self.model    
         
         if min_size or max_size:
-            logger.warn("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
+            logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
 
         params = DEFAULT_PARAMS
-        params['min_evals'] = min_evals 
-        params['max_evals'] = max_evals
-        params['plot'] = plot
-        params['randomize'] = randomize
-        params['mp_fit'] = mp_fit
-        params['normalize'] = normalize
-        params['glorot_fix'] = glorot_fix
-        params['conv2d_norm'] = conv2d_norm
-        params['conv2d_fft'] = conv2d_fft
-        params['ww2x'] = ww2x
-        params['deltaEs'] = deltas 
-        params['intra'] = intra 
-        params['channels'] = channels
-        params['layers'] = layers
-        params['stacked'] = stacked
-        params['fix_fingers'] = fix_fingers
-
-        params['savefig'] = savefig
+        params=DEFAULT_PARAMS
+        params[MIN_EVALS] = min_evals 
+        params[MAX_EVALS] = max_evals
+      
+        params[NORMALIZE] = normalize
+        params[GLOROT_FIT] = glorot_fix
+        params[CONV2D_NORM] = conv2d_norm
+        params[CONV2D_FFT] = conv2d_fft
+        params[WW2X] = ww2x   
+        params[INTRA] = intra 
+        params[CHANNELS_STR] = channels
+        params[LAYERS] = layers
+        params[STACKED] = stacked
+        
+        params[SAVEFIG] = savefig
+        #params[SAVEDIR] = savedir
 
 
         logger.info("params {}".format(params))
@@ -1765,63 +1837,63 @@ class WeightWatcher(object):
         valid = True        
         xmin = params.get('xmin')
         if xmin and xmin not in [XMIN.UNKNOWN, XMIN.AUTO, XMIN.PEAK]:
-            logger.warn("param xmin unknown, ignoring {}".format(xmin))
+            logger.warning("param xmin unknown, ignoring {}".format(xmin))
             valid = False
             
         xmax = params.get('xmax')
         if xmax and xmax not in [XMAX.UNKNOWN, XMIN.AUTO]:
-            logger.warn("param xmax unknown, ignoring {}".format(xmax))
+            logger.warning("param xmax unknown, ignoring {}".format(xmax))
             valid = False
         
         min_evals = params.get('min_evals') 
         max_evals = params.get('max_evals')
         if min_evals and max_evals and min_evals >= max_evals:
-            logger.warn("min_evals {} > max_evals {}".format(min_evals, max_evals))
+            logger.warning("min_evals {} > max_evals {}".format(min_evals, max_evals))
             valid = False
         elif max_evals and max_evals < -1:
-            logger.warn(" max_evals {} < -1 ".format(max_evals))
+            logger.warning(" max_evals {} < -1 ".format(max_evals))
             valid = False
             
         # can not specify ww2x and conv2d_fft at same time
-        if params.get('ww2x') and params.get('conv2d_fft'):
-            logger.warn("can not specify ww2x and conv2d_fft")
+        if params.get(WW2X) and params.get('conv2d_fft'):
+            logger.warning("can not specify ww2x and conv2d_fft")
             valid = False
             
             
         # can not specify intra and conv2d_fft at same time
-        if params.get('intra') and params.get('conv2d_fft'):
-            logger.warn("can not specify intra and conv2d_fft")
+        if params.get(INTRA) and params.get('conv2d_fft'):
+            logger.warning("can not specify intra and conv2d_fft")
             valid = False
         
         # channels must be None, 'first', or 'last'
-        channels = params.get('channels') 
+        channels = params.get(CHANNELS_STR) 
         if channels is not None and isinstance(channels,str):
-            if channels.lower() != 'first' and channels.lower() != 'last':
-                logger.warn("unknown channels {}".format(channels))
+            if channels.lower() != FIRST and channels.lower() != LAST:
+                logger.warning("unknown channels {}".format(channels))
                 valid = False
 
         # layer ids must be all positive or all negative
-        filters = params.get('layers') 
+        filters = params.get(LAYERS) 
         if filters is not None:
             filter_ids = [int(f) for f in filters if type(f) is int]
           
             if len(filter_ids) > 0:
                 if np.max(filter_ids) > 0 and np.min(filter_ids) < 0:
-                    logger.warn("layer filter ids must be all > 0 or < 0: {}".format(filter_ids))
+                    logger.warning("layer filter ids must be all > 0 or < 0: {}".format(filter_ids))
                     valid = False
          
-        savefig = params.get('savefig')
-        savedir = params.get('savedir')
+        savefig = params.get(SAVEFIG)
+        savedir = params.get(SAVEDIR)
         if savefig and isinstance(savefig,bool):
             logger.info("Saving all images to {}".format(savedir))
         elif savefig and isinstance(savefig,str):
-            params['savedir'] = savefig
+            params[SAVEDIR] = savefig
             logger.info("Saving all images to {}".format(savedir))
         elif not isinstance(savefig,str) and not isinstance(savefig,bool):
             valid = False      
             
             
-        fix_fingers =  params['fix_fingers']
+        fix_fingers =  params[FIX_FINGERS]
         if fix_fingers:
             if fix_fingers not in [XMIN_PEAK, CLIP_XMAX]:
                 logger.warning("Unknown how to fix fingers {}, deactivating".format(fix_fingers))
@@ -1829,7 +1901,7 @@ class WeightWatcher(object):
                 logger.info("Fixing fingers using  {}".format(fix_fingers))
                 
             
-        fit_type = params['fit']
+        fit_type = params[FIT]
         if fit_type not in [PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW]:
             logger.warning("Unknown fit type {}".format(fit_type))
             valid = False
@@ -1838,25 +1910,31 @@ class WeightWatcher(object):
             logger.warning("E-TPL set, fix_fingers being reset to XMIN_PEAK")
 
 
-        intra = params['intra']
+        intra = params[INTRA]
         if intra:
-            if params['randomize'] or params['vectors']:
-                logger.fatal("Can not set intra=True with randomize=Ttue or vectors=True at this time")
+            if params[RANDOMIZE] or params[VECTORS]:
+                logger.fatal("Can not set intra=True with randomize=True or vectors=True at this time")
                 
         return valid
     
     
     def normalize_params(self, params):
-        """Reset params to allow some synatic sugar in the inputs"""
+        """Reset params to allow some syntatic sugar in the inputs"""
         
-        fit_type = params['fit']
+        fit_type = params[FIT]
         if fit_type==PL:
-            params['fit']=POWER_LAW
+            params[FIT]=POWER_LAW
         elif fit_type==TPL:
-            params['fit']=TRUNCATED_POWER_LAW
+            params[FIT]=TRUNCATED_POWER_LAW
         elif fit_type==E_TPL:
-            params['fit']=TRUNCATED_POWER_LAW
-            params['fix_fingers']=XMIN_PEAK
+            params[FIT]=TRUNCATED_POWER_LAW
+            params[FIX_FINGERS]=XMIN_PEAK
+            
+        # this may not work
+        if params[CHANNELS_STR] and params[CHANNELS_STR] == FIRST:
+             params[CHANNELS_STR]=CHANNELS.FIRST
+        elif params[CHANNELS_STR] and params[CHANNELS_STR] == LAST:
+             params[CHANNELS_STR]=CHANNELS.LAST
             
         return params
     
@@ -1926,9 +2004,9 @@ class WeightWatcher(object):
         
          """
          
-        normalize = params['normalize']
-        glorot_fix = params['glorot_fix']
-        conv2d_norm = params['conv2d_norm']  # True
+        normalize = params[NORMALIZE]
+        glorot_fix = params[GLOROT_FIX]
+        conv2d_norm = params[CONV2D_NORM]  # True
          
         all_evals = []
 
@@ -1951,7 +2029,7 @@ class WeightWatcher(object):
                 
                 # sv = svd.singular_values_']
                 
-                if params['intra']:
+                if params[INTRA]:
                     evals = sv
                     sv = np.sqrt(sv)
                 else:
@@ -1963,8 +2041,8 @@ class WeightWatcher(object):
     def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
-        savefig = params['savefig']
-        savedir = params['savedir']
+        savefig = params[SAVEFIG]
+        savedir = params[SAVEDIR]
 
         layer_id = ww_layer.layer_id
         evals = ww_layer.evals
@@ -1998,13 +2076,7 @@ class WeightWatcher(object):
             save_fig(plt, "randesd2", layer_id, savedir)
         plt.show(); plt.clf()
         
-    # MOves to RMT Util should be static function    
-    #def calc_rank_loss(self, singular_values, M, lambda_max):
-    #    """compute the rank loss for these singular given the tolerances
-    #    """
-    #    sv = singular_values
-    #    tolerance = lambda_max * M * np.finfo(np.max(sv)).eps
-    #    return np.count_nonzero(sv > tolerance, axis=-1)
+
             
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
                      savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit_type=POWER_LAW):
@@ -2039,13 +2111,13 @@ class WeightWatcher(object):
         num_evals = len(evals)
         logger.debug("fitting {} on {} eigenvalues".format(fit_type, num_evals))
 
-        if num_evals < MIN_NUM_EVALS:  # 3
+        if num_evals < MIN_NUM_EVALS:  # 10 , really 50
             logger.warning("not enough eigenvalues, stopping")
             status = FAILED
             return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
                           
         # if Power law, Lambda=-1 
-        distribution = 'power_law'
+        distribution = POWER_LAW
         if fit_type==TRUNCATED_POWER_LAW:
             distribution = 'truncated_power_law'
             
@@ -2057,7 +2129,7 @@ class WeightWatcher(object):
             sample_size = MAX_NUM_EVALS
             
         if sample and num_evals > sample_size:
-            logger.warn("samping not implemented in production yet")
+            logger.warning("samping not implemented in production yet")
             logger.info("chosing {} eigenvalues from {} ".format(sample_size, len(evals)))
             evals = np.random.choice(evals, size=sample_size)
                     
@@ -2073,7 +2145,9 @@ class WeightWatcher(object):
                 ih = np.argmax(h[0])
                 xmin2 = 10 ** h[1][ih]
                 xmin_range = (0.95 * xmin2, 1.05 * xmin2)
-                fit = powerlaw.Fit(nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action='ignore', category=RuntimeWarning)
+                    fit = powerlaw.Fit(nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2094,7 +2168,9 @@ class WeightWatcher(object):
             logger.debug("powerlaw.Fit no xmin , distribution={} ".format(distribution))
             try:
                 nz_evals = evals[evals > thresh]
-                fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False, distribution=distribution)  
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action='ignore', category=RuntimeWarning)
+                    fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2104,7 +2180,9 @@ class WeightWatcher(object):
         else: 
             #logger.debug("POWERLAW DEFAULT XMIN SET ")
             try:
-                fit = powerlaw.Fit(evals, xmin=xmin,  verbose=False, distribution=distribution)  
+                with warnings.catch_warnings():
+                    warnings.simplefilter(action='ignore', category=RuntimeWarning)
+                    fit = powerlaw.Fit(evals, xmin=xmin,  verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2251,7 +2329,7 @@ class WeightWatcher(object):
             esd = ww_layer.rand_evals
 
         if esd is None or len(esd)==0:
-            logger.warn("No eigenvalues found for {} {}".format(ww_layer.layer_id, ww_layer.name))
+            logger.warning("No eigenvalues found for {} {}".format(ww_layer.layer_id, ww_layer.name))
                 
         else:
             logger.debug("Found {} eiganvalues for {} {}".format(len(esd), ww_layer.layer_id, ww_layer.name))     
@@ -2332,8 +2410,8 @@ class WeightWatcher(object):
         name = ww_layer.name or ""
         layer_name = "{} {}".format(layer_id, name)
         
-        savefig = params['savefig']
-        savedir = params['savedir']
+        savefig = params[SAVEFIG]
+        savedir = params[SAVEDIR]
 
         if random:
             layer_name = "{} Randomized".format(layer_name)
@@ -2388,11 +2466,11 @@ class WeightWatcher(object):
         name = ww_layer.name or ""
         layer_name = "{} {}".format(layer_id, name)
         
-        savefig = params['savefig']
-        savedir = params['savedir']
-        plot = params['plot']
+        savefig = params[SAVEFIG]
+        savedir = params[SAVEDIR]
+        plot = params[PLOT]
         
-        rescale = params['rescale'] #should be True always
+        rescale = params[RESCALE] #should be True always
         
         if random:
             layer_name = "{} Randomized".format(layer_name)
@@ -2543,7 +2621,7 @@ class WeightWatcher(object):
     
     
  
-    # these methods realy belong in RMTUtil
+    # these methods really belong in RMTUtil
     def smooth_W(self, W, n_comp):
         """Apply the sklearn TruncatedSVD method to each W, return smoothed W
         
@@ -2571,7 +2649,7 @@ class WeightWatcher(object):
         return pyRMT.optimalShrinkage(W)
 
   
-    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD):
+    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD, fit=PL, plot=False):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:
@@ -2586,19 +2664,23 @@ class WeightWatcher(object):
         
         model = model or self.model   
          
-        params=DEFAULT_PARAMS
-        params['ww2x'] = ww2x
-        params['layers'] = layers
+        params = DEFAULT_PARAMS
+        
+        params[WW2X] = ww2x
+        params[LAYERS] = layers
+        params[FIT] = fit # only useful for method=LAMBDA_MIN
+        params[PLOT] = False
+
         
         if ww2x:
             msg = "ww2x not supported yet for SVDSharpness, ending"
             logger.error(msg)
             raise Exception(msg)
         
-        if method not in [SVD, RMT]:
+        if method not in [SVD, RMT, DETX, LAMBDA_MIN]:
             logger.fatal("Unknown Smoothing method {}, stopping".format(method))
         else:
-            params['smooth']=method
+            params[SMOOTH]=method
         
         # check framework, return error if framework not supported
         # need to access static method on  Model class
@@ -2611,8 +2693,7 @@ class WeightWatcher(object):
         params = self.normalize_params(params)
      
         #TODO: restrict to ww2x or intra
-        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
-            
+        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)         
         
         # iterate over layers
         #   naive implementation uses just percent, not the actual tail
@@ -2623,7 +2704,18 @@ class WeightWatcher(object):
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
                 
-                params['num_smooth'] = int(percent*ww_layer.M*ww_layer.rf)
+                if method==LAMBDA_MIN:
+                    self.apply_esd(ww_layer, params)
+                    self.apply_fit_powerlaw(ww_layer, params)
+                    params['num_smooth'] = ww_layer.num_pl_spikes
+                if method==DETX:
+                    self.apply_esd(ww_layer, params)
+                    self.apply_detX(ww_layer, params)
+                    params['num_smooth'] = ww_layer.detX_num
+                else:
+                    params['num_smooth'] = int(percent*ww_layer.M*ww_layer.rf)
+                    
+                # TODO: do not recompute ESD if present ?
                 self.apply_svd_smoothing(ww_layer, params)
         
         logger.info("Returning smoothed model")
@@ -2632,7 +2724,7 @@ class WeightWatcher(object):
     
    
     
-        
+    # TODO: add methods that use ETPL-alpha and/or DETX
         
     def apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS):
         """run truncated SVD on layer weight matrices and reconstruct the weight matrices 
@@ -2646,7 +2738,7 @@ class WeightWatcher(object):
         layer_name = ww_layer.name
         layer_type = ww_layer.the_type
         framework = ww_layer.framework
-        channels = ww_layer.channels
+        channels= ww_layer.channels
 
         
         if framework not in [FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.ONNX]:
@@ -2661,7 +2753,7 @@ class WeightWatcher(object):
         N = ww_layer.N
         rf = ww_layer.rf
         
-        if params['smooth']==RMT:
+        if params[SMOOTH]==RMT:
             logger.info("applying RMT method, ignoring num_smooth options")
         
         n_comp = num_smooth
@@ -2676,7 +2768,7 @@ class WeightWatcher(object):
         logger.info("LAYER TYPE  {} out of {} {} {} ".format(layer_type,LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING))          
 
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
-            if params['smooth']==RMT:
+            if params[SMOOTH]==RMT:
                 logger.debug("using RMT smoothing method")
                 new_W = self.clean_W(old_W) 
             elif num_smooth > 0:
@@ -2705,13 +2797,13 @@ class WeightWatcher(object):
             num_smooth = int(np.ceil(num_smooth/rf))
             
             if new_B is not None:
-                logger.warn("Something went wrong, Biases found for Conv2D layer, layer {} {} ".format(layer_id, layer_name))
+                logger.warning("Something went wrong, Biases found for Conv2D layer, layer {} {} ".format(layer_id, layer_name))
             
             #[k,k,M,N]
             if channels == CHANNELS.FIRST:
                 i_max, j_max, _, _ = new_W.shape
                 if rf != i_max*j_max:
-                    logger.warn("Channels FIRST not processed correctly W_slice.shape {}, rf={} ?".format(new_W.shape, rf))
+                    logger.warning("channels FIRST not processed correctly W_slice.shape {}, rf={} ?".format(new_W.shape, rf))
 
                 for i in range(i_max):
                     for j in range(j_max):                         
@@ -2728,7 +2820,7 @@ class WeightWatcher(object):
             elif channels == CHANNELS.LAST:
                 _, _, i_max, j_max = new_W.shape
                 if rf != i_max*j_max:
-                    logger.warn("Channels LAST not processed correctly W_slice.shape {}, rf={} ?".format(new_W.shape, rf))
+                    logger.warning("channels LAST not processed correctly W_slice.shape {}, rf={} ?".format(new_W.shape, rf))
 
                 for i in range(i_max):
                     for j in range(j_max):   
@@ -2742,13 +2834,13 @@ class WeightWatcher(object):
                             new_W[:,:,i,j] = old_W[:,:,i,j]
                         
             else:
-                logger.warn("Something went wrong, Channels not defined or detected for Conv2D layer, layer {} {} skipped ".format(layer_id, layer_name))
+                logger.warning("Something went wrong, channels not defined or detected for Conv2D layer, layer {} {} skipped ".format(layer_id, layer_name))
             
             self.replace_layer_weights(framework, layer_id, layer, new_W)
     
 
         else:
-            logger.warn("Something went wrong,UNKNOWN layer {} {} skipped , type={}".format(layer_id, layer_name, layer_type))
+            logger.warning("Something went wrong,UNKNOWN layer {} {} skipped , type={}".format(layer_id, layer_name, layer_type))
 
         return ww_layer
         
@@ -2771,9 +2863,9 @@ class WeightWatcher(object):
         model = model or self.model   
          
         params=DEFAULT_PARAMS
-        params['ww2x'] = ww2x
-        params['layers'] = layers
-        params['plot'] = plot
+        params[WW2X] = ww2x
+        params[LAYERS] = layers
+        params[PLOT] = plot
 
         if ww2x:
             msg = "ww2x not supported yet for SVDSharpness, ending"
@@ -2870,7 +2962,7 @@ class WeightWatcher(object):
         model = model or self.model   
         
         params=DEFAULT_PARAMS
-        params['savefig'] = savefig
+        params[SAVEFIG] = savefig
         
         logger.debug("params {}".format(params))
         if not self.valid_params(params):
@@ -2915,8 +3007,8 @@ class WeightWatcher(object):
         if type(Wmats) is not list:
             Wmats = [Wmats]
 
-        savedir = params.get('savedir')
-        savefig = params.get('savefig')
+        savedir = params.get(SAVEDIR)
+        savefig = params.get(SAVEFIG)
         all_evals = []
 
         all_vec_entropies = []
@@ -2949,7 +3041,7 @@ class WeightWatcher(object):
         
         sort_ids = np.argsort(all_evals)
                 
-        if params['plot']:
+        if params[PLOT]:
             fig, axs = plt.subplots(4)
             fig.suptitle("Vector Localization Metrics for {}".format(layer_name))   
             
@@ -3025,7 +3117,7 @@ class WeightWatcher(object):
                 ww_layer.add_column("tail_var_{}".format(name), tail_var)
                     
 
-            if params['plot']:
+            if params[PLOT]:
                 fig, axs = plt.subplots(3)
                 fig.suptitle("Vector Bulk/Tail Metrics for {}".format(layer_name))   
                 

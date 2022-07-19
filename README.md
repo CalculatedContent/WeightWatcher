@@ -23,7 +23,7 @@ ad well several new experimental model transformations, including:
 - SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
 - SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
 
-### Experimental / Most Recent version    0.5.8
+### Experimental / Most Recent version    0.5.9
 
 You may install the latest / Trunk from testpypi
 

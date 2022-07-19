@@ -2680,6 +2680,7 @@ class WeightWatcher(object):
         if method not in [SVD, RMT, DETX, LAMBDA_MIN]:
             logger.fatal("Unknown Smoothing method {}, stopping".format(method))
         else:
+            logger.info(" Smoothing method {}".format(method))
             params[SMOOTH]=method
         
         # check framework, return error if framework not supported
@@ -2708,7 +2709,7 @@ class WeightWatcher(object):
                     self.apply_esd(ww_layer, params)
                     self.apply_fit_powerlaw(ww_layer, params)
                     params['num_smooth'] = ww_layer.num_pl_spikes
-                if method==DETX:
+                elif method==DETX:
                     self.apply_esd(ww_layer, params)
                     self.apply_detX(ww_layer, params)
                     params['num_smooth'] = ww_layer.detX_num

@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from enum import IntFlag, auto, Enum
 
 
-MAX_NUM_EVALS = 50000
-MIN_NUM_EVALS = 3
-
 DEF_SAVE_DIR = 'ww-img'
 
+LAYERS = 'layers'
 
 TRUNCATED_SVD = 'truncated_svd'
 FULL_SVD = 'full_svd'
@@ -38,25 +37,71 @@ TRUNCATED_POWER_LAW = 'truncated_power_law'
 POWER_LAW = 'power_law'
 LOG_NORMAL = 'lognormal'
 EXPONENTIAL = 'exponential'
-    
+
 # STATUSes
 
 SUCCESS = 'success'
 FAILED = 'failed'
-OVER_TRAINED = 'over-traoined'
+OVER_TRAINED = 'over-trained'
 UNDER_TRAINED = 'under-trained'
 
 UNKNOWN = 'unknown'
 
+GLOROT_FIX = 'glorot_fix'
+NORMALIZE = 'normalize'
+
+LAYERS = 'layers'
+
+SAVEFIG = 'savefig'
+SAVEDIR = 'savedir'
+
+DELTA_ES = 'deltaEs'
+INTRA = 'intra'
+CONV2D_FFT = 'conv2d_fft'
+CONV2D_NORM = 'conv2d_norm'
+
+GLOROT_FIT = 'glorot_fit'
+
+WW2X = 'ww2x'
+VECTORS = 'vectors'
+SMOOTH = 'smooth'
+SVD_METHOD = 'svd_method'
+FIX_FINGERS = 'fix_fingers'
+MP_FIT = 'mp_fit'
+FIT = 'fit'
+
+RESCALE = 'rescale'
+RANDOMIZE = 'randomize'
 SPARSIFY = 'sparsify'
+DETX = 'detX' # compute detx and for smoothing
+LAMBDA_MIN = 'alpha_min' # smoothing
 
-DEFAULT_PARAMS = {'glorot_fix': False, 'normalize':False, 'conv2d_norm':True, 'randomize': True, 
-                  'savedir':DEF_SAVE_DIR, 'savefig':True, 'rescale':True, 'plot':False,
-                  'deltaEs':False, 'intra':False, 'channels':None, 'conv2d_fft':False, 
-                  'ww2x':False, 'vectors':False, 'smooth':None, 'stacked':False, 
-                  'svd_method':FULL_SVD,  'fix_fingers':None, 'fit':POWER_LAW, SPARSIFY: True}
+MIN_EVALS = 'min_evals'
+DEFAULT_MIN_EVALS = 50
+MIN_NUM_EVALS = 10
 
+MAX_EVALS = 'max_evals'
+DEFAULT_MAX_EVALS = 10000
 
+PLOT = 'plot'
+STACKED = 'stacked'
+
+CHANNELS_STR = 'channels'
+FIRST = 'first'
+LAST = 'last'   
+
+TOLERANCE = 'tolerance'
+WEAK_RANK_LOSS_TOLERANCE = 0.000001 # on ei=gen values
+    
+# These are NOT the defaults...see analyze() for actual defaults
+DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZE: True, 
+                  SAVEDIR:DEF_SAVE_DIR, SAVEFIG:True, RESCALE:True, PLOT:False,
+                  DELTA_ES:False, INTRA:False, CHANNELS_STR:None, CONV2D_FFT:False, 
+                  WW2X:False, VECTORS:False, SMOOTH:None, STACKED:False, 
+                  SVD_METHOD:FULL_SVD,  FIX_FINGERS:None, FIT:POWER_LAW, 
+                  SPARSIFY: True, DETX: True,  MP_FIT:False,
+                  MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, 
+                  TOLERANCE:WEAK_RANK_LOSS_TOLERANCE}
 
 
 EVALS_THRESH = 0.00001
@@ -82,14 +127,8 @@ class FRAMEWORK(IntFlag):
 class CHANNELS(IntFlag):
     UNKNOWN = auto()
     FIRST = auto()
-    LAST = auto()
-    
-    
-class PLOT(IntFlag):
-    POWERLAW = auto()
-    ESD = auto()
-    ESDLOG = auto()
-    
+    LAST = auto()   
+            
     
 class METRICS():
     NORM = "norm"

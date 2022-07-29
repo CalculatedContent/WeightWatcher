@@ -8,6 +8,8 @@ Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcher
 
 For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 
+And please let me know if I can help in any way.
+
 ### Current Version / Release: 0.5.6
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:

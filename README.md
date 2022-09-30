@@ -8,6 +8,8 @@ Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcher
 
 For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 
+and the most recent podcast (https://changelog.com/practicalai/194)
+
 And please let me know if I can help in any way.
 
 ### Current Version / Release: 0.5.6
@@ -34,7 +36,7 @@ python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-u
 The testpypi version usually has the most recent updates, including experimental methods qnd bug fixes
 
 #### From Research to Production
-WeightWatcher is based on theoretical research (done injoint with UC Berkeley) into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
+WeightWatcher is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 

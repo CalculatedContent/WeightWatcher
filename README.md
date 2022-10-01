@@ -464,6 +464,8 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
 #### Latest papers and talks
 
+- [SETOL: A Semi-Empirical Theory of (Deep) Learning] (in progress)
+
 - [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
 
 - [Evaluating natural language processing models with robust generalization metrics that do not need access to any training or testing data](https://arxiv.org/abs/2202.02842)

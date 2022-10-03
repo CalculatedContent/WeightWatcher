@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import sys, os, re
+import sys, os, re, io
 import logging
 
 import numpy as np
@@ -33,7 +33,6 @@ import torch.nn as nn
 import onnx
 from onnx import numpy_helper
 
-import pyRMT
 
 import sklearn
 from sklearn.decomposition import TruncatedSVD
@@ -45,6 +44,10 @@ import sys
 if not sys.warnoptions:
     import warnings
     warnings.simplefilter("ignore")
+
+# for powerlaw warnings
+from contextlib import redirect_stdout, redirect_stderr
+
 
 #
 # this is use to allow editing in Eclipse but also
@@ -66,6 +69,7 @@ logger.setLevel(logging.INFO)
 
 mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
+
 
 
 
@@ -262,8 +266,8 @@ class WWLayer:
             
         elif isinstance(layer, nn.Embedding):
             the_type = LAYER_TYPE.EMBEDDING
-                
-        elif isinstance(layer, nn.LayerNorm):
+
+        elif  'norm' in str(type(layer)).lower():
             the_type = LAYER_TYPE.NORM
 
         # ONNX
@@ -334,8 +338,10 @@ class WWLayer:
                     #biases = w[1]
                     has_weights = True
                     #has_biases = True
-                else: 
+                elif self.the_type not in [LAYER_TYPE.NORM]: 
                     logger.info("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
+                else:
+                    pass
 
                 
         elif self.framework == FRAMEWORK.KERAS:
@@ -400,7 +406,8 @@ class WWLayer:
                 Wmats, N, M, n_comp = self.get_conv2D_fft(weights)
             
         elif the_type == LAYER_TYPE.NORM:
-            logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
+            #logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
+            pass
         
         else:
             logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, type(self.layer)))
@@ -1424,10 +1431,10 @@ class WeightWatcher(object):
 
         evals = ww_layer.evals        
         evals = rescale_eigenvalues(evals)
-        detX, detX_idx = detX_constraint(evals, rescale=False)
+        detX_num, detX_idx = detX_constraint(evals, rescale=False)
         detX_val = evals[detX_idx]
 
-        ww_layer.add_column('detX_num', detX)  
+        ww_layer.add_column('detX_num', detX_num)  
         ww_layer.add_column('detX_val', detX_val)  
 
         if plot:
@@ -1490,9 +1497,9 @@ class WeightWatcher(object):
         layer_name = "Layer {}".format(layer_id)
         
         fit_type =  params[FIT]
-        
+
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff, fit_type=fit_type)
-        
+
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
         ww_layer.add_column('xmax', xmax)
@@ -2010,7 +2017,7 @@ class WeightWatcher(object):
          
         all_evals = []
 
-        logger.info("generating {} replicas for each W of the random eigenvalues".format(num_replicas))
+        logger.debug("generating {} replicas for each W of the random eigenvalues".format(num_replicas))
         for num in range(num_replicas):
             count = len(Wmats)
             for  W in Wmats:
@@ -2077,7 +2084,6 @@ class WeightWatcher(object):
         plt.show(); plt.clf()
         
 
-            
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
                      savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit_type=POWER_LAW):
         """Fit eigenvalues to powerlaw or truncated_power_lw
@@ -2093,7 +2099,21 @@ class WeightWatcher(object):
             
                      
          """
-             
+
+        # when calling powerlaw methods, 
+        # trap warnings, stdout and stderr 
+        def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW):
+            f = io.StringIO()
+            with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
+                warnings.simplefilter(action='ignore', category=RuntimeWarning)
+                return powerlaw.Fit(data, xmin=xmin, xmax=xmax, verbose=verbose, distribution=distribution, xmin_distribution=distribution)
+
+        def pl_compare(fit, dist):
+            f = io.StringIO()
+            with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
+                warnings.simplefilter(action='ignore', category=RuntimeWarning)
+                return fit.distribution_compare(dist, TRUNCATED_POWER_LAW, normalized_ratio=True)
+    
         status = None
         
         # defaults for failed status
@@ -2105,7 +2125,7 @@ class WeightWatcher(object):
         xmax = None # or -1
         num_pl_spikes = -1
         best_fit = UNKNOWN
-    
+        fit = None
         
         # check    
         num_evals = len(evals)
@@ -2145,9 +2165,7 @@ class WeightWatcher(object):
                 ih = np.argmax(h[0])
                 xmin2 = 10 ** h[1][ih]
                 xmin_range = (0.95 * xmin2, 1.05 * xmin2)
-                with warnings.catch_warnings():
-                    warnings.simplefilter(action='ignore', category=RuntimeWarning)
-                    fit = powerlaw.Fit(nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
+                fit = pl_fit(data=nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2168,9 +2186,7 @@ class WeightWatcher(object):
             logger.debug("powerlaw.Fit no xmin , distribution={} ".format(distribution))
             try:
                 nz_evals = evals[evals > thresh]
-                with warnings.catch_warnings():
-                    warnings.simplefilter(action='ignore', category=RuntimeWarning)
-                    fit = powerlaw.Fit(nz_evals, xmax=xmax, verbose=False, distribution=distribution)  
+                fit = pl_fit(data=nz_evals, xmax=xmax, verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2180,9 +2196,7 @@ class WeightWatcher(object):
         else: 
             #logger.debug("POWERLAW DEFAULT XMIN SET ")
             try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter(action='ignore', category=RuntimeWarning)
-                    fit = powerlaw.Fit(evals, xmin=xmin,  verbose=False, distribution=distribution)  
+                fit = pl_fit(data=evals, xmin=xmin,  verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2209,10 +2223,9 @@ class WeightWatcher(object):
             # we stil check againsgt TPL, even if using PL fit
             all_dists = [TRUNCATED_POWER_LAW, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
             Rs = [0.0]
-            dists = [TRUNCATED_POWER_LAW]
+            dists = [POWER_LAW]
             for dist in all_dists[1:]:
-                R, p = fit.distribution_compare(dist, TRUNCATED_POWER_LAW, normalized_ratio=True)
-               
+                R, p = pl_compare(fit, dist)
                 if R > 0.1 and p > 0.05:
                     dists.append(dist)
                     Rs.append(R)
@@ -2290,7 +2303,8 @@ class WeightWatcher(object):
                 save_fig(plt, "esd4", layer_id, savedir)
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
-                          
+            import sys, os
+
         return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
     
     
@@ -2643,10 +2657,10 @@ class WeightWatcher(object):
         return smoothed_W
     
     
-    def clean_W(self, W):
-        """Apply pyRMT RIE cleaning method"""
-        
-        return pyRMT.optimalShrinkage(W)
+    #def clean_W(self, W):
+    #    """Apply pyRMT RIE cleaning method"""
+    #    
+    #    return pyRMT.optimalShrinkage(W)
 
   
     def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD, fit=PL, plot=False):
@@ -2770,8 +2784,8 @@ class WeightWatcher(object):
 
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
             if params[SMOOTH]==RMT:
-                logger.debug("using RMT smoothing method")
-                new_W = self.clean_W(old_W) 
+                logger.fatal("RMT smoothing method removed")
+                #new_W = self.clean_W(old_W) 
             elif num_smooth > 0:
                 logger.debug("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 

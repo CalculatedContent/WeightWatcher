@@ -42,8 +42,7 @@ setup(
                         'tensorflow',
                         'sklearn',
                         'torch',
-                        'onnx',
-                        'pyRMT'],
+                        'onnx'],
     entry_points = '''
         [console_scripts]
         weightwatcher=weightwatcher:main

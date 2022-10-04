@@ -5,12 +5,25 @@ Most notebooks can be run directly in Google Colab
 [WeightWatcher.ipynb](WeightWatcher.ipynb):\
 Basic functionality
 
+#### Aopplications for LLMs / Transformer Models
+
 [WW-BERT-BlogExample.ipynb](WW-BERT-BlogExample.ipynb):\
 Compares BERT, RoBERT, and XLNet using the layer Alphas $\alpha$'s
+
+[WW-LegalNER.ipynb](WW-LegalNER.ipynb):\
+Comparing 2 different LLMs for Legal NER
+
+<hr>
 
 #### From the SETOL (WeightWatcher theory paper):\
 [WW_MLP3_BatchSizes.ipynb](WW_MLP3_BatchSizes.ipynb):\
 Example using a very simple, 3-layer MLP (MLP3), but only training 1 layer
+
+[LSA.ipynb](LSA.ipynb):\
+Applying weightwatcher to a very simple example using Latent Semantic Analysis (LSA)
+
+
+<hr>
 
 #### Results from the [WeightWatcher Nature paper](https://www.nature.com/articles/s41467-021-24025-8).
  
@@ -25,7 +38,7 @@ Also includes Correlation Flow plots
 [WW-DenseNet.ipynb](WW-DenseNet.ipynb):\
 ResNet and DenseNet examples of Correlation Flow 
 
-
+<hr>
 
 
 

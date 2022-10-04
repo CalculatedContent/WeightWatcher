@@ -27,6 +27,21 @@ Applying weightwatcher to a very simple example using Latent Semantic Analysis (
 
 <hr>
 
+#### New Rand_Distance metric
+
+[WW-VGG-RandDistance.ipynb](WW-VGG-RandDistance.ipynb):\
+Rand Distance metric applied to VGG series
+
+#### New SVDSharpness and SVDSmoothing Tranaforms
+
+[WW-SVDSharpness-VGG11.ipynb](WW-SVDSharpness-VGG11.ipynb):\
+Used to remove Correlation Traps
+
+[WW-SVDSmoothing.ipynb](WW-SVDSmoothing.ipynb):\
+[WW-SVDSmoothing-VGG16.ipynb](WW-SVDSmoothing-VGG16.ipynb):\
+[WW-SVDSmoothing-VGG16-Keras.ipynb](WW-SVDSmoothing-VGG16-Keras.ipynb):\
+Create lower-rank approximation for each layer
+
 #### Results from the [WeightWatcher Nature paper](https://www.nature.com/articles/s41467-021-24025-8).
  
 [WW-GPT.ipynb](WW-GPT.ipynb):\
@@ -40,8 +55,8 @@ Also includes Correlation Flow plots
 [WW-DenseNet.ipynb](WW-DenseNet.ipynb):\
 ResNet and DenseNet examples of Correlation Flow 
 
-[WW-Full-PyTorchCV.ipynb}(WW-Full-PyTorchCV.ipynb):\
-Full analysis of all CV models
+[WW-Full-PyTorchCV.ipynb](WW-Full-PyTorchCV.ipynb):\
+Full computation of all CV models
 
 
 <hr>

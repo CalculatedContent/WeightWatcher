@@ -1,6 +1,7 @@
 ### Example Notebooks
 
-Most notebooks can be run directly in Google Colab
+Most notebooks can be run directly in Google Colab or locally using Jupyter
+<hr>
 
 [WeightWatcher.ipynb](WeightWatcher.ipynb):\
 Basic functionality

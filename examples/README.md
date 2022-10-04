@@ -20,6 +20,9 @@ Comparing 2 different LLMs for Legal NER
 [WW-GPT.ipynb](WW-GPT.ipynb):\
 Compares GPT and GPT2, which are the same models trained with different amounts of data.
 
+[WW_Sentence_Transformers.ipynb](WW_Sentence_Transformers.ipynb):\
+Selecting the best Sentence Transformer, out of 100 different HuggingFace models
+
 <hr>
 
 #### From the SETOL (WeightWatcher theory paper):\
@@ -66,6 +69,18 @@ ResNet and DenseNet examples of Correlation Flow
 Full computation of all CV models
 
 (and see GPT example above)
+
+<hr>
+
+#### Advanced Usage 
+
+[WW-LayerIterator.ipynb](WW-LayerIterator.ipynb):\
+[WW-LayerIteratorB.ipynb](WW-LayerIteratorN.ipynb):\
+Layer iterator
+
+[WW-ONNX.ipynb](WW-ONNX.ipynb):\
+Prototype ONNX support
+
 
 <hr>
 

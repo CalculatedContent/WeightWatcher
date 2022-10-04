@@ -15,6 +15,10 @@ Compares BERT, RoBERT, and XLNet using the layer Alphas $\alpha$'s
 [WW-LegalNER.ipynb](WW-LegalNER.ipynb):\
 Comparing 2 different LLMs for Legal NER
 
+ 
+[WW-GPT.ipynb](WW-GPT.ipynb):\
+Compares GPT and GPT2, which are the same models trained with different amounts of data.
+
 <hr>
 
 #### From the SETOL (WeightWatcher theory paper):\
@@ -32,6 +36,8 @@ Applying weightwatcher to a very simple example using Latent Semantic Analysis (
 [WW-VGG-RandDistance.ipynb](WW-VGG-RandDistance.ipynb):\
 Rand Distance metric applied to VGG series
 
+<hr>
+
 #### New SVDSharpness and SVDSmoothing Tranaforms
 
 [WW-SVDSharpness-VGG11.ipynb](WW-SVDSharpness-VGG11.ipynb):\
@@ -42,10 +48,10 @@ Used to remove Correlation Traps
 [WW-SVDSmoothing-VGG16-Keras.ipynb](WW-SVDSmoothing-VGG16-Keras.ipynb):\
 Create lower-rank approximation for each layer
 
+<hr>
+
 #### Results from the [WeightWatcher Nature paper](https://www.nature.com/articles/s41467-021-24025-8).
- 
-[WW-GPT.ipynb](WW-GPT.ipynb):\
-Compares GPT and GPT2, which are the same models trained with different amounts of data.
+
 
 [WW-VGG.ipynb](WW-VGG.ipynb):\
 Compares the VGG test accuracies vs AlphaHat $\hat{\alpha}$. \
@@ -58,6 +64,7 @@ ResNet and DenseNet examples of Correlation Flow
 [WW-Full-PyTorchCV.ipynb](WW-Full-PyTorchCV.ipynb):\
 Full computation of all CV models
 
+(and see GPT example above)
 
 <hr>
 

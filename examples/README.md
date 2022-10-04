@@ -40,6 +40,10 @@ Also includes Correlation Flow plots
 [WW-DenseNet.ipynb](WW-DenseNet.ipynb):\
 ResNet and DenseNet examples of Correlation Flow 
 
+[WW-Full-PyTorchCV.ipynb}(WW-Full-PyTorchCV.ipynb):\
+Full analysis of all CV models
+
+
 <hr>
 
 

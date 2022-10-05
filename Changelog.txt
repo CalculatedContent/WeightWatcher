@@ -6,6 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.5 (testpypi)] - 2022-10-05
 ### Added
+exmaples directory with notebooks and README
 
 ### Removed
 watcher.analyze(..., normalize=...).  

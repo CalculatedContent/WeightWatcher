@@ -1,0 +1,19 @@
+# Changelog
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.6.5 (testpypi)] - 2022-10-05
+### Added
+
+### Removed
+watcher.analyze(..., normalize=...).  
+pyRMT
+
+### Changed
+powerlaw.Fit() wrapped in method to supress stdout and stderr 
+
+### Fixed
+TPL and E_TPL fits use xmin_distribution='trunctated_power_law'
+

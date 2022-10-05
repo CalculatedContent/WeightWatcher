@@ -13,6 +13,7 @@ pyRMT
 
 ### Changed
 powerlaw.Fit() wrapped in method to supress stdout and stderr 
+analyze(vectors=True) is turned back on as default
 
 ### Fixed
 TPL and E_TPL fits use xmin_distribution='trunctated_power_law'

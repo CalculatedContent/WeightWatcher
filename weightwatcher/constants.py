@@ -19,6 +19,7 @@ from enum import IntFlag, auto, Enum
 DEF_SAVE_DIR = 'ww-img'
 
 LAYERS = 'layers'
+START_IDS = 'layer_ids_start' # 0 | 1
 
 TRUNCATED_SVD = 'truncated_svd'
 FULL_SVD = 'full_svd'

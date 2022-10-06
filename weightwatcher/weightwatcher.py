@@ -597,7 +597,7 @@ class ModelIterator:
     def __init__(self, model, params=DEFAULT_PARAMS):
         
         self.params = params
-        self.k = 0
+        self.k = params[START_IDS] # 0 | 1
         
         logger.debug("FRAMEWORKS: KERAS = {}  PYTORCH = {} ONNX = {} UNKNOWN = {} ".format(FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.ONNX, FRAMEWORK.UNKNOWN))
         logger.debug("FIRST = {}  LAST = {} UNKNOWN = {} ".format(CHANNELS.FIRST, CHANNELS.LAST, CHANNELS.UNKNOWN))
@@ -1565,7 +1565,8 @@ class WeightWatcher(object):
                 deltas=False, intra=False, vectors=False, channels=None, 
                 stacked=False, fix_fingers=False, fit=PL, sparsify=True, 
                 detX=False, 
-                tolerance=WEAK_RANK_LOSS_TOLERANCE):
+                tolerance=WEAK_RANK_LOSS_TOLERANCE,
+                start_ids=0):
         """
         Analyze the weight matrices of a model.
 
@@ -1657,6 +1658,9 @@ class WeightWatcher(object):
           
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
+
+        start_ids:  0 | 1
+           Start layer id counter at 0 or 1
         """
 
         model = model or self.model   
@@ -1690,6 +1694,7 @@ class WeightWatcher(object):
         params[SPARSIFY] = sparsify
         params[DETX] = detX
         params[TOLERANCE] = tolerance
+        params[START_IDS] = start_ids
 
 
         params[SAVEFIG] = savefig
@@ -1782,7 +1787,7 @@ class WeightWatcher(object):
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR,
                 conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
-                intra=False, channels=None, stacked=False, fix_fingers=False):
+                intra=False, channels=None, stacked=False, fix_fingers=False, start_ids=0):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -1810,6 +1815,7 @@ class WeightWatcher(object):
         
         params[SAVEFIG] = savefig
         #params[SAVEDIR] = savedir
+        params[START_IDS] = start_ids
 
 
         logger.info("params {}".format(params))
@@ -1846,6 +1852,7 @@ class WeightWatcher(object):
         
         valid = True        
         xmin = params.get('xmin')
+
         if xmin and xmin not in [XMIN.UNKNOWN, XMIN.AUTO, XMIN.PEAK]:
             logger.warning("param xmin unknown, ignoring {}".format(xmin))
             valid = False
@@ -1924,6 +1931,12 @@ class WeightWatcher(object):
         if intra:
             if params[RANDOMIZE] or params[VECTORS]:
                 logger.fatal("Can not set intra=True with randomize=True or vectors=True at this time")
+                valid = False
+
+        start_ids = params[START_IDS]
+        if start_ids not in [0,1]:
+            logger.fatal(f"Layer Ids must start at 0 or 1, start_ids={start_ids}")
+            valid = False
                 
         return valid
     
@@ -2558,7 +2571,12 @@ class WeightWatcher(object):
         logger.debug("bulk_max = {:0.3f}, bulk_max_TW = {:0.3f} ".format(bulk_max,bulk_max_TW))
         num_spikes = len(to_plot[to_plot > bulk_max_TW])
         
-        ratio_numofSpikes  = num_spikes / (M - 1)
+        #issue #69
+        if M > 1:
+            ratio_numofSpikes  = num_spikes / (M - 1)
+        else:
+            ratio_numofSpikes = 0
+
         mp_softrank = bulk_max / lambda_max
 
         if Q == 1.0:
@@ -2666,7 +2684,7 @@ class WeightWatcher(object):
     #    return pyRMT.optimalShrinkage(W)
 
   
-    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD, fit=PL, plot=False):
+    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:
@@ -2685,8 +2703,9 @@ class WeightWatcher(object):
         
         params[WW2X] = ww2x
         params[LAYERS] = layers
-        params[FIT] = fit # only useful for method=LAMBDA_MIN
+        params[FIT] = fit # only useful for method=LAMBDA_MINa
         params[PLOT] = False
+        params[START_IDS] = start_ids
 
         
         if ww2x:
@@ -2864,7 +2883,7 @@ class WeightWatcher(object):
         
 
 
-    def SVDSharpness(self, model=None,  ww2x=False, layers=[], plot=False):
+    def SVDSharpness(self, model=None,  ww2x=False, layers=[], plot=False, start_ids=0):
         """Apply the SVD Sharpness Transform to model
         
         layers:
@@ -2884,6 +2903,7 @@ class WeightWatcher(object):
         params[WW2X] = ww2x
         params[LAYERS] = layers
         params[PLOT] = plot
+        params[START_IDS] = start_ids
 
         if ww2x:
             msg = "ww2x not supported yet for SVDSharpness, ending"

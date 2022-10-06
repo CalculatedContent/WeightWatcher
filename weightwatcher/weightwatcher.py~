@@ -1492,15 +1492,13 @@ class WeightWatcher(object):
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
 
-        savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
-
         ff =  params[FIX_FINGERS]
         layer_name = "Layer {}".format(layer_id)
         
         fit_type =  params[FIT]
 
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig, fix_fingers=ff, fit_type=fit_type)
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, fix_fingers=ff, fit_type=fit_type)
 
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)

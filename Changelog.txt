@@ -4,18 +4,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.5 (testpypi)] - 2022-10-05
+## [0.6.x (in progress on trunk)] - 2022-10-05
 ### Added
 exmaples directory with notebooks and README
 
 ### Removed
 watcher.analyze(..., normalize=...).  
+
 pyRMT
+
+
 
 ### Changed
 powerlaw.Fit() wrapped in method to supress stdout and stderr 
+
 analyze(vectors=True) is turned back on as default
+
+
 
 ### Fixed
 TPL and E_TPL fits use xmin_distribution='trunctated_power_law'
+
+replaced np.linalg.eig and np.linalg.svd with scipy version because they are faster and more numerically stable
+
+analyze(savefig=False) now works in all cases
 

@@ -1,5 +1,5 @@
 from setuptools import setup
-import weightwatcher as ww
+#import weightwatcher as ww
 
 #try:
 #    import pypandoc
@@ -13,6 +13,19 @@ from os import path
 this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     readme = f.read()
+
+class _metadata(object):
+    def __init__(self):
+        """
+        Read the __init__.py vars into attrs
+        """
+        for line in open('weightwatcher/__init__.py'):
+            if line.startswith('__') and "__all__" not in line:
+                setattr(self,
+                        line.split()[0],
+                        eval(line.split('=')[1]))
+
+ww = _metadata()
 
 setup(
     name = ww.__name__,
@@ -42,7 +55,8 @@ setup(
                         'tensorflow',
                         'sklearn',
                         'torch',
-                        'onnx'],
+                        'onnx',
+                        'tqdm'],
     entry_points = '''
         [console_scripts]
         weightwatcher=weightwatcher:main

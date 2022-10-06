@@ -1224,7 +1224,7 @@ class WeightWatcher(object):
     
             W = W.astype(float)
             logger.debug("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
-            sv = np.linalg.svd(W, compute_uv=False)
+            sv = sp.linalg.svd(W, compute_uv=False)
             sv = sv.flatten()
             sv = np.sort(sv)[-n_comp:]
             # TODO:  move to PL fit for robust estimator
@@ -1555,8 +1555,8 @@ class WeightWatcher(object):
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def analyze(self, model=None, layers=[], 
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
-                min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False,
+                min_size=None, max_size=None, 
+                glorot_fix=False,
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
@@ -1581,6 +1581,7 @@ class WeightWatcher(object):
         max_evals:  int, default=10000
             Maximum number of evals (N*rf) (0 = no limit)
             
+        #removed
         normalize:  bool, default: True
             Normalize the X matrix. Usually True for Keras, False for PyTorch.
             Ignored if glorot_norm is set
@@ -1671,7 +1672,7 @@ class WeightWatcher(object):
         params[PLOT] = plot
         params[RANDOMIZE] = randomize
         params[MP_FIT] = mp_fit
-        params[NORMALIZE] = normalize
+        #params[NORMALIZE] = normalize   #removed 0.6.5
         params[GLOROT_FIT] = glorot_fix
         params[CONV2D_NORM] = conv2d_norm
         params[CONV2D_FFT] = conv2d_fft
@@ -1775,8 +1776,8 @@ class WeightWatcher(object):
     
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
-                min_size=None, max_size=None,  # deprecated
-                normalize=False, glorot_fix=False, 
+                min_size=None, max_size=None, 
+                glorot_fix=False, 
                 savefig=DEF_SAVE_DIR,
                 conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
                 intra=False, channels=None, stacked=False, fix_fingers=False):
@@ -1795,7 +1796,7 @@ class WeightWatcher(object):
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
       
-        params[NORMALIZE] = normalize
+        # params[NORMALIZE] = normalize  #removed 0.6.5 
         params[GLOROT_FIT] = glorot_fix
         params[CONV2D_NORM] = conv2d_norm
         params[CONV2D_FFT] = conv2d_fft
@@ -2030,7 +2031,7 @@ class WeightWatcher(object):
                 W = Wrand.reshape(W.shape)
                 W = W.astype(float)
                 logger.debug("Running Randomized Full SVD")
-                sv = np.linalg.svd(W, compute_uv=False)
+                sv = sp.linalg.svd(W, compute_uv=False)
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]    
                 
@@ -2605,7 +2606,7 @@ class WeightWatcher(object):
         # TODO: replace this with truncated SVD
         # can't we just appky the svd transform...test
         # keep this old method for historical comparison
-        u, s, vh = np.linalg.svd(W, compute_uv=True)
+        u, s, vh = sp.linalg.svd(W, compute_uv=True)
                 
         # s is ordered highest to lowest
         # i.e.  
@@ -3014,6 +3015,10 @@ class WeightWatcher(object):
         layer_id = ww_layer.layer_id
         name = ww_layer.name or ""
         layer_name = "{} {}".format(layer_id, name)
+
+        print(f"SP {layer_name}")
+        logger.warning(f"SP {layer_name}")
+
         
         M = ww_layer.M
         N = ww_layer.N    
@@ -3037,7 +3042,7 @@ class WeightWatcher(object):
             else:
                 X = np.matmul(W.T, W)
 
-            evals, V = np.linalg.eig(X)
+            evals, V = sp.linalg.eig(X)
             all_evals.extend(evals)
 
             vec_entropies = []

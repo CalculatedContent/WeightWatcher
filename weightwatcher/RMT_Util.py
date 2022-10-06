@@ -323,6 +323,8 @@ def vector_entropy(u):
 
 def discrete_entropy(vec, num_bins=100):
     """compute the discrete vector entropy  for this numpy vector, given the number of bins"""
+
+    vec = np.absolute(vec)
     vec = vec - np.mean(vec)
     h = np.histogram(vec, density=True, bins=num_bins)[0];
     p = np.array(h) + 0.0000000001

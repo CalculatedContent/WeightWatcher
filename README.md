@@ -1,4 +1,4 @@
-![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher?color=teal)
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 

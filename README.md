@@ -1,4 +1,4 @@
-[![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/count/weightwatcher)
+[![![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/count/weightwatcher)](https://pepy.tech/project/weightwatcher)
 ![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal&label=release)
 ![GitHub](https://img.shields.io/github/license/calculatedcontent/weightwatcher?color=blue)
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)

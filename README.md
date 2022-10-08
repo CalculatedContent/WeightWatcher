@@ -1,5 +1,5 @@
-[![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/count/weightwatcher)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher?color=teal)
+[![Downloads](http://pepy.tech/badge/weightwatcher?color=teal)](http://pepy.tech/count/weightwatcher)
+#![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher?color=teal)
 ![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal)
 ![PyPI - License](https://img.shields.io/pypi/l/weightwatcher?color=teal)
 ![Discord](https://img.shields.io/discord/1026957040133873745?color=teal)

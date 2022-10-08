@@ -1,4 +1,5 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher?color=teal)
+![PyPI - License](https://img.shields.io/pypi/l/weightwatcher?color=teal)
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 

@@ -1,5 +1,6 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher?color=teal)
 ![PyPI - License](https://img.shields.io/pypi/l/weightwatcher?color=teal)
+![GitHub forks](https://img.shields.io/github/forks/calculatedcontent/weightwatcher?color=teal&style=social)
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 

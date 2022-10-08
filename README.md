@@ -1,6 +1,17 @@
-<meta name="image" property="og:image" content="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png">
+[![WeightWatcher Logo](./img/WW-logo-long.jpg)]
 
-## Weight Watcher  
+
+**WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
+
+- analyze pre/trained pyTorch, Keras, DNN models (Conv2D and Dense layers)
+- monitor models, and the model layers,  to see if they are over-trained or over-parameterized
+- predict test accuracies across different models, with or without training data
+- detect potential problems when compressing or fine-tuning pretrained models
+- layer warning labels: over-trained; under-trained
+
+
+
+## Quick Links 
 
 Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
@@ -14,13 +25,7 @@ And please let me know if I can help in any way.
 
 ### Current Version / Release: 0.5.6
 
-**WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
 
-- analyze pre/trained pyTorch, Keras, DNN models (Conv2D and Dense layers)
-- monitor models, and the model layers,  to see if they are over-trained or over-parameterized
-- predict test accuracies across different models, with or without training data
-- detect potential problems when compressing or fine-tuning pretrained models
-- layer warning labels: over-trained; under-trained
 
 ad well several new experimental model transformations, including:
 

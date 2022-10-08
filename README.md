@@ -1,4 +1,4 @@
-https://img.shields.io/badge/Powered%20by-PostgreSQL-blue.svg
+[https://img.shields.io/badge/Powered%20by-PostgreSQL-blue.svg]
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 

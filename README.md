@@ -7,7 +7,7 @@
 
 [![Twitter Follow](https://img.shields.io/twitter/follow/calccon?color=blue&label=Follow&style=social)](https://twitter.com/CalcCon)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-blue)](https://www.linkedin.com/in/charlesmartin14/)
-[![Blog](https://img.shields.io/badge/Calculated-blue%20Content-teal)](https://www.calculatedcontent.com)
+[![Blog CalculatedContent](https://img.shields.io/badge/Blog%20WordPress-teal)](https://www.calculatedcontent.com)
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 

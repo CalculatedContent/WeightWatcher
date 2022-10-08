@@ -1,4 +1,4 @@
-[![Downloads](http://pepy.tech/badge/weightwatcher?color=teal)](http://pepy.tech/count/weightwatcher)
+[![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/count/weightwatcher)
 #![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher?color=teal)
 ![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal)
 ![PyPI - License](https://img.shields.io/pypi/l/weightwatcher?color=teal)

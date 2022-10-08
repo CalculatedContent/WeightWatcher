@@ -5,7 +5,7 @@
 [![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)](https://discord.com/invite/FwSBVBj2)
 
 [![Twitter Follow](https://img.shields.io/twitter/follow/calccon?color=blue&label=Follow&style=social)](https://twitter.com/CalcCon)
-<script src="https://platform.linkedin.com/badges/js/profile.js" async defer type="text/javascript"></script>
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-blue)](https://www.linkedin.com/in/charlesmartin14/)
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 

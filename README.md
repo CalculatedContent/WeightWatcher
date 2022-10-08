@@ -1,3 +1,5 @@
+![PyPI - Downloads](https://img.shields.io/pypi/dm/weightwatcher)
+
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 
 

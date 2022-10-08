@@ -1,7 +1,7 @@
 [![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/count/weightwatcher)
 ![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal&label=release)
 ![GitHub](https://img.shields.io/github/license/calculatedcontent/weightwatcher?color=blue)
-[![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)
+![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)
 ![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)
 
 

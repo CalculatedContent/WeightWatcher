@@ -2,7 +2,7 @@
 ![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal&label=release)
 ![GitHub](https://img.shields.io/github/license/calculatedcontent/weightwatcher?color=blue)
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)
-![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)
+[![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)](https://discord.com/invite/FwSBVBj2)
 
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)

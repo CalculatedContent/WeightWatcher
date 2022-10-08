@@ -2,7 +2,7 @@
 [![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal&label=release)](https://pypi.org/project/weightwatcher/)
 ![GitHub](https://img.shields.io/github/license/calculatedcontent/weightwatcher?color=blue)
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)
-[![Featured in ACM](https://img.shields.io/badge/Video-Tutorial-blue)]([https://nature.com/articles/s41467-021-24025-8](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+[![Featured in ACM](https://img.shields.io/badge/Video-Tutorial-blue)]((https://www.youtube.com/watch?v=Tnafo6JVoJs)
 https://www.youtube.com/watch?v=Tnafo6JVoJs
 [![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)](https://discord.com/invite/FwSBVBj2)
 

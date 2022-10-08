@@ -1,8 +1,7 @@
 [![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/count/weightwatcher)
 ![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal)
 ![GitHub](https://img.shields.io/github/license/calculatedcontent/weightwatcher?color=blue)
-![Discord](https://img.shields.io/discord/1026957040133873745?color=teal)
-
+![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 
 

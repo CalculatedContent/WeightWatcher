@@ -4,6 +4,7 @@
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)
 [![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)](https://discord.com/invite/FwSBVBj2)
 
+![Twitter Follow](https://img.shields.io/twitter/follow/calccon?color=blue&style=social)
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 

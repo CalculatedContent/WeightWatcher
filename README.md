@@ -38,19 +38,6 @@ And please let me know if I can help in any way.
 
 
 
-ad well several new experimental model transformations, including:
-
-- SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
-- SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
-
-### Experimental / Most Recent version    (not ready yet)
-
-You may install the latest / Trunk from testpypi
-
-python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
-
-The testpypi version usually has the most recent updates, including experimental methods qnd bug fixes
-
 #### From Research to Production
 WeightWatcher is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
@@ -557,10 +544,14 @@ and has been the subject  many popular podcasts
 [IARAI, the Institute for Advanced Research in Artificial Intelligence](https://www.youtube.com/watch?v=Pirni67ZmRQ)
 
 
-## Slack Channel
+### Experimental / Most Recent version    (not ready yet)
 
-We have a slack channel for the tool if you need help
-For an invite, please send an email to charles@calculationconsulting.com
+You may install the latest / Trunk from testpypi
+
+python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
+
+The testpypi version usually has the most recent updates, including experimental methods qnd bug fixes
+
 
 
 #### Contributors

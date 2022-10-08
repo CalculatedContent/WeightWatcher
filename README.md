@@ -32,29 +32,12 @@ For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be
 
 and the most recent podcast (https://changelog.com/practicalai/194)
 
-And please let me know if I can help in any way.
 
-### Current Version / Release: 0.5.6
-
-
-
-#### From Research to Production
 WeightWatcher is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
-#### Reproducing Old Results
-
-We strive to make all of our results 100% reproducible; this is not easy.
-
-To reproduce some older results, such as the Nature paper (which is actually 2 years old), use the **ww2x** option and set the minimum number of eigenvlues to 50:
-
-```sh
-watcher.analyze(..., ww2x=True, min_evls=50,  ...)
-```
-
-If you are unable to reproduce the results, please file a bug and I will try to address it.
-
+### Current Version / Release: 0.5.6
 
 ## Installation 
 

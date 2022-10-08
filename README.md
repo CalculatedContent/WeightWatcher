@@ -1,4 +1,4 @@
-[![WeightWatcher Logo](./img/WW-logo-long.jpg)]
+![WeightWatcher Logo](./img/WW-logo-long.jpg)
 
 
 **WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:

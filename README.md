@@ -2,7 +2,7 @@
 
 ## Weight Watcher  
 
-Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)ca
+Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
 Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q) and/or our [Discord Server](https://discord.gg/FwSBVBj2)
 
@@ -27,7 +27,7 @@ ad well several new experimental model transformations, including:
 - SVDSmoothing:  builds a model that can be used to predict test accuracies, but only with the training data.
 - SVDSharpness:  removes Correlation Traps, which arise from sub-optimal regularization pre-trained models.
 
-### Experimental / Most Recent version    0.5.9
+### Experimental / Most Recent version    (not ready yet)
 
 You may install the latest / Trunk from testpypi
 

@@ -75,13 +75,36 @@ and summary dict of generalization metrics
       'mp_softrank': 0.52}]
 ```
 
-### Tips for First Time Users (SEE BELOW)
+## Advanced Usage 
 
-### Layer Details: 
+The watcher object has several functions and analyze features described below
 
-WW computes several Scale and Shape metrics for each layer Weight matrix **W**, as described in our papers (see below)
+```python
+analyze( model=None, layers=[], min_evals=0, max_evals=None,
+	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
+...
+describe(self, model=None, layers=[], min_evals=0, max_evals=None,
+         plot=True, randomize=True, mp_fit=True, ww2x=False):
+...
+get_details()
+get_summary(details) or get_summary()
+get_ESD()
+...
+distances(model_1, model_2)
+```
 
-These are reported in a **details dataframe**,  including:
+#### Ploting and Fitting the Empirical Spectral Density (ESD)
+
+WW creates plots for each layer weight matrix to observe how well the power law fits work
+
+```python
+details = watcher.analyze(plot=True)
+```
+
+For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD.  Here's an example:
+
+![ESD](ESD-plots.png)
+
 
 ### Generalization Metrics
 <details>
@@ -161,35 +184,9 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 	
 </details>
 
-## Advanced Usage 
 
-The watcher object has several functions and analyze features described below
 
-```python
-analyze( model=None, layers=[], min_evals=0, max_evals=None,
-	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
-...
-describe(self, model=None, layers=[], min_evals=0, max_evals=None,
-         plot=True, randomize=True, mp_fit=True, ww2x=False):
-...
-get_details()
-get_summary(details) or get_summary()
-get_ESD()
-...
-distances(model_1, model_2)
-```
 
-#### Ploting and Fitting the Empirical Spectral Density (ESD)
-
-WW creates plots for each layer weight matrix to observe how well the power law fits work
-
-```python
-details = watcher.analyze(plot=True)
-```
-
-For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD. 
-
-![ESD](ESD-plots.png)
 
 ### Early Stopping
 <details>

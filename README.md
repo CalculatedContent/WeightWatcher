@@ -524,14 +524,13 @@ and has been presented at Stanford, UC Berkeley, KDD, etc:
 	
 </details>
 
-
-#### Popular Popdcasts and Blogs
-
 <details>
 <summary>
-WeightWatcher has also been featured on many popular podcasts
+WeightWatcher has also been featured at local meetups and many popular podcasts
 </summary>
 	
+#### Popular Popdcasts and Blogs
+
 - [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
  
 - [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
@@ -548,17 +547,18 @@ WeightWatcher has also been featured on many popular podcasts
 
 - [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 
-</details>
 
 #### 2021 Short Presentations
 
-[MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
+- [MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
 
-[PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
+- [PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
 
 #### Recent talk(s) by Mike Mahoney, UC Berekely
 
-[IARAI, the Institute for Advanced Research in Artificial Intelligence](https://www.youtube.com/watch?v=Pirni67ZmRQ)
+- [IARAI, the Institute for Advanced Research in Artificial Intelligence](https://www.youtube.com/watch?v=Pirni67ZmRQ)
+
+</details>
 
 
 ### Experimental / Most Recent version    (not ready yet)

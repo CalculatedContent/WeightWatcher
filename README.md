@@ -472,7 +472,7 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 <details>
 <summary>
 WeightWatcher has been featured in top journals like JMLR and Nature.  Find a list of publications below:	
-<summary>
+</summary>
 
 - [SETOL: A Semi-Empirical Theory of (Deep) Learning] (in progress)
 

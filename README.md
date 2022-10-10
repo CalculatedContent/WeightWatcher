@@ -84,8 +84,13 @@ WW computes several Scale and Shape metrics for each layer Weight matrix **W**, 
 These are reported in a **details dataframe**,  including:
 
 ### Generalization Metrics
-
+<details>
+  <summary>
 The goal of the WeightWatcher project is find generalization metrics that most accurately reflect observed test accuracies, across many different models and architectures, and both pre-trained and during training.
+</summary>
+	
+
+
 
 [Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP random bulk, and, even more specifically, be heavy tailed. There are different layer metrics in weightwatcher for this, including:
 
@@ -153,6 +158,8 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 - average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, but of the same depth.
 - average **log spectral norm** is useful to compare models of different depths **L**
 - average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously.
+	
+</details>
 
 ## Advanced Usage 
 

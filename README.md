@@ -191,11 +191,14 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 
 ![ESD](ESD-plots.png)
 
-### Detecting OverTraining
+### Early Stopping
+<details>
+ <summary>
 Note: This is experimental but we have seen some success here
 
-Weightwatcher can detect the signatures of overtraining in specific layers of a pre/trained Deep Neural Networks.
-
+Weightwatcher can detect the signatures of overfitting in specific layers of a pre/trained Deep Neural Networks.
+ </summary>
+	
 #### Early stopping
 
 The weightwatcher **alpha** metric can be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be overtrained and early stopping is necesary.
@@ -205,14 +208,16 @@ Below is an example of this, showing training loss and test lost curves for  a s
 ![Early Stopping](early_stopping.png)
 
 We can see that as the training and test losses decrease, so does **alpha**. But when the test loss saturates and then starts to increase, **alpha** drops below 2.0.
+	
+</details>
 
 #### Correlation Traps
 
 <details>
-<summary>
+ <summary>
 The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
 This is good way to visualize the correlations in the true ESD.
-<\summary>
+ </summary>
 
 ```python
 details = watcher.analyze(randomize=True, plot=True)
@@ -227,12 +232,15 @@ And for the random (red) ESD, the largest eigenvalue (orange) is far to the righ
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
 
-<\details>
+</details>
 
 ### Predicting the Generalization Error
 
+<details>
+<summary>
 WeightWatcher (WW)can be used to compare the test error for a series of models, trained on the similar dataset, but with different hyperparameters, or even different but related architectures.  
-
+</summary>
+	
 Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average, correspond to models that generalize better.
 
 The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
@@ -254,10 +262,11 @@ This can be reppduced with the [Demo Notebook](https://github.com/CalculatedCont
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 
 **See also the recent rand_distance metric.**
-
+</details>
 
 ### SVDSmoothing and SVDSharpness Transforms 
-#### As descibed in our latest paper
+<details>
+	<summary>Recent but unpublished transformers</summary>
 
 Smoothed models can be used to predict test accuracies, by evaluating the training accuracy on the smoothed model.
 ```python
@@ -272,6 +281,7 @@ sharpemed_model = watcher.SVDSharpness(model=...)
 
 Sample notebooks are provided for each new feature
 
+</details>
 ### Additional Features
 
 #### filter by layer types 

@@ -471,7 +471,7 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
 <details>
 <summary>
-WeightWatcher has been featured in top journals like JMLR and Nature.  Find a list of publications below:	
+WeightWatcher has been featured in top journals like JMLR and Nature:	
 </summary>
 
 - [SETOL: A Semi-Empirical Theory of (Deep) Learning] (in progress)
@@ -525,31 +525,28 @@ and has been presented at Stanford, UC Berkeley, KDD, etc:
 </details>
 
 
-
-
-
 #### Popular Popdcasts and Blogs
 
 <details>
 <summary>
-weightWatcher has also been featured on many popular podcasts
+WeightWatcher has also been featured on many popular podcasts
 </summary>
 	
-[This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
+- [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
  
-[Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
+- [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
 
-[Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
+- [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
 
-[Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
+- [Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
 
-[Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
+- [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 
-[LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
+- [LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
 
-[our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+- [The Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
-[Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
+- [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 
 </details>
 

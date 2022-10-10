@@ -186,8 +186,7 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 </details>
 
 
-
-
+### Detecting signs of Over-Fitting
 
 ### Early Stopping
 <details>
@@ -197,8 +196,6 @@ Note: This is experimental but we have seen some success here
 Weightwatcher can detect the signatures of overfitting in specific layers of a pre/trained Deep Neural Networks.
  </summary>
 	
-#### Early stopping
-
 The weightwatcher **alpha** metric can be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be overtrained and early stopping is necesary.
 
 Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average **alpha** summary statistic.
@@ -209,7 +206,7 @@ We can see that as the training and test losses decrease, so does **alpha**. But
 	
 </details>
 
-#### Correlation Traps
+### Correlation Traps
 
 <details>
  <summary>
@@ -281,6 +278,10 @@ Sample notebooks are provided for each new feature
 
 </details>
 ### Additional Features
+<details>
+<summary>
+There are many advanced features, described below
+</summary>
 
 #### filter by layer types 
 ```python
@@ -388,6 +389,8 @@ ww.layer#.esd3.png
 ww.layer#.esd4.png
 </pre>
 
+
+</details>
 
 ### Frameworks supported
 

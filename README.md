@@ -37,9 +37,10 @@ and the most recent podcast (https://changelog.com/practicalai/194)
 
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
-### Current Version / Release: 0.5.6
 
 ## Installation 
+
+(Current Version : 0.5.6)
 
 ```sh
 pip install  weightwatcher

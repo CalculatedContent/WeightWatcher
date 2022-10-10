@@ -500,7 +500,6 @@ WeightWatcher has been featured in top journals like JMLR and Nature.  Find a li
 	
 </details>
 
----
 <details>
 <summary>
 and has been presented at Stanford, UC Berkeley, etc:
@@ -517,6 +516,7 @@ and has been presented at Stanford, UC Berkeley, etc:
 - [Talk at UCL (UK) 2022](https://www.youtube.com/watch?v=sOXROWJ70Pg)
 
 </details>
+
 ---
 
 #### KDD2019 Workshop

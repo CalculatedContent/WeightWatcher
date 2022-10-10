@@ -277,7 +277,9 @@ sharpemed_model = watcher.SVDSharpness(model=...)
 Sample notebooks are provided for each new feature
 
 </details>
+
 ### Additional Features
+
 <details>
 <summary>
 There are many advanced features, described below

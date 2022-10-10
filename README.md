@@ -12,14 +12,17 @@
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 
 
-**WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. It can be used to:
+**WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data. 
+
+It is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
+
+It can be used to:
 
 - analyze pre/trained pyTorch, Keras, DNN models (Conv2D and Dense layers)
 - monitor models, and the model layers,  to see if they are over-trained or over-parameterized
 - predict test accuracies across different models, with or without training data
 - detect potential problems when compressing or fine-tuning pretrained models
 - layer warning labels: over-trained; under-trained
-
 
 
 ## Quick Links 
@@ -31,9 +34,6 @@ Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcher
 For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 
 and the most recent podcast (https://changelog.com/practicalai/194)
-
-
-WeightWatcher is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
 More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 

@@ -502,7 +502,7 @@ WeightWatcher has been featured in top journals like JMLR and Nature.  Find a li
 
 <details>
 <summary>
-and has been presented at Stanford, UC Berkeley, etc:
+and has been presented at Stanford, UC Berkeley, KDD, etc:
 </summary>
 
 - [NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
@@ -515,22 +515,24 @@ and has been presented at Stanford, UC Berkeley, etc:
 
 - [Talk at UCL (UK) 2022](https://www.youtube.com/watch?v=sOXROWJ70Pg)
 
-</details>
-
----
-
 #### KDD2019 Workshop
 
-[KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
-Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
+- [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
+  Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
 
-[KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+- [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+	
+</details>
+
+
+
+
 
 #### Popular Popdcasts and Blogs
 
 <details>
 <summary>
-weightWatcher has been featured on many popular podcasts
+weightWatcher has also been featured on many popular podcasts
 </summary>
 	
 [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)

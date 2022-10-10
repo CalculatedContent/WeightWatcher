@@ -201,8 +201,11 @@ We can see that as the training and test losses decrease, so does **alpha**. But
 
 #### Correlation Traps
 
+<details>
+<summary>
 The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
 This is good way to visualize the correlations in the true ESD.
+<\summary>
 
 ```python
 details = watcher.analyze(randomize=True, plot=True)
@@ -216,6 +219,8 @@ And for the random (red) ESD, the largest eigenvalue (orange) is far to the righ
 ![Correlation Traps](correlation_trap.jpeg)
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
+
+<\details>
 
 ### Predicting the Generalization Error
 

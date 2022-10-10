@@ -27,16 +27,17 @@ It can be used to:
 
 ## Quick Links 
 
-Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+- Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
-Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q) and/or our [Discord Server](https://discord.gg/FwSBVBj2)
+- Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q) and/or our [Discord Server](https://discord.gg/FwSBVBj2)
 
-For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
+- For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 
-and the most recent podcast (https://changelog.com/practicalai/194)
+- and the most recent podcast (https://changelog.com/practicalai/194)
 
-More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
+- More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
+And in the notebooks provided in the examples directory
 
 ## Installation 
 
@@ -425,13 +426,6 @@ But sometimes the power law / alpha fits don't work.  This happens when
 
 In any of these cases, I usually throw away alphas > 8 because they are spurious./. If you suspect your layers are undertrained, you have to look both at alpha and a plot of the ESD itself (to see if it is heavy tailed or just random-like)
 
-### Demo Notebooks
-
-[Basic Usage](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher.ipynb)
-
-[Analyzing the VGG series](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
-
-[Using the ww2x option](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG-ww2x.ipynb)
 
 
 ## How to Release
@@ -470,6 +464,11 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 
 #### Latest papers and talks
 
+<details>
+<summary>
+WeightWatcher has been featured in top journals like JMLR and Nature.  Find a list of publications below:	
+<summary>
+
 - [SETOL: A Semi-Empirical Theory of (Deep) Learning] (in progress)
 
 - [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
@@ -493,8 +492,14 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
   - Notebook for paper (https://github.com/CalculatedContent/PredictingTestAccuracies)
 
 - [Rethinking generalization requires revisiting old ideas: statistical mechanics approaches and complex learning behavior](https://arxiv.org/abs/1710.09553)
+	
+</details>
+
 ---
+<details>
+<summary>
 and has been presented at Stanford, UC Berkeley, etc:
+</summary>
 
 - [NERSC Summer 2018](https://www.youtube.com/watch?v=_Ni5UDrVwYU)
 - [UC Berkeley/ICSI 12/13/2018](https://www.youtube.com/watch?v=6Zgul4oygMc)
@@ -506,6 +511,7 @@ and has been presented at Stanford, UC Berkeley, etc:
 
 - [Talk at UCL (UK) 2022](https://www.youtube.com/watch?v=sOXROWJ70Pg)
 
+</details>
 ---
 
 #### KDD2019 Workshop
@@ -517,8 +523,11 @@ Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1
 
 #### Popular Popdcasts and Blogs
 
-and has been the subject  many popular podcasts
-
+<details>
+<summary>
+weightWatcher has been featured on many popular podcasts
+</summary>
+	
 - [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
 
 - [Data Science at Home Podcast](https://podcast.datascienceathome.com/e/episode-70-validate-neural-networks-without-data-with-dr-charles-martin/)
@@ -535,6 +544,7 @@ and has been the subject  many popular podcasts
 
 - [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 
+</details>
 
 #### 2021 Short Presentations
 

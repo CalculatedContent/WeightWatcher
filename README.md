@@ -431,10 +431,9 @@ But sometimes the power law / alpha fits don't work.  This happens when
 
 In any of these cases, I usually throw away alphas > 8 because they are spurious./. If you suspect your layers are undertrained, you have to look both at alpha and a plot of the ESD itself (to see if it is heavy tailed or just random-like)
 
-
+<hr>
 
 ## How to Release
-
 Publishing to the PyPI repository:
 
 ```sh
@@ -460,19 +459,17 @@ twine upload dist/*
 
 [Apache License 2.0](LICENSE.txt)
 
-
----
+<hr>
 
 ### Academic Presentations and Media Appearances
 
 This tool is based on state-of-the-art research done in collaboration with UC Berkeley:
 
-#### Latest papers and talks
-
 <details>
 <summary>
 WeightWatcher has been featured in top journals like JMLR and Nature:	
 </summary>
+#### Latest papers and talks
 
 - [SETOL: A Semi-Empirical Theory of (Deep) Learning] (in progress)
 
@@ -560,6 +557,7 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 </details>
 
+<hr>
 
 ### Experimental / Most Recent version    (not ready yet)
 
@@ -569,7 +567,7 @@ python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-u
 
 The testpypi version usually has the most recent updates, including experimental methods qnd bug fixes
 
-
+<hr>
 
 #### Contributors
 
@@ -577,6 +575,8 @@ The testpypi version usually has the most recent updates, including experimental
 [Calculation Consulting](https://calculationconsulting.com)
 
 [Serena Peng](https://www.linkedin.com/in/serenapeng)
+
+<hr>
 
 #### Consulting Practice
 

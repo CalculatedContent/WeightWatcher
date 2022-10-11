@@ -62,7 +62,7 @@ summary = watcher.get_summary(details)
 
 It is as easy to run and generates a pandas dataframe with details (and plots) for each layer
 
-![Sample Details Dataframe](sample-ww-details.png)
+![Sample Details Dataframe](./img/sample-ww-details.png)
 
 and summary dict of generalization metrics
 
@@ -104,7 +104,7 @@ details = watcher.analyze(plot=True)
 
 For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD.  Here's an example:
 
-<img src="./ESD-plots.png" width='800px'  height='auto' />
+<img src="./img/ESD-plots.png" width='800px'  height='auto' />
 
 Generally speaking, the ESDs in the best layers in the best DNNs can be fit to a Power Law (PL), with PL exponents (alpha) closer to 2.
 Visually, the ESD looks like a straight line on a log-log plot (above left).
@@ -232,7 +232,7 @@ That orange spike on the far right is the tell-tale clue; it's caled a **Correla
 A **Correlation Trap** is characterized by  Fig (b); here the 
 actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
 And random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
-![Correlation Traps](correlation_trap.jpeg)
+![Correlation Traps](./img/correlation_trap.jpeg)
 	
 When layers look like Figure (b) above, then they have not been trained properly because they look almost random, with only a little bit of information present. And the information the layer learned may even be spurious
 	
@@ -258,7 +258,7 @@ The weightwatcher **alpha** metric may be used to detect when to apply early sto
 
 Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average **alpha** summary statistic.
 
-![Early Stopping](early_stopping.png)
+![Early Stopping](./img/early_stopping.png)
 
 We can see that as the training and test losses decrease, so does **alpha**. But when the test loss saturates and then starts to increase, **alpha** drops below 2.0.
 	
@@ -560,7 +560,7 @@ You may install the latest / Trunk from testpypi
 
 python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
 
-The testpypi version usually has the most recent updates, including experimental methods qnd bug fixes
+The testpypi version usually has the most recent updates, including experimental methods and bug fixes
 
 <hr>
 

@@ -258,9 +258,14 @@ WeightWatcher (WW)can be used to compare the test error for a series of models, 
 	
 Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average, correspond to models that generalize better.
 
-The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (like batch size, learning rate, momentum, etc)
+The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (dropout,  momentum, etc)
 
- - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\langle\alpha\rangle\sim\Delta(\theta)">
+ - PL exponent alpha
+ - PL quality of fit D (KS distance)
+ - Rand_Distance 
+	
+For larger, more complicated models, one may use the TPL fits
+	
  - TPL exponent alpha, and decay term Lambda
  - E_TPL exponent alpha, and decay term Lambda
 
@@ -272,11 +277,10 @@ Here is an example of the **Weighted Alpha** capacity metric for all the current
 
 ![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
 
-This can be reppduced with the [Demo Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/WeightWatcher-VGG.ipynb)
+This can be reppduced with the [Examokes Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/examples/WW-VGG.ipynb)
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 
-**See also the recent rand_distance metric.**
 </details>
 
 <hr>

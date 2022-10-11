@@ -141,6 +141,8 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 #### Shape Metrics
 
  - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
+ - PL quality of fit D: <img src="https://render.githubusercontent.com/render/math?math=\D">
+
 
 (advanced usage)
  - TPL. (alpha and Lambda) Truncated Power Law Fit
@@ -163,6 +165,9 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 - N, M:  Matrix or Tensor Slice Dimensions
 - D:  Quality of the (Truncated) Power law fit (D is the Kolmogorov Smirnov Distance metric)
 - num_spikes:  number of spikes outside the bulk region of the ESD, when fit to an MP distribution
+- num_rand_spikes:  number of Correlation Traps
+- max_rand_eval: scale of the random noise in the layer
+
 
 ### Summary Statistics: 
 The layer metrics are be averaged in the **summary** statistics:
@@ -180,9 +185,9 @@ summary = watcher.get_summary()
 
 The summary statistics can be used to gauge the test error of a series of pre/trained models, without needing access to training or test data.
 
-- average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, but of the same depth.
-- average **log spectral norm** is useful to compare models of different depths **L**
-- average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously.
+- average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, when  depth is not a driving factor (i.e transformer models)
+- average **log spectral norm** is useful to compare models of different depths **L** at a coarse grain level
+- average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously. (i.e CV models like VGG and ResNet)
 	
 #### Predicting the Generalization Error
 

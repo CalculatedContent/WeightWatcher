@@ -410,7 +410,7 @@ ww.layer#.esd4.png
 <details>
 <summary>
 On using weightwatcher for the first time.  I recommend selecting at least 1 trained  model, and running weightwatcher with all analyze options on, including the plots.  From thsi, look for:
-<\summary>
+</summary>
 
 - if the layers ESDs are well formed and heavy tailed
 - if any layers are nearly random, indicating they are not well trained

@@ -272,7 +272,7 @@ Note: this only work for very well trained models, where the optimal alpha=2 is 
 
 
 
-### Additional Features
+## Additional Features
 
 <details>
 <summary>
@@ -399,7 +399,7 @@ ww.layer#.esd4.png
 - Dense / Linear / Fully Connected (and Conv1D)
 - Conv2D
 
-### Tips for First Time Users
+## Tips for First Time Users
 
 <details>
 <summary>
@@ -450,13 +450,13 @@ twine upload dist/*
 
 <hr>
 
-### License
+## License
 
 [Apache License 2.0](LICENSE.txt)
 
 <hr>
 
-### Academic Presentations and Media Appearances
+## Academic Presentations and Media Appearances
 
 This tool is based on state-of-the-art research done in collaboration with UC Berkeley:
 
@@ -554,7 +554,7 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 <hr>
 
-### Experimental / Most Recent version    (not ready yet)
+## Experimental / Most Recent version    (not ready yet)
 
 You may install the latest / Trunk from testpypi
 
@@ -564,7 +564,7 @@ The testpypi version usually has the most recent updates, including experimental
 
 <hr>
 
-#### Contributors
+## Contributors
 
 [Charles H Martin, PhD](https://www.linkedin.com/in/charlesmartin14)
 [Calculation Consulting](https://calculationconsulting.com)

@@ -130,7 +130,6 @@ etc
 All of these attempt to measure how on-random and/or non-heavy-tailed the layer ESDs are.  
 
 
-
 #### Scale Metrics 
 
 - log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{W}\Vert^{2}_{F}">
@@ -185,8 +184,22 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 - average **log spectral norm** is useful to compare models of different depths **L**
 - average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously.
 	
-</details>
+#### Predicting the Generalization Error
 
+
+WeightWatcher (WW)can be used to compare the test error for a series of models, trained on the similar dataset, but with different hyperparameters, or even different but related architectures.  
+	
+Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average, correspond to models that generalize better.
+
+Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
+
+![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
+
+Notice: we *did not peek* at the ImageNet test data to build this plot.
+	
+This can be reproduced with the Examples Notebooks for [VGG](https://github.com/CalculatedContent/WeightWatcher/blob/master/examples/WW-VGG.ipynb) and also for [ResNet](https://github.com/CalculatedContent/WeightWatcher/blob/master/examples/WW-ResNet.ipynb)
+
+</details>
 
 ## Detecting signs of Over-Fitting and Under-Fitting
 
@@ -249,54 +262,10 @@ Note: this only work for very well trained models, where the optimal alpha=2 is 
 </details>
 
 
-## Predicting the Generalization Error
-
-<details>
-<summary>
-WeightWatcher (WW)can be used to compare the test error for a series of models, trained on the similar dataset, but with different hyperparameters, or even different but related architectures.  
-</summary>
-	
-Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average, correspond to models that generalize better.
-
-The WW summary metric **alpha** (**&alpha;**) can predict the generalization **&Delta;** error when varying the model hyperparmeters **&theta;** (dropout,  momentum, etc)
-
- - PL exponent alpha
- - PL quality of fit D (KS distance)
- - Rand_Distance 
-	
-For larger, more complicated models, one may use the TPL fits
-	
- - TPL exponent alpha, and decay term Lambda
- - E_TPL exponent alpha, and decay term Lambda
-
-whereas the summary metric **weighed alpha** can predict the generalization error **&Delta;**  when varying hyperparmeters **&theta;**  and depth **L**
- 
- - weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}\sim\Delta(\theta,\L)">
-
-Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
-
-![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
-
-This can be reppduced with the [Examokes Notebook](https://github.com/CalculatedContent/WeightWatcher/blob/master/examples/WW-VGG.ipynb)
-
-Notice: we *did not peek* at the ImageNet test data to build this plot.
-
-</details>
 
 <hr>
-### SVDSmoothing and SVDSharpness Transforms 
-<details>
-	<summary>Recent but unpublished transformers</summary>
-
-Smoothed models can be used to predict test accuracies, by evaluating the training accuracy on the smoothed model.
-```python
-smoothed_model = watcher.SVDSmoothing(model=...)
-```
 
 
-Sample notebooks are provided for each new feature
-
-</details>
 
 ### Additional Features
 

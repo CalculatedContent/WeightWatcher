@@ -196,7 +196,7 @@ Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , o
 
 Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
 
-<img src="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png" width='800px' height='auto' </>
+<img src="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png" width='800px' height='auto' />
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 	

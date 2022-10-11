@@ -279,6 +279,8 @@ Note: this only work for very well trained models, where the optimal alpha=2 is 
 There are many advanced features, described below
 </summary>
 
+<hr>
+
 #### filter by layer types 
 ```python
 ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.DENSE

@@ -188,17 +188,46 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 </details>
 
 
-### Detecting signs of Over-Fitting
+### Detecting signs of Over-Fitting and Under-Fitting
+
+### Correlation Traps
+
+<details>
+ <summary>
+The randomize option lets you compare the ESD of the layer weight matrix (W) to the ESD of its randomized form.
+This is good way to visualize the correlations in the true ESD, and detect signatures of over- and under-fitting
+ </summary>
+
+	
+```python
+details = watcher.analyze(randomize=True, plot=True)
+```
+
+Fig (a) is well trained; Fig (b) may be over-fit, That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
+
+A **Correlation Trap** is characterized by  Fig (b); here the 
+actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
+And for the random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
+![Correlation Traps](correlation_trap.jpeg)
+	
+When layers look like this, then they have not been trained properly because they look almost random, with only a little bit of information present.
+And the information the layer learned may even be spurious
+	
+Moreover, the metric 'num_rand_spikes' (in the details data frame) contains the numnber of spikes (or traps) that appear in the layer.
+
+Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
+
+</details>
 
 ### Early Stopping
 <details>
  <summary>
 Note: This is experimental but we have seen some success here
 
-Weightwatcher can detect the signatures of overfitting in specific layers of a pre/trained Deep Neural Networks.
+Weightwatcher can detect the signatures of over-fitting in specific layers of a pre/trained Deep Neural Networks.
  </summary>
 	
-The weightwatcher **alpha** metric can be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be overtrained and early stopping is necesary.
+The weightwatcher **alpha** metric may be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be over=trained and early stopping is necesary.
 
 Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average **alpha** summary statistic.
 
@@ -206,30 +235,10 @@ Below is an example of this, showing training loss and test lost curves for  a s
 
 We can see that as the training and test losses decrease, so does **alpha**. But when the test loss saturates and then starts to increase, **alpha** drops below 2.0.
 	
+Note: this only work for very well trained models, where the optimal alpha=2 is obtained
+	
 </details>
 
-### Correlation Traps
-
-<details>
- <summary>
-The randomize option compares the ESD of the layer weight matrix (W) to the ESD of the randomized W matrix.
-This is good way to visualize the correlations in the true ESD.
- </summary>
-
-```python
-details = watcher.analyze(randomize=True, plot=True)
-```
-
-Fig (a) is well trained; Fig (b) may be over-trained. That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
-
-A **Correlation Trap** is characterized by  Fig (b); here the 
-actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
-And for the random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
-![Correlation Traps](correlation_trap.jpeg)
-
-Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
-
-</details>
 
 ### Predicting the Generalization Error
 

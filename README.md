@@ -220,8 +220,7 @@ When layers look like Figure (b) above, then they have not been trained properly
 	
 Moreover, the metric <code>num_rand_spikes</code> (in the details data frame) contains the number of spikes (or traps) that appear in the layer.
 
-	
-Correlation Traps can be removed during training (after each epoch) or after training using the **SVDSharpness Transform**
+The **SVDSharpness Transform** can be used to remove Correlation Traps during training (after each epoch) or after training using 
 	
 ```python
 sharpemed_model = watcher.SVDSharpness(model=...)

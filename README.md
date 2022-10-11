@@ -167,7 +167,7 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 - max_rand_eval: scale of the random noise in the layer
 
 
-### Summary Statistics: 
+#### Summary Statistics: 
 The layer metrics are be averaged in the **summary** statistics:
 
 Get the average metrics, as a summary (dict), from the given (or current) details dataframe
@@ -196,7 +196,7 @@ Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , o
 
 Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
 
-![alt text](https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png)
+<img url="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png" width='600' height='auto' </>
 
 Notice: we *did not peek* at the ImageNet test data to build this plot.
 	

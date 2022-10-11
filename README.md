@@ -109,7 +109,7 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 Generally speaking, the ESDs in the best layers in the best DNNs can be fit to a Power Law (PL), with PL exponents (alpha) closer to 2.
 Visually, the ESD looks like a straight line on a log-log plot (above left).
 
-### Generalization Metrics
+## Generalization Metrics
 <details>
   <summary>
 The goal of the WeightWatcher project is find generalization metrics that most accurately reflect observed test accuracies, across many different models and architectures, and both pre-trained and during training.
@@ -188,7 +188,7 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 </details>
 
 
-### Detecting signs of Over-Fitting and Under-Fitting
+## Detecting signs of Over-Fitting and Under-Fitting
 
 Weightwatcher can help you detect the signatures of over-fitting and under-fitting in specific layers of a pre/trained Deep Neural Networks.
 
@@ -241,7 +241,7 @@ Note: this only work for very well trained models, where the optimal alpha=2 is 
 </details>
 
 
-### Predicting the Generalization Error
+## Predicting the Generalization Error
 
 <details>
 <summary>

@@ -228,7 +228,7 @@ Moreover, the metric <code>num_rand_spikes</code> (in the details data frame) co
 Note: This is experimental but we have seen some success here
  </summary>
 	
-The weightwatcher **alpha** metric may be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be over=trained and early stopping is necesary.
+The weightwatcher **alpha** metric may be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be over-trained and early stopping is necesary.
 
 Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average **alpha** summary statistic.
 

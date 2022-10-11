@@ -215,7 +215,7 @@ And for the random (red) ESD, the largest eigenvalue (orange) is far to the righ
 	
 When layers look like Figure (b) above, then they have not been trained properly because they look almost random, with only a little bit of information present. And the information the layer learned may even be spurious
 	
-Moreover, the metric 'num_rand_spikes' (in the details data frame) contains the numnber of spikes (or traps) that appear in the layer.
+Moreover, the metric <code>num_rand_spikes</code> (in the details data frame) contains the number of spikes (or traps) that appear in the layer.
 
 Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
 

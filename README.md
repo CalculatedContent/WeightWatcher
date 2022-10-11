@@ -220,6 +220,15 @@ When layers look like Figure (b) above, then they have not been trained properly
 	
 Moreover, the metric <code>num_rand_spikes</code> (in the details data frame) contains the number of spikes (or traps) that appear in the layer.
 
+	
+Correlation Traps can be removed during training (after each epoch) or after training using the **SVDSharpness Transform**
+	
+```python
+sharpemed_model = watcher.SVDSharpness(model=...)
+```
+	
+Sharpening a model is similar to clipping the layer weight matrices, but uses Random Matrix Theory to do this in a more principle way than simple clipping.
+	
 </details>
 
 ### Early Stopping
@@ -271,6 +280,7 @@ Notice: we *did not peek* at the ImageNet test data to build this plot.
 **See also the recent rand_distance metric.**
 </details>
 
+<hr>
 ### SVDSmoothing and SVDSharpness Transforms 
 <details>
 	<summary>Recent but unpublished transformers</summary>
@@ -280,11 +290,6 @@ Smoothed models can be used to predict test accuracies, by evaluating the traini
 smoothed_model = watcher.SVDSmoothing(model=...)
 ```
 
-
-Sharpened models can be used when fine-tuning pre-trained models that have not been fully optimized yet.
-```python
-sharpemed_model = watcher.SVDSharpness(model=...)
-```
 
 Sample notebooks are provided for each new feature
 

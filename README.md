@@ -213,8 +213,7 @@ actual (green) and random (red) ESDs look almost identical, except for a small s
 And for the random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
 ![Correlation Traps](correlation_trap.jpeg)
 	
-When layers look like this, then they have not been trained properly because they look almost random, with only a little bit of information present.
-And the information the layer learned may even be spurious
+When layers look like Figure (b) above, then they have not been trained properly because they look almost random, with only a little bit of information present. And the information the layer learned may even be spurious
 	
 Moreover, the metric 'num_rand_spikes' (in the details data frame) contains the numnber of spikes (or traps) that appear in the layer.
 

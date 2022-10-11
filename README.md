@@ -407,7 +407,11 @@ ww.layer#.esd4.png
 
 ### Tips for First Time Users
 
-On using weightwatcher for the first time.  I recommend selecting at least 1 trained  model, and running weightwatcher with all analyze options on, including the plots,  to see
+<details>
+<summary>
+On using weightwatcher for the first time.  I recommend selecting at least 1 trained  model, and running weightwatcher with all analyze options on, including the plots.  From thsi, look for:
+<\summary>
+
 - if the layers ESDs are well formed and heavy tailed
 - if any layers are nearly random, indicating they are not well trained
 - if all the power law a fits look reasonable, and xmin is small enough that the fit captures a good part of the tail of the ESD
@@ -420,6 +424,8 @@ But sometimes the power law / alpha fits don't work.  This happens when
 
 In any of these cases, I usually throw away alphas > 8 because they are spurious./. If you suspect your layers are undertrained, you have to look both at alpha and a plot of the ESD itself (to see if it is heavy tailed or just random-like)
 
+</details>
+	
 <hr>
 
 ## How to Release

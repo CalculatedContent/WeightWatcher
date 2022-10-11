@@ -190,6 +190,9 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 
 ### Detecting signs of Over-Fitting and Under-Fitting
 
+Weightwatcher can help you detect the signatures of over-fitting and under-fitting in specific layers of a pre/trained Deep Neural Networks.
+
+
 ### Correlation Traps
 
 <details>
@@ -223,8 +226,6 @@ Weightwatcher will analyze your model, layer-by-layer, and show you where these 
 <details>
  <summary>
 Note: This is experimental but we have seen some success here
-
-Weightwatcher can detect the signatures of over-fitting in specific layers of a pre/trained Deep Neural Networks.
  </summary>
 	
 The weightwatcher **alpha** metric may be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be over=trained and early stopping is necesary.

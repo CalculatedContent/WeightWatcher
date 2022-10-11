@@ -394,7 +394,7 @@ ww.layer#.esd4.png
 
 ## Requirements
 
-- Python 3.6+
+- Python 3.7+
 
 ### Frameworks supported
 
@@ -549,6 +549,7 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 
+- [Practical AI](https://changelog.com/practicalai/194)
 
 #### 2021 Short Presentations
 

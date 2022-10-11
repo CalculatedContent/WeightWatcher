@@ -405,17 +405,6 @@ ww.layer#.esd4.png
 - Dense / Linear / Fully Connected (and Conv1D)
 - Conv2D
 
-
-### Known issues
-
-- rankloss is currently not working , may be always set to 0 
-
-- the embedded powerlaw packages may show warning messages; you can ignore these
-<pre>
-   /home/xander/anaconda3/envs/my_model/lib/python3.7/site-packages/powerlaw.py:700: RuntimeWarning: divide by zero encountered in true_divide
-  (Theoretical_CDF * (1 - Theoretical_CDF))
-</pre>
-
 ### Tips for First Time Users
 
 On using weightwatcher for the first time.  I recommend selecting at least 1 trained  model, and running weightwatcher with all analyze options on, including the plots,  to see
@@ -434,7 +423,10 @@ In any of these cases, I usually throw away alphas > 8 because they are spurious
 <hr>
 
 ## How to Release
+<details>
+<summary>
 Publishing to the PyPI repository:
+</summary>
 
 ```sh
 # 1. Check in the latest code with the correct revision number (__version__ in __init__.py)
@@ -454,6 +446,9 @@ twine check dist/*
 twine upload dist/*
 # 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
 ```
+</details>
+
+<hr>
 
 ### License
 

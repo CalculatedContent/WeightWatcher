@@ -192,6 +192,7 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 
 Weightwatcher can help you detect the signatures of over-fitting and under-fitting in specific layers of a pre/trained Deep Neural Networks.
 
+Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
 
 ### Correlation Traps
 
@@ -206,18 +207,18 @@ This is good way to visualize the correlations in the true ESD, and detect signa
 details = watcher.analyze(randomize=True, plot=True)
 ```
 
-Fig (a) is well trained; Fig (b) may be over-fit, That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
+Fig (a) is well trained; Fig (b) may be over-fit.
+	
+That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
 
 A **Correlation Trap** is characterized by  Fig (b); here the 
 actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
-And the random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
+And random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
 ![Correlation Traps](correlation_trap.jpeg)
 	
 When layers look like Figure (b) above, then they have not been trained properly because they look almost random, with only a little bit of information present. And the information the layer learned may even be spurious
 	
 Moreover, the metric <code>num_rand_spikes</code> (in the details data frame) contains the number of spikes (or traps) that appear in the layer.
-
-Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
 
 </details>
 

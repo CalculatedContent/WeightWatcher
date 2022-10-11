@@ -106,6 +106,8 @@ For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of t
 
 <img src="./ESD-plots.png" width='800px'  height='auto' />
 
+Generally speaking, the ESDs in the best layers in the best DNNs can be fit to a Power Law (PL), with PL exponents (alpha) closer to 2.
+Visually, the ESD looks like a straight line on a log-log plot (above left).
 
 ### Generalization Metrics
 <details>
@@ -115,7 +117,6 @@ The goal of the WeightWatcher project is find generalization metrics that most a
 	
 
 
-
 [Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP random bulk, and, even more specifically, be heavy tailed. There are different layer metrics in weightwatcher for this, including:
 
 - rand_distance:  the  distance in distribution from the randomized layer
@@ -123,7 +124,8 @@ The goal of the WeightWatcher project is find generalization metrics that most a
 - alpha-hat:  a scale-adjusted form of alpha (similar to the alpha-shatten-Norm)
 - stable-rank:  a norm-adjusted measure of the scale of the ESD
 - num_spikes:  the number of spikes outside the MP bulk region
-- etc
+- max_rand_eval: scale of the random noise
+etc
 
 All of these attempt to measure how on-random and/or non-heavy-tailed the layer ESDs are.  
 

@@ -390,11 +390,19 @@ ww.layer#.esd4.png
 
 </details>
 
+<hr>
+
+## Requirements
+
+- Python 3.6+
+
 ### Frameworks supported
 
 - Tensorflow 2.x / Keras
-- PyTorch
+- PyTorch 1.x
 - HuggingFace 
+
+Note:  the current version requires both tensorflow and torch; if there is demand, this will be updates to make installation easier.
 
 ### Layers supported 
 

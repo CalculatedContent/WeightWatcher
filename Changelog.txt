@@ -19,9 +19,15 @@ pyRMT
 powerlaw.Fit() wrapped in method to supress stdout and stderr 
 analyze(vectors=True) is turned back on as default
 setup.py to use metaclass , not import ww, to allow better handling of dependencies
+details.append() changed to details=pd.contact([details, data])  #137
+models.vgg11(pretrained=True) to models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+same for resnet
+
+
 
 ### Fixed
 TPL and E_TPL fits use xmin_distribution='trunctated_power_law'
 replaced np.linalg.eig and np.linalg.svd with scipy version because they are faster and more numerically stable
 analyze(savefig=False) now works in all cases
 Fixed minor issues: 65, #69, #72, #82
+tests/test.py  Test_TFBert.test_num_layers added (but #74 kept)

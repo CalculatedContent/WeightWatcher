@@ -1181,8 +1181,11 @@ class WeightWatcher(object):
                     if layer_1.has_biases:
                         data['delta_b'] = np.linalg.norm(layer_1.biases - layer_2.biases)
                         data['b_shape'] = layer_1.biases.shape
-    
-                    details = details.append(data, ignore_index=True)
+                        
+                    # issue 137
+                    #details = details.append(data, ignore_index=True)
+                    data_df = pd.DataFrame.from_records(data , index=[0])
+                    details = pd.append([details, data_df])
         except:
             logger.error("Sorry, problem comparing models")
             raise Exception("Sorry, problem comparing models")
@@ -1753,7 +1756,11 @@ class WeightWatcher(object):
                     #all_evals.extend(ww_layer.evals)
                     
                 # TODO: add find correlation traps here
-                details = details.append(ww_layer.get_row(), ignore_index=True)
+
+                # issue 137
+                # details = details.append(ww_layer.get_row(), ignore_index=True)
+                data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
+                details = pd.concat([details,data])
 
         self.details = details
         return details
@@ -1843,7 +1850,10 @@ class WeightWatcher(object):
 
                 num_all_evals += num_evals    
                 ww_layer.add_column('num_evals', num_evals)
-                details = details.append(ww_layer.get_row(), ignore_index=True)
+                # issue 137
+                #details = details.append(ww_layer.get_row(), ignore_index=True)
+                data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
+                details = pd.concat([details,data])
 
         return details
 

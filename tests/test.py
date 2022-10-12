@@ -25,7 +25,8 @@ class Test_VGG11(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		cls.model = models.vgg11(pretrained=True)
+#		cls.model = models.vgg11(pretrained=True)
+		cls.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		#logging.getLogger("weightwatcher").setLevel(logging.INFO)
 		
@@ -412,7 +413,9 @@ class Test_VGG11(unittest.TestCase):
 		"""
 		
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
-		model = models.vgg11(pretrained=True)
+		#model = models.vgg11(pretrained=True)
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		details= self.watcher.analyze(layers=[28], fit='TPL')
@@ -527,7 +530,8 @@ class Test_VGG11(unittest.TestCase):
 		print("----test_svd_smoothing_alt-----")
 
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
-		model = models.vgg11(pretrained=True)
+		#model = models.vgg11(pretrained=True)
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
@@ -549,7 +553,9 @@ class Test_VGG11(unittest.TestCase):
 		print("----test_svd_smoothing_alt2-----")
 		
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
-		model = models.vgg11(pretrained=True)
+		#model = models.vgg11(pretrained=True)
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		self.watcher.SVDSmoothing(layers=[28], percent=0.2)
@@ -585,7 +591,9 @@ class Test_VGG11(unittest.TestCase):
  		
 		print("----test_svd_sharpness-----")
 
-		model = models.vgg11(pretrained=True)
+		#model = models.vgg11(pretrained=True)
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		esd_before = self.watcher.get_ESD(layer=8) 
@@ -789,11 +797,11 @@ class Test_TFBert(unittest.TestCase):
 		"""Test that the Keras Iterator finds all the TFBert layers
 		72 layers for BERT
 		+ 1 for input. 1 for output
-		Not sure why it is 76
+		Not sure why it is 74 but it seems to pass consistantly
 		"""
 		details = self.watcher.describe()
-		print("TESTING TF BERT does not work")
-		#self.assertEqual(len(details), 74)
+		print("WARNING: check this test")
+		self.assertEqual(len(details), 74)
 
 
 
@@ -843,7 +851,7 @@ class Test_ResNet(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		cls.model = models.resnet18(pretrained=True)
+		cls.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		
 	def setUp(self):

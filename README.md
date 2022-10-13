@@ -450,10 +450,13 @@ python -m pip install --upgrade setuptools wheel twine
 python setup.py sdist bdist_wheel
 # 5. Test the package
 twine check dist/*
-# 6. Upload the package to PyPI
+# 7. Upload the package to TestPyPI first
+twine upload --repository testpypi dist/*
+# 8. Upload to actual PyPI
 twine upload dist/*
-# 7. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
+# 9. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
 ```
+
 </details>
 
 <hr>

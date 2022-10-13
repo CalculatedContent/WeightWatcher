@@ -1054,7 +1054,7 @@ class WWStackedLayerIterator(WWLayerIterator):
             #Height, Width = W.shape[0], W.shape[1]
                
             #W = W/np.linalg.norm(W)
-            W = (W - np.median(W))/sp.stats.median_absolute_deviation(W)
+            W = (W - np.median(W))/sp.stats.median_abs_deviation(W)
             W = np.pad(W, ((0, 0), (0, Mmax-Width)) ) 
             Wmats_padded.append(W)
                 

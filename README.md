@@ -601,7 +601,7 @@ You may install the latest / Trunk from testpypi
 
 python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
 
-The testpypi version usually has the most recent updates, including experimental methods and bug fixes
+The testpypi version usually has the most recent updates, including experimental methods and bug fixes.
 But pypi has changed the way it handles testpypi requiring non-testpypi dependencies.
 e.g., torch and tensorflow fail on testpypi
 

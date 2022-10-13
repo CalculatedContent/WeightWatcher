@@ -47,8 +47,10 @@ pip install weightwatcher
 ### Current TestPyPI Version: 0.6.0
 
 ```sh
-python3 -m pip install --index-url https://test.pypi.org/simple/ weightwatcher
-```
+ python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
+ ```
+ 
+ see below for more details
 
 ## Usage
 
@@ -600,7 +602,11 @@ You may install the latest / Trunk from testpypi
 python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
 
 The testpypi version usually has the most recent updates, including experimental methods and bug fixes
+But pypi has changed the way it handles testpypi requiring non-testpypi dependencies.
+e.g., torch and tensorflow fail on testpypi
 
+If you have them installed already in your env, you're fine.
+Otherwise, you need to install them first
 <hr>
 
 ## Contributors

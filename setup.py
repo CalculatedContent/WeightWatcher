@@ -51,6 +51,7 @@ setup(
     install_requires = ['numpy',
                         'pandas',
                         'matplotlib',
+                        'matplotlib-inline',
                         'powerlaw',
                         'tensorflow',
                         'sklearn',

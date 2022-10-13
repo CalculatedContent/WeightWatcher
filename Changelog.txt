@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 examples directory with notebooks and README
 start_ids=1 added to analyze(), describe(), SVDSmoothing(), SVDSharpness() for issue #65 
 tqdm to setup.py
+matplotlib-inline  to setup.py
 
 ### Removed
 watcher.analyze(..., normalize=...).  

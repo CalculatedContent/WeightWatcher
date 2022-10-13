@@ -12,12 +12,12 @@
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 
 
-**WeightWatcher**  (WW): is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data.  It is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
+**WeightWatcher** (WW) is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data.  It is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
 It can be used to:
 
 - analyze pre/trained pyTorch, Keras, DNN models (Conv2D and Dense layers)
-- monitor models, and the model layers,  to see if they are over-trained or over-parameterized
+- monitor models, and the model layers, to see if they are over-trained or over-parameterized
 - predict test accuracies across different models, with or without training data
 - detect potential problems when compressing or fine-tuning pretrained models
 - layer warning labels: over-trained; under-trained
@@ -35,12 +35,12 @@ It can be used to:
 
 - More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
-And in the notebooks provided in the examples directory
+And in the notebooks provided in the [examples](https://github.com/WeightWatcher/tree/master/examples) directory
 
 ## Installation:  Version 0.5.6
 
 ```sh
-pip install  weightwatcher
+pip install weightwatcher
 ```
 
 
@@ -66,7 +66,7 @@ It is as easy to run and generates a pandas dataframe with details (and plots) f
 
 ![Sample Details Dataframe](./img/sample-ww-details.png)
 
-and summary dict of generalization metrics
+and `summary` dictionary of generalization metrics
 
 ```python
     {'log_norm': 2.11,
@@ -75,28 +75,28 @@ and summary dict of generalization metrics
       'log_alpha_norm': 3.21,
       'log_spectral_norm': 0.89,
       'stable_rank': 20.90,
-      'mp_softrank': 0.52}]
+      'mp_softrank': 0.52}
 ```
 
 ## Advanced Usage 
 
-The watcher object has several functions and analyze features described below
+The `watcher` object has several functions and analysis features described below
 
 ```python
-analyze( model=None, layers=[], min_evals=0, max_evals=None,
+watcher.analyze(model=None, layers=[], min_evals=0, max_evals=None,
 	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
 ...
-describe(self, model=None, layers=[], min_evals=0, max_evals=None,
+watcher.describe(self, model=None, layers=[], min_evals=0, max_evals=None,
          plot=True, randomize=True, mp_fit=True, ww2x=False):
 ...
-get_details()
-get_summary(details) or get_summary()
-get_ESD()
+watcher.get_details()
+watcher.get_summary(details) or get_summary()
+watcher.get_ESD()
 ...
-distances(model_1, model_2)
+watcher.distances(model_1, model_2)
 ```
 
-#### Ploting and Fitting the Empirical Spectral Density (ESD)
+## Ploting and Fitting the Empirical Spectral Density (ESD)
 
 WW creates plots for each layer weight matrix to observe how well the power law fits work
 
@@ -104,77 +104,76 @@ WW creates plots for each layer weight matrix to observe how well the power law 
 details = watcher.analyze(plot=True)
 ```
 
-For each layer, Weightwatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD  to a (Truncated) Power Law, and plots these fits on different axes. The metrics (above) characterize the Shape and Scale of each ESD.  Here's an example:
+For each layer, WeightWatcher plots the ESD--a histogram of the eigenvalues of the layer correlation matrix **X=W<sup>T</sup>W**.  It then fits the tail of ESD to a (Truncated) Power Law, and plots these fits on different axes. The summary metrics (above) characterize the Shape and Scale of each ESD.  Here's an example:
 
 <img src="./img/ESD-plots.png" width='800px'  height='auto' />
 
-Generally speaking, the ESDs in the best layers in the best DNNs can be fit to a Power Law (PL), with PL exponents (alpha) closer to 2.
+Generally speaking, the ESDs in the best layers, in the best DNNs can be fit to a Power Law (PL), with PL exponents `alpha` closer to `2.0`.
 Visually, the ESD looks like a straight line on a log-log plot (above left).
 
 ## Generalization Metrics
+
 <details>
   <summary>
-The goal of the WeightWatcher project is find generalization metrics that most accurately reflect observed test accuracies, across many different models and architectures, and both pre-trained and during training.
+The goal of the WeightWatcher project is find generalization metrics that most accurately reflect observed test accuracies, across many different models and architectures, for pre-trained models and models undergoing training.
+	  
 </summary>
 	
 
+[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP (Marchenko-Pastur) random bulk, and specifically to be heavy tailed. There are different layer metrics in WeightWatcher for this, including:
 
-[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP random bulk, and, even more specifically, be heavy tailed. There are different layer metrics in weightwatcher for this, including:
-
-- rand_distance:  the  distance in distribution from the randomized layer
-- alpha:  the slope of the tail of the ESD, on a log-log scale
-- alpha-hat:  a scale-adjusted form of alpha (similar to the alpha-shatten-Norm)
-- stable-rank:  a norm-adjusted measure of the scale of the ESD
-- num_spikes:  the number of spikes outside the MP bulk region
-- max_rand_eval: scale of the random noise
-etc
+- `rand_distance` : the  distance in distribution from the randomized layer
+- `alpha` : the slope of the tail of the ESD, on a log-log scale
+- `alpha-hat` or `alpha_weighted` : a scale-adjusted form of `alpha` (similar to the alpha-shatten-Norm)
+- `stable_rank` : a norm-adjusted measure of the scale of the ESD
+- `num_spikes` : the number of spikes outside the MP bulk region
+- `max_rand_eval` : scale of the random noise etc
 
 All of these attempt to measure how on-random and/or non-heavy-tailed the layer ESDs are.  
 
 
 #### Scale Metrics 
 
-- log Frobenius norm:  <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{W}\Vert^{2}_{F}">
-- log Spectral norm:   <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\lambda_{max}=\log_{10}\Vert\mathbf{W}\Vert^{2}_{\infty}">
+- log Frobenius norm :  <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{W}\Vert^{2}_{F}">
+- `log_spectral_norm` :   <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\lambda_{max}=\log_{10}\Vert\mathbf{W}\Vert^{2}_{\infty}">
 
-- Stable Rank:  <img src="https://render.githubusercontent.com/render/math?math=R_{stable}=\Vert\mathbf{W}\Vert^{2}_{F}/\Vert\mathbf{W}\Vert^{2}_{\infty}">
-- MP Soft Rank:  <img src="https://render.githubusercontent.com/render/math?math=R_{MP}=\lambda_{MP}/\lambda_{max}">
+- `stable_rank` :  <img src="https://render.githubusercontent.com/render/math?math=R_{stable}=\Vert\mathbf{W}\Vert^{2}_{F}/\Vert\mathbf{W}\Vert^{2}_{\infty}">
+- `mp_softrank` :  <img src="https://render.githubusercontent.com/render/math?math=R_{MP}=\lambda_{MP}/\lambda_{max}">
  
 #### Shape Metrics
 
- - PL exponent alpha: <img src="https://render.githubusercontent.com/render/math?math=\alpha">
- - PL quality of fit D: <img src="https://render.githubusercontent.com/render/math?math=\D">
+ - `alpha` : <img src="https://render.githubusercontent.com/render/math?math=\alpha"> Power Law (PL) exponent 
+ - (Truncated) PL quality of fit `D` : <img src="https://render.githubusercontent.com/render/math?math=\D"> (the Kolmogorov Smirnov Distance metric)
 
 
 (advanced usage)
- - TPL. (alpha and Lambda) Truncated Power Law Fit
- - E_TPL: (alpha and Lambda). Extended Truncated Power Law Fit
+ - TPL : (alpha and Lambda) Truncated Power Law Fit
+ - E_TPL : (alpha and Lambda) Extended Truncated Power Law Fit
  
 #### Scale-adjusted Shape Metrics
 
-- weighted alpha:  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
-- log alpha norm (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
+- `alpha_weighted` :  <img src="https://render.githubusercontent.com/render/math?math=\hat{\alpha}=\alpha\log_{10}\lambda_{max}">
+- `log_alpha_norm` : (Shatten norm): <img src="https://render.githubusercontent.com/render/math?math=\log_{10}\Vert\mathbf{X}\Vert^{\alpha}_{\alpha}">
 
 #### Direct Correlation Metrics 
 
-  The rand_distance metrics is a new, non-parameteric approach that appears to work well in early testing.
+The random distance metric is a new, non-parameteric approach that appears to work well in early testing.
  [See this recent blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
 
-- rand_distance: <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">   Distance of layer ESD from the ideal RMT MP ESD
+- `rand_distance` : <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">   Distance of layer ESD from the ideal RMT MP ESD
 
 #### Misc Details
 
-- N, M:  Matrix or Tensor Slice Dimensions
-- D:  Quality of the (Truncated) Power law fit (D is the Kolmogorov Smirnov Distance metric)
-- num_spikes:  number of spikes outside the bulk region of the ESD, when fit to an MP distribution
-- num_rand_spikes:  number of Correlation Traps
-- max_rand_eval: scale of the random noise in the layer
+- `N, M` :  Matrix or Tensor Slice Dimensions
+- `num_spikes` :  number of spikes outside the bulk region of the ESD, when fit to an MP distribution
+- `num_rand_spikes` :  number of Correlation Traps
+- `max_rand_eval` : scale of the random noise in the layer
 
 
 #### Summary Statistics: 
-The layer metrics are be averaged in the **summary** statistics:
+The layer metrics are averaged in the **summary** statistics:
 
-Get the average metrics, as a summary (dict), from the given (or current) details dataframe
+Get the average metrics, as a `summary` (dict), from the given (or current) `details` dataframe
 
 ```python
 details = watcher.analyze(model=model)
@@ -187,18 +186,18 @@ summary = watcher.get_summary()
 
 The summary statistics can be used to gauge the test error of a series of pre/trained models, without needing access to training or test data.
 
-- average **alpha**  can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, when  depth is not a driving factor (i.e transformer models)
-- average **log spectral norm** is useful to compare models of different depths **L** at a coarse grain level
-- average **weighted alpha** and **log alpha norm** are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously. (i.e CV models like VGG and ResNet)
+- average `alpha` can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, when depth is not a driving factor (i.e transformer models)
+- average `log_spectral_norm` is useful to compare models of different depths **L** at a coarse grain level
+- average `alpha_weighted` and `log_alpha_norm` are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously. (i.e CV models like VGG and ResNet)
 	
 #### Predicting the Generalization Error
 
 
-WeightWatcher (WW)can be used to compare the test error for a series of models, trained on the similar dataset, but with different hyperparameters, or even different but related architectures.  
+WeightWatcher (WW) can be used to compare the test error for a series of models, trained on the similar dataset, but with different hyperparameters **&theta;**, or even different but related architectures.  
 	
-Our Theory of HT-SR predicts that models with smaller PL exponents **alpha** , on average, correspond to models that generalize better.
+Our Theory of HT-SR predicts that models with smaller PL exponents `alpha`, on average, correspond to models that generalize better.
 
-Here is an example of the **Weighted Alpha** capacity metric for all the current pretrained VGG models.
+Here is an example of the `alpha_weighted` capacity metric for all the current pretrained VGG models.
 
 <img src="https://github.com/CalculatedContent/PredictingTestAccuracies/blob/master/img/vgg-w_alphas.png" width='600px' height='auto' />
 
@@ -210,15 +209,15 @@ This can be reproduced with the Examples Notebooks for [VGG](https://github.com/
 
 ## Detecting signs of Over-Fitting and Under-Fitting
 
-Weightwatcher can help you detect the signatures of over-fitting and under-fitting in specific layers of a pre/trained Deep Neural Networks.
+WeightWatcher can help you detect the signatures of over-fitting and under-fitting in specific layers of a pre/trained Deep Neural Networks.
 
-Weightwatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
+WeightWatcher will analyze your model, layer-by-layer, and show you where these kind of problems may be lurking.
 
 ### Correlation Traps
 
 <details>
  <summary>
-The randomize option lets you compare the ESD of the layer weight matrix (W) to the ESD of its randomized form.
+The <code>randomize</code> option lets you compare the ESD of the layer weight matrix (W) to the ESD of its randomized form.
 This is good way to visualize the correlations in the true ESD, and detect signatures of over- and under-fitting
  </summary>
 
@@ -231,16 +230,15 @@ Fig (a) is well trained; Fig (b) may be over-fit.
 	
 That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
 
-A **Correlation Trap** is characterized by  Fig (b); here the 
-actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0).
-And random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
+A **Correlation Trap** is characterized by Fig (b); here the actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0). And random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
+	
 ![Correlation Traps](./img/correlation_trap.jpeg)
 	
-When layers look like Figure (b) above, then they have not been trained properly because they look almost random, with only a little bit of information present. And the information the layer learned may even be spurious
+When layers look like Figure (b) above, then they have not been trained properly because they look almost random, with only a little bit of information present. And the information the layer learned may even be spurious.
 	
-Moreover, the metric <code>num_rand_spikes</code> (in the details data frame) contains the number of spikes (or traps) that appear in the layer.
+Moreover, the metric `num_rand_spikes` (in the `details` dataframe) contains the number of spikes (or traps) that appear in the layer.
 
-The **SVDSharpness Transform** can be used to remove Correlation Traps during training (after each epoch) or after training using 
+The `SVDSharpness` transform can be used to remove Correlation Traps during training (after each epoch) or after training using 
 	
 ```python
 sharpemed_model = watcher.SVDSharpness(model=...)
@@ -253,18 +251,18 @@ Sharpening a model is similar to clipping the layer weight matrices, but uses Ra
 ### Early Stopping
 <details>
  <summary>
-Note: This is experimental but we have seen some success here
+	 <b>Note:</b> This is experimental but we have seen some success here
  </summary>
 	
-The weightwatcher **alpha** metric may be used to detect when to apply early stopping.  When the average **alpha** (summary statistic) drops below 2.0, this indicates that the model may be over-trained and early stopping is necesary.
+The WeightWatcher `alpha` metric may be used to detect when to apply early stopping.  When the average `alpha` (summary statistic) drops below `2.0`, this indicates that the model may be over-trained and early stopping is necesary.
 
-Below is an example of this, showing training loss and test lost curves for  a small Transformer model, trained from scratch, along with the average **alpha** summary statistic.
+Below is an example of this, showing training loss and test lost curves for a small Transformer model, trained from scratch, along with the average `alpha` summary statistic.
 
 ![Early Stopping](./img/early_stopping.png)
 
-We can see that as the training and test losses decrease, so does **alpha**. But when the test loss saturates and then starts to increase, **alpha** drops below 2.0.
+We can see that as the training and test losses decrease, so does `alpha`. But when the test loss saturates and then starts to increase, `alpha` drops below `2.0`.
 	
-Note: this only work for very well trained models, where the optimal alpha=2 is obtained
+**Note:** this only work for very well trained models, where the optimal `alpha=2.0` is obtained
 	
 </details>
 
@@ -283,9 +281,14 @@ There are many advanced features, described below
 
 <hr>
 
+### Filtering
+
+---
+
 #### filter by layer types 
+	
 ```python
-ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.CONV2D |  ww.LAYER_TYPE.DENSE
+ww.LAYER_TYPE.CONV2D | ww.LAYER_TYPE.CONV2D | ww.LAYER_TYPE.DENSE
 ```
 as
 
@@ -294,12 +297,17 @@ details=watcher.analyze(layers=[ww.LAYER_TYPE.CONV2D])
 
 ```
 
-#### filter by ids or name
+#### filter by layer ID or name
+	
 ```python
 details=watcher.analyze(layers=[20])
 ```
 
-#### minimum, maximum number of eigenvalues  of the layer weight matrix
+### Calculations
+
+---
+
+#### minimum, maximum number of eigenvalues of the layer weight matrix
 
 Sets the minimum and maximum size of the weight matrices analyzed.
 Setting max is useful for a quick debugging.
@@ -308,7 +316,7 @@ Setting max is useful for a quick debugging.
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
 
-#### change the Power Law fitting proceedure
+#### specify the Power Law fitting proceedure
 
 To replicate results using TPL or E_TPL fits, use:
 
@@ -316,18 +324,39 @@ To replicate results using TPL or E_TPL fits, use:
 details = watcher.analyze(fit='PL'|'TPL'|'E_TPL')
 ```
 
-The details dataframe will now contain 2 quality metrics, and for each layer:
-- alpha: basically (but not exactly) the same PL exponent as before, useful for alpha > 2
-- Lambda, a new metric, now useful when the (TPL) alpha < 2.
+The `details` dataframe will now contain two quality metrics, and for each layer:
+- `alpha` : basically (but not exactly) the same PL exponent as before, useful for `alpha > 2.0`
+- `Lambda` : a new metric, now useful when the (TPL) `alpha < 2.0`
 
-(The TPL fits correct a problem we have had when the PL fits over-estimate alpha for TPL layers)
+(The TPL fits correct a problem we have had when the PL fits over-estimate `alpha` for TPL layers)
 
-As with the alpha metric, smaller Lambda implies better generalization.
+As with the `alpha` metric, smaller `Lambda` implies better generalization.
 
+### Visualization
 
+---
+
+#### Save all model figures
+
+Saves the layer ESD plots for each layer 
+
+```python
+watcher.analyze(savefig=True,savefig='/plot_save_directory')
+```
+
+generating 4 files per layer
+<pre>
+ww.layer#.esd1.png
+ww.layer#.esd2.png
+ww.layer#.esd3.png
+ww.layer#.esd4.png
+</pre>
+
+**Note:** additional plots will be saved when `randomize` option is used
+							       
 #### fit ESDs to a Marchenko-Pastur (MP) distrbution
 
-The mp_fit option tells WW to fit each layer ESD as a Random Matrix as a Marchenko-Pastur (MP) distribution, as described in our papers on HT-SR.
+The `mp_fit` option tells WW to fit each layer ESD as a Random Matrix as a Marchenko-Pastur (MP) distribution, as described in our papers on HT-SR.
 
 ```python
 details = watcher.analyze(mp_fit=True, plot=True)
@@ -341,54 +370,45 @@ Also works for randomized ESD and reports
 rand_num_spikes, rand_mp_sigma, and rand_mp_sofrank
 ```
 
-#### get the ESD for a specific layer, for visualization or further analysis
+#### fetch the ESD for a specific layer, for visualization or additional analysis
 
 ```python
 watcher.analyze()
 esd = watcher.get_ESD()
 ```
 
+### Model Analysis
+
+---
+
 #### describe a model 
-Describe a model and report the details dataframe, without analyzing it
+Describe a model and report the `details` dataframe, without analyzing it
 
 ```python
 details = watcher.describe(model=model)
 ```
 
-#### compare 2 models 
-The new distances method reports the distances between 2 models, such as the norm between the  initial weight matrices and the final, trained weight matrices
+#### comparing two models 
+The new distances method reports the distances between two models, such as the norm between the initial weight matrices and the final, trained weight matrices
 
 ```python
 details = watcher.distances(initial_model, trained_model)
 ```
 
-#### compatability with version 0.2x
+### Compatability
 
-The new 0.4 version of weightwatcher treats each layer as a single, unified set of eigenvalues.
-In contrast, the 0.2x versions split the Conv2D layers into n slices, 1 for each receptive field.
-The ww2x option provides results which are back-compatable with the 0.2x version of weightwatcher,
+---
+
+#### compatability with version 0.2.x
+
+The new 0.4.x version of WeightWatcher treats each layer as a single, unified set of eigenvalues.
+In contrast, the 0.2.x versions split the Conv2D layers into n slices, one for each receptive field.
+The `ww2x` option provides results which are back-compatable with the 0.2.x version of WeightWatcher,
 with details provide for each slice for each layer.
 
 ```python
 details = watcher.analyze(ww2x=True)
 ```
-
-#### Save figures
-
-Saves the layer ESD plots for each layer 
-
-```python
-watcher.analyze(savefig=True)
-```
-
-generating 4 files per layer
-<pre>
-ww.layer#.esd1.png
-ww.layer#.esd2.png
-ww.layer#.esd3.png
-ww.layer#.esd4.png
-</pre>
-
 
 </details>
 
@@ -415,20 +435,20 @@ Note:  the current version requires both tensorflow and torch; if there is deman
 
 <details>
 <summary>
-On using weightwatcher for the first time.  I recommend selecting at least 1 trained  model, and running weightwatcher with all analyze options on, including the plots.  From thsi, look for:
+On using WeighWtatcher for the first time.  I recommend selecting at least one trained model, and running `weightwatcher` with all analyze options enabled, including the plots.  From this, look for:
 </summary>
 
 - if the layers ESDs are well formed and heavy tailed
 - if any layers are nearly random, indicating they are not well trained
-- if all the power law a fits look reasonable, and xmin is small enough that the fit captures a good part of the tail of the ESD
+- if all the power law a fits appear reasonable, and `xmin` is small enough that the fit captures a reasonable section of the ESD tail
 
-Moreover, the Power Laws fits, and the alpha fit, only work well when the ESDs are both heavy tailed, *and*( can be easily fit to a single power law.
-But sometimes the power law / alpha fits don't work.  This happens when
-- the ESD is random, not heavy tailed.  Here, alpha > 8 or larger.
+Moreover, the Power Laws and alpha fit only work well when the ESDs are both heavy tailed *and* can be easily fit to a single power law.
+Occasionally the power law and/or alpha fits don't work.  This happens when
+- the ESD is random (not heavy tailed), `alpha > 8.0`
 - the ESD is multimodal (rare, but does occur)
-- the ESD is heavy tailed, but not well described by a single power law.  In these cases , sometimes alpha only fits the the very last part of the tail, and is too large. This is easily seen on the Lin-Lin plots
+- the ESD is heavy tailed, but not well described by a single power law.  In these cases, sometimes `alpha` only fits the the **very last** part of the tail, and is **too** large. This is easily seen on the Lin-Lin plots
 
-In any of these cases, I usually throw away alphas > 8 because they are spurious./. If you suspect your layers are undertrained, you have to look both at alpha and a plot of the ESD itself (to see if it is heavy tailed or just random-like)
+In any of these cases, I usually throw away results where `alpha > 8.0` because they are spurious. If you suspect your layers are undertrained, you have to look both at `alpha` and a plot of the ESD itself (to see if it is heavy tailed or just random-like).
 
 </details>
 	

@@ -452,9 +452,12 @@ python setup.py sdist bdist_wheel
 twine check dist/*
 # 7. Upload the package to TestPyPI first
 twine upload --repository testpypi dist/*
-# 8. Upload to actual PyPI
+# 8. Test the TestPyPI install
+python3 -m pip install --index-url https://test.pypi.org/simple/ weightwatcher
+...
+# 9. Upload to actual PyPI
 twine upload dist/*
-# 9. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
+# 10. Tag/Release in github by creating a new release (https://github.com/CalculatedContent/WeightWatcher/releases/new)
 ```
 
 </details>

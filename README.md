@@ -37,14 +37,18 @@ It can be used to:
 
 And in the notebooks provided in the examples directory
 
-## Installation 
-
-(Current Version : 0.5.6)
+## Installation:  Version 0.5.6
 
 ```sh
 pip install  weightwatcher
 ```
 
+
+### Current TestPyPI Version: 0.6.0
+
+```sh
+python3 -m pip install --index-url https://test.pypi.org/simple/ weightwatcher
+```
 
 ## Usage
 

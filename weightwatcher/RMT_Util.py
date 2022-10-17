@@ -608,6 +608,7 @@ def save_fig(plt, figname, layer_id, savedir):
     figname = "{}/ww.layer{}.{}.png".format(savedir, layer_id, figname)
     if not os.path.isdir(savedir):
         os.mkdir(savedir)
+    plt.tight_layout()
     plt.savefig(figname)
     return 
 

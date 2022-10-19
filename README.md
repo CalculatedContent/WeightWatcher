@@ -569,7 +569,7 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
 
-- [Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
+- [Rebellion Research VLog](https://blog.rebellionresearch.com/blog/theoretical-physicist-dr-charles-martin-on-deep-learning)
 
 - [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 

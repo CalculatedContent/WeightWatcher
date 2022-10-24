@@ -35,7 +35,7 @@ It can be used to:
 
 - More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
-And in the notebooks provided in the [examples](https://github.com/WeightWatcher/tree/master/examples) directory
+And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
 ## Installation:  Version 0.5.6
 

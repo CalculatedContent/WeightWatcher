@@ -27,7 +27,7 @@ It can be used to:
 
 - Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
-- Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q) and/or our [Discord Server](https://discord.gg/FwSBVBj2)
+- Join the [Discord Server](https://discord.gg/FwSBVBj2) (slack has been deprecated)
 
 - For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 

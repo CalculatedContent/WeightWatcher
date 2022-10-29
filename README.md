@@ -27,7 +27,7 @@ It can be used to:
 
 - Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
-- Join the [Discord Server](https://discord.gg/FwSBVBj2) (slack has been deprecated)
+- Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 
 - For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 

@@ -3005,7 +3005,7 @@ class WeightWatcher(object):
 
     def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
-        """Seperate method to analyxe the eigenvectors of each layer
+        """Seperate method to analyse the eigenvectors of each layer
         
         ootions"""
         

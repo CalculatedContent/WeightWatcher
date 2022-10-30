@@ -118,7 +118,7 @@ class ONNXLayer:
         
 class WWLayer:
     """WW wrapper layer to Keras and PyTorch Layer layer objects
-       Uses pythong metaprogramming to add result columns for the final details dataframe"""
+       Uses python metaprogramming to add result columns for the final details dataframe"""
        
     def __init__(self, layer, layer_id=-1, name=None,
                  the_type=LAYER_TYPE.UNKNOWN, 
@@ -392,7 +392,7 @@ class WWLayer:
         N, M, n_comp, rf = 0, 0, 0, None
         Wmats = []
         
-        # this may change if we treat Conv1D differently layer
+        # this may change if we treat Conv1D layer differently
         if (the_type == LAYER_TYPE.DENSE or the_type == LAYER_TYPE.CONV1D or the_type==LAYER_TYPE.EMBEDDING):
             Wmats = [self.weights]
             N, M = np.max(Wmats[0].shape), np.min(Wmats[0].shape)
@@ -567,7 +567,7 @@ class WWLayer:
         return p_Wmats
             
     def unpermute_Wmats(self, Wmats):
-        """unpremute the previously permuted, randomized weights"""
+        """unpermute the previously permuted, randomized weights"""
         
         unp_Wmats = []
         for W, p_ids in zip(Wmats, self.W_permuted_ids):       
@@ -909,7 +909,7 @@ class WWIntraLayerIterator(WW2xSliceIterator):
         def align_mats(W0, W1):
             """align the mats so that one can take X = np.dot(W0,W1)
             
-            i.e:  W0.shape[1]==W1.shape[0] along the shared dinension  
+            i.e:  W0.shape[1]==W1.shape[0] along the shared dimension  
             """
             
             logger.info("aligning {} {}".format(W0.shape, W1.shape))      
@@ -929,7 +929,7 @@ class WWIntraLayerIterator(WW2xSliceIterator):
                 logger.debug("found shared dim = {}".format(shared_dim))
                     
                 if not shared_dim:
-                    logger.warning("Can not align W0={} with W1={}".format(W0.shape, W1.shape))
+                    logger.warning("Cannot align W0={} with W1={}".format(W0.shape, W1.shape))
                     return W0, W1
                     
                 if W0.shape[1] != shared_dim:
@@ -999,7 +999,7 @@ class WWStackedLayerIterator(WWLayerIterator):
     
     - Each layer matrix is normalized by the Frobenius norm  W=W/||W||_F
 
-    - Each layer matric is padded with zeros to the right,  i.e
+    - Each layer matrix is padded with zeros to the right,  i.e
     
         [1, 2, 0, 0, 0, 0]
         [3, 4, 0, 0, 0, 0]
@@ -1016,7 +1016,7 @@ class WWStackedLayerIterator(WWLayerIterator):
         Wmats = []
         for ww_layer in self.ww_layer_iter_():
             
-            # Here, I just lazizy copy an older layer
+            # Here, I just lazily copy an older layer
             # really, we should creat the WWLayer using the init() constructor
             if ww_stacked_layer is None:
                 ww_stacked_layer =  deepcopy(ww_layer)
@@ -1073,7 +1073,7 @@ class WWStackedLayerIterator(WWLayerIterator):
         ww_stacked_layer.rf = 1
         
         
-        # Thi needs to be reset and used properly , eventually
+        # This needs to be reset and used properly, eventually
         # the effective M, used for Q, will be much smaller 
         # if there are a huge number of zero eigenvalues 
         self.num_components = M  # default for full SVD, not used yet
@@ -1129,7 +1129,7 @@ class WeightWatcher(object):
     
     # TODO: implement
     def same_models(self, model_1, model_2):
-        """Compare models to see if the are the same architecture.
+        """Compare models to see if they are the same architecture.
         Not really impelemnted yet"""
     
         same = True
@@ -1339,7 +1339,7 @@ class WeightWatcher(object):
         return ww_layer
     
     def apply_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
-        """Randomize the layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
+        """Randomize the layer weight matrices, compute ESD on combined eigenvalues, combine all, and save to layer """
         
         layer_id = ww_layer.layer_id
         name = ww_layer.name
@@ -1609,14 +1609,14 @@ class WeightWatcher(object):
         conv2d_fft:  N/A yet
             For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
             Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max  N/A yet
-            Can not uses with ww2x
+            Cannot use with ww2x
             
         ww2x:  bool, default: False
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
             
         savefig:  string,  default: 
             Save the figures generated in png files.  Default: save to ww-img
-            If set to a folder name, creates and saves the imafes to this folder (i.e. savefig="images")
+            If set to a folder name, creates and saves the images to this folder (i.e. savefig="images")
             
         rescale:  #deprecated, always True
             Rescale the ESDs when computing the MP fits (experimental should always be True
@@ -1639,12 +1639,12 @@ class WeightWatcher(object):
             Can be very slow.
             
         fix_fingers:  bool, default: False 
-            Attempts to fix the fingers / finite-size-effects which sometimes occurs layers with spuriously large alphas
+            Attempts to fix the fingers / finite-size-effects which sometimes occurs for layers with spuriously large alphas
             Can be very slow.
             
         fit:  string, default: 'PL'
             PL (power_law) or TPL (truncated_power_law), E_TPL (extended TPL)
-            In principle, we could return both, alpha and the TPL alpha, Lambda
+            In principle, we could return both alpha and the TPL alpha, Lambda
             
         intra:  bool, default: False 
             Analyze IntraLayer Correlations
@@ -1674,7 +1674,7 @@ class WeightWatcher(object):
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
         # I need to figure this out
-        # can not specify params on input yet
+        # cannot specify params on input yet
         # maybe just have a different analyze() that only uses this 
         
         params=DEFAULT_PARAMS
@@ -1860,7 +1860,7 @@ class WeightWatcher(object):
         return details
 
     def valid_params(self, params):
-        """Validate the input parametersm, return True if valid, False otherwise"""
+        """Validate the input parameters, return True if valid, False otherwise"""
         
         valid = True        
         xmin = params.get('xmin')
@@ -1883,13 +1883,13 @@ class WeightWatcher(object):
             logger.warning(" max_evals {} < -1 ".format(max_evals))
             valid = False
             
-        # can not specify ww2x and conv2d_fft at same time
+        # cannot specify ww2x and conv2d_fft at same time
         if params.get(WW2X) and params.get('conv2d_fft'):
             logger.warning("can not specify ww2x and conv2d_fft")
             valid = False
             
             
-        # can not specify intra and conv2d_fft at same time
+        # cannot specify intra and conv2d_fft at same time
         if params.get(INTRA) and params.get('conv2d_fft'):
             logger.warning("can not specify intra and conv2d_fft")
             valid = False
@@ -1942,7 +1942,7 @@ class WeightWatcher(object):
         intra = params[INTRA]
         if intra:
             if params[RANDOMIZE] or params[VECTORS]:
-                logger.fatal("Can not set intra=True with randomize=True or vectors=True at this time")
+                logger.fatal("Cannot set intra=True with randomize=True or vectors=True at this time")
                 valid = False
 
         start_ids = params[START_IDS]
@@ -1954,7 +1954,7 @@ class WeightWatcher(object):
     
     
     def normalize_params(self, params):
-        """Reset params to allow some syntatic sugar in the inputs"""
+        """Reset params to allow some syntactic sugar in the inputs"""
         
         fit_type = params[FIT]
         if fit_type==PL:
@@ -1973,7 +1973,7 @@ class WeightWatcher(object):
             
         return params
     
-#      # @deprecated
+#     # @deprecated
 #     def print_results(self, results=None):
 #         self.compute_details(results=results)
 # 
@@ -2032,7 +2032,7 @@ class WeightWatcher(object):
                 return check1, False
     
     def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params=DEFAULT_PARAMS):
-        """Compute the eigenvalues for all weights of the NxM skipping layer, num evals ized weight matrices (N >= M), 
+        """Compute the eigenvalues for all weights of the NxM skipping layer, num evals sized weight matrices (N >= M), 
             combined into a single, sorted, numpy array.  
     
         see: combined_eigenvalues()
@@ -2114,7 +2114,7 @@ class WeightWatcher(object):
 
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
                      savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit_type=POWER_LAW):
-        """Fit eigenvalues to powerlaw or truncated_power_lw
+        """Fit eigenvalues to powerlaw or truncated_power_law
         
             if xmin is 
                 'auto' or None, , automatically set this with powerlaw method
@@ -2123,7 +2123,7 @@ class WeightWatcher(object):
             if xmax is 'auto' or None, xmax = np.max(evals)
             
             svd_method = FULL_SVD (to add TRUNCATED_SVD with some cutoff)
-            thresh is a threshhold on the evals, to be used for very large matrices with lots of zeros
+            thresh is a threshold on the evals, to be used for very large matrices with lots of zeros
             
                      
          """
@@ -2491,7 +2491,7 @@ class WeightWatcher(object):
         
         # level statistics (not mean adjusted because plotting log)
         plt.hist(logDeltaEs, bins=100, color=color, density=True)
-        plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
+        plt.title("Log Level Statistics for Layer {}".format(layer_name))
         plt.ylabel("density")
         plt.xlabel(eqn)
         plt.legend()
@@ -2636,7 +2636,7 @@ class WeightWatcher(object):
         N, M = np.max(W.shape), np.min(W.shape)
 
         # TODO: replace this with truncated SVD
-        # can't we just appky the svd transform...test
+        # can't we just apply the svd transform...test
         # keep this old method for historical comparison
         u, s, vh = sp.linalg.svd(W, compute_uv=True)
                 
@@ -2721,7 +2721,7 @@ class WeightWatcher(object):
 
         
         if ww2x:
-            msg = "ww2x not supported yet for SVDSharpness, ending"
+            msg = "ww2x not supported yet for SVDSmoothness, ending"
             logger.error(msg)
             raise Exception(msg)
         
@@ -3005,7 +3005,7 @@ class WeightWatcher(object):
 
     def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
-        """Seperate method to analyxe the eigenvectors of each layer
+        """Seperate method to analyze the eigenvectors of each layer
         
         ootions"""
         
@@ -3040,7 +3040,7 @@ class WeightWatcher(object):
         - localization_ratios
         - participation_ratios
         
-        Note:  no  normalization is applied
+        Note:  no normalization is applied
         
         Does not modify the ww_layer (yet)
         

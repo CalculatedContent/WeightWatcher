@@ -37,7 +37,7 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.5.6
+## Installation:  Version 0.5.7
 
 ```sh
 pip install weightwatcher

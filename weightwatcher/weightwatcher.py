@@ -18,6 +18,8 @@ import logging
 import numpy as np
 import pandas as pd
 import scipy as sp
+import scipy.linalg
+
 
 import matplotlib
 import matplotlib.pyplot as plt

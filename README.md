@@ -12,7 +12,7 @@
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)
 
 
-**WeightWatcher** (WW) is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data.  It is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
+**WeightWatcher** (WW) is an open-source, diagnostic tool for analyzing Deep Neural Networks (DNN), without needing access to training or even test data.  It is based on theoretical research into Why Deep Learning Works, based on our Theory of Heavy-Tailed Self-Regularization (HT-SR).  It uses ideas from Random Matrix Theory (RMT), Statistical Mechanics, and Strongly Correlated Systems.
 
 It can be used to:
 
@@ -27,7 +27,7 @@ It can be used to:
 
 - Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
-- Join the [WeightWatcher.AI Slack Channel](https://join.slack.com/t/weightwatcherai/shared_invite/zt-1511mk1d2-OvauYoot8_gm_YKIRT381Q) and/or our [Discord Server](https://discord.gg/FwSBVBj2)
+- Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 
 - For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 
@@ -35,9 +35,9 @@ It can be used to:
 
 - More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
-And in the notebooks provided in the [examples](https://github.com/WeightWatcher/tree/master/examples) directory
+And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.5.6
+## Installation:  Version 0.5.7
 
 ```sh
 pip install weightwatcher
@@ -569,7 +569,7 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Aggregate Intellect VLog](https://aisc.ai.science/events/2019-11-06)
 
-- [Rebellion Research VLog](https://www.linkedin.com/feed/update/urn:li:activity:6759316071230136320/)
+- [Rebellion Research VLog](https://blog.rebellionresearch.com/blog/theoretical-physicist-dr-charles-martin-on-deep-learning)
 
 - [Rebellion Research BLog](https://www.rebellionresearch.com/why-does-deep-learning-work)
 

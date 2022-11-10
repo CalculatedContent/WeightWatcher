@@ -44,13 +44,18 @@ pip install weightwatcher
 ```
 
 
-### Current TestPyPI Version: 0.6.0
+### Current TestPyPI Version: 0.6.1
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
  ```
+  
+Notice:  this release of weightwatcher  uses Telly, a telemetry (phone home) service.
+You can think of Telly as Google Analytics for open-source software
  
- see below for more details
+To disable Telly's data collection, you can either:
+ * set the TELLY_DISABLE environment variable to a truthy value like Y or 1
+ * create a file named .telly_disable in your home directory
 
 ## Usage
 

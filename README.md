@@ -52,8 +52,20 @@ pip install weightwatcher
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
  ```
   
-Notice:  this release of weightwatcher  uses Telly, a telemetry (phone home) service.
+<details>
+<summary>
+	Notice:  this release of weightwatcher  uses [Telly](https://gotelly.io/), a telemetry (phone home) service.
 You can think of Telly as Google Analytics for open-source software
+</summary>
+We want to make our software more useful and reliable.  In order to do that, we're using Telly, a privacy-friendly
+usage statistics and support tool.  Telly may collect basic information about your Python and OS environment, allowing 
+us to understand things like which operating systems and Python versions to support.   In some cases, Telly may also
+collect SHA-256-hashed representations of information that allows us to estimate our unique number of users.  These 
+hashes are only used temporarily to assign a temporary ID for aggregate reporting; no plaintext information is ever
+transmitted or visible to humans and even hashes are only stored during a temporary, rolling analytics window.  
+
+You can learn more about Telly's privacy functionality here: https://gotelly.io/.  
+</details>
  
 To disable Telly's data collection, you can either:
  * set the TELLY_DISABLE environment variable to a truthy value like Y or 1

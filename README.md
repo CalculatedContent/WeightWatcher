@@ -57,6 +57,7 @@ pip install weightwatcher
 	Notice:  this release of weightwatcher  uses [Telly](https://gotelly.io/), a telemetry (phone home) service.<br>
 You can think of Telly as Google Analytics for open-source software
 </summary>
+<br>
 We want to make our software more useful and reliable.  In order to do that, we're using Telly, a privacy-friendly
 usage statistics and support tool.  Telly may collect basic information about your Python and OS environment, allowing 
 us to understand things like which operating systems and Python versions to support.   In some cases, Telly may also

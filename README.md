@@ -8,7 +8,7 @@
 [![Twitter Follow](https://img.shields.io/twitter/follow/calccon?color=blue&label=Follow&style=social)](https://twitter.com/CalcCon)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-blue)](https://www.linkedin.com/in/charlesmartin14/)
 [![Blog CalculatedContent](https://img.shields.io/badge/Blog-teal)](https://www.calculatedcontent.com)
-[![Telly](https://img.shields.io/badge/-gotelly!-614c86?style=for-the-badge&logo=data)](https://github.com/telly-llc/what-is-telly)
+[![PhoneHome with Telly.io](https://img.shields.io/badge/PhoneHome-blue](https://github.com/telly-llc/what-is-telly)
 
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)

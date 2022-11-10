@@ -4,11 +4,11 @@
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)
 [![Video Tutorial](https://img.shields.io/badge/Video-Tutorial-blue)](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 [![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)](https://discord.gg/uVVsEAcfyF)
+[![MonitoredBy Telly](https://img.shields.io/badge/MonitoredBy-Telly-blueviolet)](https://github.com/telly-llc/what-is-telly)
 
 [![Twitter Follow](https://img.shields.io/twitter/follow/calccon?color=blue&label=Follow&style=social)](https://twitter.com/CalcCon)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-blue)](https://www.linkedin.com/in/charlesmartin14/)
 [![Blog CalculatedContent](https://img.shields.io/badge/Blog-teal)](https://www.calculatedcontent.com)
-[![Telly PhonesHome](https://img.shields.io/badge/Telly-purple)](https://github.com/telly-llc/what-is-telly)
 
 
 ![WeightWatcher Logo](./img/WW-logo-long.jpg)

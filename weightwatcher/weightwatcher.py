@@ -20,7 +20,6 @@ import pandas as pd
 import scipy as sp
 import scipy.linalg
 
-
 import matplotlib
 import matplotlib.pyplot as plt
 import powerlaw
@@ -1371,8 +1370,15 @@ class WeightWatcher(object):
         evals = ww_layer.evals
         if evals is not None and len(evals>0):
             rand_evals = self.random_eigenvalues(Wmats, n_comp, 1 , params)
-            dist = jensen_shannon_distance(evals, rand_evals)
-            ww_layer.add_column("rand_distance", dist)
+
+            value = jensen_shannon_distance(evals, rand_evals)
+            ww_layer.add_column("rand_distance", value)
+
+            value = np.max(evals)/np.max(rand_evals)
+            ww_layer.add_column("ww_softrank", value)
+
+            value = np.max(evals)-np.max(rand_evals) 
+            ww_layer.add_column("ww_maxdist", value)
 
         if params[PLOT]:
             self.plot_random_esd(ww_layer, params)

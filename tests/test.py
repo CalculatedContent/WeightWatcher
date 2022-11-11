@@ -351,13 +351,33 @@ class Test_VGG11(unittest.TestCase):
 
 				
 	def test_rand_distance(self):
-		"""Test rand distance
-		   Not very accuracte since it is random
+		"""
+		Test rand distance Not very accuracte since it is random
 		"""
 		
 		details= self.watcher.analyze(layers=[28], randomize=True)
 		actual = details.rand_distance[0]
 		expected = 0.29
+		self.assertAlmostEqual(actual,expected, places=2)
+
+	def test_ww_softrank(self):
+		"""
+		   Not very accuracte since it relies on randomizing W
+		"""
+		
+		details= self.watcher.analyze(layers=[28], randomize=True)
+		actual = details.ww_softrank[0]/10.0
+		expected = 2.9782/10.0
+		self.assertAlmostEqual(actual,expected, places=2)
+
+	def test_ww_maxdist(self):
+		"""
+		   Not very accuracte since it relies on randomizing W
+		"""
+		
+		details= self.watcher.analyze(layers=[28], randomize=True)
+		actual = details.ww_maxdist[0]/100.0
+		expected = 39.9/100.0
 		self.assertAlmostEqual(actual,expected, places=2)
 		
 	def test_reset_params(self):

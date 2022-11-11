@@ -186,6 +186,11 @@ The random distance metric is a new, non-parameteric approach that appears to wo
 
 - `rand_distance` : <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">   Distance of layer ESD from the ideal RMT MP ESD
 
+There re also related metrics, including the new
+
+- 'ww_maxdist'
+- 'ww_softrank'
+
 #### Misc Details
 
 - `N, M` :  Matrix or Tensor Slice Dimensions

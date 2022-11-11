@@ -54,7 +54,7 @@ setup(
                         'matplotlib-inline',
                         'powerlaw',
                         'tensorflow',
-                        'sklearn',
+                        'scikit-learn',
                         'torch',
                         'onnx',
                         'tqdm'],

@@ -1387,7 +1387,7 @@ class WeightWatcher(object):
             value = np.max(evals)/np.max(rand_evals)
             ww_layer.add_column("ww_softrank", value)
 
-            value = np.max(evals)-np.max(rand_evals) 
+            value = np.max(evals)-np.max(rand_evals)
             ww_layer.add_column("ww_maxdist", value)
 
         if params[PLOT]:

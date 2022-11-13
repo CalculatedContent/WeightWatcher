@@ -616,7 +616,7 @@ Otherwise, you need to install them first
 ## Telly
 
 Notice:  this release of weightwatcher  uses [Telly](https://gotelly.io/), a telemetry (phone home) service.<br>
-You can think of Telly as Google Analytics for open-source software.  (See below)
+You can think of Telly as Google Analytics for open-source software.  
 
 We want to make our software more useful and reliable.  In order to do that, we're using Telly, a privacy-friendly
 usage statistics and support tool.  Telly may collect basic information about your Python and OS environment, allowing 
@@ -625,7 +625,7 @@ collect SHA-256-hashed representations of information that allows us to estimate
 hashes are only used temporarily to assign a temporary ID for aggregate reporting; no plaintext information is ever
 transmitted or visible to humans and even hashes are only stored during a temporary, rolling analytics window.  
 <br>
-You can learn more about Telly's privacy functionality here: https://gotelly.io/.  
+You can learn more about Telly's privacy functionality here: [Go Telly!](https://gotelly.io/)
 <br>
 To disable Telly's data collection, you can either:
  * set the TELLY_DISABLE environment variable to a truthy value like Y or 1

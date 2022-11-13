@@ -624,14 +624,12 @@ us to understand things like which operating systems and Python versions to supp
 collect SHA-256-hashed representations of information that allows us to estimate our unique number of users.  These 
 hashes are only used temporarily to assign a temporary ID for aggregate reporting; no plaintext information is ever
 transmitted or visible to humans and even hashes are only stored during a temporary, rolling analytics window.  
-<br><br>
+<br>
 You can learn more about Telly's privacy functionality here: https://gotelly.io/.  
-<br><br>
+<br>
 To disable Telly's data collection, you can either:
  * set the TELLY_DISABLE environment variable to a truthy value like Y or 1
  * create a file named .telly_disable in your home directory
-
-
 
 ## Contributors
 

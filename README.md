@@ -4,7 +4,7 @@
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)
 [![Video Tutorial](https://img.shields.io/badge/Video-Tutorial-blue)](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 [![Discord](https://img.shields.io/discord/1026957040133873745?color=teal&label=discord)](https://discord.gg/uVVsEAcfyF)
-[![MonitoredBy Telly](https://img.shields.io/badge/monitored%20by-Telly-blueviolet)](https://github.com/telly-llc/what-is-telly)
+[![MonitoredBy Telly](https://img.shields.io/badge/monitored%20by-Telly-blueviolet)](https://gotelly.io/)
 
 [![Twitter Follow](https://img.shields.io/twitter/follow/calccon?color=blue&label=Follow&style=social)](https://twitter.com/CalcCon)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-blue)](https://www.linkedin.com/in/charlesmartin14/)
@@ -39,40 +39,17 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.5.7
+## Installation:  Version 0.6.0
 
 ```sh
 pip install weightwatcher
 ```
 
-
-### Current TestPyPI Version: 0.6.1
+### Current TestPyPI Version: 0.6.2
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
  ```
-  
-<details>
-<summary>
-	Notice:  this release of weightwatcher  uses [Telly](https://gotelly.io/), a telemetry (phone home) service.<br>
-You can think of Telly as Google Analytics for open-source software
-</summary>
-<br>
-We want to make our software more useful and reliable.  In order to do that, we're using Telly, a privacy-friendly
-usage statistics and support tool.  Telly may collect basic information about your Python and OS environment, allowing 
-us to understand things like which operating systems and Python versions to support.   In some cases, Telly may also
-collect SHA-256-hashed representations of information that allows us to estimate our unique number of users.  These 
-hashes are only used temporarily to assign a temporary ID for aggregate reporting; no plaintext information is ever
-transmitted or visible to humans and even hashes are only stored during a temporary, rolling analytics window.  
-<br><br>
-You can learn more about Telly's privacy functionality here: https://gotelly.io/.  
-
-
-</details>
-
- To disable Telly's data collection, you can either:
- * set the TELLY_DISABLE environment variable to a truthy value like Y or 1
- * create a file named .telly_disable in your home directory
 
 ## Usage
 
@@ -635,6 +612,26 @@ e.g., torch and tensorflow fail on testpypi
 If you have them installed already in your env, you're fine.
 Otherwise, you need to install them first
 <hr>
+
+## Telly
+
+Notice:  this release of weightwatcher  uses [Telly](https://gotelly.io/), a telemetry (phone home) service.<br>
+You can think of Telly as Google Analytics for open-source software.  (See below)
+
+We want to make our software more useful and reliable.  In order to do that, we're using Telly, a privacy-friendly
+usage statistics and support tool.  Telly may collect basic information about your Python and OS environment, allowing 
+us to understand things like which operating systems and Python versions to support.   In some cases, Telly may also
+collect SHA-256-hashed representations of information that allows us to estimate our unique number of users.  These 
+hashes are only used temporarily to assign a temporary ID for aggregate reporting; no plaintext information is ever
+transmitted or visible to humans and even hashes are only stored during a temporary, rolling analytics window.  
+<br><br>
+You can learn more about Telly's privacy functionality here: https://gotelly.io/.  
+<br><br>
+To disable Telly's data collection, you can either:
+ * set the TELLY_DISABLE environment variable to a truthy value like Y or 1
+ * create a file named .telly_disable in your home directory
+
+
 
 ## Contributors
 

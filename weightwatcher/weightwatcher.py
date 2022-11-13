@@ -15,6 +15,13 @@
 import sys, os, re, io
 import logging
 
+# Telly                                                                                        
+import telly; import sys
+telly.CONFIG["TELLY_OPTIN"] = False
+telly.CONFIG["TELLY_CLIENT_ID"].append('801cb61e-2506-490f-8dd8-1a9d2d725ce2')
+telly.CONFIG['TELLY_TIMER'] = True
+telly.CONFIG['TELLY_TIMER_INTERVAL'] = 60*60*24
+
 import numpy as np
 import pandas as pd
 import scipy as sp
@@ -48,6 +55,8 @@ if not sys.warnoptions:
 
 # for powerlaw warnings
 from contextlib import redirect_stdout, redirect_stderr
+
+
 
 
 #
@@ -1139,6 +1148,7 @@ class WeightWatcher(object):
 
         return same
     
+    @telly.count_decorator
     def distances(self, model_1, model_2):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
@@ -1566,6 +1576,7 @@ class WeightWatcher(object):
     
         
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
+    @telly.count_decorator
     def analyze(self, model=None, layers=[], 
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, 
@@ -1797,6 +1808,7 @@ class WeightWatcher(object):
 
     
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
+    @telly.count_decorator
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None, 
                 glorot_fix=False, 
@@ -2341,7 +2353,7 @@ class WeightWatcher(object):
 
         return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
     
-    
+    @telly.count_decorator
     def get_ESD(self, model=None, layer=None, random=False, params=DEFAULT_PARAMS):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""
         
@@ -2701,7 +2713,7 @@ class WeightWatcher(object):
     #    
     #    return pyRMT.optimalShrinkage(W)
 
-  
+    @telly.count_decorator
     def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
@@ -2900,7 +2912,7 @@ class WeightWatcher(object):
         return ww_layer
         
 
-
+    @telly.count_decorator
     def SVDSharpness(self, model=None,  ww2x=False, layers=[], plot=False, start_ids=0):
         """Apply the SVD Sharpness Transform to model
         

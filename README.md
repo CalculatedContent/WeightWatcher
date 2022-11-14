@@ -39,7 +39,7 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.6.0
+## Installation:  Version 0.6.1
 
 ```sh
 pip install weightwatcher

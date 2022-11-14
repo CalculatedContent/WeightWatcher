@@ -55,6 +55,7 @@ setup(
                         'powerlaw',
                         'tensorflow',
                         'scikit-learn',
+                        'telly',
                         'torch',
                         'onnx',
                         'tqdm'],

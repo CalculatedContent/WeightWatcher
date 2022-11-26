@@ -54,12 +54,18 @@ class Test_VGG11(unittest.TestCase):
 		
 		details = self.watcher.describe()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
-		print(details)
+
 		# TODO: add more columns ?
-		for key in ['layer_id', 'name', 'M', 'N']:
+		for key in ['layer_id', 'name', 'M', 'N', 'Q']:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
-			
-			
+
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		Q = details.Q.to_numpy()[0]
+
+		self.assertAlmostEqual(Q, N/M, places=2)
+
+
 	def test_analyze_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
 		"""

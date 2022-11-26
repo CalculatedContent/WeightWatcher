@@ -222,6 +222,10 @@ class WWLayer:
         data['N'] = self.N
         data['M'] = self.M
         data['rf'] = self.rf
+        if self.M > 0:
+            data['Q'] = self.N/self.M
+        else:
+            data['Q'] = -1
         
         for col in self.columns:
             data[col] = self.__dict__[col]

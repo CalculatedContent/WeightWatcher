@@ -285,7 +285,28 @@ class Test_VGG11(unittest.TestCase):
 		"""
 		
 		# not available yet, experimental
- 		
+ 
+	
+	def test_same_distances(self):
+		"""Test that the distance method works correctly between the same model
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 0.0	                       
+		self.assertEqual(actual_mean_distance,expected_mean_distance)
+
+	def test_distances(self):
+		"""Test that the distance method works correctly between different model
+                """
+		m1 = models.vgg11()
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 41.7
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+	
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""

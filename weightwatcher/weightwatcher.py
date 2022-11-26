@@ -1149,7 +1149,7 @@ class WeightWatcher(object):
         return same
     
     @telly.count_decorator
-    def distances(self, model_1, model_2):
+    def distances(self, model_1, model_2, layers = [], start_ids = 0, ww2x = False, channels = None):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
         
@@ -1169,9 +1169,27 @@ class WeightWatcher(object):
         # .   - check here instead
         #
         
+        params = DEFAULT_PARAMS
+        # not implemented here : 
+        #params[CONV2D_FFT] = conv2d_fft
+        params[WW2X] = ww2x   
+        params[CHANNELS_STR] = channels
+        params[LAYERS] = layers
+        # not implemented here:
+        # params[STACKED] = stacked
+        params[START_IDS] = start_ids
+
+        logger.info("params {}".format(params))
+        if not self.valid_params(params):
+            msg = "Error, params not valid: \n {}".format(params)
+            logger.error(msg)
+            raise Exception(msg)
+        params = self.normalize_params(params)
+
+
         same = True
-        layer_iter_1 = WWLayerIterator(model_1)
-        layer_iter_2 = WWLayerIterator(model_2)
+        layer_iter_1 = self.make_layer_iterator(model=model_1, layers=layers, params=params)           
+        layer_iter_2 = self.make_layer_iterator(model=model_2, layers=layers, params=params)           
         
         same = layer_iter_1.framework == layer_iter_2.framework 
         if not same:
@@ -1184,7 +1202,7 @@ class WeightWatcher(object):
             for layer_1, layer_2 in zip(layer_iter_1, layer_iter_2):
                 data['layer_id'] = layer_1.layer_id
                 data['name'] = layer_1.name
-    
+
                 if layer_1.has_weights:
                     data['delta_W'] = np.linalg.norm(layer_1.weights - layer_2.weights)
                     data['W_shape'] = layer_1.weights.shape
@@ -1193,11 +1211,10 @@ class WeightWatcher(object):
                         data['delta_b'] = np.linalg.norm(layer_1.biases - layer_2.biases)
                         data['b_shape'] = layer_1.biases.shape
                         
-                    # issue 137
-                    #details = details.append(data, ignore_index=True)
-                    data_df = pd.DataFrame.from_records(data , index=[0])
-                    details = pd.append([details, data_df])
-        except:
+                    data_df = pd.DataFrame.from_dict(data)
+                    details = pd.concat([details, data_df])
+        except :
+            print("Oops!", sys.exc_info()[0], "occurred.")
             logger.error("Sorry, problem comparing models")
             raise Exception("Sorry, problem comparing models")
         
@@ -1826,7 +1843,7 @@ class WeightWatcher(object):
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
 
         params = DEFAULT_PARAMS
-        params=DEFAULT_PARAMS
+
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
       

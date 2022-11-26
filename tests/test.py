@@ -55,7 +55,6 @@ class Test_VGG11(unittest.TestCase):
 		details = self.watcher.describe()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		# TODO: add more columns ?
 		for key in ['layer_id', 'name', 'M', 'N', 'Q']:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
 

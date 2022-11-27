@@ -15,6 +15,7 @@
 
 from enum import IntFlag, auto, Enum
 
+ERROR = -1
 
 DEF_SAVE_DIR = 'ww-img'
 
@@ -38,6 +39,11 @@ TRUNCATED_POWER_LAW = 'truncated_power_law'
 POWER_LAW = 'power_law'
 LOG_NORMAL = 'lognormal'
 EXPONENTIAL = 'exponential'
+
+# distance choices
+EUCLIDEAN = 'euclidean'
+CKA = 'cka'
+RAW = 'raw'
 
 # STATUSes
 
@@ -106,6 +112,7 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
 
 
 EVALS_THRESH = 0.00001
+ALMOST_ZERO = 1e-10
 
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()

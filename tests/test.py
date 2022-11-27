@@ -288,10 +288,11 @@ class Test_VGG11(unittest.TestCase):
 	def test_switch_channels(self):
 		"""Test user can switch the channels for a Conv2D layer
 		"""
-		
 		# not available yet, experimental
- 
+		pass
 	
+
+
 	def test_same_distances(self):
 		"""Test that the distance method works correctly between the same model
                 """
@@ -311,6 +312,66 @@ class Test_VGG11(unittest.TestCase):
 		actual_mean_distance = avg_dist
 		expected_mean_distance = 41.7
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+	def test_raw_distances(self):
+		"""Test that the distance method works correctly when methdod='RAW'
+                """
+		m1 = models.vgg11()
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 41.7
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+
+	def test_raw_distances_w_one_layer(self):
+		"""Test that the distance method works correctly when methdod='RAW', 1 layer
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[28])
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 0.0
+
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		# TODO: test length of distances also
+
+
+	def test_CKA_distances(self):
+		"""Test that the distance method works correctly for CKA method,  ww2x False | True
+                """
+		# not ready yet
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+	def test_EUCLIDEAN_distances(self):
+		"""Test that the distance method works correctly for EUCLIDEAN method,  ww2x=False | True
+                """
+		# not ready yet
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, ww2x=True)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+
+	## TODO:
+	#  add layers, ww2x=True/False
 	
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
@@ -873,7 +934,6 @@ class Test_Keras(unittest.TestCase):
 		self.assertEqual(len(details), 16)
 
 
-
 	def test_channels_first(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
 		"""
@@ -955,6 +1015,25 @@ class Test_RMT_Util(unittest.TestCase):
 		detX_num, detX_idx = RMT_Util.detX_constraint(evals,rescale=False)
 		self.assertEqual(11, detX_num, "detX num")
 		self.assertEqual(89, detX_idx, "detX idx")
+
+	def test_combine_weights_and_biases(self):
+		"""Test that we can combone W and b, stacked either way possible"""
+		W = np.ones((2,3))
+		b = 2*np.ones(3)
+		expected_shape = (3,3)
+
+		Wb = RMT_Util.combine_weights_and_biases(W,b)	
+		actual_shape = Wb.shape
+		self.assertEqual(expected_shape, actual_shape)
+
+		W = np.ones((2,3))
+		b = 2*np.ones(2)
+		expected_shape = (2,4)
+
+		Wb = RMT_Util.combine_weights_and_biases(W,b)	
+		actual_shape = Wb.shape
+		self.assertEqual(expected_shape, actual_shape)
+
 
 if __name__ == '__main__':
 	unittest.main()

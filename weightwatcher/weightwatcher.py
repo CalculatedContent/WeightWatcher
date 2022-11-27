@@ -1151,27 +1151,75 @@ class WeightWatcher(object):
         same = layer_iter_1.framework == layer_iter_2.framework 
 
         return same
-    
+
+    # TODO: unit test (and move to RMT util?)
+    def matrix_distance(self, W1, b1,  W2, b2,  method=EUCLIDEAN, combine_Wb=True):
+        """helper method to compute the matrix distance or overlap"""
+
+        dist = 0.0
+        # valid method ?
+        valid_params = method in [RAW, EUCLIDEAN, CKA]
+
+        valid_input = True
+        if W1 is None or W2 is None:
+            logger.warning("Weight matries are Null")
+            valid_input = False
+        elif W1.shape!=W2.shape:
+            logger.warning(f"Weight matrices are different shapes:  {W1.shape} =/= {W2.shape}")
+            valid_input = False
+
+        if combine_Wb:
+            if b1 is  None or b2 is None:
+                logger.warning("biases are Null")
+                valid_input = False
+            elif b1.shape!=b2.shape:
+                logger.warning(f"biases are different shapes:  {b1.shape} =/= {b2.shape}")
+                valid_input = False
+
+        if not valid_params or not valid_input:
+            logger.fatal("invalid input, stopping")
+            return ERROR
+
+
+        Wb1, Wb2, = W1, W2
+        if combine_Wb:
+            logger.debug("Combining weights and biases")
+            Wb1 = combine_weights_and_biases(W1, b1)
+            Wb2 = combine_weights_and_biases(W2, b2)
+
+        if method in [RAW, EUCLIDEAN]:
+            dist = np.linalg.norm(Wb1-Wb2)
+        elif method==CKA:
+            dist = np.linalg.norm(np.dot(Wb1.T,Wb2))
+            norm = np.linalg.norm(Wb1)*np.linalg.norm(Wb2)
+            if norm < 0.000001:
+                norm = norm + 0.000001
+            dist = dist / norm
+        else:
+            logger.warning(f"Unknown distances method {CKA}")
+
+        return dist
+
+
     @telly.count_decorator
-    def distances(self, model_1, model_2, layers = [], start_ids = 0, ww2x = False, channels = None):
+    def distances(self, model_1, model_2, 
+                  layers = [], start_ids = 0, ww2x = False, channels = None, 
+                  method = RAW, combine_Wb= True):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
         
-           < ||W_1-W_2|| >
+        methods: 
+             'raw'      ||W_1-W_2|| , but using raw tensores
+
+             'euclidean'      ||W_1-W_2|| , using layer weight matrices that are extracted
+
+             'cka'     || W_1 . W_2|| / ||W1|| ||W12||
            
         output: avg delta W, a details dataframe
            
         models should be the same size and from the same framework
            
         """
-        
-        # check and throw exception if inputs incorrect
-        # TODO: review design here...may need something else
-        #   need to:
-        # .   - iterate over all layers and check
-        # .   - inspect framework by framework
-        # .   - check here instead
-        #
         
         params = DEFAULT_PARAMS
         # not implemented here : 
@@ -1190,6 +1238,18 @@ class WeightWatcher(object):
             raise Exception(msg)
         params = self.normalize_params(params)
 
+        #  specific distance input checks here
+        if method is None:
+            method == RAW
+        else:
+            method = method.lower()
+        if method not in [RAW, EUCLIDEAN, CKA]:
+            msg = "Error, methid not valid: \n {}".format(method)
+            logger.error(msg)
+            raise Exception(msg)
+            
+
+
 
         same = True
         layer_iter_1 = self.make_layer_iterator(model=model_1, layers=layers, params=params)           
@@ -1199,7 +1259,8 @@ class WeightWatcher(object):
         if not same:
             raise Exception("Sorry, models are from different frameworks")
         
-        details = pd.DataFrame(columns=['layer_id', 'name', 'delta_W', 'delta_b', 'W_shape', 'b_shape'])
+        #distances = pd.DataFrame(columns=['layer_id', 'name', 'delta_W', 'delta_b', 'W_shape', 'b_shape'])
+        distances = pd.DataFrame(columns=['layer_id', 'name', 'delta_Wb', 'method', 'combine_Wb', 'W_shape', 'b_shape'])
         data = {}
         
         try:      
@@ -1207,24 +1268,45 @@ class WeightWatcher(object):
                 data['layer_id'] = layer_1.layer_id
                 data['name'] = layer_1.name
 
-                if layer_1.has_weights:
-                    data['delta_W'] = np.linalg.norm(layer_1.weights - layer_2.weights)
-                    data['W_shape'] = layer_1.weights.shape
-    
-                    if layer_1.has_biases:
-                        data['delta_b'] = np.linalg.norm(layer_1.biases - layer_2.biases)
-                        data['b_shape'] = layer_1.biases.shape
+                if method==RAW:
+                    if layer_1.has_weights:
+                        W1, b1  = layer_1.weights, None
+                        W2, b2  = layer_2.weights, None
+                        data['W_shape'] = W1.shape
                         
-                    data_df = pd.DataFrame.from_dict(data)
-                    details = pd.concat([details, data_df])
-        except :
-            print("Oops!", sys.exc_info()[0], "occurred.")
+                        if layer_1.has_biases:
+                            b1 = layer_1.biases 
+                            b2 = layer_2.biases                  
+                            data['b_shape'] = b1.shape
+                            
+                        else:
+                            data['b_shape'] = UNKNOWN
+                            combine_Wb = False
+                            
+                    data['delta_Wb'] = self.matrix_distance(W1, b1,  W2, b2, RAW, combine_Wb)
+                    data['combine_Wb'] = combine_Wb
+
+                    # older approach, deprecated now
+                    # data['delta_W'] =
+                    # data['delta_b'] =
+
+                elif method in [EUCLIDEAN, CKA]:
+                    pass
+                else:
+                    logger.fatal(f"unknown distance method {method}")
+
+                data_df = pd.DataFrame.from_dict(data)
+                distances = pd.concat([distances, data_df])
+
+        except:
+            msg = "Oops!"+ str(sys.exc_info()[0])+ "occurred."
             logger.error("Sorry, problem comparing models")
-            raise Exception("Sorry, problem comparing models")
+            logger.error(msg)
+            raise Exception("Sorry, problem comparing models: "+msg)
         
-        details.set_index('layer_id', inplace=True)
-        avg_dW = np.mean(details['delta_W'].to_numpy())
-        return avg_dW, details
+        distances.set_index('layer_id', inplace=True)
+        avg_dWb = np.mean(distances['delta_Wb'].to_numpy())
+        return avg_dWb, distances
     
     def combined_eigenvalues(self, Wmats, N, M, n_comp, params):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 

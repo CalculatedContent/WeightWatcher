@@ -340,34 +340,32 @@ class Test_VGG11(unittest.TestCase):
 	def test_CKA_distances(self):
 		"""Test that the distance method works correctly for CKA method,  ww2x False | True
                 """
-		# not ready yet
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA)
 		actual_mean_distance = avg_dist
 		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 
 		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
 		actual_mean_distance = avg_dist
 		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 
 	def test_EUCLIDEAN_distances(self):
 		"""Test that the distance method works correctly for EUCLIDEAN method,  ww2x=False | True
                 """
-		# not ready yet
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
 		actual_mean_distance = avg_dist
 		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 
 		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, ww2x=True)
 		actual_mean_distance = avg_dist
 		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 
 
 	## TODO:
@@ -1034,6 +1032,59 @@ class Test_RMT_Util(unittest.TestCase):
 		actual_shape = Wb.shape
 		self.assertEqual(expected_shape, actual_shape)
 
+
+class Test_Vector_Metrics(unittest.TestCase):
+	def test_valid_vectors(self):
+		watcher = ww.WeightWatcher()
+
+		vectors = None
+		valid = watcher.valid_vectors(vectors)
+		self.assertFalse(valid)
+
+		vectors = 1
+		valid = watcher.valid_vectors(vectors)
+		self.assertFalse(valid)
+
+
+		vectors = np.array([0,1,2,3,4])
+		valid = watcher.valid_vectors(vectors)
+		self.assertTrue(valid)
+
+		vectors = [np.array([0,1,2,3,4]),np.array([0,1,2,3,4]),np.array([0,1,2,3,4])]
+		valid = watcher.valid_vectors(vectors)
+		self.assertTrue(valid)
+
+		vectors = np.array([[0,1,2,3,4],[0,1,2,3,4]])
+		valid = watcher.valid_vectors(vectors)
+		self.assertTrue(valid)
+
+	def test_vector_iterator(self):
+		watcher = ww.WeightWatcher()
+
+		vectors = np.array([0,1,2,3,4])
+		iterator =  watcher.iterate_vectors(vectors)
+		for num, v in enumerate(iterator):
+			print("v= ",v)
+		self.assertEquals(1, num+1)
+
+		vectors = np.array([[0,1,2,3,4],[0,1,2,3,4]])
+		iterator =  watcher.iterate_vectors(vectors)
+		for num, v in enumerate(iterator):
+			print("v= ",v)
+		self.assertEquals(2, num+1)
+
+		vectors = [np.array([0,1,2,3,4]),np.array([0,1,2,3,4]),np.array([0,1,2,3,4])]
+		iterator =  watcher.iterate_vectors(vectors)
+		for num, v in enumerate(iterator):
+			print("v= ",v)
+		self.assertEquals(3, num+1)
+
+	def test_vector_metrics(self):
+		watcher = ww.WeightWatcher()
+
+		vectors = np.array([0,1,2,3,4])
+		metrics = watcher.vector_metrics(vectors)
+		print(metrics)
 
 if __name__ == '__main__':
 	unittest.main()

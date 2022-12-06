@@ -104,6 +104,7 @@ class ONNXLayer:
         self.model = model
         self.node = node
         self.layer_id = inode
+        self.plot_id = f"{inode}"
         self.name = node.name
         self.dims = node.dims
         self.the_type = LAYER_TYPE.UNKNOWN
@@ -126,7 +127,7 @@ class ONNXLayer:
         
 class WWLayer:
     """WW wrapper layer to Keras and PyTorch Layer layer objects
-       Uses pythong metaprogramming to add result columns for the final details dataframe"""
+       Uses python metaprogramming to add result columns for the final details dataframe"""
        
     def __init__(self, layer, layer_id=-1, name=None,
                  the_type=LAYER_TYPE.UNKNOWN, 
@@ -135,6 +136,7 @@ class WWLayer:
                  skipped=False, make_weights=True, params=DEFAULT_PARAMS):
         self.layer = layer
         self.layer_id = layer_id  
+        self.plot_id = f"{layer_id}"
         self.name = name
         self.skipped = skipped
         self.the_type = the_type
@@ -404,7 +406,7 @@ class WWLayer:
         N, M, n_comp, rf = 0, 0, 0, None
         Wmats = []
         
-        # this may change if we treat Conv1D differently layer
+        # this may change if we treat Conv1D layyer differently 
         if (the_type == LAYER_TYPE.DENSE or the_type == LAYER_TYPE.CONV1D or the_type==LAYER_TYPE.EMBEDDING):
             Wmats = [self.weights]
             N, M = np.max(Wmats[0].shape), np.min(Wmats[0].shape)
@@ -579,7 +581,7 @@ class WWLayer:
         return p_Wmats
             
     def unpermute_Wmats(self, Wmats):
-        """unpremute the previously permuted, randomized weights"""
+        """unpermute the previously permuted, randomized weights"""
         
         unp_Wmats = []
         for W, p_ids in zip(Wmats, self.W_permuted_ids):       
@@ -824,6 +826,7 @@ class WWLayerIterator(ModelIterator):
         supported = False
 
         layer_id = ww_layer.layer_id
+        plot_id =  ww_layer.plot_id
         name = ww_layer.name
         the_type = ww_layer.the_type
         rf = ww_layer.rf
@@ -884,13 +887,17 @@ class WW2xSliceIterator(WWLayerIterator):
         
         for ww_layer in self.ww_layer_iter_():
             if ww_layer.the_type == LAYER_TYPE.CONV2D:
-                
+                layer_id = ww_layer.layer_id                
                 count = len(ww_layer.Wmats)
                 for iw, W in enumerate(ww_layer.Wmats):
                     ww_slice = deepcopy(ww_layer)
                     ww_slice.Wmats = [W]
                     ww_slice.conv2d_count = count
-                    ww_slice.add_column("slice_id", iw)
+
+                    slice_id = iw
+                    ww_slice.add_column("slice_id", slice_id)
+                    ww_slice.plot_id = f"{layer_id}:{slice_id}"
+
                     yield ww_slice
 
             else:
@@ -921,7 +928,7 @@ class WWIntraLayerIterator(WW2xSliceIterator):
         def align_mats(W0, W1):
             """align the mats so that one can take X = np.dot(W0,W1)
             
-            i.e:  W0.shape[1]==W1.shape[0] along the shared dinension  
+            i.e:  W0.shape[1]==W1.shape[0] along the shared dimension  
             """
             
             logger.info("aligning {} {}".format(W0.shape, W1.shape))      
@@ -941,7 +948,7 @@ class WWIntraLayerIterator(WW2xSliceIterator):
                 logger.debug("found shared dim = {}".format(shared_dim))
                     
                 if not shared_dim:
-                    logger.warning("Can not align W0={} with W1={}".format(W0.shape, W1.shape))
+                    logger.warning("Cannot align W0={} with W1={}".format(W0.shape, W1.shape))
                     return W0, W1
                     
                 if W0.shape[1] != shared_dim:
@@ -1011,7 +1018,7 @@ class WWStackedLayerIterator(WWLayerIterator):
     
     - Each layer matrix is normalized by the Frobenius norm  W=W/||W||_F
 
-    - Each layer matric is padded with zeros to the right,  i.e
+    - Each layer matrix is padded with zeros to the right,  i.e
     
         [1, 2, 0, 0, 0, 0]
         [3, 4, 0, 0, 0, 0]
@@ -1028,7 +1035,7 @@ class WWStackedLayerIterator(WWLayerIterator):
         Wmats = []
         for ww_layer in self.ww_layer_iter_():
             
-            # Here, I just lazizy copy an older layer
+            # Here, I just lazily copy an older layer
             # really, we should creat the WWLayer using the init() constructor
             if ww_stacked_layer is None:
                 ww_stacked_layer =  deepcopy(ww_layer)
@@ -1085,7 +1092,7 @@ class WWStackedLayerIterator(WWLayerIterator):
         ww_stacked_layer.rf = 1
         
         
-        # Thi needs to be reset and used properly , eventually
+        # This needs to be reset and used properly , eventually
         # the effective M, used for Q, will be much smaller 
         # if there are a huge number of zero eigenvalues 
         self.num_components = M  # default for full SVD, not used yet
@@ -1141,7 +1148,7 @@ class WeightWatcher(object):
     
     # TODO: implement
     def same_models(self, model_1, model_2):
-        """Compare models to see if the are the same architecture.
+        """Compare models to see if they are the same architecture.
         Not really impelemnted yet"""
     
         same = True
@@ -1190,11 +1197,15 @@ class WeightWatcher(object):
         if method in [RAW, EUCLIDEAN]:
             dist = np.linalg.norm(Wb1-Wb2)
         elif method==CKA:
+            # TODO:  replace with a call to the Apache 2.0 python codde for CKA
+            # These methods will be add to RMT_Util or just from CKA.oy directly
             dist = np.linalg.norm(np.dot(Wb1.T,Wb2))
-            norm = np.linalg.norm(Wb1)*np.linalg.norm(Wb2)
+            norm1 = np.linalg.norm(np.dot(Wb1.T,Wb1))
+            norm2 = np.linalg.norm(np.dot(Wb2.T,Wb2))
+            norm = norm1*norm2
             if norm < 0.000001:
                 norm = norm + 0.000001
-            dist = dist / norm
+            dist = dist / (norm1*norm2)
         else:
             logger.warning(f"Unknown distances method {CKA}")
 
@@ -1266,8 +1277,11 @@ class WeightWatcher(object):
         try:      
             for layer_1, layer_2 in zip(layer_iter_1, layer_iter_2):
                 data['layer_id'] = layer_1.layer_id
+                if hasattr(layer_1, 'slice_id'):
+                    data['slice_id'] = layer_1.slice_id
                 data['name'] = layer_1.name
-
+                data['method'] = combine_Wb
+                
                 if method==RAW:
                     if layer_1.has_weights:
                         W1, b1  = layer_1.weights, None
@@ -1291,7 +1305,20 @@ class WeightWatcher(object):
                     # data['delta_b'] =
 
                 elif method in [EUCLIDEAN, CKA]:
-                    pass
+                    W1s, b1 = layer_1.Wmats, None
+                    W2s, b2 = layer_2.Wmats, None
+                    combine_Wb = False
+
+                    dist = 0
+                    for W1, W2 in zip(W1s, W2s):
+                        dist += self.matrix_distance(W1, b1,  W2, b2, method, combine_Wb)
+
+                    data['W_shape'] = W1.shape
+                    data['n_shape'] = UNKNOWN
+
+                    data['delta_Wb'] = dist/len(W1s)
+                    data['combine_Wb'] = combine_Wb
+                    
                 else:
                     logger.fatal(f"unknown distance method {method}")
 
@@ -1414,7 +1441,7 @@ class WeightWatcher(object):
         
                  
     def apply_esd(self, ww_layer, params=DEFAULT_PARAMS):
-        """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
+        """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all, and save to layer """
         
         layer_id = ww_layer.layer_id
         name = ww_layer.name
@@ -1454,6 +1481,7 @@ class WeightWatcher(object):
         """Randomize the layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
         
         layer_id = ww_layer.layer_id
+        plot_id =  ww_layer.plot_id
         name = ww_layer.name
         the_type = ww_layer.the_type
          
@@ -1505,6 +1533,7 @@ class WeightWatcher(object):
          """
         
         layer_id = ww_layer.layer_id
+        plot_id =  ww_layer.plot_id
         name = ww_layer.name
         
         logger.debug("apply permute W  on Layer {} {} ".format(layer_id, name))                        
@@ -1529,6 +1558,7 @@ class WeightWatcher(object):
          """
         
         layer_id = ww_layer.layer_id
+        plot_id =  ww_layer.plot_id
         name = ww_layer.name
         
         logger.debug("apply unpermute W  on Layer {} {} ".format(layer_id, name))                        
@@ -1566,6 +1596,7 @@ class WeightWatcher(object):
             # fix rescaling to plot xmin
 
             layer_id = ww_layer.layer_id  # where is the layer_id
+            plot_id =  ww_layer.plot_id
             plt.title(f"DetX constraint for {name}")
             plt.xlabel("log10 eigenvalues (norm scaled)")
             plt.hist(np.log10(evals), bins=100)
@@ -1577,7 +1608,7 @@ class WeightWatcher(object):
                 
             plt.legend()
             if savefig:
-                save_fig(plt, "detX", layer_id, savedir)
+                save_fig(plt, "detX", plot_id, savedir)
             plt.show(); plt.clf()
             
         return ww_layer
@@ -1607,6 +1638,7 @@ class WeightWatcher(object):
                     
         evals = ww_layer.evals
         layer_id = ww_layer.layer_id
+        plot_id =  ww_layer.plot_id
         name = ww_layer.name
         title = "{} {}".format(layer_id, name)
 
@@ -1620,11 +1652,11 @@ class WeightWatcher(object):
         savedir = params[SAVEDIR]
 
         ff =  params[FIX_FINGERS]
-        layer_name = "Layer {}".format(layer_id)
+        layer_name = "Layer {}".format(plot_id)
         
         fit_type =  params[FIT]
 
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig, fix_fingers=ff, fit_type=fit_type)
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig, fix_fingers=ff, fit_type=fit_type)
 
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1677,8 +1709,90 @@ class WeightWatcher(object):
         return layer_iterator
     
     
+    @telly.count_decorator
+    def vector_metrics(self, vectors=None): 
+        """Analyze arbitrary vectors using random matirx theory RMT and report vector metrics
         
-    # test with https://github.com/osmr/imgclsmob/blob/master/README.md
+        Parameters
+        ----------
+        
+        vectors:  a single numpy vector, list of vectors, or an (NxM)  numpy array
+                  if a numpy array, expects N vectors of length M
+        
+        Returns
+        ----------
+        
+        metrics dataframe with columns 
+        (as described in the JMLR paper:  https://jmlr.org/papers/v22/20-410.html)
+        
+        """
+
+        df = pd.DataFrame(columns=["length", "entropy", "discete_entropy", "localization_ratio", "participation_ratio"])
+
+        if not self.valid_vectors(vectors):
+            logger.warning("vectors not specified correctly, returning -1")
+            return -1
+
+        for iv, vec in enumerate(self.iterate_vectors(vectors)):
+            df.loc[iv] = None
+            df.at[iv, "length"] = len(vec)
+            df.at[iv, "entropy"] = vector_entropy(vec)
+            df.at[iv, "discete_entropy"] = discrete_entropy(vec)
+            df.at[iv, "localization_ratio"] = localization_ratio(vec)
+            df.at[iv, "participation_ratio"] = participation_ratio(vec)
+
+        return df
+
+
+
+
+    def iterate_vectors(self, vectors):
+        """vectors may be a single vector, list of vectors, or a numoy array"""
+
+        if isinstance(vectors, np.ndarray) and len(vectors.shape) > 1:
+            # vectors is a numpy array, so iterate over rows
+            # Get the number of rows and columns in the array
+            num_rows, num_cols = vectors.shape
+
+            # Iterate over the rows in the array
+            for i in range(num_rows):
+                # Get the current row
+                row = vectors[i, :]
+                yield row
+            
+        elif isinstance(vectors, list):
+            # vectors is a list of numpy vectors
+            for i, vec in enumerate(vectors):
+                yield vec
+
+        else:
+            # vectors is a single numpy vector
+            yield vectors
+
+
+    def valid_vectors(self, vectors):
+        """Returns true if the input is 1 or more numpy vectors, 
+        either as  a single vector, a list of vectors, or a numpy array of vectors, 
+        and returns false otherwise"""
+
+        if isinstance(vectors, np.ndarray):
+            # vectors is a numpy array, so we will flatten it to a list
+            vectors = vectors.flatten()
+            
+        if isinstance(vectors, list):
+            # vectors is a list of numpy vectors
+            for vec in vectors:
+                if not isinstance(vec, np.ndarray):
+                    # at least one element of the list is not a numpy vector
+                    return False
+        elif not isinstance(vectors, np.ndarray):
+            # vectors is not a single numpy vector or a list of numpy vectors
+            return False
+                    
+        # vectors is a single numpy vector or a list of numpy vectors
+        return True
+        
+
     @telly.count_decorator
     def analyze(self, model=None, layers=[], 
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
@@ -1759,7 +1873,7 @@ class WeightWatcher(object):
             Can be very slow.
             
         fix_fingers:  bool, default: False 
-            Attempts to fix the fingers / finite-size-effects which sometimes occurs layers with spuriously large alphas
+            Attempts to fix the fingers / finite-size-effects which sometimes occurs fpr layers with spuriously large alphas
             Can be very slow.
             
         fit:  string, default: 'PL'
@@ -1981,7 +2095,7 @@ class WeightWatcher(object):
         return details
 
     def valid_params(self, params):
-        """Validate the input parametersm, return True if valid, False otherwise"""
+        """Validate the input parameters, return True if valid, False otherwise"""
         
         valid = True        
         xmin = params.get('xmin')
@@ -2075,7 +2189,7 @@ class WeightWatcher(object):
     
     
     def normalize_params(self, params):
-        """Reset params to allow some syntatic sugar in the inputs"""
+        """Reset params to allow some syntactic sugar in the inputs"""
         
         fit_type = params[FIT]
         if fit_type==PL:
@@ -2153,7 +2267,7 @@ class WeightWatcher(object):
                 return check1, False
     
     def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params=DEFAULT_PARAMS):
-        """Compute the eigenvalues for all weights of the NxM skipping layer, num evals ized weight matrices (N >= M), 
+        """Compute the eigenvalues for all weights of the NxM skipping layer, num evals sized weight matrices (N >= M), 
             combined into a single, sorted, numpy array.  
     
         see: combined_eigenvalues()
@@ -2201,6 +2315,7 @@ class WeightWatcher(object):
         savedir = params[SAVEDIR]
 
         layer_id = ww_layer.layer_id
+        plot_id = ww_layer.plot_id
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
         title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
@@ -2217,7 +2332,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            save_fig(plt, "randesd1", layer_id, savedir)
+            save_fig(plt, "randesd1", plot_id, savedir)
         plt.show(); plt.clf()
 
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
@@ -2229,13 +2344,13 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:
             #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
-            save_fig(plt, "randesd2", layer_id, savedir)
+            save_fig(plt, "randesd2", plot_id, savedir)
         plt.show(); plt.clf()
         
 
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, sample=False, sample_size=None, 
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, sample=False, sample_size=None, 
                      savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit_type=POWER_LAW):
-        """Fit eigenvalues to powerlaw or truncated_power_lw
+        """Fit eigenvalues to powerlaw or truncated_power_law
         
             if xmin is 
                 'auto' or None, , automatically set this with powerlaw method
@@ -2244,7 +2359,7 @@ class WeightWatcher(object):
             if xmax is 'auto' or None, xmax = np.max(evals)
             
             svd_method = FULL_SVD (to add TRUNCATED_SVD with some cutoff)
-            thresh is a threshhold on the evals, to be used for very large matrices with lots of zeros
+            thresh is a threshold on the evals, to be used for very large matrices with lots of zeros
             
                      
          """
@@ -2409,7 +2524,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-                save_fig(plt, "esd", layer_id, savedir)
+                save_fig(plt, "esd", plot_id, savedir)
             plt.show(); plt.clf()
                 
     
@@ -2422,7 +2537,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd2.png".format(layer_id))
-                save_fig(plt, "esd2", layer_id, savedir)
+                save_fig(plt, "esd2", plot_id, savedir)
             plt.show(); plt.clf()
 
             # plot log eigenvalue histogram
@@ -2435,7 +2550,7 @@ class WeightWatcher(object):
             plt.legend()
             if savefig:
                 #plt.savefig("ww.layer{}.esd3.png".format(layer_id))
-                save_fig(plt, "esd3", layer_id, savedir)
+                save_fig(plt, "esd3", plot_id, savedir)
             plt.show(); plt.clf()
     
             # plot xmins vs D
@@ -2449,7 +2564,7 @@ class WeightWatcher(object):
             plt.title(title+"{:0.3}".format(fit.xmin))
             plt.legend()
             if savefig:
-                save_fig(plt, "esd4", layer_id, savedir)
+                save_fig(plt, "esd4", plot_id, savedir)
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
             import sys, os
@@ -2531,6 +2646,7 @@ class WeightWatcher(object):
         """Compute the norm metrics, as they depend on the eigenvalues"""
 
         layer_id = ww_layer.layer_id
+        plot_id = ww_layer.plot_id
         name = ww_layer.name or "" 
         evals = ww_layer.evals
         
@@ -2569,9 +2685,10 @@ class WeightWatcher(object):
     # TODO: add x bulk max yellow line for bulk edge for random
     def apply_plot_deltaEs(self, ww_layer, random=False, params=DEFAULT_PARAMS):
         """Plot the deltas of the layer ESD, both in a sequence as a histogram (level statisitcs)"""
-        layer_id = ww_layer.layer_id
+        layer_id = ww_layer.layer_i
+        plot_id = ww_layer.plot_id
         name = ww_layer.name or ""
-        layer_name = "{} {}".format(layer_id, name)
+        layer_name = "{} {}".format(plot_id, name)
         
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
@@ -2606,7 +2723,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:  
             #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
-            save_fig(plt, "deltaEs", layer_id, savedir)
+            save_fig(plt, "deltaEs", plot_id, savedir)
         plt.show(); plt.clf()
 
         
@@ -2618,7 +2735,7 @@ class WeightWatcher(object):
         plt.legend()
         if savefig:  
             #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
-            save_fig(plt, "level-stats", layer_id, savedir)
+            save_fig(plt, "level-stats", plot_id, savedir)
         plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
@@ -2626,8 +2743,9 @@ class WeightWatcher(object):
         N/A yet"""
 
         layer_id = ww_layer.layer_id
+        plot_id = ww_layer.plot_id
         name = ww_layer.name or ""
-        layer_name = "{} {}".format(layer_id, name)
+        layer_name = "{} {}".format(plot_id, name)
         
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
@@ -2648,7 +2766,7 @@ class WeightWatcher(object):
         N, M = ww_layer.N, ww_layer.M
         rf = ww_layer.rf
 
-        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale =  self.mp_fit(evals, N, M, rf, layer_name, layer_id, plot, savefig, savedir, color, rescale)
+        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale =  self.mp_fit(evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale)
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -2666,7 +2784,7 @@ class WeightWatcher(object):
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot, savefig, savedir, color, rescale):
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M        
@@ -2723,7 +2841,7 @@ class WeightWatcher(object):
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
                 if savefig:
                     #plt.savefig("ww.layer{}.mpfit1.png".format(layer_id))
-                    save_fig(plt, "mpfit1", layer_id, savedir)
+                    save_fig(plt, "mpfit1", plot_id, savedir)
                 plt.show(); plt.clf()
             
         else:
@@ -2741,7 +2859,7 @@ class WeightWatcher(object):
             plt.title(title)
             if savefig:
                 #plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
-                save_fig(plt, "mpfit2", layer_id, savedir)
+                save_fig(plt, "mpfit2", plot_id, savedir)
             plt.show(); plt.clf()
             
         bulk_max = bulk_max/(Wscale*Wscale)
@@ -2750,14 +2868,14 @@ class WeightWatcher(object):
 
         
     def smooth_W_alt(self, W, n_comp):
-        """Apply the SVD Smoothing Transform to W"
+        """Apply the SVD Smoothing Transform to W
         if n_comp < 0, then chomp off the top n_comp eiganvalues
         """       
         
         N, M = np.max(W.shape), np.min(W.shape)
 
         # TODO: replace this with truncated SVD
-        # can't we just appky the svd transform...test
+        # can't we just apply the svd transform...test
         # keep this old method for historical comparison
         u, s, vh = sp.linalg.svd(W, compute_uv=True)
                 
@@ -2842,7 +2960,7 @@ class WeightWatcher(object):
 
         
         if ww2x:
-            msg = "ww2x not supported yet for SVDSharpness, ending"
+            msg = "ww2x not supported yet for SVDSmoothness, ending"
             logger.error(msg)
             raise Exception(msg)
         
@@ -2892,8 +3010,6 @@ class WeightWatcher(object):
         return model   
 
     
-   
-    
     # TODO: add methods that use ETPL-alpha and/or DETX
         
     def apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS):
@@ -2905,6 +3021,7 @@ class WeightWatcher(object):
       
         layer = ww_layer.layer
         layer_id = ww_layer.layer_id
+        plot_id = ww_layer.plot_id
         layer_name = ww_layer.name
         layer_type = ww_layer.the_type
         framework = ww_layer.framework
@@ -3126,9 +3243,7 @@ class WeightWatcher(object):
 
     def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
-        """Seperate method to analyxe the eigenvectors of each layer
-        
-        ootions"""
+        """Seperate method to analyze the eigenvectors of each layer"""
         
         model = model or self.model   
         
@@ -3168,8 +3283,9 @@ class WeightWatcher(object):
         """
         
         layer_id = ww_layer.layer_id
+        plot_id = ww_layer.plot_id
         name = ww_layer.name or ""
-        layer_name = "{} {}".format(layer_id, name)
+        layer_name = "{} {}".format(plot_id, name)
 
         print(f"SP {layer_name}")
         logger.warning(f"SP {layer_name}")
@@ -3255,7 +3371,7 @@ class WeightWatcher(object):
                     logger.warning("xmin can not be displayed")
         
             if savefig:
-                save_fig(plt, "vector_metrics", ww_layer.layer_id, savedir)
+                save_fig(plt, "vector_metrics", ww_layer.plot_id, savedir)
             plt.show(); plt.clf()
 
         # Histogram plots, similar to the JMLR paper
@@ -3323,7 +3439,7 @@ class WeightWatcher(object):
                     
                 
                 if savefig:
-                    save_fig(plt, "vector_histograms", ww_layer.layer_id, savedir)
+                    save_fig(plt, "vector_histograms", ww_layer.plot_id, savedir)
                 plt.show(); plt.clf()
        
        

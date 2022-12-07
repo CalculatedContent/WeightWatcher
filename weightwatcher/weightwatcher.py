@@ -1219,6 +1219,7 @@ class WeightWatcher(object):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
         
+
         methods: 
              'raw'      ||W_1-W_2|| , but using raw tensores
 
@@ -1229,6 +1230,8 @@ class WeightWatcher(object):
         output: avg delta W, a details dataframe
            
         models should be the same size and from the same framework
+
+        Note: Currently only RAW is supported
            
         """
         
@@ -1254,12 +1257,11 @@ class WeightWatcher(object):
             method == RAW
         else:
             method = method.lower()
-        if method not in [RAW, EUCLIDEAN, CKA]:
+        if method not in [RAW]:#, EUCLIDEAN, CKA]:
             msg = "Error, methid not valid: \n {}".format(method)
             logger.error(msg)
             raise Exception(msg)
             
-
 
 
         same = True

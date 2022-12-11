@@ -1713,7 +1713,7 @@ class WeightWatcher(object):
     
     @telly.count_decorator
     def vector_metrics(self, vectors=None): 
-        """Analyze arbitrary vectors using random matirx theory RMT and report vector metrics
+        """Analyze arbitrary vectors using random matrix theory RMT and report vector metrics
         
         Parameters
         ----------

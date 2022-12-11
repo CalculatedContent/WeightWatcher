@@ -1713,7 +1713,7 @@ class WeightWatcher(object):
     
     @telly.count_decorator
     def vector_metrics(self, vectors=None): 
-        """Analyze arbitrary vectors using random matirx theory RMT and report vector metrics
+        """Analyze arbitrary vectors using random matrix theory RMT and report vector metrics
         
         Parameters
         ----------
@@ -1729,7 +1729,7 @@ class WeightWatcher(object):
         
         """
 
-        df = pd.DataFrame(columns=["length", "entropy", "discete_entropy", "localization_ratio", "participation_ratio"])
+        df = pd.DataFrame(columns=["length", "entropy", "discrete_entropy", "localization_ratio", "participation_ratio"])
 
         if not self.valid_vectors(vectors):
             logger.warning("vectors not specified correctly, returning -1")

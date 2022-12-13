@@ -310,7 +310,7 @@ class Test_VGG11(unittest.TestCase):
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		avg_dist, distances = self.watcher.distances(m1, m2)
 		actual_mean_distance = avg_dist
-		expected_mean_distance = 41.7
+		expected_mean_distance = 46.485
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 
 	def test_raw_distances(self):
@@ -320,7 +320,7 @@ class Test_VGG11(unittest.TestCase):
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW)
 		actual_mean_distance = avg_dist
-		expected_mean_distance = 41.7
+		expected_mean_distance = 46.485
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 
 

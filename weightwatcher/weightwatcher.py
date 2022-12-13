@@ -90,6 +90,40 @@ def main():
     print("WeightWatcher command line support coming later. https://calculationconsulting.com")
 
 
+class PyStateDictLayer:
+    """Helper class to support layers directly from pyTorch StateDict
+        
+    infers the layer_ type from the dimension of the weights 
+        [a,b,c,d]  ->  CONV2D 
+        [a,b]  ->  DENSE 
+                
+    """
+    
+    def __init__(self, model, inode, node):
+        self.model = model
+        self.node = node
+        self.layer_id = inode
+        self.plot_id = f"{inode}"
+        self.name = node.name
+        self.dims = node.dims
+        self.the_type = LAYER_TYPE.UNKNOWN
+
+        if len(self.dims) == 4:
+            self.the_type = LAYER_TYPE.CONV2D
+        elif len(self.dims) == 2:
+            self.the_type = LAYER_TYPE.DENSE
+        else:
+            logger.debug("Unsupported pyTorch StateDict Layer, dims = {}".format(self.dims))
+            
+    def get_weights(self):
+        return numpy_helper.to_array(self.node) 
+    
+    # not sure if this works
+    def set_weights(self, idx, W):
+        T = numpy_helper.from_array(W)
+        self.model.graph.initializer[idx].CopyFrom(T)
+
+
 class ONNXLayer:
     """Helper class to support ONNX layers
     
@@ -640,6 +674,10 @@ class ModelIterator:
 
         elif isinstance(self.model, onnx.onnx_ml_pb2.ModelProto):  
             framework = FRAMEWORK.ONNX
+            
+        elif isinstance(self.model, string) and params['pyStateDict'] is True:
+            framework = FRAMEWORK.PYSTATEDICT
+              
         return framework
     
     def __iter__(self):
@@ -694,6 +732,14 @@ class ModelIterator:
                     yield ONNXLayer(model, inode, node)                        
             layer_iter = layer_iter_()    
             
+        elif self.framework == FRAMEWORK.PYSTATEDICT:
+            def layer_iter_():
+                # model should a file name, not a dict
+                # feed as a filename, not 
+                # loop over state dict frorm disk
+                for inode, node in enumerate(model.graph.initializer):
+                    yield PyStateLayer(model, inode, node)                        
+            layer_iter = layer_iter_()   
         else:
             layer_iter = None
             
@@ -1272,24 +1318,24 @@ class WeightWatcher(object):
         if not same:
             raise Exception("Sorry, models are from different frameworks")
         
-        #distances = pd.DataFrame(columns=['layer_id', 'name', 'delta_W', 'delta_b', 'W_shape', 'b_shape'])
-        distances = pd.DataFrame(columns=['layer_id', 'name', 'delta_Wb', 'method', 'combine_Wb', 'W_shape', 'b_shape'])
+        distances = pd.DataFrame(columns=['layer_id', 'name', 'delta_Wb', 'method', 'combine_Wb', 'M', 'N', 'b_shape'])
         data = {}
-        
+        ilayer = 0
         try:      
             for layer_1, layer_2 in zip(layer_iter_1, layer_iter_2):
                 data['layer_id'] = layer_1.layer_id
                 if hasattr(layer_1, 'slice_id'):
                     data['slice_id'] = layer_1.slice_id
                 data['name'] = layer_1.name
-                data['method'] = combine_Wb
-                
+                data['method'] = RAW
+
                 if method==RAW:
                     if layer_1.has_weights:
                         W1, b1  = layer_1.weights, None
                         W2, b2  = layer_2.weights, None
-                        data['W_shape'] = W1.shape
-                        
+                        data['M'] = np.min(W1.shape)
+                        data['N'] = np.max(W1.shape)
+
                         if layer_1.has_biases:
                             b1 = layer_1.biases 
                             b2 = layer_2.biases                  
@@ -1301,7 +1347,7 @@ class WeightWatcher(object):
                             
                     data['delta_Wb'] = self.matrix_distance(W1, b1,  W2, b2, RAW, combine_Wb)
                     data['combine_Wb'] = combine_Wb
-
+                    
                     # older approach, deprecated now
                     # data['delta_W'] =
                     # data['delta_b'] =
@@ -1324,8 +1370,10 @@ class WeightWatcher(object):
                 else:
                     logger.fatal(f"unknown distance method {method}")
 
-                data_df = pd.DataFrame.from_dict(data)
+                print(ilayer, data)
+                data_df = pd.DataFrame.from_records(data, index=[ilayer])
                 distances = pd.concat([distances, data_df])
+                ilayer += 1
 
         except:
             msg = "Oops!"+ str(sys.exc_info()[0])+ "occurred."

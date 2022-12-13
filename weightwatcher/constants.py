@@ -130,6 +130,7 @@ class FRAMEWORK(IntFlag):
     PYTORCH = auto()
     KERAS = auto()
     ONNX = auto()
+    PYSTATEDICT = auto()
     
 
 class CHANNELS(IntFlag):

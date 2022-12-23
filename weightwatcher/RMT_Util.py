@@ -21,6 +21,7 @@ from sklearn.neighbors import KernelDensity
 import powerlaw
 import tqdm
 from .constants import *
+from joblib._multiprocessing_helpers import mp
 
 
 # ## Generalized Entropy
@@ -156,7 +157,6 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
                      alpha=0.25, color='blue', skip=False, verbose=True, plot=True, cutoff=0.0):
     """Plot histogram of eigenvalues, for Q, and fit Marchenk Pastur.  
     If no sigma, calculates from maximum eigenvalue (minus spikes)
-    Can read keras weights from model if specified.  Does not read PyTorch
     
     If Q = 1, analyze the singular values for the Quarter Circle law"""
     
@@ -209,7 +209,12 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         print("% spikes outside bulk {0:.2f}".format(percent_mass))
         print("% sigma {0:.4f}".format(sigma))
         
-    return sigma
+    # TODO 
+    # so fit can be plot on different scale (log,) etc
+    # expose for debugging
+    return sigma, x, mp
+    
+    #return sigma
 
 
 def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0):
@@ -567,7 +572,7 @@ def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.1, 1.25, 0.01)
 #     return pd.DataFrame(df_output, columns = ['spikes', 'sigma', 'F_norm'])
 
 
-def plot_loghist(x, bins, xmin):
+def plot_loghist(x, bins=100, xmin=None):
     hist, bins = np.histogram(x, bins=bins)
     logbins = np.logspace(np.log10(bins[0]),np.log10(bins[-1]),len(bins))
     plt.hist(x, bins=logbins, density=True)

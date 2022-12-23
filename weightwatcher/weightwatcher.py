@@ -13,6 +13,9 @@
 # limitations under the License.
 #
 import sys, os, re, io
+import glob, json
+import traceback
+import tempfile
 import logging
 
 # Telly                                                                                        
@@ -59,6 +62,7 @@ from contextlib import redirect_stdout, redirect_stderr
 
 
 
+
 #
 # this is use to allow editing in Eclipse but also
 # building on the commend line
@@ -90,38 +94,61 @@ def main():
     print("WeightWatcher command line support coming later. https://calculationconsulting.com")
 
 
+
 class PyStateDictLayer:
     """Helper class to support layers directly from pyTorch StateDict
         
-    infers the layer_ type from the dimension of the weights 
-        [a,b,c,d]  ->  CONV2D 
-        [a,b]  ->  DENSE 
+      Currently only supports DENSE layers
+      
+      initializer reads weights and bias file directly from disk
                 
     """
     
-    def __init__(self, model, inode, node):
-        self.model = model
-        self.node = node
-        self.layer_id = inode
-        self.plot_id = f"{inode}"
-        self.name = node.name
-        self.dims = node.dims
+    def __init__(self, weights_dir, layer_config):
+        
+        self.layer_config = layer_config
+        self.layer_id = -1
+        
+        # read weights and biases
+        self.name = layer_config['name']
+        self.longname = layer_config['longname']
+        self.weight = None
+        self.bias = None
         self.the_type = LAYER_TYPE.UNKNOWN
+                
+        weightfile = layer_config['weightfile']
+        weightfile = os.path.join(weights_dir, weightfile)
+        self.weights = np.load(weightfile)
+        self.weightfile = weightfile
 
-        if len(self.dims) == 4:
-            self.the_type = LAYER_TYPE.CONV2D
-        elif len(self.dims) == 2:
+        if layer_config['biasfile']:
+            biasfile = layer_config['biasfile']
+            biasfile = os.path.join(weights_dir, biasfile)
+            self.bias = np.load(biasfile) 
+            self.biasfile = biasfile
+        
+        if len(self.weights.shape)==2:
             self.the_type = LAYER_TYPE.DENSE
         else:
-            logger.debug("Unsupported pyTorch StateDict Layer, dims = {}".format(self.dims))
+            self.the_type = LAYER_TYPE.UNKNOWN
+
+
             
-    def get_weights(self):
-        return numpy_helper.to_array(self.node) 
+    def has_bias(self):
+        return self.bias is not None
+
+    def get_bias(self):
+        return self.bias
     
-    # not sure if this works
-    def set_weights(self, idx, W):
-        T = numpy_helper.from_array(W)
-        self.model.graph.initializer[idx].CopyFrom(T)
+    def set_weights(self, W):
+        self.weights = W
+                   
+    def get_weights(self):
+        return self.weights
+    
+    def set_bias(self, b):
+        self.bias = b
+        
 
 
 class ONNXLayer:
@@ -132,6 +159,7 @@ class ONNXLayer:
         [a,b,c,d]  ->  CONV2D 
         [a,b]  ->  DENSE 
                 
+    Warning: this has not been tested in some time
     """
     
     def __init__(self, model, inode, node):
@@ -164,14 +192,20 @@ class WWLayer:
        Uses python metaprogramming to add result columns for the final details dataframe"""
        
     def __init__(self, layer, layer_id=-1, name=None,
+                 longname = None,
                  the_type=LAYER_TYPE.UNKNOWN, 
                  framework=FRAMEWORK.UNKNOWN, 
                  channels=CHANNELS.UNKNOWN,
                  skipped=False, make_weights=True, params=DEFAULT_PARAMS):
+        
         self.layer = layer
         self.layer_id = layer_id  
         self.plot_id = f"{layer_id}"
         self.name = name
+        if longname:
+            self.longname = name
+        else:
+            self.longname = name
         self.skipped = skipped
         self.the_type = the_type
         self.framework = framework      
@@ -180,11 +214,18 @@ class WWLayer:
         # get the LAYER_TYPE
         self.the_type = self.layer_type(self.layer)
         
+        #print(f"layer {layer_id}:"+str(self.layer))
+        
         if self.name is None and hasattr(self.layer, 'name'):
             self.name = self.layer.name
         elif self.name is None:
             self.name = str(self.layer)
             self.name = re.sub(r'\(.*', '', self.name)
+            
+        if self.longname is None and hasattr(self.layer, 'longname'):
+            self.longname = self.layer.longname
+        else:
+            self.longname = name
 
         # original weights (tensor) and biases
         self.has_weights = False
@@ -254,6 +295,7 @@ class WWLayer:
         
         data['layer_id'] = self.layer_id
         data['name'] = self.name
+        data['longname'] = self.longname
         data['layer_type'] = str(self.the_type)
         data['N'] = self.N
         data['M'] = self.M
@@ -322,6 +364,10 @@ class WWLayer:
 
         # ONNX
         elif isinstance(layer,ONNXLayer):
+            the_type = layer.the_type
+            
+        # PYStateDict
+        elif isinstance(layer,PyStateDictLayer):
             the_type = layer.the_type
 
         # allow user to specify model type with file mapping
@@ -421,6 +467,17 @@ class WWLayer:
             onnx_layer = self.layer
             weights = onnx_layer.get_weights()
             has_weights = True
+            
+        elif self.framework == FRAMEWORK.PYSTATEDICT:      
+            weights = self.layer.get_weights()
+            has_weights = True
+            
+            biases = None
+            has_biases = self.layer.has_bias()
+            if has_biases:
+                biases = self.layer.get_bias()
+            
+            
         
         return has_weights, weights, has_biases, biases  
       
@@ -644,23 +701,36 @@ class WWLayer:
 class ModelIterator:
     """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available."""
 
+
     def __init__(self, model, params=DEFAULT_PARAMS):
         
         self.params = params
         self.k = params[START_IDS] # 0 | 1
-        
-        logger.debug("FRAMEWORKS: KERAS = {}  PYTORCH = {} ONNX = {} UNKNOWN = {} ".format(FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.ONNX, FRAMEWORK.UNKNOWN))
-        logger.debug("FIRST = {}  LAST = {} UNKNOWN = {} ".format(CHANNELS.FIRST, CHANNELS.LAST, CHANNELS.UNKNOWN))
 
         self.model = model
         self.framework = self.set_framework()
         self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
-        logger.debug("MODEL ITERATOR, framework = {}, channels= {} ".format(self.framework, self.channels))
-
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()            
+     
+    
+        if self.framework == FRAMEWORK.PYSTATEDICT:
+            self.config = self.read_pystatedict_config(model_dir=model)
         
+        self.model_iter = self.model_iter_(model) 
+        self.layer_iter = self.make_layer_iter_()       
+        
+        
+    
+    def read_pystatedict_config(self, model_dir):
+        filename = os.path.join(model_dir,"ww.config")
+        with open(filename, "r") as f:
+            config = json.load(f)
+            
+        return config
+    
+    
         
     def set_framework(self):
         """infer the framework """
@@ -675,8 +745,12 @@ class ModelIterator:
         elif isinstance(self.model, onnx.onnx_ml_pb2.ModelProto):  
             framework = FRAMEWORK.ONNX
             
-        elif isinstance(self.model, string) and params['pyStateDict'] is True:
-            framework = FRAMEWORK.PYSTATEDICT
+        elif isinstance(self.model, str):
+            if os.path.exists(self.model) and os.path.isdir(self.model):
+                logger.info("Expecting model is a directory containing pyTorch state_dict files")
+                framework = FRAMEWORK.PYSTATEDICT
+            else:
+                logger.error(f"unknown model folder {self.model}")
               
         return framework
     
@@ -718,11 +792,15 @@ class ModelIterator:
 
             layer_iter = layer_iter_()
 
-
+        # TODO: make wrapper for layer which include longname
+        # or add longname to layer object dynamically with setarr
         elif self.framework == FRAMEWORK.PYTORCH:
             def layer_iter_():
-                for layer in model.modules():
-                        yield layer                        
+                #for layer in model.modules():
+                for longname, layer in model.named_modules():
+                    setattr(layer, 'longname', longname)
+
+                    yield layer                        
             layer_iter = layer_iter_()    
             
 
@@ -734,12 +812,15 @@ class ModelIterator:
             
         elif self.framework == FRAMEWORK.PYSTATEDICT:
             def layer_iter_():
-                # model should a file name, not a dict
-                # feed as a filename, not 
-                # loop over state dict frorm disk
-                for inode, node in enumerate(model.graph.initializer):
-                    yield PyStateLayer(model, inode, node)                        
+                weights_dir =  self.config ['weights_dir']
+                logger.debug(f"iterating over layers in {weights_dir}")
+                
+                for layer_id, layer_config in self.config['layers'].items():
+                    py_layer = PyStateDictLayer(weights_dir, layer_config)
+                    py_layer.layer_id = layer_id
+                    yield py_layer            
             layer_iter = layer_iter_()   
+    
         else:
             layer_iter = None
             
@@ -874,6 +955,7 @@ class WWLayerIterator(ModelIterator):
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
         name = ww_layer.name
+        longname = ww_layer.longname
         the_type = ww_layer.the_type
         rf = ww_layer.rf
         
@@ -1327,6 +1409,7 @@ class WeightWatcher(object):
                 if hasattr(layer_1, 'slice_id'):
                     data['slice_id'] = layer_1.slice_id
                 data['name'] = layer_1.name
+                data['longname'] = layer_1.longname
                 data['method'] = RAW
 
                 if method==RAW:
@@ -1370,7 +1453,6 @@ class WeightWatcher(object):
                 else:
                     logger.fatal(f"unknown distance method {method}")
 
-                print(ilayer, data)
                 data_df = pd.DataFrame.from_records(data, index=[ilayer])
                 distances = pd.concat([distances, data_df])
                 ilayer += 1
@@ -1564,8 +1646,9 @@ class WeightWatcher(object):
 
             value = jensen_shannon_distance(evals, rand_evals)
             ww_layer.add_column("rand_distance", value)
-
-            value = np.max(evals)/np.max(rand_evals)
+            
+            # should be very close to bulk_max / lambda_max
+            value = np.max(rand_evals)/np.max(evals)
             ww_layer.add_column("ww_softrank", value)
 
             value = np.max(evals)-np.max(rand_evals)
@@ -2031,7 +2114,7 @@ class WeightWatcher(object):
                         self.apply_mp_fit(ww_layer, random=True, params=params)
 
                         if params[DELTA_ES] and params[PLOT]:
-                            logger.debug("Cpmputing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
+                            logger.debug("Computing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                             self.apply_plot_deltaEs(ww_layer, random=True, params=params)
                         
                     if params[DETX]:
@@ -2807,16 +2890,20 @@ class WeightWatcher(object):
             layer_name = "{} Randomized".format(layer_name)
             title = "Layer {} W".format(layer_name)
             evals = ww_layer.rand_evals
+            orig_evals = ww_layer.evals
+
             color='mediumorchid'
         else:
             title = "Layer {} W".format(layer_name)
             evals = ww_layer.evals
+            orig_evals = ww_layer.evals
+
             color='blue'
 
         N, M = ww_layer.N, ww_layer.M
         rf = ww_layer.rf
 
-        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale =  self.mp_fit(evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale)
+        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale =  self.mp_fit(evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale, orig_evals)
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -2834,7 +2921,7 @@ class WeightWatcher(object):
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale):
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale, orig_evals):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M        
@@ -2868,7 +2955,7 @@ class WeightWatcher(object):
         # CHM  I dont think we need this
         TW_delta = TW#  U*np.power(Wscale, 8/3)
         bulk_max_TW = bulk_max + np.sqrt(TW_delta)
-        
+                
         logger.debug("bulk_max = {:0.3f}, bulk_max_TW = {:0.3f} ".format(bulk_max,bulk_max_TW))
         num_spikes = len(to_plot[to_plot > bulk_max_TW])
         
@@ -2898,20 +2985,32 @@ class WeightWatcher(object):
             fit_law = 'MP ESD'
 #        
         #logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
-        plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
+        sigma_mp, x, mp = plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
         
         if plot:
-            title = fit_law+" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
+            title = fit_law +" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
             title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
             title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
             title = title + r"$\#$ spikes={}".format(num_spikes)
             plt.title(title)
+            
             if savefig:
                 #plt.savefig("ww.layer{}.mpfit2.png".format(layer_id))
                 save_fig(plt, "mpfit2", plot_id, savedir)
             plt.show(); plt.clf()
-            
+        
+            # TODO: replot on log scale, along with randomized evals
+            plt.hist(to_plot, bins=100, density=True)
+            plt.hist(to_plot, bins=100, density=True, color='red')
+
+            orig_plot = (Wscale*Wscale)*orig_evals.copy()
+            plt.hist(orig_plot[orig_plot<5], bins=100, density=True, color='green')
+
+            plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
+            plt.title("MP fit LOG PLOT  DEBUG")
+            plt.show()
+
         bulk_max = bulk_max/(Wscale*Wscale)
         bulk_min = bulk_min/(Wscale*Wscale)
         return num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale
@@ -3337,10 +3436,8 @@ class WeightWatcher(object):
         name = ww_layer.name or ""
         layer_name = "{} {}".format(plot_id, name)
 
-        print(f"SP {layer_name}")
         logger.warning(f"SP {layer_name}")
 
-        
         M = ww_layer.M
         N = ww_layer.N    
         
@@ -3494,5 +3591,169 @@ class WeightWatcher(object):
        
        
         return
+    
+    
+    
+    
+    # helper methods for pre-processinf pytorch state_dict files
+    @staticmethod
+    def extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id = 0):
+        """Read a pytorch state_dict file, and return a dict of layer configs
+        
+        
+        Parameters:
+        
+             weights_dir :  temp dir with the wextracted weights and biases files
+             
+             model_name: prefix fo the weights files
+             
+             state_dict_filename: nam of the pytorch_model.bin file
+             
+             start_id: int to start layer id counter
+         
+        Returns:
+        
+            config[layer_id]={name, longname, weightfile, biasfile}
+        
+        
+        
+        Note:  Currently only process dense layers, and
+               We may not want every layer in the state_dict
+        
+        """
+        
+        layer_id = start_id
+        config = {}
+        
+        if os.path.exists(state_dict_filename):
+            state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
+            logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
+    
+        weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
+        
+        for layer_id, weight_key in enumerate(weight_keys):
+            
+            name = f"{model_name}.{layer_id}"
+            longname = re.sub('.weight$', '', weight_key)
+                    
+            T = state_dict[weight_key]
+            
+            shape = len(T.shape)  
+            #if shape==2:
+            W = T.cpu().detach().numpy()
+            weightfile = f"{name}.weight.npy"
+    
+            biasfile = None
+            bias_key = re.sub('weight$', 'bias', weight_key)
+            if bias_key in state_dict:
+                T = state_dict[bias_key]
+                b = T.cpu().detach().numpy()
+                biasfile = f"{model_name}.{layer_id}.basis.npy"
+    
+    
+            filename = os.path.join(weights_dir,weightfile)
+            logger.debug(f"saving {filename}")
+            np.save(filename, W)
+    
+            if biasfile:
+                filename = os.path.join(weights_dir,biasfile)
+                logger.debug(f"saving {filename}")
+                np.save(filename, b)
+    
+                
+            layer_config = {}
+            layer_config['name']=name
+            layer_config['longname']=longname
+            layer_config['weightfile']=weightfile
+            layer_config['biasfile']=biasfile
+    
+            config[int(layer_id)]=layer_config
+                
+        return config
+    
+    
+    @staticmethod 
+    def process_pytorch_bins(model_dir=None, tmp_dir="/tmp"):
+        """Read the pytorch config and state_dict files, and create tmp direct, and write W and b .npy files
+        
+        Parameters:  
+        
+            model_dir:  string, directory of the config file and  pytorch_model.bin file(s)
+            
+            tmp_dir:  root directory for the weights_dir crear
+            
+        Returns:   a config which has a name, and layer_configs
+        
+            config = {
+            
+                model_name: '...'
+                weights_dir: /tmp/...
+                layers = {0: layer_config, 1: layer_config, 2:layer_config, ...}
+            }
+            
+            
+        """
+        
+        weights_dir = tempfile.mkdtemp(dir=tmp_dir, prefix="weightwatcher-")
+        logger.debug(f"using weights_dir {weights_dir}")
+        
+        config = {}
+        config['weights_dir']=weights_dir
+    
+        if os.path.exists(model_dir) and os.path.isdir(model_dir):
+            
+            try:
+                
+                # read config
+                config_filename = os.path.join(model_dir, "config.json")
+                with open(config_filename, "r") as f:
+                    model_config = json.loads(f.read())
+    
+                model_name = model_config['model_type']
+                if model_name is None:
+                    model_name = "UNK"
+                    
+                config['model_name'] = model_name
+                logger.info(f"Processing model: {model_name}")
+                
+                config['layers'] = {}
+                
+                # read all pytorch bin files, extract all files, and process
+                # note: this is not as smart as it could be but better than using all that memory
+                # maybe: need to input the glob, or user has to rename them
+                # this has never been tested with more than 1 bin file; maybe not necessary
+                start_id = 0
+                for state_dict_filename in glob.glob(f"{model_dir}/pytorch_model*bin"):
+                    logger.info(f"reading and extracting {state_dict_filename}")
+                    # TODO:  update layer ids
+                    layer_configs = WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id) 
+                    config['layers'].update(layer_configs) 
+                    layer_ids = [x for x in config['layers'].keys()]
+                    start_id = np.max(layer_ids)+1
+                    logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
+                
+            except Exception as e:
+                logger.error(traceback.format_exc())
+                logger.fatal(f"Unknown problem, stopping")
+            
+        else:
+            logger.fatal(f"Unknown model_dir {model_dir}", stopping)
+    
+    
+        return config
+       
+       
+    @staticmethod 
+    def write_pystatedict_config(weights_dir,  config):
+        """write the config dict to the (tmp) weights dir"""
+        
+        filename = os.path.join(weights_dir,"ww.config")
+        logger.info(f"Writing pystatedict config to {filename} ")
+        with open(filename, "w") as f:
+            json.dump(config, f)
+            
+        return filename
+        
+    
 
         

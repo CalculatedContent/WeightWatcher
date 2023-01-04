@@ -801,7 +801,7 @@ class Test_VGG11(unittest.TestCase):
 		params = DEFAULT_PARAMS
 		params[START_IDS]=1
 
-		# test decribe
+		# test describe
 		details = self.watcher.describe(start_ids=1)
 		actual_ids = details.layer_id.to_numpy().tolist()
 		self.assertEqual(actual_ids,expected_ids)
@@ -902,7 +902,7 @@ class Test_TFBert(unittest.TestCase):
 		"""Test that the Keras Iterator finds all the TFBert layers
 		72 layers for BERT
 		+ 1 for input. 1 for output
-		Not sure why it is 74 but it seems to pass consistantly
+		Not sure why it is 74 but it seems to pass consistently
 		"""
 		details = self.watcher.describe()
 		print("WARNING: check this test")

@@ -17,7 +17,7 @@ pyRMT
 
 
 ### Changed
-powerlaw.Fit() wrapped in method to supress stdout and stderr 
+powerlaw.Fit() wrapped in method to suppress stdout and stderr 
 analyze(vectors=True) is turned back on as default
 setup.py to use metaclass , not import ww, to allow better handling of dependencies
 details.append() changed to details=pd.contact([details, data])  #137

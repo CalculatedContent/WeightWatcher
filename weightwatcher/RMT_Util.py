@@ -90,7 +90,7 @@ def quarter_circle_pdf(x_min, x_max, sigma=1.0, grid_size=0.001):
     Computing on a grid of size 0.001 by default"""
     x = np.arange(x_min, x_max, grid_size)
     
-    # When Q = 1, we look at the singular values instaed of eigenvalues
+    # When Q = 1, we look at the singular values instead of eigenvalues
     return x, (1 / (np.pi * sigma * sigma)) * np.sqrt(4 - x ** 2)
 
 
@@ -472,7 +472,7 @@ def resid_mp(p, evals, Q, bw, allresid=True, num_spikes=0, debug=False):
     yde = np.array(yde)[good_ids]
 
     if Q == 1:
-        # Quarter Cirle Law fit for this sigma
+        # Quarter Circle Law fit for this sigma
         xmp, ymp = quarter_circle_fun(xde, sigma=sigma)
         resid = ymp - yde
     else:
@@ -713,7 +713,7 @@ def rescale_eigenvalues(evals):
     return evals   
 
 def detX_constraint(evals, rescale=True):
-    """Identifies the number of eigenvalues necessary to best satisify the det X = 1 constraint
+    """Identifies the number of eigenvalues necessary to best satisfy the det X = 1 constraint
     
     Parameters
     ----------

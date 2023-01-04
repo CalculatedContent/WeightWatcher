@@ -65,7 +65,7 @@ from contextlib import redirect_stdout, redirect_stderr
 
 #
 # this is use to allow editing in Eclipse but also
-# building on the commend line
+# building on the command line
 # see: https://stackoverflow.com/questions/14132789/relative-imports-for-the-billionth-time
 #
 
@@ -239,7 +239,7 @@ class WWLayer:
         self.M = 0
         self.num_components = self.M  # default for full SVD, not used yet
         self.rf = 1  # receptive field size, default for dense layer
-        self.conv2d_count = 1  # reset by slice iterator for back compatability with ww2x
+        self.conv2d_count = 1  # reset by slice iterator for back compatibility with ww2x
         self.w_norm = 1 # reset if normalize, conv2D_norm, or glorot_fix used
 
         # to be used for conv2d_fft approach
@@ -1008,7 +1008,7 @@ class WWLayerIterator(ModelIterator):
     
 
 class WW2xSliceIterator(WWLayerIterator):
-    """Iterator variant that breaks Conv2D layers into slices for back compatability"""
+    """Iterator variant that breaks Conv2D layers into slices for back compatibility"""
     from copy import deepcopy
 
     def ww_slice_iter_(self):
@@ -1164,7 +1164,7 @@ class WWStackedLayerIterator(WWLayerIterator):
         for ww_layer in self.ww_layer_iter_():
             
             # Here, I just lazily copy an older layer
-            # really, we should creat the WWLayer using the init() constructor
+            # really, we should create the WWLayer using the init() constructor
             if ww_stacked_layer is None:
                 ww_stacked_layer =  deepcopy(ww_layer)
                 ww_stacked_layer.the_type =  LAYER_TYPE.STACKED
@@ -1325,7 +1325,7 @@ class WeightWatcher(object):
         if method in [RAW, EUCLIDEAN]:
             dist = np.linalg.norm(Wb1-Wb2)
         elif method==CKA:
-            # TODO:  replace with a call to the Apache 2.0 python codde for CKA
+            # TODO:  replace with a call to the Apache 2.0 python code for CKA
             # These methods will be add to RMT_Util or just from CKA.oy directly
             dist = np.linalg.norm(np.dot(Wb1.T,Wb2))
             norm1 = np.linalg.norm(np.dot(Wb1.T,Wb1))
@@ -1386,7 +1386,7 @@ class WeightWatcher(object):
         else:
             method = method.lower()
         if method not in [RAW]:#, EUCLIDEAN, CKA]:
-            msg = "Error, methid not valid: \n {}".format(method)
+            msg = "Error, method not valid: \n {}".format(method)
             logger.error(msg)
             raise Exception(msg)
             
@@ -1505,7 +1505,7 @@ class WeightWatcher(object):
             sv = np.sort(sv)[-n_comp:]
             # TODO:  move to PL fit for robust estimator
             # if len(sv) > max_evals:
-            #    #logger.info("chosing {} singular values from {} ".format(max_evals, len(sv)))
+            #    #logger.info("choosing {} singular values from {} ".format(max_evals, len(sv)))
             #    sv = np.random.choice(sv, size=max_evals)
     
             # sv = svd.singular_values_
@@ -1536,7 +1536,7 @@ class WeightWatcher(object):
         M = ww_layer.M
         N = ww_layer.N
         rf = ww_layer.rf
-        norm = ww_layer.w_norm # shoud be 1.0 unless reset for some reason
+        norm = ww_layer.w_norm # should be 1.0 unless reset for some reason
         
         Wmats = ww_layer.Wmats
         new_Wmats = []
@@ -2006,7 +2006,7 @@ class WeightWatcher(object):
             Can be very slow.
             
         fix_fingers:  bool, default: False 
-            Attempts to fix the fingers / finite-size-effects which sometimes occurs fpr layers with spuriously large alphas
+            Attempts to fix the fingers / finite-size-effects which sometimes occurs for layers with spuriously large alphas
             Can be very slow.
             
         fit:  string, default: 'PL'
@@ -2547,7 +2547,7 @@ class WeightWatcher(object):
             
         if sample and num_evals > sample_size:
             logger.warning("samping not implemented in production yet")
-            logger.info("chosing {} eigenvalues from {} ".format(sample_size, len(evals)))
+            logger.info("choosing {} eigenvalues from {} ".format(sample_size, len(evals)))
             evals = np.random.choice(evals, size=sample_size)
                     
         if xmax == XMAX.AUTO or xmax is XMAX.UNKNOWN or xmax is None or xmax == -1:
@@ -2617,7 +2617,7 @@ class WeightWatcher(object):
                 Lambda = fit.truncated_power_law.Lambda
                 
             logger.debug("finding best distribution for fit, TPL or other ?")
-            # we stil check againsgt TPL, even if using PL fit
+            # we still check against TPL, even if using PL fit
             all_dists = [TRUNCATED_POWER_LAW, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
             Rs = [0.0]
             dists = [POWER_LAW]
@@ -2922,7 +2922,7 @@ class WeightWatcher(object):
         return 
 
     def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale, orig_evals):
-        """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
+        """Automatic MP fit to evals, compute number of spikes and mp_softrank"""
         
         Q = N/M        
         to_plot = evals.copy()
@@ -3392,7 +3392,7 @@ class WeightWatcher(object):
 
     def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
-        """Seperate method to analyze the eigenvectors of each layer"""
+        """Separate method to analyze the eigenvectors of each layer"""
         
         model = model or self.model   
         
@@ -3605,7 +3605,7 @@ class WeightWatcher(object):
         
              weights_dir :  temp dir with the wextracted weights and biases files
              
-             model_name: prefix fo the weights files
+             model_name: prefix of the weights files
              
              state_dict_filename: nam of the pytorch_model.bin file
              

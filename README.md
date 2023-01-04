@@ -97,7 +97,7 @@ watcher.get_ESD()
 watcher.distances(model_1, model_2)
 ```
 
-## Ploting and Fitting the Empirical Spectral Density (ESD)
+## Plotting and Fitting the Empirical Spectral Density (ESD)
 
 WW creates plots for each layer weight matrix to observe how well the power law fits work
 
@@ -121,7 +121,7 @@ The goal of the WeightWatcher project is find generalization metrics that most a
 </summary>
 	
 
-[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP (Marchenko-Pastur) random bulk, and specifically to be heavy tailed. There are different layer metrics in WeightWatcher for this, including:
+[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be significantly different from the MP (Marchenko-Pastur) random bulk, and specifically to be heavy tailed. There are different layer metrics in WeightWatcher for this, including:
 
 - `rand_distance` : the  distance in distribution from the randomized layer
 - `alpha` : the slope of the tail of the ESD, on a log-log scale
@@ -236,7 +236,7 @@ Fig (a) is well trained; Fig (b) may be over-fit.
 	
 That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
 
-A **Correlation Trap** is characterized by Fig (b); here the actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0). And random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
+A **Correlation Trap** is characterized by Fig (b); here the actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0). And random (red) ESD, the largest eigenvalue (orange) is far to the right of and separated from the bulk of the ESD.
 	
 ![Correlation Traps](./img/correlation_trap.jpeg)
 	
@@ -260,7 +260,7 @@ Sharpening a model is similar to clipping the layer weight matrices, but uses Ra
 	 <b>Note:</b> This is experimental but we have seen some success here
  </summary>
 	
-The WeightWatcher `alpha` metric may be used to detect when to apply early stopping.  When the average `alpha` (summary statistic) drops below `2.0`, this indicates that the model may be over-trained and early stopping is necesary.
+The WeightWatcher `alpha` metric may be used to detect when to apply early stopping.  When the average `alpha` (summary statistic) drops below `2.0`, this indicates that the model may be over-trained and early stopping is necessary.
 
 Below is an example of this, showing training loss and test lost curves for a small Transformer model, trained from scratch, along with the average `alpha` summary statistic.
 
@@ -322,7 +322,7 @@ Setting max is useful for a quick debugging.
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
 
-#### specify the Power Law fitting proceedure
+#### specify the Power Law fitting procedure
 
 To replicate results using TPL or E_TPL fits, use:
 
@@ -401,11 +401,11 @@ The new distances method reports the distances between two models, such as the n
 details = watcher.distances(initial_model, trained_model)
 ```
 
-### Compatability
+### Compatibility
 
 ---
 
-#### compatability with version 0.2.x
+#### compatibility with version 0.2.x
 
 The new 0.4.x version of WeightWatcher treats each layer as a single, unified set of eigenvalues.
 In contrast, the 0.2.x versions split the Conv2D layers into n slices, one for each receptive field.
@@ -468,7 +468,7 @@ Publishing to the PyPI repository:
 
 ```sh
 # 1. Check in the latest code with the correct revision number (__version__ in __init__.py)
-vi weightwatcher/__init__.py # Increse release number, remove -dev to revision number
+vi weightwatcher/__init__.py # Increase release number, remove -dev to revision number
 git commit
 # 2. Check out latest version from the repo in a fresh directory
 cd ~/temp/

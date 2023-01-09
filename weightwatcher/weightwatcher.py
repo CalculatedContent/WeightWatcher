@@ -3043,7 +3043,7 @@ class WeightWatcher(object):
         else:
             ww_layer.add_column('num_spikes', num_spikes)
             ww_layer.add_column('sigma_mp', sigma_mp)
-            ww_layer.add_column(METRICS.MP_SOFTRANK, mp_softrank)
+            ww_layer.add_column('mp_softrank', mp_softrank)
             ww_layer.add_column('W_scale', Wscale)
             ww_layer.add_column('bulk_max', bulk_max)
             ww_layer.add_column('bulk_min', bulk_min)

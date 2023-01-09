@@ -150,7 +150,8 @@ class CHANNELS(IntFlag):
     FIRST = auto()
     LAST = auto()   
             
-    
+            
+# TODO either complete or remove thi 
 class METRICS():
     NORM = "norm"
     LOG_NORM = "log_norm"

@@ -697,13 +697,19 @@ class Test_VGG11(unittest.TestCase):
 		"""
 		   Not very accuracte since it relies on randomizing W
 		"""
+		#
+		details= self.watcher.analyze(layers=[31], randomize=True, mp_fit=True)
+		print(details[['ww_softrank','mp_softrank', 'lambda_max', 'rand_bulk_max', 'max_rand_eval']])
+		actual = details.ww_softrank[0]
+		expected = details.mp_softrank[0]
+		self.assertAlmostEqual(actual,expected, places=1)
 		
-		details= self.watcher.analyze(layers=[28], randomize=True)
-		print(details)
-		actual = details.ww_softrank[0]/10.0
-		expected = 2.9782/10.0
+		max_rand_eval = details.max_rand_eval[0]
+		max_eval = details.lambda_max[0]
+		expected = max_rand_eval/max_eval
 		self.assertAlmostEqual(actual,expected, places=2)
 
+	
 	def test_ww_maxdist(self):
 		"""
 		   Not very accuracte since it relies on randomizing W

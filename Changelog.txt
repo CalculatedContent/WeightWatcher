@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3 (in progress on trunk)] - 2023-01-05
+removed explcit dependencies on tensorflow pytoch, and onnx
+infers framework  from model , then  imports (tf | torch |onnx)
+add ability to extract and read pytorch statedict files directly
+removed combine_weights_and_bias as default, not implemented anywhere
+fixed unit tests, moved model and watcher to object constructor
+
+
+## [0.6.2 (in progress on trunk)] - 2022-11-27
+### Added
+Q in details dataframe
+raw_distances implemented as distances(..., method=RAW)
+distances(): added method=EUCLIDEAN | CKA
+unit test(s) for distances
+
+
+
+
 ## [0.6.x (in progress on trunk)] - 2022-10-05
 ### Added
 examples directory with notebooks and README

@@ -1,32 +1,30 @@
 # -*- coding: utf-8 -*-
 
-import sys, os
-import pickle, time
 from copy import deepcopy
+import pickle, time
 from shutil import copy
+import sys, os
 import warnings
 
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import pandas as pd
-
-import scipy as sp
-from scipy.linalg import svd
-
-from scipy import optimize
-from sklearn.neighbors import KernelDensity
-
-import powerlaw
-import tqdm
-from .constants import *
 from joblib._multiprocessing_helpers import mp
+import matplotlib
+import powerlaw
+from scipy import optimize
+from scipy.linalg import svd
+from sklearn.neighbors import KernelDensity
+import tqdm
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy as sp
+import scipy.stats as stats
+
+
+from .constants import *
 
 
 # ## Generalized Entropy
-
-
 # Trace Normalization
 #def matrix_entropy_(W):
 #   """Matrix entropy of W real rectangular matrix, computed using the singular values; may be slow"""
@@ -36,8 +34,6 @@ from joblib._multiprocessing_helpers import mp
 #    
 #    evals  = sv * sv
 #    return matrix_entropy(evals, N)
-
-
 def matrix_rank(svals, N, tol=None):
     """Matrix rank, computed from the singular values directly
 
@@ -694,7 +690,7 @@ def jensen_shannon_distance(p, q):
     m = (p + q) / 2
 
     # compute Jensen Shannon Divergence
-    divergence = (sp.stats.entropy(p, m) + sp.stats.entropy(q, m)) / 2
+    divergence = (stats.entropy(p, m) + stats.entropy(q, m)) / 2
 
     # compute the Jensen Shannon Distance
     distance = np.sqrt(divergence)
@@ -738,10 +734,10 @@ def detX_constraint(evals, rescale=True):
     num_evals = len(evals)
     idx = 0
     
-
+    
     if rescale:
         Wnorm = np.sqrt(np.sum(evals))
-        Wscale = np.sqrt(M)/Wnorm
+        Wscale = np.sqrt(num_evals)/Wnorm 
         evals = (Wscale*Wscale)*evals
 
     for idx in range(len(evals)-1, 0, -1):

@@ -15,6 +15,7 @@
 
 from enum import IntFlag, auto, Enum
 
+
 ERROR = -1
 
 DEF_SAVE_DIR = 'ww-img'
@@ -89,6 +90,7 @@ MIN_NUM_EVALS = 10
 
 MAX_EVALS = 'max_evals'
 DEFAULT_MAX_EVALS = 10000
+MAX_NUM_EVALS= DEFAULT_MAX_EVALS
 
 PLOT = 'plot'
 STACKED = 'stacked'
@@ -99,6 +101,11 @@ LAST = 'last'
 
 TOLERANCE = 'tolerance'
 WEAK_RANK_LOSS_TOLERANCE = 0.000001 # on ei=gen values
+
+
+ADD_BIASES = 'add_biases'
+
+DEFAULT_START_ID = 0
     
 # These are NOT the defaults...see analyze() for actual defaults
 DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZE: True, 
@@ -108,7 +115,7 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
                   SVD_METHOD:FULL_SVD,  FIX_FINGERS:None, FIT:POWER_LAW, 
                   SPARSIFY: True, DETX: True,  MP_FIT:False,
                   MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, 
-                  TOLERANCE:WEAK_RANK_LOSS_TOLERANCE}
+                  TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False}
 
 
 EVALS_THRESH = 0.00001
@@ -124,7 +131,12 @@ class LAYER_TYPE(IntFlag):
     EMBEDDING = auto()
     NORM = auto()
 
-    
+# framework names
+KERAS = 'kers'
+PYTORCH = 'pytorch'
+PYSTATEDICT = 'pystatedict'
+ONNX = 'onnx'
+
 class FRAMEWORK(IntFlag):
     UNKNOWN = auto()
     PYTORCH = auto()

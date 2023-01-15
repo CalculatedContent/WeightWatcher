@@ -192,7 +192,6 @@ class WWLayer:
                  framework=FRAMEWORK.UNKNOWN, 
                  channels=CHANNELS.UNKNOWN,
                  skipped=False, make_weights=True, params=None):
-        
         if params is None: params = DEFAULT_PARAMS.copy()
         
         self.layer = layer
@@ -709,7 +708,8 @@ class ModelIterator:
     """
 
     def __init__(self, model, framework = None, params=None):
- 
+        if params is None: params = DEFAULT_PARAMS.copy()
+
         if params is None: params = DEFAULT_PARAMS.copy()
         
         if model is None and framework is not None:
@@ -863,8 +863,10 @@ class ModelIterator:
 class WWLayerIterator(ModelIterator):
     """Creates an iterator that generates WWLayer wrapper objects to the model layers"""
 
-    def __init__(self, model, framework, params=DEFAULT_PARAMS.copy(), filters=[]):
-        
+    def __init__(self, model, framework, params=None, filters=None):
+        if filters is None: filters = []
+        if params is None: params = DEFAULT_PARAMS.copy()
+
         super().__init__(model, framework=framework,  params=params)
         
         self.filter_ids = []
@@ -1462,7 +1464,7 @@ class WeightWatcher(object):
 
     @telly.count_decorator
     def distances(self, model_1, model_2, 
-                  layers = [], start_ids = 0, ww2x = False, channels = None, 
+                  layers = None, start_ids = 0, ww2x = False, channels = None,
                   method = RAW, combine_Wb= False):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
@@ -1482,7 +1484,8 @@ class WeightWatcher(object):
         Note: Currently only RAW is supported and combibeWb is not working yet
            
         """
-        
+
+        if larers is None: layers = []
         params = DEFAULT_PARAMS.copy()
         # not implemented here : 
         #params[CONV2D_FFT] = conv2d_fft
@@ -1646,6 +1649,7 @@ class WeightWatcher(object):
             
             
     def apply_normalize_Wmats(self, ww_layer, params=None):
+        if params is None: params = DEFAULT_PARAMS.copy()
         """Normalize the W matrix or Wmats """
 
         if params is None: params = DEFAULT_PARAMS.copy()
@@ -1695,7 +1699,9 @@ class WeightWatcher(object):
                  
     def apply_esd(self, ww_layer, params=None):
         """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all, and save to layer """
-        
+
+        if params is None: params = DEFAULT_PARAMS.copy()
+
         layer_id = ww_layer.layer_id
         name = ww_layer.name
         the_type = ww_layer.the_type
@@ -1732,9 +1738,8 @@ class WeightWatcher(object):
     
     def apply_random_esd(self, ww_layer, params=None):
         """Randomize the layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
-        
+
         if params is None: params = DEFAULT_PARAMS.copy()
-        
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
         name = ww_layer.name
@@ -1787,9 +1792,7 @@ class WeightWatcher(object):
         """Randomize the layer weight matrices by using a deterministic permutation
         This will replace the WMats ; they can be recovered by apply_unpermute_W()
          """
-         
         if params is None: params = DEFAULT_PARAMS.copy()
-        
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
         name = ww_layer.name
@@ -1814,9 +1817,7 @@ class WeightWatcher(object):
         """Unpermute the layer weight matrices after the deterministic permutation
         This will replace the WMats ; only works if applied after  apply_permute_W()
          """
-        
         if params is None: params = DEFAULT_PARAMS.copy()
-        
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
         name = ww_layer.name
@@ -1838,10 +1839,9 @@ class WeightWatcher(object):
         # Not used yet
     def apply_detX(self, ww_layer, params=None):
         """Compute the detX constraint, and optionally plot """
-                    
         if params is None: params = DEFAULT_PARAMS.copy()
-        
-        plot = params[PLOT]           
+
+        plot = params[PLOT]
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
@@ -1879,9 +1879,7 @@ class WeightWatcher(object):
     # Not used yet
     def apply_plot_esd(self, ww_layer, params=None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
-                    
         if params is None: params = DEFAULT_PARAMS.copy()
-        
         evals = ww_layer.evals
         name = ww_layer.name
         
@@ -1899,9 +1897,7 @@ class WeightWatcher(object):
  
     def apply_fit_powerlaw(self, ww_layer, params=None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
-                
         if params is None: params = DEFAULT_PARAMS.copy()
-        
         evals = ww_layer.evals
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
@@ -1944,13 +1940,14 @@ class WeightWatcher(object):
         return ww_layer
 
 
-    def make_layer_iterator(self, model=None, layers=[], params=None):
+    def make_layer_iterator(self, model=None, layers=None, params=None):
         """Constructor for the Layer Iterator; See analyze(...)
         
          """
-         
+        if layers is None: layers = []
         if params is None: params = DEFAULT_PARAMS.copy()
 
+        # this doesn't seem to work
         self.set_model_(model)
             
         logger.info("params {}".format(params))
@@ -2068,7 +2065,7 @@ class WeightWatcher(object):
         
 
     @telly.count_decorator
-    def analyze(self, model=None, layers=[], 
+    def analyze(self, model=None, layers=None,
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, 
                 glorot_fix=False,
@@ -2187,7 +2184,9 @@ class WeightWatcher(object):
            Start layer id counter at 0 or 1
         """
 
-        self.set_model_(model)          
+        self.set_model_(model)
+
+        if layers is None: layers = []
         
         if min_size or max_size:
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
@@ -2327,7 +2326,7 @@ class WeightWatcher(object):
                 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     @telly.count_decorator  #@pydevd suppress warning
-    def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
+    def describe(self, model=None, layers=None, min_evals=0, max_evals=None,
                 min_size=None, max_size=None, 
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR,
@@ -2337,6 +2336,8 @@ class WeightWatcher(object):
         Same as analyze() , but does not run the ESD or Power law fits
         
         """
+
+        if layers is None: layers = []
 
         self.set_model_(model)  
  
@@ -2568,15 +2569,13 @@ class WeightWatcher(object):
                 return check1, False
     
     def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params=None):
-        """Compute the eigenvalues for all weights of the NxM skipping layer, num evals sized weight matrices (N >= M), 
-            combined into a single, sorted, numpy array.  
+        """Compute the eigenvalues for all weights of the NxM skipping layer, num evals sized weight matrices (N >= M),
+            combined into a single, sorted, numpy array.
     
         see: combined_eigenvalues()
         
          """
-        
         if params is None: params = DEFAULT_PARAMS.copy()
-         
         normalize = params[NORMALIZE]
         glorot_fix = params[GLOROT_FIX]
         conv2d_norm = params[CONV2D_NORM]  # True
@@ -2613,9 +2612,7 @@ class WeightWatcher(object):
    
     def plot_random_esd(self, ww_layer, params=None):
         """Plot histogram and log histogram of ESD and randomized ESD"""
-          
         if params is None: params = DEFAULT_PARAMS.copy()
-        
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
@@ -2892,11 +2889,10 @@ class WeightWatcher(object):
     @telly.count_decorator
     def get_ESD(self, model=None, layer=None, random=False, params=None):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""
-        
         if params is None: params = DEFAULT_PARAMS.copy()
-        
+
         self.set_model_(model)          
-        
+
         details = self.describe(model=self.model)
         layer_ids = details['layer_id'].to_numpy()
         layer_names = details['name'].to_numpy()
@@ -2937,11 +2933,11 @@ class WeightWatcher(object):
 
     def get_Weights(self, model=None, layer=None, params=None):
         """Get the Weights for the layer, specified by id or name)"""
-        
+
         if params is None: params = DEFAULT_PARAMS.copy()
         
         self.set_model_(model) 
-        
+
         details = self.describe(model=self.model)
         layer_ids = details['layer_id'].to_numpy()
         layer_names = details['name'].to_numpy()
@@ -3010,7 +3006,7 @@ class WeightWatcher(object):
     # TODO: add x bulk max yellow line for bulk edge for random
     def apply_plot_deltaEs(self, ww_layer, random=False, params=None):
         """Plot the deltas of the layer ESD, both in a sequence as a histogram (level statisitcs)"""
-        
+
         if params is None: params = DEFAULT_PARAMS.copy()
         
         layer_id = ww_layer.layer_i
@@ -3281,7 +3277,7 @@ class WeightWatcher(object):
     #    return pyRMT.optimalShrinkage(W)
 
     @telly.count_decorator
-    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):
+    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=None, method=SVD, fit=PL, plot=False, start_ids=0):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:
@@ -3295,7 +3291,8 @@ class WeightWatcher(object):
         """
         
         self.set_model_(model)          
-         
+
+        if layers is None: layers = []
         params = DEFAULT_PARAMS.copy()
         
         params[WW2X] = ww2x
@@ -3359,14 +3356,14 @@ class WeightWatcher(object):
     # TODO: add methods that use ETPL-alpha and/or DETX
         
     def apply_svd_smoothing(self, ww_layer, params=None):
-        """run truncated SVD on layer weight matrices and reconstruct the weight matrices 
+        """run truncated SVD on layer weight matrices and reconstruct the weight matrices
         keep all eigenvlues > percent*ncomp
         if percent < 0, then keep those < than percent*ncomp
         
         Note: can not handle biases yet """
-        
+
         if params is None: params = DEFAULT_PARAMS.copy()
-        
+
         num_smooth = params['num_smooth']
       
         layer = ww_layer.layer
@@ -3485,7 +3482,7 @@ class WeightWatcher(object):
         
 
     @telly.count_decorator
-    def SVDSharpness(self, model=None,  ww2x=False, layers=[], plot=False, start_ids=0):
+    def SVDSharpness(self, model=None,  ww2x=False, layers=None, plot=False, start_ids=0):
         """Apply the SVD Sharpness Transform to model
         
         layers:
@@ -3497,7 +3494,8 @@ class WeightWatcher(object):
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
             
         """
-        
+
+        if layers is None: layers = []
         self.set_model_(model)          
          
         params=DEFAULT_PARAMS.copy()
@@ -3537,9 +3535,9 @@ class WeightWatcher(object):
     
     def apply_svd_sharpness(self, ww_layer, params=None):
         """run permute layer, run power law, identify and remove the spikes"""
-        
+
         if params is None: params = DEFAULT_PARAMS.copy()
-        
+
         self.apply_permute_W(ww_layer, params)
         self.apply_esd(ww_layer, params)
         self.apply_mp_fit(ww_layer, random=False, params=params)
@@ -3594,12 +3592,14 @@ class WeightWatcher(object):
         return
    
 
-    def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
+    def analyze_vectors(self, model=None, layers=None, min_evals=0, max_evals=None,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
         """Seperate method to analyze the eigenvectors of each layer"""
         
         self.set_model_(model)          
-        
+
+        if layers is None: layers = []
+
         params=DEFAULT_PARAMS.copy()
         params[SAVEFIG] = savefig
         
@@ -3623,7 +3623,7 @@ class WeightWatcher(object):
 
 
     def apply_analyze_eigenvectors(self, ww_layer, params=None):
-        """Compute and plot eigenvectors metrics: 
+        """Compute and plot eigenvectors metrics:
 
         - vector_entropies
         - localization_ratios
@@ -3634,9 +3634,9 @@ class WeightWatcher(object):
         Does not modify the ww_layer (yet)
         
         """
-        
+
         if params is None: params = DEFAULT_PARAMS.copy()
-        
+
         layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
         name = ww_layer.name or ""

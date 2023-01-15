@@ -1485,7 +1485,7 @@ class WeightWatcher(object):
            
         """
 
-        if larers is None: layers = []
+        if layers is None: layers = []
         params = DEFAULT_PARAMS.copy()
         # not implemented here : 
         #params[CONV2D_FFT] = conv2d_fft

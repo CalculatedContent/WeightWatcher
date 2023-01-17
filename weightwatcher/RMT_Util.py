@@ -637,7 +637,7 @@ def fit_xxx_powerlaw(evals, xmin=None):
     return fit
     
 # check alpha is decreasing
-def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None):
+def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False):
     """Fits a powerlaw only, not a truncated power law
        clips off the max evals until a powerlaw is found, or stops half-way into the ESD
        
@@ -653,6 +653,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
          
          alpha_thresh=1.0   alpha has to drop this much to stop
         
+        NOTE: currently this only works for the fit='power law'
        
         """
         
@@ -668,7 +669,8 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
             
     #assert(evals[-1]> evals[0]) 
     xmax = np.max(evals)
-   
+
+    
     if xmin is not None and xmin != -1:
         prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
     else:
@@ -681,6 +683,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
     prev_sigma = prev_fit.sigma
     prev_R = R
     first_fit = prev_fit
+
     
     for idx in range(1,max_N):
         xmax = np.max(evals[-idx])
@@ -689,15 +692,17 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
             fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
         else:
             fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
-         
+  
+        
         # this is only meaningful if the orginal fit is a TPL and the new fit is a PL
         # stop when distribution becomes power law
         R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
         logger.info(f"{idx} fit alpha {fit.alpha:0.4f} sigma {fit.sigma:0.4f} TPL or PL? {R:0.4f}")     
         #if R > 0.0:
         #    break
+   
         
-        logger.info(f"fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
+        logger.info(f"{idx} fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
 
 
         if ((fit.alpha + alpha_thresh) < prev_alpha) : #and fit.sigma < prev_sigma:
@@ -716,8 +721,26 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
 
             
     if idx == max_N:
+        logger.info("Unable to find smaller alpha, stopping")
         fit = first_fit
-     
+    else:
+    #  provide the next 3 alpha, and issue a warning if they are out of whack
+        print("checking alpha")
+        for idy in range(idx+1, idx+4):
+            xmax = np.max(evals[-idy])
+    
+            if xmin is not None and xmin != -1:
+                check_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+            else:
+                check_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+            logger.info(f"checking fit {idy} xmax {xmax:0.4f}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
+
+                
+            
+            if np.abs(check_fit.alpha - fit.alpha) > alpha_thresh/2.0 :
+                logger.warning("clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
+                break
+
     return fit
              
         

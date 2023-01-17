@@ -2757,7 +2757,7 @@ class WeightWatcher(object):
                 if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):
                     max_N = DEFAULT_MAX_N
                 print(f"max N = {max_N}")
-                fit = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger)   
+                fit = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)   
                 status = SUCCESS 
             except ValueError:
                 status = FAILED

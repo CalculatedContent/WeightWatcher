@@ -33,7 +33,7 @@ class Test_VGG11_noModel(unittest.TestCase):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("-------------------------------------\nIn Test_VGG11_noModel:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_VGG11_noModel:", self._testMethodName)
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
 
@@ -197,7 +197,7 @@ class Test_VGG11(unittest.TestCase):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
@@ -1213,7 +1213,7 @@ class Test_Keras(unittest.TestCase):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("-------------------------------------\nIn Test_Keras:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_Keras:", self._testMethodName)
 		self.model = VGG16()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
@@ -1292,7 +1292,7 @@ class Test_RMT_Util(unittest.TestCase):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("-------------------------------------\nIn Test_ResNet:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_ResNet:", self._testMethodName)
 
 
 	def test_vector_entropy(self):
@@ -1344,7 +1344,7 @@ class Test_Vector_Metrics(unittest.TestCase):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
 
 	
 	def test_valid_vectors(self):
@@ -1412,7 +1412,7 @@ class Test_Distances(unittest.TestCase):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
 		
 		
 	def get_weights_and_biases_from_Keras(self):

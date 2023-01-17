@@ -28,7 +28,11 @@ FULL_SVD = 'full_svd'
 
 # fi_ fingers options
 XMIN_PEAK = 'xmin_peak'
+XMIN_MAX = 'xmin_max'
 CLIP_XMAX = 'clip_xmax'
+MAX_N = 'max_N'
+DEFAULT_MAX_N = 10
+
 
 SVD = 'svd' # TruncatedSVD for Smoothing
 RMT = 'rmt' # pyRMT / RIE Removed for 0.6.5
@@ -114,7 +118,7 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
                   WW2X:False, VECTORS:True, SMOOTH:None, STACKED:False, 
                   SVD_METHOD:FULL_SVD,  FIX_FINGERS:None, FIT:POWER_LAW, 
                   SPARSIFY: True, DETX: True,  MP_FIT:False,
-                  MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, 
+                  MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, MAX_N:DEFAULT_MAX_N,
                   TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False}
 
 

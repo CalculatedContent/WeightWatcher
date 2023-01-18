@@ -685,7 +685,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
     first_fit = prev_fit
 
     
-    for idx in range(1,max_N):
+    for idx in range(2,max_N):
         xmax = np.max(evals[-idx])
          
         if xmin is not None and xmin != -1:
@@ -733,7 +733,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
                 check_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
             else:
                 check_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
-            logger.info(f"checking fit {idy} xmax {xmax:0.4f}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
+            logger.info(f"checking fit {idy} xmax {xmax:0.4f}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}")     
 
                 
             

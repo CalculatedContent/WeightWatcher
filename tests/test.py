@@ -184,6 +184,96 @@ class Test_VGG11_noModel(unittest.TestCase):
 			
 
 
+class Test_VGG11_Distances(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+	def test_same_distances(self):
+		"""Test that the distance method works correctly between the same model
+        """
+        
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 0.0	                       
+		self.assertEqual(actual_mean_distance,expected_mean_distance)
+
+	def test_distances(self):
+		"""Test that the distance method works correctly between different model
+                """
+		m1 = models.vgg11()
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 46.485
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+	def test_raw_distances(self):
+		"""Test that the distance method works correctly when methdod='RAW'
+                """
+		m1 = models.vgg11()
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 46.485
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+
+	def test_raw_distances_w_one_layer(self):
+		"""Test that the distance method works correctly when methdod='RAW', 1 layer
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[28])
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 0.0
+
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		# TODO: test length of distances also
+
+
+	def test_CKA_distances(self):
+		"""Test that the distance method works correctly for CKA method,  ww2x False | True
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+	def test_EUCLIDEAN_distances(self):
+		"""Test that the distance method works correctly for EUCLIDEAN method,  ww2x=False | True
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, ww2x=True)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
+		
 
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
@@ -501,79 +591,7 @@ class Test_VGG11(unittest.TestCase):
 	
 
 
-	def test_same_distances(self):
-		"""Test that the distance method works correctly between the same model
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 0.0	                       
-		self.assertEqual(actual_mean_distance,expected_mean_distance)
-
-	def test_distances(self):
-		"""Test that the distance method works correctly between different model
-                """
-		m1 = models.vgg11()
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 46.485
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-	def test_raw_distances(self):
-		"""Test that the distance method works correctly when methdod='RAW'
-                """
-		m1 = models.vgg11()
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 46.485
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-
-	def test_raw_distances_w_one_layer(self):
-		"""Test that the distance method works correctly when methdod='RAW', 1 layer
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[28])
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 0.0
-
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-		# TODO: test length of distances also
-
-
-	def test_CKA_distances(self):
-		"""Test that the distance method works correctly for CKA method,  ww2x False | True
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-	def test_EUCLIDEAN_distances(self):
-		"""Test that the distance method works correctly for EUCLIDEAN method,  ww2x=False | True
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, ww2x=True)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+	
 
 
 	## TODO:

@@ -724,14 +724,14 @@ class Test_VGG11(unittest.TestCase):
 	def test_reset_params(self):
 		"""test that params are reset / normalized ()"""
 		
-		params = DEFAULT_PARAMS
+		params = DEFAULT_PARAMS.copy()
 		params['fit']=PL
 		valid = self.watcher.valid_params(params)
 		self.assertTrue(valid)
 		params = self.watcher.normalize_params(params)
 		self.assertEqual(params['fit'], POWER_LAW)
 		
-		params = DEFAULT_PARAMS
+		params = DEFAULT_PARAMS.copy()
 		params['fit']=TPL
 		valid = self.watcher.valid_params(params)
 		self.assertTrue(valid)
@@ -941,7 +941,7 @@ class Test_VGG11(unittest.TestCase):
 		
 		
 	def test_svd_sharpness(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		"""
  			
 		esd_before = self.watcher.get_ESD(layer=28) 
@@ -975,7 +975,8 @@ class Test_VGG11(unittest.TestCase):
 				
 	def test_ESD_model_set(self):
 		"""
-		"""
+		Test that we can get the ESD when setting the model explicitly
+		""" 
 	
 		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
 		esd_after = self.watcher.get_ESD(layer=28) 
@@ -988,7 +989,7 @@ class Test_VGG11(unittest.TestCase):
 
 		
 	def test_svd_sharpness2(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		"""
  		
 		print("----test_svd_sharpness-----")
@@ -1081,9 +1082,11 @@ class Test_VGG11(unittest.TestCase):
 
 	
 	def test_start_ids_1(self):
-		"""same as   test_make_ww_iterator, but chekcs that the ids start at 1, not 0
+		"""same as  test_make_ww_iterator, but checks that the ids can start at 1, not 0
 		"""
+		
 		details = self.watcher.describe()
+		print(details, len(details))
 		actual_num_layers = len(details)
 		expected_num_layers = 11
 		expected_ids = details.layer_id.to_numpy().tolist()
@@ -1092,8 +1095,6 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(actual_num_layers, expected_num_layers)
 		self.assertEqual(len(expected_ids), expected_num_layers)
 
-		params = DEFAULT_PARAMS
-		params[START_IDS]=1
 
 		# test decribe
 		details = self.watcher.describe(start_ids=1)
@@ -1105,6 +1106,10 @@ class Test_VGG11(unittest.TestCase):
 		# actual_ids = details.layer_id.to_numpy().tolist()
 		# self.assertEqual(actual_ids,expected_ids)
 
+		params = DEFAULT_PARAMS.copy()
+		params[START_IDS]=1
+		params[MIN_EVALS]=1 # there may be a side effect that resets this
+
 		# test iterator
 		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
 		num = 0
@@ -1113,6 +1118,7 @@ class Test_VGG11(unittest.TestCase):
 			self.assertGreater(ww_layer.layer_id,0)
 			actual_ids.append(ww_layer.layer_id)
 			num += 1
+			print(num, ww_layer.layer_id)
 		self.assertEqual(num,11)
 		self.assertEqual(actual_ids,expected_ids)
 
@@ -1124,7 +1130,7 @@ class Test_VGG11(unittest.TestCase):
 		"""Test Stacked Layer Iterator
 		"""
 				
-		params = DEFAULT_PARAMS
+		params = DEFAULT_PARAMS.copy()
 		params['stacked'] = True
 		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
 		#TODO: get this to work!
@@ -1430,7 +1436,7 @@ class Test_Distances(unittest.TestCase):
 		N = details.N.to_numpy()[0]
 		M = details.M.to_numpy()[0]
 		
-		params = ww.DEFAULT_PARAMS
+		params = ww.DEFAULT_PARAMS.copy()
 		params[ww.ADD_BIASES] = True
 		
 		weights = watcher.get_Weights(layer=ilayer_id, params=params)
@@ -1457,7 +1463,7 @@ class Test_Distances(unittest.TestCase):
 		N = details.N.to_numpy()[0]
 		M = details.M.to_numpy()[0]
 		
-		params = ww.DEFAULT_PARAMS
+		params = ww.DEFAULT_PARAMS.copy()
 		params[ww.ADD_BIASES] = True
 		
 		weights = watcher.get_Weights(layer=ilayer_id, params=params)

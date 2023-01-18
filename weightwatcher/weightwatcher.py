@@ -863,10 +863,11 @@ class ModelIterator:
 class WWLayerIterator(ModelIterator):
     """Creates an iterator that generates WWLayer wrapper objects to the model layers"""
 
-    def __init__(self, model, framework, params=DEFAULT_PARAMS.copy(), filters=[]):
+    def __init__(self, model, framework, params=None, filters=[]):
         
+        if params is None: params = DEFAULT_PARAMS.copy()
         super().__init__(model, framework=framework,  params=params)
-        
+                
         self.filter_ids = []
         self.filter_types = []
         self.filter_names = []
@@ -1586,7 +1587,7 @@ class WeightWatcher(object):
         avg_dWb = np.mean(distances['delta_Wb'].to_numpy())
         return avg_dWb, distances
     
-    def combined_eigenvalues(self, Wmats, N, M, n_comp, params):
+    def combined_eigenvalues(self, Wmats, N, M, n_comp, params=None):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -1597,6 +1598,8 @@ class WeightWatcher(object):
             Also returns max singular value and rank_loss, needed for other calculations
          """
     
+        if params is None: params = DEFAULT_PARAMS.copy()
+
         all_evals = []
         max_sv = 0.0
         rank_loss = 0
@@ -1950,7 +1953,6 @@ class WeightWatcher(object):
          """
          
         if params is None: params = DEFAULT_PARAMS.copy()
-
         self.set_model_(model)
             
         logger.info("params {}".format(params))
@@ -2452,6 +2454,7 @@ class WeightWatcher(object):
         if savefig and isinstance(savefig,bool):
             logger.info("Saving all images to {}".format(savedir))
         elif savefig and isinstance(savefig,str):
+            # noteL this is a global change, not ideal but I think its ok
             params[SAVEDIR] = savefig
             logger.info("Saving all images to {}".format(savedir))
         elif not isinstance(savefig,str) and not isinstance(savefig,bool):

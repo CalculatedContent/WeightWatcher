@@ -322,40 +322,39 @@ class WWLayer:
         
         # Keras TF 2.x types
         if self.framework==FRAMEWORK.KERAS:
-            if isinstance(layer, keras.layers.Dense): 
+            if isinstance(layer, keras.layers.Dense) or 'Dense' in str(type(layer)):
                 the_type = LAYER_TYPE.DENSE
                 
-            elif isinstance(layer, keras.layers.Conv1D):                
+            elif isinstance(layer, keras.layers.Conv1D)  or  'Conv1D' in str(type(layer)):               
                 the_type = LAYER_TYPE.CONV1D
             
-            elif isinstance(layer, keras.layers.Conv2D):                
+            elif isinstance(layer, keras.layers.Conv2D) or 'Conv2D' in str(type(layer)):             
                 the_type = LAYER_TYPE.CONV2D
                 
-            elif isinstance(layer, keras.layers.Flatten):
+            elif isinstance(layer, keras.layers.Flatten) or 'Flatten' in str(type(layer)):
                 the_type = LAYER_TYPE.FLATTENED
                 
-            elif isinstance(layer, keras.layers.Embedding):
+            elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in str(type(layer)):
                 the_type = LAYER_TYPE.EMBEDDING
                 
-            elif isinstance(layer, tf.keras.layers.LayerNormalization):
+            elif isinstance(layer, tf.keras.layers.LayerNormalization) or 'LayerNorn' in str(type(layer)):
                 the_type = LAYER_TYPE.NORM
         
         # PyTorch        
         elif self.framework==FRAMEWORK.PYTORCH:
-            print(f"the layer = {layer}", type(layer))
-            if isinstance(layer, nn.Linear)  or str(type(layer)).endswith('Linear'):
+            if isinstance(layer, nn.Linear) or 'Linear' in str(type(layer)):
                 the_type = LAYER_TYPE.DENSE
                 
-            elif isinstance(layer, nn.Conv1d) or str(type(layer)).endswith('Conv1D'):
+            elif isinstance(layer, nn.Conv1d) or  'Conv1D' in str(type(layer)):
                 the_type = LAYER_TYPE.CONV1D
             
-            elif isinstance(layer, nn.Conv2d) or str(type(layer)).endswith('Conv2D'):
+            elif isinstance(layer, nn.Conv2d) or 'Conv2D' in str(type(layer)):
                 the_type = LAYER_TYPE.CONV2D
                 
-            elif isinstance(layer, nn.Embedding) or str(type(layer)).endswith('Embedding'):
+            elif isinstance(layer, nn.Embedding) or 'Embedding' in str(type(layer)):
                 the_type = LAYER_TYPE.EMBEDDING
     
-            elif  'norm' in str(type(layer)).lower() or str(type(layer)).endswith('Norm'):
+            elif  'norm' in str(type(layer)).lower() :
                 the_type = LAYER_TYPE.NORM
 
         # ONNX

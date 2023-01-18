@@ -342,19 +342,20 @@ class WWLayer:
         
         # PyTorch        
         elif self.framework==FRAMEWORK.PYTORCH:
-            if isinstance(layer, nn.Linear):
+            print(f"the layer = {layer}", type(layer))
+            if isinstance(layer, nn.Linear)  or str(type(layer)).endswith('Linear'):
                 the_type = LAYER_TYPE.DENSE
                 
-            elif isinstance(layer, nn.Conv1d):
+            elif isinstance(layer, nn.Conv1d) or str(type(layer)).endswith('Conv1D'):
                 the_type = LAYER_TYPE.CONV1D
             
-            elif isinstance(layer, nn.Conv2d):
+            elif isinstance(layer, nn.Conv2d) or str(type(layer)).endswith('Conv2D'):
                 the_type = LAYER_TYPE.CONV2D
                 
-            elif isinstance(layer, nn.Embedding):
+            elif isinstance(layer, nn.Embedding) or str(type(layer)).endswith('Embedding'):
                 the_type = LAYER_TYPE.EMBEDDING
     
-            elif  'norm' in str(type(layer)).lower():
+            elif  'norm' in str(type(layer)).lower() or str(type(layer)).endswith('Norm'):
                 the_type = LAYER_TYPE.NORM
 
         # ONNX

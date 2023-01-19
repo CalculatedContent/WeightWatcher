@@ -1360,33 +1360,33 @@ class WeightWatcher(object):
         return banner
     
     
-    # TODO: moved from iterator    
-    # redo such that we don't have to include modules until framework detected
-    @deprecated
-    def set_framework(self, model, framework=None):
-        """Sets the framework (if specified) or infers it
-                
-         """
-        
-        framework = FRAMEWORK.UNKNOWN
-        if hasattr(self.model, LAYERS):
-            framework = FRAMEWORK.KERAS
-
-        elif hasattr(self.model, 'modules'):
-            framework = FRAMEWORK.PYTORCH
-
-        elif isinstance(self.model, onnx.onnx_ml_pb2.ModelProto):  #@pydevd suppress warning
-
-            framework = FRAMEWORK.ONNX
-            
-        elif isinstance(self.model, str):
-            if os.path.exists(self.model) and os.path.isdir(self.model):  
-                logger.info("Expecting model is a directory containing pyTorch state_dict files")
-                framework = FRAMEWORK.PYSTATEDICT
-            else:
-                logger.error(f"unknown model folder {self.model}")
-              
-        return framework
+    # # TODO: moved from iterator    
+    # # redo such that we don't have to include modules until framework detected
+    # @deprecated
+    # def set_framework(self, model, framework=None):
+    #     """Sets the framework (if specified) or infers it
+    #
+    #      """
+    #
+    #     framework = FRAMEWORK.UNKNOWN
+    #     if hasattr(self.model, LAYERS):
+    #         framework = FRAMEWORK.KERAS
+    #
+    #     elif hasattr(self.model, 'modules'):
+    #         framework = FRAMEWORK.PYTORCH
+    #
+    #     elif isinstance(self.model, onnx.onnx_ml_pb2.ModelProto):  #@pydevd suppress warning
+    #
+    #         framework = FRAMEWORK.ONNX
+    #
+    #     elif isinstance(self.model, str):
+    #         if os.path.exists(self.model) and os.path.isdir(self.model):  
+    #             logger.info("Expecting model is a directory containing pyTorch state_dict files")
+    #             framework = FRAMEWORK.PYSTATEDICT
+    #         else:
+    #             logger.error(f"unknown model folder {self.model}")
+    #
+    #     return framework
     
     
     def same_models(self, model_1, model_2):

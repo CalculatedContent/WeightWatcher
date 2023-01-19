@@ -2095,7 +2095,7 @@ class WeightWatcher(object):
             If layer ids < 0, then skip the layers specified
             All layer ids must be > 0 or < 0
             
-        min_evals:  int, default=50
+        min_evals:  int, default=50, NOT 0
             Minimum number of evals (M*rf) 
             
         max_evals:  int, default=10000
@@ -2199,6 +2199,7 @@ class WeightWatcher(object):
         # maybe just have a different analyze() that only uses this 
         
         params=DEFAULT_PARAMS.copy()
+        
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
         params[PLOT] = plot
@@ -2334,9 +2335,13 @@ class WeightWatcher(object):
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR,
                 conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
-                intra=False, channels=None, stacked=False, fix_fingers=False, start_ids=0):
+                intra=False, channels=None, stacked=False,  start_ids=0):
         """
         Same as analyze() , but does not run the ESD or Power law fits
+        
+        BUT min_evals default here is 0, not DEFAULT_MIN_EVALS = 50
+        Not great...we need to fix
+        
         
         """
 
@@ -2759,7 +2764,7 @@ class WeightWatcher(object):
                 nz_evals = evals[evals > thresh]
                 if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):
                     max_N = DEFAULT_MAX_N
-                print(f"max N = {max_N}")
+                logger.debug(f"max N = {max_N}")
                 fit = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)   
                 status = SUCCESS 
             except ValueError:

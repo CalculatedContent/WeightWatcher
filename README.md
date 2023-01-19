@@ -83,8 +83,11 @@ and `summary` dictionary of generalization metrics
 
 The `watcher` object has several functions and analysis features described below
 
+Notice the min_evals setting:  the power law fits need at least 50 eigenvalues to make sense
+but the describe and other methods do not
+
 ```python
-watcher.analyze(model=None, layers=[], min_evals=0, max_evals=None,
+watcher.analyze(model=None, layers=[], min_evals=50, max_evals=None,
 	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
 ...
 watcher.describe(self, model=None, layers=[], min_evals=0, max_evals=None,

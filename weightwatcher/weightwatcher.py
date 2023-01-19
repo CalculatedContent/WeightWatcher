@@ -18,7 +18,7 @@ import traceback
 import tempfile
 import logging
 
-from deprecated import deprecated
+#from deprecated import deprecated
 import inspect
 
 # Telly                                                                                        

@@ -14,8 +14,11 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .weightwatcher import main 
+
 import sys
+
+from .weightwatcher import main 
+
 
 if __name__ == "__main__":
     sys.exit(main())

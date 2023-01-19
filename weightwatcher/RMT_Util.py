@@ -1,32 +1,30 @@
 # -*- coding: utf-8 -*-
 
-import sys, os
-import pickle, time
 from copy import deepcopy
+import pickle, time
 from shutil import copy
+import sys, os
 import warnings
 
-
-import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import pandas as pd
-
-import scipy as sp
-from scipy.linalg import svd
-
-from scipy import optimize
-from sklearn.neighbors import KernelDensity
-
-import powerlaw
-import tqdm
-from .constants import *
 from joblib._multiprocessing_helpers import mp
+import matplotlib
+import powerlaw
+from scipy import optimize
+from scipy.linalg import svd
+from sklearn.neighbors import KernelDensity
+import tqdm
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import scipy as sp
+import scipy.stats as stats
+
+
+from .constants import *
 
 
 # ## Generalized Entropy
-
-
 # Trace Normalization
 #def matrix_entropy_(W):
 #   """Matrix entropy of W real rectangular matrix, computed using the singular values; may be slow"""
@@ -36,8 +34,6 @@ from joblib._multiprocessing_helpers import mp
 #    
 #    evals  = sv * sv
 #    return matrix_entropy(evals, N)
-
-
 def matrix_rank(svals, N, tol=None):
     """Matrix rank, computed from the singular values directly
 
@@ -620,8 +616,28 @@ def save_fig(plt, figname, layer_id, savedir):
     return 
 
 #TODO:
+def fit_xxx_powerlaw(evals, xmin=None):
+    N = int(len(evals)/4)
+    xmax = np.max(evals)       
+   
+    if xmin is not None and xmin != -1:
+        prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax)
+    else:
+        prev_fit = powerlaw.Fit(evals, xmax=xmax)
+       
+    fit = prev_fit 
+    print(f"fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}")  
+
+    prev_alpha = prev_fit.alpha
+    prev_sigma = prev_fit.sigma
+
+    first_fit = prev_fit
+    
+               
+    return fit
+    
 # check alpha is decreasing
-def fit_clipped_powerlaw(evals, xmin=None, verbose=False, min_alpha=5.0):
+def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False):
     """Fits a powerlaw only, not a truncated power law
        clips off the max evals until a powerlaw is found, or stops half-way into the ESD
        
@@ -629,53 +645,102 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, min_alpha=5.0):
        
        Assumes eval are in sort order
        
-       Does not allow alpha to increase; only activates if alpha < min_alpha """
+       Parameters:
        
-    fit = None
-    with warnings.catch_warnings():
-        warnings.simplefilter(action='ignore', category=RuntimeWarning)
-            
-        assert(evals[-1]> evals[0])  
-        N = int(len(evals)/4)
-        xmax = np.max(evals)
+         max_N:  max number of eigenvakues to clip
        
-        if xmin is not None and xmin != -1:
-            prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
-        else:
-            prev_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
-            
-        prev_alpha = prev_fit.alpha
-        first_fit = prev_fit
+         min_alpha:  stops if alpha drops below min_alpha
+         
+         alpha_thresh=1.0   alpha has to drop this much to stop
         
-        for idx in range(1,N):
-            xmax = np.max(evals[-idx])
-             
+        NOTE: currently this only works for the fit='power law'
+       
+        """
+        
+    if logger is None:
+        import logging
+        logger = logging.getLogger("RMT_Util")
+        logger.setLevel(logging.INFO)
+                
+    logger.info(f"fit_clipped_powerlaw {max_N} ")
+    fit = None
+    #with warnings.catch_warnings():
+        #warnings.simplefilter(action='ignore', category=RuntimeWarning) 
+            
+    #assert(evals[-1]> evals[0]) 
+    xmax = np.max(evals)
+
+    
+    if xmin is not None and xmin != -1:
+        prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+    else:
+        prev_fit = powerlaw.Fit(evals, xmax=xmax)
+        
+    R, p = prev_fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
+    logger.info(f"fit alpha {prev_fit.alpha:0.2f} sigma {prev_fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
+
+    prev_alpha = prev_fit.alpha
+    prev_sigma = prev_fit.sigma
+    prev_R = R
+    first_fit = prev_fit
+
+    
+    for idx in range(2,max_N):
+        xmax = np.max(evals[-idx])
+         
+        if xmin is not None and xmin != -1:
+            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+        else:
+            fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+  
+        
+        # this is only meaningful if the orginal fit is a TPL and the new fit is a PL
+        # stop when distribution becomes power law
+        R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
+        logger.info(f"{idx} fit alpha {fit.alpha:0.4f} sigma {fit.sigma:0.4f} TPL or PL? {R:0.4f}")     
+        #if R > 0.0:
+        #    break
+   
+        
+        logger.info(f"{idx} fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
+
+
+        if ((fit.alpha + alpha_thresh) < prev_alpha) : #and fit.sigma < prev_sigma:
+            logger.info(f"stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
+            break
+        
+        if min_alpha is not None and fit.alpha <= min_alpha: 
+            print(f"stopping at min alpha = {fit.alpha:0.2f}")  
+            break
+        
+        
+        prev_fit = fit
+        prev_alpha = fit.alpha
+        prev_sigma = fit.sigma
+        prev_R = R
+
+            
+    if idx == max_N:
+        logger.info("Unable to find smaller alpha, stopping")
+        fit = first_fit
+    else:
+    #  provide the next 3 alpha, and issue a warning if they are out of whack
+        print("checking alpha")
+        for idy in range(idx+1, idx+4):
+            xmax = np.max(evals[-idy])
+    
             if xmin is not None and xmin != -1:
-                fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+                check_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
             else:
-                fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+                check_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+            logger.info(f"checking fit {idy} xmax {xmax:0.4f}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}")     
+
                 
-            print("fit alpha",fit.alpha)  
             
-            if fit.alpha > prev_alpha:
-                fit = prev_fit
+            if np.abs(check_fit.alpha - fit.alpha) > alpha_thresh/2.0 :
+                logger.warning("clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
                 break
-            
-            if fit.alpha <= min_alpha: 
-                print("stopping")  
-                break
-            
-            # stop when distribution becomes power law
-            R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
-            if R > 0.0:
-                break
-            
-            prev_fit = fit
-            prev_alpha = fit.alpha
-                
-        if idx == N:
-            fit = first_fit
-     
+
     return fit
              
         
@@ -694,7 +759,7 @@ def jensen_shannon_distance(p, q):
     m = (p + q) / 2
 
     # compute Jensen Shannon Divergence
-    divergence = (sp.stats.entropy(p, m) + sp.stats.entropy(q, m)) / 2
+    divergence = (stats.entropy(p, m) + stats.entropy(q, m)) / 2
 
     # compute the Jensen Shannon Distance
     distance = np.sqrt(divergence)
@@ -738,10 +803,10 @@ def detX_constraint(evals, rescale=True):
     num_evals = len(evals)
     idx = 0
     
-
+    
     if rescale:
         Wnorm = np.sqrt(np.sum(evals))
-        Wscale = np.sqrt(M)/Wnorm
+        Wscale = np.sqrt(num_evals)/Wnorm 
         evals = (Wscale*Wscale)*evals
 
     for idx in range(len(evals)-1, 0, -1):

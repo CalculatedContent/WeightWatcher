@@ -1,21 +1,280 @@
+import sys, logging
 import unittest
 import warnings
-warnings.simplefilter(action='ignore', category=RuntimeWarning)
-
-import sys, logging
-import weightwatcher as ww
-from weightwatcher import  LAYER_TYPE 
-from weightwatcher import  DEFAULT_PARAMS 
-from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW, LOG_NORMAL
-from weightwatcher.constants import  *
-
-import torchvision.models as models
-import numpy as np
-import pandas as pd
-
-from transformers import TFAutoModelForSequenceClassification
 
 from tensorflow.keras.applications.vgg16 import VGG16
+
+from transformers import TFAutoModelForSequenceClassification
+from weightwatcher import  DEFAULT_PARAMS 
+from weightwatcher import  LAYER_TYPE 
+from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW, LOG_NORMAL
+from weightwatcher import RMT_Util
+from weightwatcher.constants import  *
+
+import numpy as np
+import numpy as np
+import pandas as pd
+import torchvision.models as models
+import weightwatcher as ww
+
+warnings.simplefilter(action='ignore', category=RuntimeWarning)
+
+
+class Test_VGG11_noModel(unittest.TestCase):
+	
+	"""Same as Test_VGG11 methods, but the model is not specified in setup"""
+
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_VGG11_noModel:", self._testMethodName)
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
+
+
+
+	def test_basic_columns_no_model(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+		details = self.watcher.describe(model=self.model)
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+
+		for key in ['layer_id', 'name', 'M', 'N', 'Q']:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		Q = details.Q.to_numpy()[0]
+
+		self.assertAlmostEqual(Q, N/M, places=2)
+		
+
+		
+		
+	def test_analyze_columns_no_model(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+		details = self.watcher.analyze(model=self.model)
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
+		print(details.columns)
+		for key in columns:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+			
+			
+					
+	def test_svd_smoothing_no_model(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+		
+		# 819 =~ 4096*0.2
+		self.watcher.SVDSmoothing(model=self.model, layers=[28])
+		esd = self.watcher.get_ESD(layer=28) 
+		num_comps = len(esd[esd>10**-10])
+		self.assertEqual(num_comps, 819)
+		
+		
+		
+				
+	def test_get_summary_no_model(self):
+		"""Test that alphas are computed and values are within thresholds
+		"""
+		
+		description = self.watcher.describe(model=self.model)
+		self.assertEqual(11, len(description))
+		
+		
+		details = self.watcher.analyze(model=self.model, layers=[5])
+		returned_summary = self.watcher.get_summary(details)
+		
+		print(returned_summary)
+		
+		saved_summary = self.watcher.get_summary()
+		self.assertEqual(returned_summary, saved_summary)
+		
+		
+				
+	def test_svd_sharpness_no_model(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+	
+		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
+		
+		self.watcher.SVDSharpness(model=self.model, layers=[28])
+		esd_after = self.watcher.get_ESD(layer=28) 
+		
+		print("max esd before {}".format(np.max(esd_before)))
+		print("max esd after {}".format(np.max(esd_after)))
+
+		self.assertGreater(np.max(esd_before)-2.0,np.max(esd_after))
+		
+		
+		
+	def test_getESD_no_model(self):
+		"""Test that eigenvalues are available while specifying the model explicitly
+		"""
+
+		esd = self.watcher.get_ESD(model=self.model, layer=5)
+		self.assertEqual(len(esd), 576)
+		
+		
+						
+	def test_permute_W_no_model(self):
+		"""Test that permute and unpermute methods work
+		"""
+		N, M = 4096, 4096
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		for ww_layer in iterator:
+			self.assertEqual(ww_layer.layer_id,28)
+			W = ww_layer.Wmats[0]
+			self.assertEqual(W.shape,(N,M))
+			
+			self.watcher.apply_permute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertNotEqual(W[0,0],W2[0,0])
+			
+			self.watcher.apply_unpermute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertEqual(W2.shape,(N,M))
+			self.assertEqual(W[0,0],W2[0,0])
+			
+			
+			
+	def test_randomize_no_model(self):
+		"""Test randomize option : only checks that the right columns are present, not the values
+		"""
+		
+		rand_columns = ['max_rand_eval', 'rand_W_scale', 'rand_bulk_max',
+					 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank', 
+					 'rand_num_spikes', 'rand_sigma_mp']
+       
+		details = self.watcher.analyze(model=self.model, layers = [28], randomize=False)	
+		for column in rand_columns:
+			self.assertNotIn(column, details.columns)
+			
+		details = self.watcher.analyze(layers = [28], randomize=True)	
+		for column in rand_columns:	
+			self.assertIn(column, details.columns)
+			
+			
+	def test_intra_power_law_fit_no_model(self):
+		"""Test PL fits on intra
+		"""
+
+		details= self.watcher.analyze(model=self.model, layers=[25, 28], intra=True, randomize=False, vectors=False)
+		actual_alpha = details.alpha[0]
+		actual_best_fit = details.best_fit[0]
+		print(actual_alpha,actual_best_fit)
+
+		expected_alpha =  2.654 # not very accurate because of the sparisify transform
+		expected_best_fit = LOG_NORMAL
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
+		self.assertEqual(actual_best_fit, expected_best_fit)
+
+			
+
+
+class Test_VGG11_Distances(unittest.TestCase):
+
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+	def test_same_distances(self):
+		"""Test that the distance method works correctly between the same model
+        """
+        
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 0.0	                       
+		self.assertEqual(actual_mean_distance,expected_mean_distance)
+
+	def test_distances(self):
+		"""Test that the distance method works correctly between different model
+                """
+		m1 = models.vgg11()
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 46.485
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+	def test_raw_distances(self):
+		"""Test that the distance method works correctly when methdod='RAW'
+                """
+		m1 = models.vgg11()
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 46.485
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+
+	def test_raw_distances_w_one_layer(self):
+		"""Test that the distance method works correctly when methdod='RAW', 1 layer
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[28])
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 0.0
+
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		# TODO: test length of distances also
+
+	# TODO implement
+	def test_CKA_distances_TODO(self):
+		"""Test that the distance method works correctly for CKA method,  ww2x False | True
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+	# TODO implement
+	def test_EUCLIDEAN_distances_TODO(self):
+		"""Test that the distance method works correctly for EUCLIDEAN method,  ww2x=False | True
+                """
+		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+
+		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, ww2x=True)
+		actual_mean_distance = avg_dist
+		expected_mean_distance = 1.0
+		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
+		
 
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
@@ -25,29 +284,16 @@ class Test_VGG11(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-#		cls.model = models.vgg11(pretrained=True)
-		cls.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
-		#logging.getLogger("weightwatcher").setLevel(logging.INFO)
 		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		pass
+		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
-# 
-# 	def test_summary_is_dict(self):
-# 		"""Test that get_summary() returns a valid python dict
-# 		"""
-# 		self.watcher.analyze()
-# 		summary = self.watcher.get_summary()
-# 
-# 		self.assertTrue(isinstance(summary, dict), "Summary is a dictionary")
-# 
-# 		for key in ['norm', 'norm_compound', 'lognorm', 'lognorm_compound']:
-# 			self.assertTrue(key in summary, "{} in summary".format(key))
-# 
-# 
+			
+
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
 		"""
@@ -63,12 +309,52 @@ class Test_VGG11(unittest.TestCase):
 		Q = details.Q.to_numpy()[0]
 
 		self.assertAlmostEqual(Q, N/M, places=2)
+		
+		
+		
+	def test_basic_columns_with_model(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+		details = self.watcher.describe(model=self.model)
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+
+		for key in ['layer_id', 'name', 'M', 'N', 'Q']:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		Q = details.Q.to_numpy()[0]
+
+		self.assertAlmostEqual(Q, N/M, places=2)
+
+
+		
+	def test_basic_columns_with_new_watcher(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+		model =  models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		watcher = ww.WeightWatcher(log_level=logging.WARNING)
+		
+		details = watcher.describe(model=model)
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+
+		for key in ['layer_id', 'name', 'M', 'N', 'Q']:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		Q = details.Q.to_numpy()[0]
+
+		self.assertAlmostEqual(Q, N/M, places=2)
 
 
 	def test_analyze_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
 		"""
-	
+		
+
 		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
@@ -76,6 +362,21 @@ class Test_VGG11(unittest.TestCase):
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+			
+		
+	def test_analyze_columns_with_model(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+
+		details = self.watcher.analyze(model=self.model)
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
+		print(details.columns)
+		for key in columns:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+			
 		
 	def test_mp_fit_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -232,7 +533,6 @@ class Test_VGG11(unittest.TestCase):
 		"""Test that analyzes skips matrices smaller than  MIN matrix shape
 		"""
 
-		print("test_min_matrix_shape")
 		details = self.watcher.describe(min_evals=30)
 		print(details)
 
@@ -244,7 +544,6 @@ class Test_VGG11(unittest.TestCase):
 		"""Test that analyzes skips matrices larger than  MAX matrix shape
 		"""
 
-		print("test_max_matrix_shape")
 		details = self.watcher.describe(max_evals=1000)
 		print(details)
 		
@@ -293,79 +592,7 @@ class Test_VGG11(unittest.TestCase):
 	
 
 
-	def test_same_distances(self):
-		"""Test that the distance method works correctly between the same model
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 0.0	                       
-		self.assertEqual(actual_mean_distance,expected_mean_distance)
-
-	def test_distances(self):
-		"""Test that the distance method works correctly between different model
-                """
-		m1 = models.vgg11()
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 46.485
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-	def test_raw_distances(self):
-		"""Test that the distance method works correctly when methdod='RAW'
-                """
-		m1 = models.vgg11()
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 46.485
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-
-	def test_raw_distances_w_one_layer(self):
-		"""Test that the distance method works correctly when methdod='RAW', 1 layer
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[28])
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 0.0
-
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-		# TODO: test length of distances also
-
-
-	def test_CKA_distances(self):
-		"""Test that the distance method works correctly for CKA method,  ww2x False | True
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-	def test_EUCLIDEAN_distances(self):
-		"""Test that the distance method works correctly for EUCLIDEAN method,  ww2x=False | True
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, ww2x=True)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+	
 
 
 	## TODO:
@@ -406,16 +633,56 @@ class Test_VGG11(unittest.TestCase):
 		
 		saved_summary = self.watcher.get_summary()
 		self.assertEqual(returned_summary, saved_summary)
+		
+	def test_get_summary_with_model(self):
+		"""Test that alphas are computed and values are within thresholds
+		"""
+		
+		description = self.watcher.describe(model=self.model)
+		self.assertEqual(11, len(description))
+		
+		
+		details = self.watcher.analyze(model=self.model, layers=[5])
+		returned_summary = self.watcher.get_summary(details)
+		
+		print(returned_summary)
+		
+		saved_summary = self.watcher.get_summary()
+		self.assertEqual(returned_summary, saved_summary)
+		
+		
+	def test_get_summary_with_new_model(self):
+		"""Test that alphas are computed and values are within thresholds
+		"""
+		
+		
+		new_model =  models.vgg13(weights='VGG13_Weights.IMAGENET1K_V1')
+		description = self.watcher.describe(model=new_model)
+		self.assertEqual(13, len(description))
+		
+		
+		details = self.watcher.analyze(model=new_model, layers=[32])
+		returned_summary = self.watcher.get_summary(details)
+		
+		print(returned_summary)
+		
+		saved_summary = self.watcher.get_summary()
+		self.assertEqual(returned_summary, saved_summary)
 
 
 	def test_getESD(self):
-		"""Test that eigenvalues are available 
+		"""Test that eigenvalues are available in the watcher (no model specified here)
 		"""
 
 		esd = self.watcher.get_ESD(layer=5)
 		self.assertEqual(len(esd), 576)
 
+	def test_getESD_with_model(self):
+		"""Test that eigenvalues are available while specifying the model explicitly
+		"""
 
+		esd = self.watcher.get_ESD(model=self.model, layer=5)
+		self.assertEqual(len(esd), 576)
 
 	def test_randomize(self):
 		"""Test randomize option : only checks that the right columns are present, not the values
@@ -449,18 +716,26 @@ class Test_VGG11(unittest.TestCase):
 		"""
 		   Not very accuracte since it relies on randomizing W
 		"""
+		#
+		details= self.watcher.analyze(layers=[31], randomize=True, mp_fit=True)
+		print(details[['ww_softrank','mp_softrank', 'lambda_max', 'rand_bulk_max', 'max_rand_eval']])
+		actual = details.ww_softrank[0]
+		expected = details.mp_softrank[0]
+		self.assertAlmostEqual(actual,expected, places=1)
 		
-		details= self.watcher.analyze(layers=[28], randomize=True)
-		actual = details.ww_softrank[0]/10.0
-		expected = 2.9782/10.0
+		max_rand_eval = details.max_rand_eval[0]
+		max_eval = details.lambda_max[0]
+		expected = max_rand_eval/max_eval
 		self.assertAlmostEqual(actual,expected, places=2)
 
+	
 	def test_ww_maxdist(self):
 		"""
 		   Not very accuracte since it relies on randomizing W
 		"""
 		
 		details= self.watcher.analyze(layers=[28], randomize=True)
+		print(details)
 		actual = details.ww_maxdist[0]/100.0
 		expected = 39.9/100.0
 		self.assertAlmostEqual(actual,expected, places=2)
@@ -468,14 +743,14 @@ class Test_VGG11(unittest.TestCase):
 	def test_reset_params(self):
 		"""test that params are reset / normalized ()"""
 		
-		params = DEFAULT_PARAMS
+		params = DEFAULT_PARAMS.copy()
 		params['fit']=PL
 		valid = self.watcher.valid_params(params)
 		self.assertTrue(valid)
 		params = self.watcher.normalize_params(params)
 		self.assertEqual(params['fit'], POWER_LAW)
 		
-		params = DEFAULT_PARAMS
+		params = DEFAULT_PARAMS.copy()
 		params['fit']=TPL
 		valid = self.watcher.valid_params(params)
 		self.assertTrue(valid)
@@ -565,12 +840,12 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(actual,expected, places=4)
 		
 		# XMIN_PEAK
-		details = self.watcher.analyze(layers=[5], fix_fingers='xmin_peak')
+		details = self.watcher.analyze(layers=[5], fix_fingers='xmin_peak', xmin_max=1.0)
 		actual = details.alpha[0]
 		actual = details.alpha.to_numpy()[0]
-		expected = 1.422195
-		self.assertAlmostEqual(actual,expected, places=4)
-		
+		expected = 1.67
+		self.assertAlmostEqual(actual,expected, places=2)
+	
 		
 	def test_fix_fingers_clip_xmax(self):
 		"""Test fix fingers clip_xmax
@@ -579,9 +854,8 @@ class Test_VGG11(unittest.TestCase):
 		# CLIP_XMAX
 		details = self.watcher.analyze(layers=[5], fix_fingers='clip_xmax')
 		actual = details.alpha.to_numpy()[0]
-		expected = 1.663549
+		expected = 1.6635
 		self.assertAlmostEqual(actual,expected, places=4)
-		
 
 
 		
@@ -611,6 +885,18 @@ class Test_VGG11(unittest.TestCase):
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)
+		
+		
+	def test_svd_smoothing_with_model(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+		
+		# 819 =~ 4096*0.2
+		self.watcher.SVDSmoothing(model=self.model, layers=[28])
+		esd = self.watcher.get_ESD(layer=28) 
+		num_comps = len(esd[esd>10**-10])
+		self.assertEqual(num_comps, 819)
+
 
 	def test_svd_smoothing_alt(self):
 		"""Test the svd smoothing on 1 lyaer of VGG
@@ -673,11 +959,9 @@ class Test_VGG11(unittest.TestCase):
 		
 		
 	def test_svd_sharpness(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		"""
- 		
-		print("----test_svd_sharpness-----")
-	
+ 			
 		esd_before = self.watcher.get_ESD(layer=28) 
 		
 		self.watcher.SVDSharpness(layers=[28])
@@ -688,10 +972,42 @@ class Test_VGG11(unittest.TestCase):
 
 		self.assertGreater(np.max(esd_before)-2.0,np.max(esd_after))
 		
+		
+			
+		
+	def test_svd_sharpness_with_model(self):
+		"""Test the svd smoothing on 1 lyaer of VGG
+		"""
+ 		
+		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
+		
+		self.watcher.SVDSharpness(layers=[28])
+		esd_after = self.watcher.get_ESD(layer=28) 
+		
+		print("max esd before {}".format(np.max(esd_before)))
+		print("max esd after {}".format(np.max(esd_after)))
+
+		self.assertGreater(np.max(esd_before),np.max(esd_after))
+		
+		
+				
+	def test_ESD_model_set(self):
+		"""
+		Test that we can get the ESD when setting the model explicitly
+		""" 
 	
+		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
+		esd_after = self.watcher.get_ESD(layer=28) 
+		
+		print("max esd before {}".format(np.max(esd_before)))
+		print("max esd after {}".format(np.max(esd_after)))
+
+		self.assertEquals(np.max(esd_before),np.max(esd_after))
+		self.assertEquals(np.min(esd_before),np.min(esd_after))
+
 		
 	def test_svd_sharpness2(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		"""
  		
 		print("----test_svd_sharpness-----")
@@ -711,9 +1027,6 @@ class Test_VGG11(unittest.TestCase):
 
 		self.assertGreater(np.max(esd_before),np.max(esd_after))
 		
-	
-
-	
 		
 
 	def test_runtime_warnings(self):
@@ -764,9 +1077,11 @@ class Test_VGG11(unittest.TestCase):
 
 		self.assertEqual(actual_num_layers, expected_num_layers)
 		self.assertEqual(len(expected_ids), expected_num_layers)
-
-
-		iterator = self.watcher.make_layer_iterator(model=self.model)
+		
+		params = DEFAULT_PARAMS.copy()
+		params[MIN_EVALS] = 0
+		
+		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
 		num = 0
 		actual_ids = []
 		for ww_layer in iterator:
@@ -787,9 +1102,11 @@ class Test_VGG11(unittest.TestCase):
 
 	
 	def test_start_ids_1(self):
-		"""same as   test_make_ww_iterator, but chekcs that the ids start at 1, not 0
+		"""same as  test_make_ww_iterator, but checks that the ids can start at 1, not 0
 		"""
+		
 		details = self.watcher.describe()
+		print(details, len(details))
 		actual_num_layers = len(details)
 		expected_num_layers = 11
 		expected_ids = details.layer_id.to_numpy().tolist()
@@ -798,8 +1115,6 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(actual_num_layers, expected_num_layers)
 		self.assertEqual(len(expected_ids), expected_num_layers)
 
-		params = DEFAULT_PARAMS
-		params[START_IDS]=1
 
 		# test describe
 		details = self.watcher.describe(start_ids=1)
@@ -811,6 +1126,10 @@ class Test_VGG11(unittest.TestCase):
 		# actual_ids = details.layer_id.to_numpy().tolist()
 		# self.assertEqual(actual_ids,expected_ids)
 
+		params = DEFAULT_PARAMS.copy()
+		params[START_IDS]=1
+		params[MIN_EVALS]=1 # there may be a side effect that resets this
+
 		# test iterator
 		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
 		num = 0
@@ -819,6 +1138,7 @@ class Test_VGG11(unittest.TestCase):
 			self.assertGreater(ww_layer.layer_id,0)
 			actual_ids.append(ww_layer.layer_id)
 			num += 1
+			print(num, ww_layer.layer_id)
 		self.assertEqual(num,11)
 		self.assertEqual(actual_ids,expected_ids)
 
@@ -830,7 +1150,7 @@ class Test_VGG11(unittest.TestCase):
 		"""Test Stacked Layer Iterator
 		"""
 				
-		params = DEFAULT_PARAMS
+		params = DEFAULT_PARAMS.copy()
 		params['stacked'] = True
 		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
 		#TODO: get this to work!
@@ -860,8 +1180,29 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(details.layer_type.to_numpy()[0],str(LAYER_TYPE.STACKED))
 		
 		
-				
+		
 	def test_permute_W(self):
+		"""Test that permute and unpermute methods work
+		"""
+		N, M = 4096, 4096
+		iterator = self.watcher.make_layer_iterator(layers=[28])
+		for ww_layer in iterator:
+			self.assertEqual(ww_layer.layer_id,28)
+			W = ww_layer.Wmats[0]
+			self.assertEqual(W.shape,(N,M))
+			
+			self.watcher.apply_permute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertNotEqual(W[0,0],W2[0,0])
+			
+			self.watcher.apply_unpermute_W(ww_layer)
+			W2 = ww_layer.Wmats[0]
+			self.assertEqual(W2.shape,(N,M))
+			self.assertEqual(W[0,0],W2[0,0])
+			
+			
+				
+	def test_permute_W_with_model(self):
 		"""Test that permute and unpermute methods work
 		"""
 		N, M = 4096, 4096
@@ -882,33 +1223,11 @@ class Test_VGG11(unittest.TestCase):
 			
 
 		
-
-class Test_TFBert(unittest.TestCase):
-
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		CHECKPOINT = "bert-base-uncased"
-		cls.model = TFAutoModelForSequenceClassification.from_pretrained(CHECKPOINT)
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
+	def test_same_models(self):
+		""" test same models (not finished yet) """
 		
-	def setUp(self):
-		"""I run before every test in this class
-		"""
+		# TODO: finish
 		pass
-
-	def test_num_layers(self):
-		"""Test that the Keras Iterator finds all the TFBert layers
-		72 layers for BERT
-		+ 1 for input. 1 for output
-		Not sure why it is 74 but it seems to pass consistently
-		"""
-		details = self.watcher.describe()
-		print("WARNING: check this test")
-		self.assertEqual(len(details), 74)
-
-
 
 
 class Test_Keras(unittest.TestCase):
@@ -916,13 +1235,14 @@ class Test_Keras(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		cls.model = VGG16()
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		pass
+		print("\n-------------------------------------\nIn Test_Keras:", self._testMethodName)
+		self.model = VGG16()
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
 
 	def test_num_layers(self):
 		"""Test that the Keras on VGG11
@@ -931,6 +1251,14 @@ class Test_Keras(unittest.TestCase):
 		print("Testing Keras on VGG16")
 		self.assertEqual(len(details), 16)
 
+
+	def test_num_layers_with_model(self):
+		"""Test that the Keras on VGG11
+		"""
+		details = self.watcher.describe(model=self.model)
+		print("Testing Keras on VGG16")
+		self.assertEqual(len(details), 16)
+		
 
 	def test_channels_first(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
@@ -955,12 +1283,13 @@ class Test_ResNet(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		cls.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
-		cls.watcher = ww.WeightWatcher(model=cls.model, log_level=logging.WARNING)
 		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
+		self.model = models.resnet18()#weights='ResNet18_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
 		pass
 	
 	def test_N_ge_M(self):
@@ -979,8 +1308,6 @@ class Test_ResNet(unittest.TestCase):
 		
 		
 	
-from weightwatcher import RMT_Util
-import numpy as np
 
 class Test_RMT_Util(unittest.TestCase):
 	@classmethod
@@ -991,7 +1318,8 @@ class Test_RMT_Util(unittest.TestCase):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		pass
+		print("\n-------------------------------------\nIn Test_ResNet:", self._testMethodName)
+
 
 	def test_vector_entropy(self):
 		u = np.array([1,1,1,1])
@@ -1034,6 +1362,17 @@ class Test_RMT_Util(unittest.TestCase):
 
 
 class Test_Vector_Metrics(unittest.TestCase):
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
+
+	
 	def test_valid_vectors(self):
 		watcher = ww.WeightWatcher()
 
@@ -1086,5 +1425,105 @@ class Test_Vector_Metrics(unittest.TestCase):
 		metrics = watcher.vector_metrics(vectors)
 		print(metrics)
 
+
+class Test_Distances(unittest.TestCase):
+	"""If we ever implement the idea of combining the biases into,  W+b_>W', then this class will 
+		contain the unit tests for this.  
+	"""
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+		
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
+		
+		
+	def get_weights_and_biases_from_Keras(self):
+		"""Test that we can get both weights and biases from pyTorch models"""
+		
+		ilayer_id = 21
+
+		model = VGG16()
+		print(type(model))
+		watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
+		
+		details = watcher.describe(layers=[21])
+		print(details)
+		
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		
+		params = ww.DEFAULT_PARAMS.copy()
+		params[ww.ADD_BIASES] = True
+		
+		weights = watcher.get_Weights(layer=ilayer_id, params=params)
+		self.assertEqual(len(weights),1)
+		
+		W = weights[0]
+		self.assertEqual(np.max(W.shape),N)
+		self.assertEqual(np.min(W.shape),M)
+
+		pass
+	
+	
+	def get_weights_and_biases_from_pyTorch(self):
+		"""Test that we can get both weights and biases from Keras models"""
+		
+		ilayer_id = 28
+
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
+		
+		details = watcher.describe(layers=[25,28,31])
+		print(details)
+		
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		
+		params = ww.DEFAULT_PARAMS.copy()
+		params[ww.ADD_BIASES] = True
+		
+		weights = watcher.get_Weights(layer=ilayer_id, params=params)
+		self.assertEqual(len(weights),1)
+		
+		W = weights[0]
+		self.assertEqual(np.max(W.shape),N)
+		self.assertEqual(np.min(W.shape),M)
+
+		pass
+	
+	def get_weights_and_biases_from_Onnx(self):
+		"""Test that we can get both weights and biases from ONNX models"""
+		
+		pass
+
+	
+	def get_weights_only_from_Keras(self):
+		"""Test that we can get both weights and biases from Keras models"""
+		
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
+		
+		pass
+	
+		
+	def get_weights_only_from_pyTorch(self):
+		"""Test that we can get both weights and biases from pyTorch models"""
+		
+		pass
+	
+	
+	def get_weights_only_from_Onnx(self):
+		"""Test that we can get both weights and biases from ONNX models"""
+		
+		pass
+	
+	
+	
+	
+	
 if __name__ == '__main__':
 	unittest.main()

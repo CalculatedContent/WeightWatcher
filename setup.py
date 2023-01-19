@@ -1,6 +1,9 @@
-from setuptools import setup
-#import weightwatcher as ww
+from os import path
 
+from setuptools import setup
+
+
+#import weightwatcher as ww
 #try:
 #    import pypandoc
 #    readme = pypandoc.convert('README.md', 'rst')
@@ -8,8 +11,6 @@ from setuptools import setup
 #except OSError as e:
 #    # pypandoc failed, use the short description as long description
 #    readme = ww.__description__
-
-from os import path
 this_directory = path.abspath(path.dirname(__file__))
 with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     readme = f.read()
@@ -53,11 +54,8 @@ setup(
                         'matplotlib',
                         'matplotlib-inline',
                         'powerlaw',
-                        'tensorflow',
                         'scikit-learn',
                         'telly',
-                        'torch',
-                        'onnx',
                         'tqdm'],
     entry_points = '''
         [console_scripts]

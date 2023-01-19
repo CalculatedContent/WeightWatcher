@@ -18,11 +18,14 @@ import traceback
 import tempfile
 import logging
 
+from deprecated import deprecated
+import inspect
+
 # Telly                                                                                        
 import telly; import sys
-telly.CONFIG["TELLY_OPTIN"] = False
-telly.CONFIG["TELLY_CLIENT_ID"].append('801cb61e-2506-490f-8dd8-1a9d2d725ce2')
-telly.CONFIG['TELLY_TIMER'] = True
+telly.CONFIG["TELLY_OPTIN"] = False 
+telly.CONFIG["TELLY_CLIENT_ID"].append('801cb61e-2506-490f-8dd8-1a9d2d725ce2') 
+telly.CONFIG['TELLY_TIMER'] = True 
 telly.CONFIG['TELLY_TIMER_INTERVAL'] = 60*60*24
 
 import numpy as np
@@ -33,16 +36,6 @@ import scipy.linalg
 import matplotlib
 import matplotlib.pyplot as plt
 import powerlaw
- 
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras.models import load_model
-
-import torch
-import torch.nn as nn
-
-import onnx
-from onnx import numpy_helper
 
 
 import sklearn
@@ -59,8 +52,7 @@ if not sys.warnoptions:
 # for powerlaw warnings
 from contextlib import redirect_stdout, redirect_stderr
 
-
-
+import importlib
 
 
 #
@@ -164,6 +156,7 @@ class ONNXLayer:
     
     def __init__(self, model, inode, node):
         self.model = model
+
         self.node = node
         self.layer_id = inode
         self.plot_id = f"{inode}"
@@ -179,10 +172,12 @@ class ONNXLayer:
             logger.debug("Unsupported ONNX Layer, dims = {}".format(self.dims))
             
     def get_weights(self):
-        return numpy_helper.to_array(self.node) 
+        return numpy_helper.to_array(self.node) #@pydevd suppress warning
+
+
     
     def set_weights(self, idx, W):
-        T = numpy_helper.from_array(W)
+        T = numpy_helper.from_array(W) #@pydevd suppress warning
         self.model.graph.initializer[idx].CopyFrom(T)
 
         
@@ -196,7 +191,9 @@ class WWLayer:
                  the_type=LAYER_TYPE.UNKNOWN, 
                  framework=FRAMEWORK.UNKNOWN, 
                  channels=CHANNELS.UNKNOWN,
-                 skipped=False, make_weights=True, params=DEFAULT_PARAMS):
+                 skipped=False, make_weights=True, params=None):
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
         
         self.layer = layer
         self.layer_id = layer_id  
@@ -213,9 +210,7 @@ class WWLayer:
         
         # get the LAYER_TYPE
         self.the_type = self.layer_type(self.layer)
-        
-        #print(f"layer {layer_id}:"+str(self.layer))
-        
+                
         if self.name is None and hasattr(self.layer, 'name'):
             self.name = self.layer.name
         elif self.name is None:
@@ -323,67 +318,70 @@ class WWLayer:
         This can detect basic Keras and PyTorch classes by type, and will try to infer the type otherwise. """
 
         the_type = LAYER_TYPE.UNKNOWN
-       
-        typestr = (str(type(layer))).lower()
-            
-        # Keras TF 2.x types
-        if isinstance(layer, keras.layers.Dense): 
-            the_type = LAYER_TYPE.DENSE
-            
-        elif isinstance(layer, keras.layers.Conv1D):                
-            the_type = LAYER_TYPE.CONV1D
+        typestr = (str(type(layer))).lower()     
         
-        elif isinstance(layer, keras.layers.Conv2D):                
-            the_type = LAYER_TYPE.CONV2D
+        # Keras TF 2.x types
+        if self.framework==FRAMEWORK.KERAS:
+            if isinstance(layer, keras.layers.Dense) or 'Dense' in str(type(layer)):
+                the_type = LAYER_TYPE.DENSE
+                
+            elif isinstance(layer, keras.layers.Conv1D)  or  'Conv1D' in str(type(layer)):               
+                the_type = LAYER_TYPE.CONV1D
             
-        elif isinstance(layer, keras.layers.Flatten):
-            the_type = LAYER_TYPE.FLATTENED
-            
-        elif isinstance(layer, keras.layers.Embedding):
-            the_type = LAYER_TYPE.EMBEDDING
-            
-        elif isinstance(layer, tf.keras.layers.LayerNormalization):
-            the_type = LAYER_TYPE.NORM
+            elif isinstance(layer, keras.layers.Conv2D) or 'Conv2D' in str(type(layer)):             
+                the_type = LAYER_TYPE.CONV2D
+                
+            elif isinstance(layer, keras.layers.Flatten) or 'Flatten' in str(type(layer)):
+                the_type = LAYER_TYPE.FLATTENED
+                
+            elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in str(type(layer)):
+                the_type = LAYER_TYPE.EMBEDDING
+                
+            elif isinstance(layer, tf.keras.layers.LayerNormalization) or 'LayerNorn' in str(type(layer)):
+                the_type = LAYER_TYPE.NORM
         
         # PyTorch        
-             
-        elif isinstance(layer, nn.Linear):
-            the_type = LAYER_TYPE.DENSE
+        elif self.framework==FRAMEWORK.PYTORCH:
+            if isinstance(layer, nn.Linear) or 'Linear' in str(type(layer)):
+                the_type = LAYER_TYPE.DENSE
+                
+            elif isinstance(layer, nn.Conv1d) or  'Conv1D' in str(type(layer)):
+                the_type = LAYER_TYPE.CONV1D
             
-        elif isinstance(layer, nn.Conv1d):
-            the_type = LAYER_TYPE.CONV1D
-        
-        elif isinstance(layer, nn.Conv2d):
-            the_type = LAYER_TYPE.CONV2D
-            
-        elif isinstance(layer, nn.Embedding):
-            the_type = LAYER_TYPE.EMBEDDING
-
-        elif  'norm' in str(type(layer)).lower():
-            the_type = LAYER_TYPE.NORM
+            elif isinstance(layer, nn.Conv2d) or 'Conv2D' in str(type(layer)):
+                the_type = LAYER_TYPE.CONV2D
+                
+            elif isinstance(layer, nn.Embedding) or 'Embedding' in str(type(layer)):
+                the_type = LAYER_TYPE.EMBEDDING
+    
+            elif  'norm' in str(type(layer)).lower() :
+                the_type = LAYER_TYPE.NORM
 
         # ONNX
-        elif isinstance(layer,ONNXLayer):
-            the_type = layer.the_type
+        elif self.framework==FRAMEWORK.ONNX:
+            if isinstance(layer,ONNXLayer):
+                the_type = layer.the_type
             
         # PYStateDict
-        elif isinstance(layer,PyStateDictLayer):
-            the_type = layer.the_type
-
+        elif self.framework==FRAMEWORK.PYSTATEDICT:
+            if isinstance(layer,PyStateDictLayer):
+                the_type = layer.the_type
+                
         # allow user to specify model type with file mapping
         
         # try to infer type (i.e for huggingface)
-        elif typestr.endswith(".linear'>"):
-            the_type = LAYER_TYPE.DENSE
-            
-        elif typestr.endswith(".dense'>"):
-            the_type = LAYER_TYPE.DENSE
-            
-        elif typestr.endswith(".conv1d'>"):
-            the_type = LAYER_TYPE.CONV1D
-            
-        elif typestr.endswith(".conv2d'>"):
-            the_type = LAYER_TYPE.CONV2D
+        elif self.framework==FRAMEWORK.UNKNOWN:
+            if typestr.endswith(".linear'>"):
+                the_type = LAYER_TYPE.DENSE
+                
+            elif typestr.endswith(".dense'>"):
+                the_type = LAYER_TYPE.DENSE
+                
+            elif typestr.endswith(".conv1d'>"):
+                the_type = LAYER_TYPE.CONV1D
+                
+            elif typestr.endswith(".conv2d'>"):
+                the_type = LAYER_TYPE.CONV2D
         
         return the_type
     
@@ -415,7 +413,7 @@ class WWLayer:
         weights, biases = None, None
     
         if self.framework == FRAMEWORK.PYTORCH:
-            if hasattr(self.layer, 'weight'):
+            if hasattr(self.layer, 'weight'): 
                 w = [np.array(self.layer.weight.data.clone().cpu())]
                 if self.the_type==LAYER_TYPE.CONV2D:
                     weights = w[0]
@@ -431,9 +429,9 @@ class WWLayer:
                     has_weights = True
                 elif self.the_type==LAYER_TYPE.DENSE:
                     weights = w[0]
-                    #biases = w[1]
+                    biases = self.layer.bias
                     has_weights = True
-                    #has_biases = True
+                    has_biases = True
                 elif self.the_type not in [LAYER_TYPE.NORM]: 
                     logger.info("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
                 else:
@@ -459,9 +457,11 @@ class WWLayer:
                 biases = w[1]
                 has_weights = True
                 has_biases = True
+                #print("KERAS WandB",self.the_type, weights.shape, biases.shape)
+
             else: 
                 logger.info("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
-                
+  
 
         elif self.framework == FRAMEWORK.ONNX:      
             onnx_layer = self.layer
@@ -481,11 +481,14 @@ class WWLayer:
         
         return has_weights, weights, has_biases, biases  
       
-    def set_weight_matrices(self, weights):#, conv2d_fft=False, conv2d_norm=True):
+    def set_weight_matrices(self, weights, combine_weights_and_biases=False):#, conv2d_fft=False, conv2d_norm=True):
         """extract the weight matrices from the framework layer weights (tensors)
         sets the weights and detailed properties on the ww (wrapper) layer 
     
-        conv2d_fft not supported yet """
+        conv2d_fft not supported yet
+        
+        
+        TODO: support W+b """
    
         if not self.has_weights:
             logger.info("Layer {} {} has no weights".format(self.layer_id, self.name))
@@ -699,16 +702,39 @@ class WWLayer:
 
     
 class ModelIterator:
-    """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available."""
+    """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available.
+    
+    Note: only set the framework if the model has been already set
+    
+    """
 
-
-    def __init__(self, model, params=DEFAULT_PARAMS):
+    def __init__(self, model, framework = None, params=None):
+ 
+        if params is None: params = DEFAULT_PARAMS.copy()
         
-        self.params = params
-        self.k = params[START_IDS] # 0 | 1
+        if model is None and framework is not None:
+            logger.fatal("ModelIterator malformed")
+            
+        self.framework = framework
+        if model is not None:
+            self.model = model        
+            self.framework = WeightWatcher.infer_framework(model)
+            if WeightWatcher.valid_framework(self.framework):
+                banner = WeightWatcher.load_framework_imports(self.framework)
+                logger.info(banner)
+                logger.info(f"framework from model = {self.framework}")
 
-        self.model = model
-        self.framework = self.set_framework()
+
+            else:
+                logger.fatal("Could not infer framework from model, stopping")
+                
+         
+        self.params = params
+        if params[START_IDS]:
+            self.k = params[START_IDS] # 0 | 1
+        else:
+            self.k = DEFAULT_START_ID
+                
         self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
         self.model_iter = self.model_iter_(model) 
@@ -731,28 +757,8 @@ class ModelIterator:
         return config
     
     
-        
-    def set_framework(self):
-        """infer the framework """
-        
-        framework = FRAMEWORK.UNKNOWN
-        if hasattr(self.model, LAYERS):
-            framework = FRAMEWORK.KERAS
-
-        elif hasattr(self.model, 'modules'):
-            framework = FRAMEWORK.PYTORCH
-
-        elif isinstance(self.model, onnx.onnx_ml_pb2.ModelProto):  
-            framework = FRAMEWORK.ONNX
-            
-        elif isinstance(self.model, str):
-            if os.path.exists(self.model) and os.path.isdir(self.model):
-                logger.info("Expecting model is a directory containing pyTorch state_dict files")
-                framework = FRAMEWORK.PYSTATEDICT
-            else:
-                logger.error(f"unknown model folder {self.model}")
-              
-        return framework
+    
+  
     
     def __iter__(self):
         return self
@@ -857,10 +863,11 @@ class ModelIterator:
 class WWLayerIterator(ModelIterator):
     """Creates an iterator that generates WWLayer wrapper objects to the model layers"""
 
-    def __init__(self, model, params=DEFAULT_PARAMS, filters=[]):
+    def __init__(self, model, framework, params=None, filters=[]):
         
-        super().__init__(model, params=params)
-        
+        if params is None: params = DEFAULT_PARAMS.copy()
+        super().__init__(model, framework=framework,  params=params)
+                
         self.filter_ids = []
         self.filter_types = []
         self.filter_names = []
@@ -1235,55 +1242,169 @@ class WWStackedLayerIterator(WWLayerIterator):
     
 class WeightWatcher(object):
 
-    def __init__(self, model=None, log_level=None):
+    def __init__(self, model=None, framework=None, log_level=None, ):
+        """ model is set or is none
+            the framework can be set or it is inferred
+        
+            valid frameworks = 'keras' | 'pytorch' | 'onnx' | ww.KERAS | ww.PYTORCH | ww.ONNX
+        
+            log_level can be set may not currently work """
+        
         if log_level:
             logger.setLevel(log_level)
-
-        self.model = self.load_model(model)
+        
+        self.model = model
         self.details = None
-        logger.info(self.banner())
+        self.framework = None
 
+        banner = self.banner()
 
+        if model is not None:
+            framework = self.infer_framework(model)
+            if self.valid_framework(framework):
+                self.framework = framework
+                banner += "\n"+ self.load_framework_imports(framework)
+                print(banner)
+            else:
+                logger.fatal("Could not infer framework from model, stopping")
+        
+        logger.info(banner)
+        
+  
+    
+    # TODO: fix or deprecate
     def header(self):
         """WeightWatcher v0.1.dev0 by Calculation Consulting"""
 #        from weightwatcher import __name__, __version__, __author__, __description__, __url__
 #        return "{} v{} by {}\n{}\n{}".format(__name__, __version__, __author__, __description__, __url__)
         return ""
 
+    # TODO: improve banner
     def banner(self):
         versions = "\npython      version {}".format(sys.version)
-        versions += "\nnumpy       version {}".format(np.__version__)
-        versions += "\ntensforflow version {}".format(tf.__version__)
-        versions += "\nkeras       version {}".format(tf.keras.__version__)
+        versions += "\nnumpy       version {}".format(np.__version__)            
+        #versions += "\ntensforflow version {}".format(tf.__version__)
+        #versions += "\nkeras       version {}".format(tf.keras.__version__)
         return "\n{}{}".format(self.header(), versions)
 
     def __repr__(self):
         done = bool(self.results)
         txt = "\nAnalysis done: {}".format(done)
         return "{}{}".format(self.header(), txt)
-            
-    # TODO: get rid of this or extend to be more generally useful
-    def load_model(self, model):
-        """load the model from a file, only works for keras right now"""
-        res = model
-        if isinstance(model, str):
-            if os.path.isfile(model):
-                logger.info("Loading model from file '{}'".format(model))
-                res = load_model(model)
-            else:
-                logger.error("Loading model from file '{}': file not found".format(model))
-        return res
+   
+        
+    @staticmethod
+    def valid_framework(framework):
+        """is a valid FRAMEWORK constant """
+        valid = framework in [ FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.ONNX]
+        return valid
+        
     
-    # TODO: implement
+    @staticmethod
+    def infer_framework(model):
+        
+        def is_framework(name='UNKNOWN'):
+            found = False
+            for cls in inspect.getmro(type(model)):
+                found |= name in str(cls)
+                                                          
+            return found 
+    
+        framework = FRAMEWORK.UNKNOWN
+        if model is not None:
+            if is_framework(name='torch'):
+                return FRAMEWORK.PYTORCH
+            elif is_framework(name='keras'):
+                return FRAMEWORK.KERAS 
+            elif is_framework(name='onnx'):
+                return FRAMEWORK.ONNX
+            
+        return framework
+
+
+    
+    @staticmethod
+    def load_framework_imports(framework):
+        """load tensorflow, pytorch, or onnx depending on the framework 
+        
+        returns a banner to display """
+
+        banner = ""
+        if framework==FRAMEWORK.KERAS:
+            #import tensorflow as tf
+            #from tensorflow import keras
+            
+            global tf, keras
+            tf = importlib.import_module('tensorflow')
+            keras = importlib.import_module('tensorflow.keras')
+        
+            banner = f"tensorflow version {tf.__version__}"+"\n"
+            banner += f"keras version {keras.__version__}"
+            
+        elif framework==FRAMEWORK.PYTORCH or framework==FRAMEWORK.PYSTATEDICT:
+            
+            global torch, nn
+            torch = importlib.import_module('torch')
+            nn = importlib.import_module('torch.nn')
+
+            banner = f"torch version {torch.__version__}"
+
+        elif framework==FRAMEWORK.ONNX:
+            import onnx
+            from onnx import numpy_helper
+            banner = f"onnx version {onnx.__version__}"   
+        else:
+            logger.warning(f"Unknown or unsupported framework {framework}")
+            banner = ""
+                
+        return banner
+    
+    
+    # # TODO: moved from iterator    
+    # # redo such that we don't have to include modules until framework detected
+    # @deprecated
+    # def set_framework(self, model, framework=None):
+    #     """Sets the framework (if specified) or infers it
+    #
+    #      """
+    #
+    #     framework = FRAMEWORK.UNKNOWN
+    #     if hasattr(self.model, LAYERS):
+    #         framework = FRAMEWORK.KERAS
+    #
+    #     elif hasattr(self.model, 'modules'):
+    #         framework = FRAMEWORK.PYTORCH
+    #
+    #     elif isinstance(self.model, onnx.onnx_ml_pb2.ModelProto):  #@pydevd suppress warning
+    #
+    #         framework = FRAMEWORK.ONNX
+    #
+    #     elif isinstance(self.model, str):
+    #         if os.path.exists(self.model) and os.path.isdir(self.model):  
+    #             logger.info("Expecting model is a directory containing pyTorch state_dict files")
+    #             framework = FRAMEWORK.PYSTATEDICT
+    #         else:
+    #             logger.error(f"unknown model folder {self.model}")
+    #
+    #     return framework
+    
+    
     def same_models(self, model_1, model_2):
         """Compare models to see if they are the same architecture.
         Not really impelemnted yet"""
     
         same = True
+        
+        framework_1 = self.infer_framework(model_1)
+        framework_2 = self.infer_framework(model_2)
+
+        same = (framework_1 == framework_2)
+        if not same:
+            return False
+        
         layer_iter_1 = WWLayerIterator(model_1)
         layer_iter_2 = WWLayerIterator(model_2)
-        
-        same = layer_iter_1.framework == layer_iter_2.framework 
+        #TODO: finish     
 
         return same
 
@@ -1343,7 +1464,7 @@ class WeightWatcher(object):
     @telly.count_decorator
     def distances(self, model_1, model_2, 
                   layers = [], start_ids = 0, ww2x = False, channels = None, 
-                  method = RAW, combine_Wb= True):
+                  method = RAW, combine_Wb= False):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
         
@@ -1359,11 +1480,11 @@ class WeightWatcher(object):
            
         models should be the same size and from the same framework
 
-        Note: Currently only RAW is supported
+        Note: Currently only RAW is supported and combibeWb is not working yet
            
         """
         
-        params = DEFAULT_PARAMS
+        params = DEFAULT_PARAMS.copy()
         # not implemented here : 
         #params[CONV2D_FFT] = conv2d_fft
         params[WW2X] = ww2x   
@@ -1390,7 +1511,6 @@ class WeightWatcher(object):
             logger.error(msg)
             raise Exception(msg)
             
-
 
         same = True
         layer_iter_1 = self.make_layer_iterator(model=model_1, layers=layers, params=params)           
@@ -1467,7 +1587,7 @@ class WeightWatcher(object):
         avg_dWb = np.mean(distances['delta_Wb'].to_numpy())
         return avg_dWb, distances
     
-    def combined_eigenvalues(self, Wmats, N, M, n_comp, params):
+    def combined_eigenvalues(self, Wmats, N, M, n_comp, params=None):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
             combined into a single, sorted, numpy array
     
@@ -1478,6 +1598,8 @@ class WeightWatcher(object):
             Also returns max singular value and rank_loss, needed for other calculations
          """
     
+        if params is None: params = DEFAULT_PARAMS.copy()
+
         all_evals = []
         max_sv = 0.0
         rank_loss = 0
@@ -1526,9 +1648,11 @@ class WeightWatcher(object):
         return np.sort(np.array(all_evals)), max_sv, rank_loss
             
             
-    def apply_normalize_Wmats(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_normalize_Wmats(self, ww_layer, params=None):
         """Normalize the W matrix or Wmats """
 
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
         normalize = params[NORMALIZE]
         glorot_fix = params[GLOROT_FIX]
         conv2d_norm = params[CONV2D_NORM]
@@ -1572,7 +1696,7 @@ class WeightWatcher(object):
                 
         
                  
-    def apply_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_esd(self, ww_layer, params=None):
         """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all, and save to layer """
         
         layer_id = ww_layer.layer_id
@@ -1609,8 +1733,10 @@ class WeightWatcher(object):
             
         return ww_layer
     
-    def apply_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_random_esd(self, ww_layer, params=None):
         """Randomize the layer weight matrices, compute ESD on combined eigenvalues, combine all,  and save to layer """
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
         
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
@@ -1660,10 +1786,12 @@ class WeightWatcher(object):
         return ww_layer
     
     
-    def apply_permute_W(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_permute_W(self, ww_layer, params=None):
         """Randomize the layer weight matrices by using a deterministic permutation
         This will replace the WMats ; they can be recovered by apply_unpermute_W()
          """
+         
+        if params is None: params = DEFAULT_PARAMS.copy()
         
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
@@ -1685,10 +1813,12 @@ class WeightWatcher(object):
     
     
       
-    def apply_unpermute_W(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_unpermute_W(self, ww_layer, params=None):
         """Unpermute the layer weight matrices after the deterministic permutation
         This will replace the WMats ; only works if applied after  apply_permute_W()
          """
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
         
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
@@ -1709,9 +1839,11 @@ class WeightWatcher(object):
     
     
         # Not used yet
-    def apply_detX(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_detX(self, ww_layer, params=None):
         """Compute the detX constraint, and optionally plot """
                     
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
         plot = params[PLOT]           
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
@@ -1748,9 +1880,11 @@ class WeightWatcher(object):
     
     
     # Not used yet
-    def apply_plot_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_plot_esd(self, ww_layer, params=None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                     
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
         evals = ww_layer.evals
         name = ww_layer.name
         
@@ -1766,9 +1900,11 @@ class WeightWatcher(object):
     
     
  
-    def apply_fit_powerlaw(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_fit_powerlaw(self, ww_layer, params=None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
-                    
+                
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
         evals = ww_layer.evals
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
@@ -1785,11 +1921,17 @@ class WeightWatcher(object):
         savedir = params[SAVEDIR]
 
         ff =  params[FIX_FINGERS]
+        xmin_max = params[XMIN_MAX]
+        max_N =  params[MAX_N]
+        
         layer_name = "Layer {}".format(plot_id)
         
         fit_type =  params[FIT]
 
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig, fix_fingers=ff, fit_type=fit_type)
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = \
+            self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
+                              plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
+                              fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type)
 
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -1805,14 +1947,13 @@ class WeightWatcher(object):
         return ww_layer
 
 
-    def make_layer_iterator(self, model=None, layers=[], params=DEFAULT_PARAMS):
+    def make_layer_iterator(self, model=None, layers=[], params=None):
         """Constructor for the Layer Iterator; See analyze(...)
         
          """
          
-        # this doesn't seem to work
-        if model is None:
-            model = self.model
+        if params is None: params = DEFAULT_PARAMS.copy()
+        self.set_model_(model)
             
         logger.info("params {}".format(params))
         if not self.valid_params(params):
@@ -1829,21 +1970,21 @@ class WeightWatcher(object):
         layer_iterator = None
         if stacked:
             logger.info("Using Stacked Iterator (experimental)")
-            layer_iterator = WWStackedLayerIterator(model, filters=layers, params=params)    
+            layer_iterator = WWStackedLayerIterator(self.model, self.framework, filters=layers, params=params)    
         elif intra:
             logger.info("using Intra layer Analysis (experimental)")
-            layer_iterator = WWIntraLayerIterator(model, filters=layers, params=params)     
+            layer_iterator = WWIntraLayerIterator(self.model, self.framework, filters=layers, params=params)     
         elif ww2x:
             logger.info("Using weightwatcher 0.2x style layer and slice iterator")
-            layer_iterator = WW2xSliceIterator(model, filters=layers, params=params)     
+            layer_iterator = WW2xSliceIterator(self.model, self.framework, filters=layers, params=params)     
         else:
-            layer_iterator = WWLayerIterator(model, filters=layers, params=params)     
+            layer_iterator = WWLayerIterator(self.model, self.framework, filters=layers, params=params)     
     
         return layer_iterator
     
     
     @telly.count_decorator
-    def vector_metrics(self, vectors=None): 
+    def vector_metrics(self, vectors=None, params=None): 
         """Analyze arbitrary vectors using random matrix theory RMT and report vector metrics
         
         Parameters
@@ -1859,6 +2000,8 @@ class WeightWatcher(object):
         (as described in the JMLR paper:  https://jmlr.org/papers/v22/20-410.html)
         
         """
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
 
         df = pd.DataFrame(columns=["length", "entropy", "discrete_entropy", "localization_ratio", "participation_ratio"])
 
@@ -1935,7 +2078,9 @@ class WeightWatcher(object):
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
                 deltas=False, intra=False, vectors=False, channels=None, 
-                stacked=False, fix_fingers=False, fit=PL, sparsify=True, 
+                stacked=False,
+                fix_fingers=False, xmin_max = None,  max_N=10,
+                fit=PL, sparsify=True, 
                 detX=False, 
                 tolerance=WEAK_RANK_LOSS_TOLERANCE,
                 start_ids=0):
@@ -1950,7 +2095,7 @@ class WeightWatcher(object):
             If layer ids < 0, then skip the layers specified
             All layer ids must be > 0 or < 0
             
-        min_evals:  int, default=50
+        min_evals:  int, default=50, NOT 0
             Minimum number of evals (M*rf) 
             
         max_evals:  int, default=10000
@@ -2005,9 +2150,18 @@ class WeightWatcher(object):
             Stack all the weight matrices into a single Layer, and analyze
             Can be very slow.
             
-        fix_fingers:  bool, default: False 
+        fix_fingers:  False \'xmin_peak' | 'clip_xmax', default: False 
             Attempts to fix the fingers / finite-size-effects which sometimes occurs for layers with spuriously large alphas
             Can be very slow.
+            
+            Also, currently only 'xmin_peak' works, and you need to set the top of the xmin range specifically
+            
+        xmin_max = None | max eignalvaue in the xmin range
+            Only makes sense to use with fix_fingers= 'xmin_fit'
+            
+        max_N: 10 by default, 
+            Only makes sense to use with fix_fingers= 'clip_xmax'
+            Max Number of eigenvalues to clip to find a much smaller alpha
             
         fit:  string, default: 'PL'
             PL (power_law) or TPL (truncated_power_law), E_TPL (extended TPL)
@@ -2035,7 +2189,7 @@ class WeightWatcher(object):
            Start layer id counter at 0 or 1
         """
 
-        model = model or self.model   
+        self.set_model_(model)          
         
         if min_size or max_size:
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
@@ -2044,7 +2198,8 @@ class WeightWatcher(object):
         # can not specify params on input yet
         # maybe just have a different analyze() that only uses this 
         
-        params=DEFAULT_PARAMS
+        params=DEFAULT_PARAMS.copy()
+        
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
         params[PLOT] = plot
@@ -2062,6 +2217,9 @@ class WeightWatcher(object):
         params[VECTORS] = vectors
         params[STACKED] = stacked
         params[FIX_FINGERS] = fix_fingers
+        params[XMIN_MAX] = xmin_max
+        params[MAX_N] = max_N
+
         params[FIT] = fit
         params[SPARSIFY] = sparsify
         params[DETX] = detX
@@ -2080,7 +2238,7 @@ class WeightWatcher(object):
             raise Exception(msg)
         params = self.normalize_params(params)
         
-        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)     
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)     
         
         details = pd.DataFrame(columns=['layer_id', 'name'])
         
@@ -2156,26 +2314,43 @@ class WeightWatcher(object):
                 
         return summary
 
-    
+    def set_model_(self, model):
+        """Set the model if it has not been set for this object"""
+        
+        self.model = model or self.model
+        if self.model is None:
+            logger.fatal("unknown model, stopping")
+            
+        if self.framework is None:
+            self.framework = self.infer_framework(self.model) 
+            if not self.valid_framework(self.framework):
+                logger.fatal(f"{self.framework} is not a valid framework, stopping")
+                
+        return 
+                
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
-    @telly.count_decorator
+    @telly.count_decorator  #@pydevd suppress warning
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None, 
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR,
                 conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
-                intra=False, channels=None, stacked=False, fix_fingers=False, start_ids=0):
+                intra=False, channels=None, stacked=False,  start_ids=0):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
+        BUT min_evals default here is 0, not DEFAULT_MIN_EVALS = 50
+        Not great...we need to fix
+        
+        
         """
 
-        model = model or self.model    
-        
+        self.set_model_(model)  
+ 
         if min_size or max_size:
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
 
-        params = DEFAULT_PARAMS
+        params = DEFAULT_PARAMS.copy()
 
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
@@ -2202,7 +2377,7 @@ class WeightWatcher(object):
             raise Exception(msg)
         params = self.normalize_params(params)
 
-        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)            
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)            
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         num_all_evals = 0
@@ -2284,6 +2459,7 @@ class WeightWatcher(object):
         if savefig and isinstance(savefig,bool):
             logger.info("Saving all images to {}".format(savedir))
         elif savefig and isinstance(savefig,str):
+            # noteL this is a global change, not ideal but I think its ok
             params[SAVEDIR] = savefig
             logger.info("Saving all images to {}".format(savedir))
         elif not isinstance(savefig,str) and not isinstance(savefig,bool):
@@ -2399,13 +2575,15 @@ class WeightWatcher(object):
             else:
                 return check1, False
     
-    def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params=DEFAULT_PARAMS):
+    def random_eigenvalues(self, Wmats, n_comp, num_replicas=1, params=None):
         """Compute the eigenvalues for all weights of the NxM skipping layer, num evals sized weight matrices (N >= M), 
             combined into a single, sorted, numpy array.  
     
         see: combined_eigenvalues()
         
          """
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
          
         normalize = params[NORMALIZE]
         glorot_fix = params[GLOROT_FIX]
@@ -2441,9 +2619,11 @@ class WeightWatcher(object):
                                        
         return np.sort(np.array(all_evals))
    
-    def plot_random_esd(self, ww_layer, params=DEFAULT_PARAMS):
+    def plot_random_esd(self, ww_layer, params=None):
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
@@ -2481,8 +2661,11 @@ class WeightWatcher(object):
         plt.show(); plt.clf()
         
 
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, sample=False, sample_size=None, 
-                     savedir=DEF_SAVE_DIR, savefig=True, svd_method=FULL_SVD, thresh=EVALS_THRESH, fix_fingers=False, fit_type=POWER_LAW):
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
+                     sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
+                     svd_method=FULL_SVD, thresh=EVALS_THRESH, 
+                     fix_fingers=False, xmin_max = None, max_N = DEFAULT_MAX_N, 
+                     fit_type=POWER_LAW):
         """Fit eigenvalues to powerlaw or truncated_power_law
         
             if xmin is 
@@ -2496,7 +2679,7 @@ class WeightWatcher(object):
             
                      
          """
-
+         
         # when calling powerlaw methods, 
         # trap warnings, stdout and stderr 
         def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW):
@@ -2561,7 +2744,13 @@ class WeightWatcher(object):
                 h = np.histogram(np.log10(nz_evals), bins=num_bins)
                 ih = np.argmax(h[0])
                 xmin2 = 10 ** h[1][ih]
-                xmin_range = (0.95 * xmin2, 1.05 * xmin2)
+                if xmin_max is None:
+                    xmin_max = 1.5 * xmin2 
+                elif xmin_max <  0.95 * xmin2:
+                    logger.fatal("XMIN max is too small, stopping  ")  
+                    
+                xmin_range = (np.log10(0.95 * xmin2), xmin_max)
+                logger.info(f"using new XMIN RANGE {xmin_range}")
                 fit = pl_fit(data=nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
                 status = SUCCESS 
             except ValueError:
@@ -2572,7 +2761,11 @@ class WeightWatcher(object):
         elif fix_fingers==CLIP_XMAX:
             logger.info("fix the fingers by fitting a clipped power law")
             try:
-                fit = fit_clipped_powerlaw(evals, xmin=xmin, verbose=False)   
+                nz_evals = evals[evals > thresh]
+                if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):
+                    max_N = DEFAULT_MAX_N
+                logger.debug(f"max N = {max_N}")
+                fit = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)   
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2705,14 +2898,17 @@ class WeightWatcher(object):
         return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
     
     @telly.count_decorator
-    def get_ESD(self, model=None, layer=None, random=False, params=DEFAULT_PARAMS):
+    def get_ESD(self, model=None, layer=None, random=False, params=None):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""
         
-        model = self.model or model
+        if params is None: params = DEFAULT_PARAMS.copy()
         
-        details = self.describe(model=model)
+        self.set_model_(model)          
+        
+        details = self.describe(model=self.model)
         layer_ids = details['layer_id'].to_numpy()
         layer_names = details['name'].to_numpy()
+        
         
         if type(layer) is int and layer not in layer_ids:
             logger.error("Can not find layer id {} in valid layer_ids {}".format(layer, layer_ids))
@@ -2723,7 +2919,7 @@ class WeightWatcher(object):
             return []
     
 
-        layer_iter = WWLayerIterator(model=model, filters=[layer], params=params)     
+        layer_iter = WWLayerIterator(model=self.model, framework=self.framework, filters=[layer], params=params)     
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         ww_layer = next(layer_iter)
@@ -2747,12 +2943,14 @@ class WeightWatcher(object):
             
         return esd
 
-    def get_Weights(self, model=None, layer=None, params=DEFAULT_PARAMS):
+    def get_Weights(self, model=None, layer=None, params=None):
         """Get the Weights for the layer, specified by id or name)"""
         
-        model = self.model or model
+        if params is None: params = DEFAULT_PARAMS.copy()
         
-        details = self.describe(model=model)
+        self.set_model_(model) 
+        
+        details = self.describe(model=self.model)
         layer_ids = details['layer_id'].to_numpy()
         layer_names = details['name'].to_numpy()
         
@@ -2766,7 +2964,7 @@ class WeightWatcher(object):
     
         logger.info("Getting Weights for layer {} ".format(layer))
 
-        layer_iter = WWLayerIterator(model=model, filters=[layer], params=params)     
+        layer_iter = WWLayerIterator(model=self.model, framework=self.framework, filters=[layer], params=params)     
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
         ww_layer = next(layer_iter)
@@ -2775,8 +2973,10 @@ class WeightWatcher(object):
         
         return ww_layer.Wmats
     
-    def apply_norm_metrics(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_norm_metrics(self, ww_layer, params=None):
         """Compute the norm metrics, as they depend on the eigenvalues"""
+
+        if params is None: params = DEFAULT_PARAMS.copy()
 
         layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
@@ -2816,8 +3016,11 @@ class WeightWatcher(object):
     
     
     # TODO: add x bulk max yellow line for bulk edge for random
-    def apply_plot_deltaEs(self, ww_layer, random=False, params=DEFAULT_PARAMS):
+    def apply_plot_deltaEs(self, ww_layer, random=False, params=None):
         """Plot the deltas of the layer ESD, both in a sequence as a histogram (level statisitcs)"""
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
         layer_id = ww_layer.layer_i
         plot_id = ww_layer.plot_id
         name = ww_layer.name or ""
@@ -2871,9 +3074,11 @@ class WeightWatcher(object):
             save_fig(plt, "level-stats", plot_id, savedir)
         plt.show(); plt.clf()
 
-    def apply_mp_fit(self, ww_layer, random=True, params=DEFAULT_PARAMS):
+    def apply_mp_fit(self, ww_layer, random=True, params=None):
         """Perform MP fit on random or actual random eigenvalues
         N/A yet"""
+
+        if params is None: params = DEFAULT_PARAMS.copy()
 
         layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
@@ -2915,7 +3120,7 @@ class WeightWatcher(object):
         else:
             ww_layer.add_column('num_spikes', num_spikes)
             ww_layer.add_column('sigma_mp', sigma_mp)
-            ww_layer.add_column(METRICS.MP_SOFTRANK, mp_softrank)
+            ww_layer.add_column('mp_softrank', mp_softrank)
             ww_layer.add_column('W_scale', Wscale)
             ww_layer.add_column('bulk_max', bulk_max)
             ww_layer.add_column('bulk_min', bulk_min)
@@ -3097,9 +3302,9 @@ class WeightWatcher(object):
             
         """
         
-        model = model or self.model   
+        self.set_model_(model)          
          
-        params = DEFAULT_PARAMS
+        params = DEFAULT_PARAMS.copy()
         
         params[WW2X] = ww2x
         params[LAYERS] = layers
@@ -3130,7 +3335,7 @@ class WeightWatcher(object):
         params = self.normalize_params(params)
      
         #TODO: restrict to ww2x or intra
-        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)         
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)         
         
         # iterate over layers
         #   naive implementation uses just percent, not the actual tail
@@ -3161,10 +3366,14 @@ class WeightWatcher(object):
     
     # TODO: add methods that use ETPL-alpha and/or DETX
         
-    def apply_svd_smoothing(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_svd_smoothing(self, ww_layer, params=None):
         """run truncated SVD on layer weight matrices and reconstruct the weight matrices 
         keep all eigenvlues > percent*ncomp
-        if percent < 0, then keep those < than percent*ncomp"""
+        if percent < 0, then keep those < than percent*ncomp
+        
+        Note: can not handle biases yet """
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
         
         num_smooth = params['num_smooth']
       
@@ -3182,7 +3391,7 @@ class WeightWatcher(object):
             return 
 
         if channels == CHANNELS.UNKNOWN:
-            log.error("Sorry, SVDSmoothing does not understand the channels for this layer, stopping ")
+            logger.error("Sorry, SVDSmoothing does not understand the channels for this layer, stopping ")
             return 
          
         M = ww_layer.M
@@ -3200,6 +3409,8 @@ class WeightWatcher(object):
                  
         # get the model weights and biases directly, converted to numpy arrays        
         has_W, old_W, has_B, old_B = ww_layer.get_weights_and_biases()
+        # TODO fix biases, not working yet
+        old_B = None
         
         logger.info("LAYER TYPE  {} out of {} {} {} ".format(layer_type,LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING))          
 
@@ -3295,10 +3506,9 @@ class WeightWatcher(object):
             
         """
         
-        #TODO: check this
-        model = model or self.model   
+        self.set_model_(model)          
          
-        params=DEFAULT_PARAMS
+        params=DEFAULT_PARAMS.copy()
         params[WW2X] = ww2x
         params[LAYERS] = layers
         params[PLOT] = plot
@@ -3321,7 +3531,7 @@ class WeightWatcher(object):
 
      
         #TODO: restrict to ww2x or intra
-        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
+        layer_iterator = self.make_layer_iterator(model=self.model,  layers=layers, params=params)
             
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
@@ -3333,8 +3543,10 @@ class WeightWatcher(object):
     
     
     
-    def apply_svd_sharpness(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_svd_sharpness(self, ww_layer, params=None):
         """run permute layer, run power law, identify and remove the spikes"""
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
         
         self.apply_permute_W(ww_layer, params)
         self.apply_esd(ww_layer, params)
@@ -3385,7 +3597,7 @@ class WeightWatcher(object):
             layer.set_weights(idx, W)
    
         else:
-            logger.debug("Layer {} skipped, Layer Type {} not supported".format(layer_id, the_type))
+            logger.debug(f"Layer {layer.layer_id} skipped, Layer Type {layer.the_type} not supported")
 
         return
    
@@ -3394,9 +3606,9 @@ class WeightWatcher(object):
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
         """Separate method to analyze the eigenvectors of each layer"""
         
-        model = model or self.model   
+        self.set_model_(model)          
         
-        params=DEFAULT_PARAMS
+        params=DEFAULT_PARAMS.copy()
         params[SAVEFIG] = savefig
         
         logger.debug("params {}".format(params))
@@ -3408,7 +3620,7 @@ class WeightWatcher(object):
         params = self.normalize_params(params)
         logger.info("params {}".format(params))
 
-        layer_iterator = self.make_layer_iterator(model=model, layers=layers, params=params)
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)
         
         for id, ww_layer in enumerate(layer_iterator):
             if not ww_layer.skipped and ww_layer.has_weights:
@@ -3418,7 +3630,7 @@ class WeightWatcher(object):
         return   
 
 
-    def apply_analyze_eigenvectors(self, ww_layer, params=DEFAULT_PARAMS):
+    def apply_analyze_eigenvectors(self, ww_layer, params=None):
         """Compute and plot eigenvectors metrics: 
 
         - vector_entropies
@@ -3430,6 +3642,8 @@ class WeightWatcher(object):
         Does not modify the ww_layer (yet)
         
         """
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
         
         layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
@@ -3737,7 +3951,7 @@ class WeightWatcher(object):
                 logger.fatal(f"Unknown problem, stopping")
             
         else:
-            logger.fatal(f"Unknown model_dir {model_dir}", stopping)
+            logger.fatal(f"Unknown model_dir {model_dir}, stopping")
     
     
         return config

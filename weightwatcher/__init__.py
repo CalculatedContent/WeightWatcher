@@ -13,8 +13,12 @@
 # limitations under the License.
 from __future__ import division, print_function
 
+from .constants import *
+from .weightwatcher import WeightWatcher
+
+
 __name__ = "weightwatcher"
-__version__ = "0.6.2.2"
+__version__ = "0.6.3.3"
 __license__ = "Apache License, Version 2.0"
 __description__ = "Diagnostic Tool for Deep Neural Networks"
 __url__ = "https://calculationconsulting.com/"
@@ -25,6 +29,4 @@ __copyright__ = "Calculation Consulting"
 __all__ = ["__name__", "__version__", "__license__", "__description__",
           "__url__", "__author__", "__email__", "__copyright__"]
 
-from .constants import *
-from .weightwatcher import WeightWatcher
 

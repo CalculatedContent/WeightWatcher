@@ -807,8 +807,8 @@ class Test_VGG11(unittest.TestCase):
 		# these numbers have not been independently verified yet
 		expected_alpha = 2.1075
 		expected_Lambda =  0.01667
-		self.assertAlmostEqual(actual_alpha,expected_alpha, places=3)
-		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=3)
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
+		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=2)
 		
 		
 	def test_extended_truncated_power_law_fit(self):

@@ -330,7 +330,7 @@ class WWLayer:
             
             elif isinstance(layer, keras.layers.Conv2D) or 'Conv2D' in str(type(layer)):             
                 the_type = LAYER_TYPE.CONV2D
-                
+                                
             elif isinstance(layer, keras.layers.Flatten) or 'Flatten' in str(type(layer)):
                 the_type = LAYER_TYPE.FLATTENED
                 

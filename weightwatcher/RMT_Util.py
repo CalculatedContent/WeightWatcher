@@ -705,7 +705,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
         logger.info(f"{idx} fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
 
 
-        if ((fit.alpha + alpha_thresh) < prev_alpha) : #and fit.sigma < prev_sigma:
+        if ((fit.alpha + alpha_thresh) < first_fit.alpha) : #and fit.sigma < prev_sigma:
             logger.info(f"stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
             break
         

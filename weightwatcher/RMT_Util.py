@@ -683,6 +683,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
     prev_sigma = prev_fit.sigma
     prev_R = R
     first_fit = prev_fit
+    best_fit = first_fit
 
     
     for idx in range(2,max_N):
@@ -707,6 +708,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
 
         if ((fit.alpha + alpha_thresh) < first_fit.alpha) : #and fit.sigma < prev_sigma:
             logger.info(f"stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
+            best_fit = fit
             break
         
         if min_alpha is not None and fit.alpha <= min_alpha: 
@@ -741,7 +743,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
                 logger.warning("clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
                 break
 
-    return fit
+    return best_fit
              
         
 # https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d

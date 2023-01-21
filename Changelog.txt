@@ -5,11 +5,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.3 (pypi)] - 2023-01-21
+## [0.6.3.5 (testpypi)] - 2023-01-21
+new fix_fingers='clip_xmax' implementation #160
+num_fingers added to dataframe 
+added sigma to Log-log Plots  #162
+detX value is now on same scale as xmin
+params no longer modified as side effect #156
+more extensive unit tests
+check longname now part of unit tests
+distances NOT working yet in full
+removed explicit tensorflow and torch dependences #154
+Q in details data frame #147
+new method signature: rescaled_evals, Wscale = RMT_Util.rescale_eigenvalues(evals)
+
+## [0.6.3.4 (testpypi)] - 2023-01-20
+fixed bug in fix_fingers
+
 ## [0.6.3.3 (testpypi)] - 2023-01-17
 Fixed unit tests, removed CKA and EUCLIDIAN tests for now
 Note: min_evals default different for analyze() and describe()
-
-
 
 ## [0.6.3.1 (testpypi)] - 2023-01-16
 minor bug fixes in the unit tests associated with issue 156

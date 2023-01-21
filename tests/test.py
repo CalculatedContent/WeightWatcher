@@ -46,7 +46,7 @@ class Test_VGG11_noModel(unittest.TestCase):
 		details = self.watcher.describe(model=self.model)
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		for key in ['layer_id', 'name', 'M', 'N', 'Q']:
+		for key in ['layer_id', 'name', 'M', 'N', 'Q', 'longname']:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
 
 		N = details.N.to_numpy()[0]
@@ -301,7 +301,7 @@ class Test_VGG11(unittest.TestCase):
 		details = self.watcher.describe()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		for key in ['layer_id', 'name', 'M', 'N', 'Q']:
+		for key in ['layer_id', 'name', 'M', 'N', 'Q', 'longname']:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
 
 		N = details.N.to_numpy()[0]
@@ -844,7 +844,8 @@ class Test_VGG11(unittest.TestCase):
 		actual = details.alpha[0]
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.68
-		self.assertAlmostEqual(actual,expected, places=2)
+		delta = 0.01
+		self.assertAlmostEqual(actual,expected, None, '',  delta)
 	
 		
 	def test_fix_fingers_clip_xmax(self):
@@ -856,9 +857,10 @@ class Test_VGG11(unittest.TestCase):
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.6635
 		self.assertAlmostEqual(actual,expected, places=4)
-
-
 		
+		num_fingers = details.num_fingers.to_numpy()[0]
+		self.assertEqual()(num_fingers,1)
+
 	
 	def test_density_fit(self):
 		"""Test the fitted sigma from the density fit: FIX
@@ -1180,6 +1182,19 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(details.layer_type.to_numpy()[0],str(LAYER_TYPE.STACKED))
 		
 		
+				
+	def test_rescale_eigenvalues(self):	
+		"""test rescaling un rescaling evals"""
+		
+		evals = self.watcher.get_ESD(layer=28)
+		rescaled_evals, Wscale = RMT_Util.rescale_eigenvalues(evals)
+		un_rescaled_evals = RMT_Util.un_rescale_eigenvalues(rescaled_evals, Wscale)
+
+		actual = np.max(evals)
+		expected =  np.max(un_rescaled_evals)
+		self.assertAlmostEquals(actual, expected)
+
+		
 		
 	def test_permute_W(self):
 		"""Test that permute and unpermute methods work
@@ -1243,6 +1258,21 @@ class Test_Keras(unittest.TestCase):
 		self.model = VGG16()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
+	def test_basic_columns(self):
+		"""Test that new results are returns a valid pandas dataframe
+		"""
+		
+		details = self.watcher.describe()
+		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
+
+		for key in ['layer_id', 'name', 'M', 'N', 'Q', 'longname']:
+			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+
+		N = details.N.to_numpy()[0]
+		M = details.M.to_numpy()[0]
+		Q = details.Q.to_numpy()[0]
+
+		self.assertAlmostEqual(Q, N/M, places=2)
 
 	def test_num_layers(self):
 		"""Test that the Keras on VGG11
@@ -1341,6 +1371,8 @@ class Test_RMT_Util(unittest.TestCase):
 		detX_num, detX_idx = RMT_Util.detX_constraint(evals,rescale=False)
 		self.assertEqual(11, detX_num, "detX num")
 		self.assertEqual(89, detX_idx, "detX idx")
+		
+
 
 	def test_combine_weights_and_biases(self):
 		"""Test that we can combone W and b, stacked either way possible"""

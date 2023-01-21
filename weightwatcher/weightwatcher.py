@@ -1849,12 +1849,10 @@ class WeightWatcher(object):
         savedir = params[SAVEDIR]
 
         evals = ww_layer.evals        
-        evals = rescale_eigenvalues(evals)
+        evals, Wscale = rescale_eigenvalues(evals)
         detX_num, detX_idx = detX_constraint(evals, rescale=False)
         detX_val = evals[detX_idx]
 
-        ww_layer.add_column('detX_num', detX_num)  
-        ww_layer.add_column('detX_val', detX_val)  
 
         if plot:
             name = ww_layer.name
@@ -1875,6 +1873,11 @@ class WeightWatcher(object):
             if savefig:
                 save_fig(plt, "detX", plot_id, savedir)
             plt.show(); plt.clf()
+            
+        evals = un_rescale_eigenvalues(evals, Wscale)
+        detX_val = evals[detX_idx]
+        ww_layer.add_column('detX_num', detX_num)  
+        ww_layer.add_column('detX_val', detX_val)  
             
         return ww_layer
     
@@ -1928,7 +1931,7 @@ class WeightWatcher(object):
         
         fit_type =  params[FIT]
 
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status = \
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
                               fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type)
@@ -1940,6 +1943,8 @@ class WeightWatcher(object):
         ww_layer.add_column('sigma', sigma)
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
         ww_layer.add_column('best_fit', best_fit) 
+        ww_layer.add_column('num_fingers', num_fingers) #-1 for PL, 
+
         ww_layer.add_column('Lambda', Lambda) #-1 for PL, 
    
         ww_layer.add_column('warning', status)
@@ -2706,6 +2711,7 @@ class WeightWatcher(object):
         num_pl_spikes = -1
         best_fit = UNKNOWN
         fit = None
+        num_fingers = 0
         
         # check    
         num_evals = len(evals)
@@ -2765,7 +2771,7 @@ class WeightWatcher(object):
                 if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):
                     max_N = DEFAULT_MAX_N
                 logger.debug(f"max N = {max_N}")
-                fit = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)   
+                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)   
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -2844,7 +2850,8 @@ class WeightWatcher(object):
             title = "Log-Log ESD for {}\n".format(layer_name) 
             title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \
                 r'$D_{KS}=$'+"{0:.3f}; ".format(D) + \
-                r"$\lambda_{min}=$"+"{0:.3f}".format(xmin) + "\n"
+                r"$\lambda_{min}=$"+"{0:.3f} ".format(xmin) + \
+                r"$\sigma=$"+"{0:.3f}".format(sigma) + "\n"
 
             plt.title(title)
             plt.legend()
@@ -2895,7 +2902,7 @@ class WeightWatcher(object):
             plt.show(); plt.clf() 
             import sys, os
 
-        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
+        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, status
     
     @telly.count_decorator
     def get_ESD(self, model=None, layer=None, random=False, params=None):
@@ -3206,15 +3213,17 @@ class WeightWatcher(object):
             plt.show(); plt.clf()
         
             # TODO: replot on log scale, along with randomized evals
-            plt.hist(to_plot, bins=100, density=True)
-            plt.hist(to_plot, bins=100, density=True, color='red')
-
-            orig_plot = (Wscale*Wscale)*orig_evals.copy()
-            plt.hist(orig_plot[orig_plot<5], bins=100, density=True, color='green')
-
-            plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
-            plt.title("MP fit LOG PLOT  DEBUG")
-            plt.show()
+            # we might add this back in later
+            
+            # plt.hist(to_plot, bins=100, density=True)
+            # plt.hist(to_plot, bins=100, density=True, color='red')
+            #
+            # orig_plot = (Wscale*Wscale)*orig_evals.copy()
+            # plt.hist(orig_plot[orig_plot<5], bins=100, density=True, color='green')
+            #
+            # plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
+            # plt.title("MP fit LOG PLOT  DEBUG")
+            # plt.show()
 
         bulk_max = bulk_max/(Wscale*Wscale)
         bulk_min = bulk_min/(Wscale*Wscale)

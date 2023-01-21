@@ -685,6 +685,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
     first_fit = prev_fit
     best_fit = first_fit
 
+    num_fingers = 0
     
     for idx in range(2,max_N):
         xmax = np.max(evals[-idx])
@@ -705,10 +706,11 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
         
         logger.info(f"{idx} fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
 
-
         if ((fit.alpha + alpha_thresh) < first_fit.alpha) : #and fit.sigma < prev_sigma:
             logger.info(f"stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
             best_fit = fit
+            num_fingers = idx - 1
+
             break
         
         if min_alpha is not None and fit.alpha <= min_alpha: 
@@ -743,7 +745,7 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
                 logger.warning("clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
                 break
 
-    return best_fit
+    return best_fit, num_fingers
              
         
 # https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d
@@ -777,7 +779,13 @@ def rescale_eigenvalues(evals):
     Wscale = np.sqrt(M)/Wnorm
     evals = (Wscale*Wscale)*evals
     
-    return evals   
+    return evals, Wscale  
+
+def un_rescale_eigenvalues(evals, Wscale):
+    """UnRescale eigenvalues """
+    
+    evals = evals/(Wscale*Wscale)
+    return evals
 
 def detX_constraint(evals, rescale=True):
     """Identifies the number of eigenvalues necessary to best satisify the det X = 1 constraint

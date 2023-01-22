@@ -55,7 +55,6 @@ setup(
                         'matplotlib-inline',
                         'powerlaw',
                         'scikit-learn',
-                        'telly',
                         'tqdm'],
     entry_points = '''
         [console_scripts]

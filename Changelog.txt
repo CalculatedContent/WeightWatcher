@@ -5,8 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.6.3 (pypi)] - 2023-01-21
-## [0.6.3.5 (testpypi)] - 2023-01-21
+## [0.6.4 (pypi)] - 2023-01-22]
 new fix_fingers='clip_xmax' implementation #160
 num_fingers added to dataframe 
 added sigma to Log-log Plots  #162
@@ -18,6 +17,7 @@ distances NOT working yet in full
 removed explicit tensorflow and torch dependences #154
 Q in details data frame #147
 new method signature: rescaled_evals, Wscale = RMT_Util.rescale_eigenvalues(evals)
+removed telly
 
 ## [0.6.3.4 (testpypi)] - 2023-01-20
 fixed bug in fix_fingers

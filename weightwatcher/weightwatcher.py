@@ -2883,14 +2883,33 @@ class WeightWatcher(object):
             #plt.plot(fit.xmins, fit.sigmas / fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
             plt.xlabel(r'$x_{min}$')
             plt.ylabel(r'$D_{KS}$')
-            title = r'$D_{KS}$' + ' vs.' + r'$x_{min},\;\lambda_{xmin}=$'
+            title = r'$D_{KS}$'+ ' vs.' + r'$x_{min},\;\lambda_{xmin}=$'
             plt.title(title+"{:0.3}".format(fit.xmin))
             plt.legend()
+
+            #ax = plt.gca().twinx()
+            #ax.plot(fit.xmins, fit.alphas, label=r'$\alpha(xmin)$', color='g')
+            #ax.set_ylabel(r'$\alpha$')
+            #ax.legend()
+            
             if savefig:
                 save_fig(plt, "esd4", plot_id, savedir)
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
             plt.show(); plt.clf() 
-            import sys, os
+            
+            
+            plt.plot(fit.xmins, fit.alphas, label=r'$\alpha(xmin)$')
+            plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
+            plt.xlabel(r'$x_{min}$')
+            plt.ylabel(r'$\alpha$')
+            title = r'$\alpha$' + ' vs.' + r'$x_{min},\;\lambda_{xmin}=$'
+            plt.title(title+"{:0.3}".format(fit.xmin))
+            plt.legend()
+            if savefig:
+                save_fig(plt, "esd5", plot_id, savedir)
+                plt.savefig("ww.layer{}.esd4.png".format(layer_id))
+                
+            plt.show(); plt.clf() 
 
         return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, status
     

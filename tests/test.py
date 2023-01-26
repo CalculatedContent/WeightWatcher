@@ -65,7 +65,7 @@ class Test_VGG11_noModel(unittest.TestCase):
 		details = self.watcher.analyze(model=self.model)
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss, fit_entropy".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -358,7 +358,7 @@ class Test_VGG11(unittest.TestCase):
 		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss, fit_entropy".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -1236,6 +1236,16 @@ class Test_VGG11(unittest.TestCase):
 			self.assertEqual(W2.shape,(N,M))
 			self.assertEqual(W[0,0],W2[0,0])
 			
+	#TODO: add test fit entropy
+	def test_fit_entropy_on_layer(self):
+		details = self.watcher.analyze(model=self.model, layers=[28])
+		expected = details.fit_entropy.to_numpy()[0]
+		
+		import powerlaw
+		esd = self.watcher.get_ESD(layer=28)
+		fit = powerlaw.Fit(esd,  xmax=np.max(esd))
+		actual = RMT_Util.line_entropy(fit.Ds)
+		self.assertAlmostEquals(expected, actual, None, '', 0.01)
 
 		
 	def test_same_models(self):
@@ -1391,6 +1401,18 @@ class Test_RMT_Util(unittest.TestCase):
 		Wb = RMT_Util.combine_weights_and_biases(W,b)	
 		actual_shape = Wb.shape
 		self.assertEqual(expected_shape, actual_shape)
+		
+		
+	def test_line_entropy(self):
+		data = np.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1])
+		actual = RMT_Util.line_entropy(data)
+		expected = 0.0
+		self.assertAlmostEqual(actual, expected,  places=6)
+		
+		data = np.array([1,1,1,1,1,0,0,1,1,1,])
+		actual = RMT_Util.line_entropy(data)
+		expected = 0.5
+		self.assertAlmostEqual(actual, expected,  places=3)
 
 
 class Test_Vector_Metrics(unittest.TestCase):

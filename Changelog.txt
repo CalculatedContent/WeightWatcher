@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.6.4.1 (testpypi)]]
 added plot esd5 to analyze() , plot of xmins vs alphas
-
+added fit_entropy() metric to fit_powerlaw()
 
 
 ## [0.6.4 (pypi)] - 2023-01-22]

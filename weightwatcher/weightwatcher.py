@@ -1924,7 +1924,7 @@ class WeightWatcher(object):
         
         fit_type =  params[FIT]
 
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, status = \
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
                               fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type)
@@ -1937,6 +1937,7 @@ class WeightWatcher(object):
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
         ww_layer.add_column('best_fit', best_fit) 
         ww_layer.add_column('num_fingers', num_fingers) #-1 for PL, 
+        ww_layer.add_column('fit_entropy', fit_entropy) #-1 for PL, 
 
         ww_layer.add_column('Lambda', Lambda) #-1 for PL, 
    
@@ -2818,6 +2819,9 @@ class WeightWatcher(object):
                     logger.debug("compare dist={} R={:0.3f} p={:0.3f}".format(dist, R, p))
             best_fit = dists[np.argmax(Rs)]
             
+            fit_entropy = line_entropy(fit.Ds)
+
+            
             # check status for over-trained, under-trained    
             # maybe should remove this
             if alpha < 2.0:
@@ -2909,9 +2913,10 @@ class WeightWatcher(object):
                 save_fig(plt, "esd5", plot_id, savedir)
                 plt.savefig("ww.layer{}.esd4.png".format(layer_id))
                 
+                                
             plt.show(); plt.clf() 
 
-        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, status
+        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status
     
     def get_ESD(self, model=None, layer=None, random=False, params=None):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""

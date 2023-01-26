@@ -65,7 +65,7 @@ class Test_VGG11_noModel(unittest.TestCase):
 		details = self.watcher.analyze(model=self.model)
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss, fit_entropy".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss,fit_entropy".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))

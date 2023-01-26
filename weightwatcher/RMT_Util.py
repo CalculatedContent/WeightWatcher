@@ -9,7 +9,7 @@ import warnings
 from joblib._multiprocessing_helpers import mp
 import matplotlib
 import powerlaw
-from scipy import optimize
+from scipy import optimize, stats
 from scipy.linalg import svd
 from sklearn.neighbors import KernelDensity
 import tqdm
@@ -352,6 +352,21 @@ def max_discrete_entropy(len_vec, num_bins=100, sample_size=100000):
     return np.max(entropies)
 
 # ## Misc
+
+
+def line_entropy(data):
+    """Compute the entropy of a 1d function
+    
+    see issue #173 """
+    
+    # Discretize the data
+    hist, bin_edges = np.histogram(data, bins='auto')
+    # Compute the probability density of the function
+    prob = hist / np.sum(hist)
+    # Compute the entropy of the function
+    the_entropy = stats.entropy(prob)
+    return the_entropy
+
 
 
 def spike_min(Q):

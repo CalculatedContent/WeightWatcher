@@ -859,7 +859,7 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(actual,expected, places=4)
 		
 		num_fingers = details.num_fingers.to_numpy()[0]
-		self.assertEqual()(num_fingers,1)
+		self.assertEqual(num_fingers,1)
 
 	
 	def test_density_fit(self):

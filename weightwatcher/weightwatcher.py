@@ -60,9 +60,8 @@ from .constants import *
 from numpy import vectorize
 
 
-WW_NAME = 'weightwatcher'
+# WW_NAME moved to constants.py
 import logging
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(WW_NAME) 
 logger.setLevel(logging.INFO)
@@ -1608,14 +1607,12 @@ class WeightWatcher(object):
     
         count = len(Wmats)
         for  W in Wmats:
-    
-            Q = N / M  
-            # SVD can be swapped out here
-            # svd = TruncatedSVD(n_components=M-1, n_iter=7, random_state=10)
-    
+            Q = N / M
+
             W = W.astype(float)
-            logger.debug("Running full SVD:  W.shape={}  n_comp = {}".format(W.shape, n_comp))
-            sv = sp.linalg.svd(W, compute_uv=False)
+            logger.debug("Running {} SVD:  W.shape={}  n_comp = {}".format(params[SVD_METHOD], W.shape, n_comp))
+            #sv = sp.linalg.svd(W, compute_uv=False)
+            sv = svd_vals(W, method=params[SVD_METHOD])
             sv = sv.flatten()
             sv = np.sort(sv)[-n_comp:]
             # TODO:  move to PL fit for robust estimator
@@ -1623,7 +1620,6 @@ class WeightWatcher(object):
             #    #logger.info("chosing {} singular values from {} ".format(max_evals, len(sv)))
             #    sv = np.random.choice(sv, size=max_evals)
     
-            # sv = svd.singular_values_
             if params[INTRA]:
                 evals = sv
                 sv  = np.sqrt(sv)
@@ -2078,7 +2074,8 @@ class WeightWatcher(object):
                 stacked=False,
                 fix_fingers=False, xmin_max = None,  max_N=10,
                 fit=PL, sparsify=True, 
-                detX=False, 
+                detX=False,
+                svd_method=ACCURATE_SVD,
                 tolerance=WEAK_RANK_LOSS_TOLERANCE,
                 start_ids=0):
         """
@@ -2175,6 +2172,9 @@ class WeightWatcher(object):
             
         detX:  bool, default: False 
             compute the Trace Log Norm / DetX=1 constraint, and plot if plot True
+
+        svd_method:  string, default: 'accurate'
+            Must be one of "fast" or "accurate". Determines the method by which eigenvalues are calcualted.
             
         tolerance: float, default 0.000001
             sets 'weak_rank_loss' = number of  eigenvalues <= tolerance
@@ -2220,6 +2220,7 @@ class WeightWatcher(object):
         params[FIT] = fit
         params[SPARSIFY] = sparsify
         params[DETX] = detX
+        params[SVD_METHOD] = svd_method
         params[TOLERANCE] = tolerance
         params[START_IDS] = start_ids
 
@@ -2421,6 +2422,11 @@ class WeightWatcher(object):
         elif max_evals and max_evals < -1:
             logger.warning(" max_evals {} < -1 ".format(max_evals))
             valid = False
+
+        svd_method = params.get(SVD_METHOD)
+        if svd_method not in VALID_SVD_METHODS:
+            logger.warning("unrecognized svd_method {}. Must be one of {}".format(svd_method, VALID_SVD_METHODS))
+            valid = False
             
         # can not specify ww2x and conv2d_fft at same time
         if params.get(WW2X) and params.get('conv2d_fft'):
@@ -2600,11 +2606,10 @@ class WeightWatcher(object):
                 W = Wrand.reshape(W.shape)
                 W = W.astype(float)
                 logger.debug("Running Randomized Full SVD")
-                sv = sp.linalg.svd(W, compute_uv=False)
+                #sv = sp.linalg.svd(W, compute_uv=False)
+                sv = svd_vals(W, method=params[SVD_METHOD])
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]    
-                
-                # sv = svd.singular_values_']
                 
                 if params[INTRA]:
                     evals = sv
@@ -2659,7 +2664,7 @@ class WeightWatcher(object):
 
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
-                     svd_method=FULL_SVD, thresh=EVALS_THRESH, 
+                     thresh=EVALS_THRESH,
                      fix_fingers=False, xmin_max = None, max_N = DEFAULT_MAX_N, 
                      fit_type=POWER_LAW):
         """Fit eigenvalues to powerlaw or truncated_power_law
@@ -2670,7 +2675,7 @@ class WeightWatcher(object):
             
             if xmax is 'auto' or None, xmax = np.max(evals)
             
-            svd_method = FULL_SVD (to add TRUNCATED_SVD with some cutoff)
+            svd_method = ACCURATE_SVD (to add TRUNCATED_SVD with some cutoff)
             thresh is a threshold on the evals, to be used for very large matrices with lots of zeros
             
                      
@@ -3243,7 +3248,7 @@ class WeightWatcher(object):
         return num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale
 
         
-    def smooth_W_alt(self, W, n_comp):
+    def smooth_W_alt(self, W, n_comp, svd_method=ACCURATE_SVD):
         """Apply the SVD Smoothing Transform to W
         if n_comp < 0, then chomp off the top n_comp eiganvalues
         """       
@@ -3253,8 +3258,9 @@ class WeightWatcher(object):
         # TODO: replace this with truncated SVD
         # can't we just apply the svd transform...test
         # keep this old method for historical comparison
-        u, s, vh = sp.linalg.svd(W, compute_uv=True)
-                
+        #u, s, vh = sp.linalg.svd(W, compute_uv=True)
+        u, s, vh = svd_full(W, method=svd_method)
+
         # s is ordered highest to lowest
         # i.e.  
         #    s = np.array([5,4,3,2,1])
@@ -3444,7 +3450,7 @@ class WeightWatcher(object):
                 new_W = self.smooth_W(old_W, num_smooth) 
             elif num_smooth < 0:
                 logger.debug("Chomping off top {} singular values".format(-num_smooth))
-                new_W = self.smooth_W_alt(old_W, num_smooth) 
+                new_W = self.smooth_W_alt(old_W, num_smooth, svd_method=params[SVD_METHOD])
             else:
                 logger.warning("Not smoothing {} {}, ncomp=0".format(layer_id, layer_name))
                 new_W  = old_W
@@ -3480,7 +3486,7 @@ class WeightWatcher(object):
                             new_W[i,j,:,:] = self.smooth_W(old_W[i,j,:,:], num_smooth)
                         elif num_smooth < 0:
                             logger.debug("Chomping off top {} singular values".format(-num_smooth))
-                            new_W[i,j,:,:] = self.smooth_W_alt(old_W[i,j,:,:], num_smooth)
+                            new_W[i,j,:,:] = self.smooth_W_alt(old_W[i,j,:,:], num_smooth, svd_method=params[SVD_METHOD])
                         else:
                             new_W[i,j,:,:] = old_W[i,j,:,:]
                  
@@ -3497,7 +3503,7 @@ class WeightWatcher(object):
                             new_W[:,:,i,j] = self.smooth_W(old_W[:,:,i,j], num_smooth)
                         elif num_smooth < 0:
                             logger.debug("Chomping off top {} singular values".format(-num_smooth))
-                            new_W[:,:,i,j] = self.smooth_W_alt(old_W[:,:,i,j], num_smooth)
+                            new_W[:,:,i,j] = self.smooth_W_alt(old_W[:,:,i,j], num_smooth, svd_method=params[SVD_METHOD])
                         else:
                             new_W[:,:,i,j] = old_W[:,:,i,j]
                         

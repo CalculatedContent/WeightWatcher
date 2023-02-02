@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import logging
 from copy import deepcopy
 import pickle, time
 from shutil import copy
@@ -10,7 +10,6 @@ from joblib._multiprocessing_helpers import mp
 import matplotlib
 import powerlaw
 from scipy import optimize, stats
-from scipy.linalg import svd
 from sklearn.neighbors import KernelDensity
 import tqdm
 
@@ -23,6 +22,39 @@ import scipy.stats as stats
 
 from .constants import *
 
+# PyTorch has 2 separate SVD methods, one for the vals, and one for the factorization
+# https://pytorch.org/docs/stable/generated/torch.linalg.svd.html
+# https://pytorch.org/docs/stable/generated/torch.linalg.svdvals.html
+_svd_full_accurate = lambda W: sp.linalg.svd(W, compute_uv=True)
+_svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
+try:
+    import torch
+    if torch.cuda.is_available():
+        to_np = lambda t: t.to("cpu").numpy()
+        def svd_full_fast(M):
+            U, S, Vh = torch.linalg.svd(torch.Tensor(M).to("cuda"))
+            return to_np(U), to_np(S), to_np(Vh)
+        def svd_vals_fast(M):
+            S = torch.linalg.svd_vals(torch.Tensor(M).to("cuda"))
+            return to_np(S)
+    else:
+        logger = logging.getLogger(WW_NAME)
+        logger.warning("PyTorch is available but CUDA is not. Defaulting to scipy for SVD")
+        raise ModuleNotFoundError()
+except ModuleNotFoundError:
+    # if torch / cuda are not available, default to scipy
+    _svd_full_fast = _svd_full_accurate
+    _svd_vals_fast = _svd_vals_accurate
+
+def svd_full(W, method=ACCURATE_SVD):
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
+    if method == ACCURATE_SVD: return _svd_full_accurate(W)
+    if method == FAST_SVD:     return _svd_full_fast(W)
+
+def svd_vals(W, method=ACCURATE_SVD):
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
+    if method == ACCURATE_SVD: return _svd_vals_accurate(W)
+    if method == FAST_SVD:     return _svd_vals_fast(W)
 
 # ## Generalized Entropy
 # Trace Normalization
@@ -126,7 +158,7 @@ def hard_rank(W, sv):
 
 
 # uss FAST SVD method: notice we miss 1 eigenvalue here...using 
-def get_shuffled_eigenvalues(W, layer=7, num=100):
+def get_shuffled_eigenvalues(W, layer=7, num=100, method=ACCURATE_SVD):
     "get eigenvalues for this model, but shuffled, num times"
     
     N, M = W.shape[0], W.shape[1]       
@@ -140,7 +172,7 @@ def get_shuffled_eigenvalues(W, layer=7, num=100):
         np.random.shuffle(W_shuf)
         W_shuf = W_shuf.reshape([N, M])
 
-        u, sv, vh = svd(W_shuf)
+        sv = svd_vals(W_shuf, method=method)
 
         eigenvalues.extend(sv * sv)
         
@@ -268,11 +300,11 @@ def stable_rank(evals):
     return np.sum(evals) / np.max(evals)
 
 
-def matrix_soft_rank(W):
+def matrix_soft_rank(W, method=ACCURATE_SVD):
     """compute the matrix soft rank (or stable rank), given rectangular numpy matrix W""
     See:  https://arxiv.org/abs/1810.01075 """ 
     W = W / np.trace(W)
-    u, sv, vh = svd(W)
+    sv = svd_vals(W, method=method)
     return stable_rank(sv * sv)
 
 

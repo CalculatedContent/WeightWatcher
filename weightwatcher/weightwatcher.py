@@ -2075,7 +2075,7 @@ class WeightWatcher(object):
                 fix_fingers=False, xmin_max = None,  max_N=10,
                 fit=PL, sparsify=True, 
                 detX=False,
-                svd_method=ACCURATE_SVD,
+                svd_method=FAST_SVD,
                 tolerance=WEAK_RANK_LOSS_TOLERANCE,
                 start_ids=0):
         """
@@ -2173,7 +2173,7 @@ class WeightWatcher(object):
         detX:  bool, default: False 
             compute the Trace Log Norm / DetX=1 constraint, and plot if plot True
 
-        svd_method:  string, default: 'accurate'
+        svd_method:  string, default: 'fast'
             Must be one of "fast" or "accurate". Determines the method by which eigenvalues are calcualted.
             
         tolerance: float, default 0.000001

@@ -31,11 +31,11 @@ try:
     import torch
     if torch.cuda.is_available():
         to_np = lambda t: t.to("cpu").numpy()
-        def svd_full_fast(M):
+        def _svd_full_fast(M):
             U, S, Vh = torch.linalg.svd(torch.Tensor(M).to("cuda"))
             return to_np(U), to_np(S), to_np(Vh)
-        def svd_vals_fast(M):
-            S = torch.linalg.svd_vals(torch.Tensor(M).to("cuda"))
+        def _svd_vals_fast(M):
+            S = torch.linalg.svdvals(torch.Tensor(M).to("cuda"))
             return to_np(S)
     else:
         logger = logging.getLogger(WW_NAME)

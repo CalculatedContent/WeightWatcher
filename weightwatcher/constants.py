@@ -15,6 +15,7 @@
 
 from enum import IntFlag, auto, Enum
 
+WW_NAME = 'weightwatcher'
 
 ERROR = -1
 
@@ -23,8 +24,11 @@ DEF_SAVE_DIR = 'ww-img'
 LAYERS = 'layers'
 START_IDS = 'layer_ids_start' # 0 | 1
 
-TRUNCATED_SVD = 'truncated_svd'
-FULL_SVD = 'full_svd'
+TRUNCATED_SVD = 'truncated'
+ACCURATE_SVD = 'accurate'
+FAST_SVD = 'fast'
+SVD_METHOD = 'svd_method'
+VALID_SVD_METHODS = [FAST_SVD, ACCURATE_SVD]    # Add TRUNCATED_SVD here when ready to enable
 
 # fi_ fingers options
 XMIN_PEAK = 'xmin_peak'
@@ -77,7 +81,6 @@ GLOROT_FIT = 'glorot_fit'
 WW2X = 'ww2x'
 VECTORS = 'vectors'
 SMOOTH = 'smooth'
-SVD_METHOD = 'svd_method'
 FIX_FINGERS = 'fix_fingers'
 MP_FIT = 'mp_fit'
 FIT = 'fit'
@@ -116,7 +119,7 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
                   SAVEDIR:DEF_SAVE_DIR, SAVEFIG:True, RESCALE:True, PLOT:False,
                   DELTA_ES:False, INTRA:False, CHANNELS_STR:None, CONV2D_FFT:False, 
                   WW2X:False, VECTORS:True, SMOOTH:None, STACKED:False, 
-                  SVD_METHOD:FULL_SVD,  FIX_FINGERS:None, FIT:POWER_LAW, 
+                  SVD_METHOD:ACCURATE_SVD,  FIX_FINGERS:None, FIT:POWER_LAW,
                   SPARSIFY: True, DETX: True,  MP_FIT:False,
                   MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, MAX_N:DEFAULT_MAX_N,
                   TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False}

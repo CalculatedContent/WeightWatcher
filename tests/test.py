@@ -1575,9 +1575,45 @@ class Test_Distances(unittest.TestCase):
 		
 		pass
 	
-	
-	
-	
+
+class TestPyTorchSVD(unittest.TestCase):
+	"""
+	Tests for discrepancies between the scipy and torch implementations of SVD.
+	"""
+
+	@classmethod
+	def setUpClass(cls):
+		"""I run only once for this class
+		"""
+
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
+
+	def test_torch_svd(self):
+		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:
+			print("Warning: Unable to test PyTorch SVD method because torch / CUDA not available")
+			return
+
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
+
+		from time import time
+		start = time()
+		details_fast = watcher.analyze(layers=[25,28,31], svd_method="fast")
+		print(f"PyTorch (fast): {time() - start}s")
+		start = time()
+		details_accurate = watcher.analyze(layers=[25,28,31], svd_method="accurate")
+		print(f"SciPy (accurate): {time() - start}s")
+
+		for f in ["alpha", "alpha_weighted", "D", "sigma", "sv_max", "xmin"]:
+			self.assertLess(np.max(np.abs(details_fast.alpha - details_accurate.alpha)), 0.0025)
+
+		for f in ["spectral_norm", "stable_rank", "xmax",]:
+			self.assertLess(np.max(np.abs(details_fast.alpha - details_accurate.alpha)), 0.02)
+
+
 	
 if __name__ == '__main__':
 	unittest.main()

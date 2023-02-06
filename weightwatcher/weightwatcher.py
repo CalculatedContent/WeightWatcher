@@ -1283,13 +1283,6 @@ class WeightWatcher(object):
 
         banner = ""
         if framework==FRAMEWORK.KERAS:
-            #import tensorflow as tf
-            #from tensorflow import keras
-            
-            #global tf, keras
-            #tf = importlib.import_module('tensorflow')
-            #keras = importlib.import_module('tensorflow.keras')
-        
             banner = f"tensorflow version {tf_version}"+"\n"
             banner += f"keras version {keras_version}"
             

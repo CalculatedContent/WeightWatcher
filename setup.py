@@ -48,7 +48,7 @@ setup(
     packages = ["weightwatcher"],
     include_package_data = True,
     test_suite = 'tests',
-    python_requires = ">= 3.3.*",
+    python_requires = ">= 3.3",
     install_requires = ['numpy',
                         'pandas',
                         'matplotlib',

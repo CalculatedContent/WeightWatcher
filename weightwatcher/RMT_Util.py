@@ -135,6 +135,26 @@ except ImportError:
     pass
 
 
+# Handle onnx imports
+onnx_version = "unavailable"
+onnx_get_weights = lambda node: \
+    logger.fatal("Attempting to load an ONNX weight matrix but onnx is unavailable")
+onnx_set_weights = lambda node: \
+    logger.fatal("Attempting to set an ONNX weight matrix but onnx is unavailable")
+try:
+    import onnx
+    onnx_version = onnx.__version__
+
+    from onnx import numpy_helper
+    onnx_get_weights = lambda node: numpy_helper.to_array(node) #@pydevd suppress warning
+    onnx_set_weights = lambda layer, idx, W: \
+        layer.model.graph.initializer[idx].CopyFrom(
+            numpy_helper.from_array(W) #@pydevd suppress warning
+        )
+except ImportError:
+    pass
+
+
 # ## Generalized Entropy
 # Trace Normalization
 #def matrix_entropy_(W):

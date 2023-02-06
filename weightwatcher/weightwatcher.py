@@ -163,13 +163,10 @@ class ONNXLayer:
             logger.debug("Unsupported ONNX Layer, dims = {}".format(self.dims))
             
     def get_weights(self):
-        return numpy_helper.to_array(self.node) #@pydevd suppress warning
+        return onnx_get_weights(self.node)
 
-
-    
     def set_weights(self, idx, W):
-        T = numpy_helper.from_array(W) #@pydevd suppress warning
-        self.model.graph.initializer[idx].CopyFrom(T)
+        onnx_set_weights(self, idx, W)
 
         
         
@@ -425,8 +422,7 @@ class WWLayer:
   
 
         elif self.framework == FRAMEWORK.ONNX:      
-            onnx_layer = self.layer
-            weights = onnx_layer.get_weights()
+            weights = self.layer.get_weights()
             has_weights = True
             
         elif self.framework == FRAMEWORK.PYSTATEDICT:      
@@ -1306,9 +1302,7 @@ class WeightWatcher(object):
             banner = f"torch version {torch_version}"
 
         elif framework==FRAMEWORK.ONNX:
-            import onnx
-            from onnx import numpy_helper
-            banner = f"onnx version {onnx.__version__}"   
+            banner = f"onnx version {onnx_version}"
         else:
             logger.warning(f"Unknown or unsupported framework {framework}")
             banner = ""

@@ -313,25 +313,8 @@ class WWLayer:
         
         # Keras TF 2.x types
         if self.framework==FRAMEWORK.KERAS:
-            if isinstance(layer, keras.layers.Dense) or 'Dense' in str(type(layer)):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif isinstance(layer, keras.layers.Conv1D)  or  'Conv1D' in str(type(layer)):               
-                the_type = LAYER_TYPE.CONV1D
-            
-            elif isinstance(layer, keras.layers.Conv2D) or 'Conv2D' in str(type(layer)):             
-                the_type = LAYER_TYPE.CONV2D
-                                
-            elif isinstance(layer, keras.layers.Flatten) or 'Flatten' in str(type(layer)):
-                the_type = LAYER_TYPE.FLATTENED
-                
-            elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in str(type(layer)):
-                the_type = LAYER_TYPE.EMBEDDING
-                
-            elif isinstance(layer, tf.keras.layers.LayerNormalization) or 'LayerNorn' in str(type(layer)):
-                the_type = LAYER_TYPE.NORM
-        
-        # PyTorch        
+            the_type = keras_infer_T(layer)
+        # PyTorch
         elif self.framework==FRAMEWORK.PYTORCH:
             the_type = torch_infer_T(layer)
 
@@ -1261,8 +1244,8 @@ class WeightWatcher(object):
     def banner(self):
         versions = "\npython      version {}".format(sys.version)
         versions += "\nnumpy       version {}".format(np.__version__)            
-        #versions += "\ntensforflow version {}".format(tf.__version__)
-        #versions += "\nkeras       version {}".format(tf.keras.__version__)
+        #versions += "\ntensforflow version {}".format(tf_version)
+        #versions += "\nkeras       version {}".format(keras_version)
         return "\n{}{}".format(self.header(), versions)
 
     def __repr__(self):
@@ -1312,12 +1295,12 @@ class WeightWatcher(object):
             #import tensorflow as tf
             #from tensorflow import keras
             
-            global tf, keras
-            tf = importlib.import_module('tensorflow')
-            keras = importlib.import_module('tensorflow.keras')
+            #global tf, keras
+            #tf = importlib.import_module('tensorflow')
+            #keras = importlib.import_module('tensorflow.keras')
         
-            banner = f"tensorflow version {tf.__version__}"+"\n"
-            banner += f"keras version {keras.__version__}"
+            banner = f"tensorflow version {tf_version}"+"\n"
+            banner += f"keras version {keras_version}"
             
         elif framework==FRAMEWORK.PYTORCH or framework==FRAMEWORK.PYSTATEDICT:
             banner = f"torch version {torch_version}"

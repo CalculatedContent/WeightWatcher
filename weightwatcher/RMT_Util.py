@@ -23,14 +23,19 @@ import scipy.stats as stats
 from .constants import *
 
 # PyTorch has 2 separate SVD methods, one for the vals, and one for the factorization
+# https://pytorch.org/docs/stable/generated/torch.linalg.eig.html
 # https://pytorch.org/docs/stable/generated/torch.linalg.svd.html
 # https://pytorch.org/docs/stable/generated/torch.linalg.svdvals.html
+_eig_full_accurate = lambda W: sp.linalg.eig(W)
 _svd_full_accurate = lambda W: sp.linalg.svd(W, compute_uv=True)
 _svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
 try:
     import torch
     if torch.cuda.is_available():
         to_np = lambda t: t.to("cpu").numpy()
+        def _eig_full_fast(M):
+            L, V = torch.linalg.eig(torch.Tensor(M).to("cuda"))
+            return to_np(L), to_np(V)
         def _svd_full_fast(M):
             U, S, Vh = torch.linalg.svd(torch.Tensor(M).to("cuda"))
             return to_np(U), to_np(S), to_np(Vh)
@@ -38,13 +43,20 @@ try:
             S = torch.linalg.svdvals(torch.Tensor(M).to("cuda"))
             return to_np(S)
     else:
+        # Handle torch related functions here that do not need CUDA, such as loading models.
         logger = logging.getLogger(WW_NAME)
         logger.warning("PyTorch is available but CUDA is not. Defaulting to scipy for SVD")
-        raise ModuleNotFoundError()
-except ModuleNotFoundError:
+        raise ImportError()
+except ImportError:
     # if torch / cuda are not available, default to scipy
+    _eig_full_fast = _eig_full_accurate
     _svd_full_fast = _svd_full_accurate
     _svd_vals_fast = _svd_vals_accurate
+
+def eig_full(W, method=ACCURATE_SVD):
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
+    if method == ACCURATE_SVD: return _eig_full_accurate(W)
+    if method == FAST_SVD:     return _eig_full_fast(W)
 
 def svd_full(W, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD

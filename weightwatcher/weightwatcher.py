@@ -21,11 +21,9 @@ import logging
 #from deprecated import deprecated
 import inspect
 
-
 import numpy as np
 import pandas as pd
 import scipy as sp
-import scipy.linalg
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -1611,7 +1609,6 @@ class WeightWatcher(object):
 
             W = W.astype(float)
             logger.debug("Running {} SVD:  W.shape={}  n_comp = {}".format(params[SVD_METHOD], W.shape, n_comp))
-            #sv = sp.linalg.svd(W, compute_uv=False)
             sv = svd_vals(W, method=params[SVD_METHOD])
             sv = sv.flatten()
             sv = np.sort(sv)[-n_comp:]
@@ -2606,7 +2603,6 @@ class WeightWatcher(object):
                 W = Wrand.reshape(W.shape)
                 W = W.astype(float)
                 logger.debug("Running Randomized Full SVD")
-                #sv = sp.linalg.svd(W, compute_uv=False)
                 sv = svd_vals(W, method=params[SVD_METHOD])
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]    
@@ -3258,7 +3254,6 @@ class WeightWatcher(object):
         # TODO: replace this with truncated SVD
         # can't we just apply the svd transform...test
         # keep this old method for historical comparison
-        #u, s, vh = sp.linalg.svd(W, compute_uv=True)
         u, s, vh = svd_full(W, method=svd_method)
 
         # s is ordered highest to lowest
@@ -3700,7 +3695,7 @@ class WeightWatcher(object):
             else:
                 X = np.matmul(W.T, W)
 
-            evals, V = sp.linalg.eig(X)
+            evals, V = eig_full(W, method=params[SVD_METHOD])
             all_evals.extend(evals)
 
             vec_entropies = []

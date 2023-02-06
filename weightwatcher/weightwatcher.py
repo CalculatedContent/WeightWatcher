@@ -333,20 +333,7 @@ class WWLayer:
         
         # PyTorch        
         elif self.framework==FRAMEWORK.PYTORCH:
-            if isinstance(layer, nn.Linear) or 'Linear' in str(type(layer)):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif isinstance(layer, nn.Conv1d) or  'Conv1D' in str(type(layer)):
-                the_type = LAYER_TYPE.CONV1D
-            
-            elif isinstance(layer, nn.Conv2d) or 'Conv2D' in str(type(layer)):
-                the_type = LAYER_TYPE.CONV2D
-                
-            elif isinstance(layer, nn.Embedding) or 'Embedding' in str(type(layer)):
-                the_type = LAYER_TYPE.EMBEDDING
-    
-            elif  'norm' in str(type(layer)).lower() :
-                the_type = LAYER_TYPE.NORM
+            the_type = torch_infer_T(layer)
 
         # ONNX
         elif self.framework==FRAMEWORK.ONNX:
@@ -1333,12 +1320,7 @@ class WeightWatcher(object):
             banner += f"keras version {keras.__version__}"
             
         elif framework==FRAMEWORK.PYTORCH or framework==FRAMEWORK.PYSTATEDICT:
-            
-            global torch, nn
-            torch = importlib.import_module('torch')
-            nn = importlib.import_module('torch.nn')
-
-            banner = f"torch version {torch.__version__}"
+            banner = f"torch version {torch_version}"
 
         elif framework==FRAMEWORK.ONNX:
             import onnx
@@ -3603,12 +3585,8 @@ class WeightWatcher(object):
             layer.set_weights(W)
             
         elif framework==FRAMEWORK.PYTORCH:
-            # see: https://discuss.pytorch.org/t/fix-bias-and-weights-of-a-layer/75120/4
-            # this may be deprecated
-            layer.weight.data = torch.from_numpy(W)
-            if B is not None:
-                layer.bias.data = torch.from_numpy(B)
-                
+            torch_set_WMs(layer, W, B)
+
         # See; https://github.com/onnx/onnx/issues/2978
         elif framework==FRAMEWORK.ONNX:
             #if B is not None:
@@ -3861,8 +3839,10 @@ class WeightWatcher(object):
         config = {}
         
         if os.path.exists(state_dict_filename):
-            state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
+            state_dict = torch_load_sd(state_dict_filename)
             logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
+        else:
+            logger.fatal(f"PyTorch state_dict {state_dict_filename} not found")
     
         weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
         

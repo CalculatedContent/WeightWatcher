@@ -22,6 +22,8 @@ import scipy.stats as stats
 
 from .constants import *
 
+logger = logging.getLogger(WW_NAME)
+
 # PyTorch has 2 separate SVD methods, one for the vals, and one for the factorization
 # https://pytorch.org/docs/stable/generated/torch.linalg.eig.html
 # https://pytorch.org/docs/stable/generated/torch.linalg.svd.html
@@ -29,8 +31,42 @@ from .constants import *
 _eig_full_accurate = lambda W: sp.linalg.eig(W)
 _svd_full_accurate = lambda W: sp.linalg.svd(W, compute_uv=True)
 _svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
+
+torch_version = None
+# These functions will all be overridden iff torch is available.
+torch_load_sd = lambda file_name: \
+    logger.fatal("Attempting to load a PyTorch state dict but torch is unavailable")
+torch_infer_T = lambda layer: \
+    logger.fatal("Attempting to infer a PyTorch layer type but torch is unavailable")
+torch_set_WMs = lambda layer, W, B: \
+    logger.fatal("Attempting to set a PyTorch weight matrix but torch is unavailable")
+
 try:
     import torch
+
+    # Handle torch related functions here that do not need CUDA, such as loading models.
+    torch_load_sd = lambda sd_filename: \
+        torch.load(sd_filename, map_location=torch.device('cpu'))
+
+    torch_version = torch.__version__
+    def _infer_T(layer):
+        type_name = str(type(layer))
+        if   isinstance(layer, torch.nn.Linear   ) or 'Linear'    in type_name: return LAYER_TYPE.DENSE
+        elif isinstance(layer, torch.nn.Conv1d   ) or 'Conv1D'    in type_name: return LAYER_TYPE.CONV1D
+        elif isinstance(layer, torch.nn.Conv2d   ) or 'Conv2D'    in type_name: return LAYER_TYPE.CONV2D
+        elif isinstance(layer, torch.nn.Embedding) or 'Embedding' in type_name: return LAYER_TYPE.EMBEDDING
+        elif 'norm' in type_name.lower():
+            return LAYER_TYPE.NORM
+        return LAYER_TYPE.UNKNOWN
+    torch_infer_T = _infer_T
+
+    def _set_WMs(layer, W, B):
+        with torch.no_grad():
+            layer.weight = torch.nn.Parameter(torch.from_numpy(W))
+            if B is not None:
+                layer.bias = torch.nn.Parameter(torch.from_numpy(B))
+    torch_set_WMs = _set_WMs
+
     if torch.cuda.is_available():
         to_np = lambda t: t.to("cpu").numpy()
         def _eig_full_fast(M):
@@ -43,8 +79,6 @@ try:
             S = torch.linalg.svdvals(torch.Tensor(M).to("cuda"))
             return to_np(S)
     else:
-        # Handle torch related functions here that do not need CUDA, such as loading models.
-        logger = logging.getLogger(WW_NAME)
         logger.warning("PyTorch is available but CUDA is not. Defaulting to scipy for SVD")
         raise ImportError()
 except ImportError:
@@ -54,7 +88,7 @@ except ImportError:
     _svd_vals_fast = _svd_vals_accurate
 
 def eig_full(W, method=ACCURATE_SVD):
-    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD?
     if method == ACCURATE_SVD: return _eig_full_accurate(W)
     if method == FAST_SVD:     return _eig_full_fast(W)
 

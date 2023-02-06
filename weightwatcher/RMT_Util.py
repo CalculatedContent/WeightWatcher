@@ -7,7 +7,6 @@ import sys, os
 import warnings
 
 from joblib._multiprocessing_helpers import mp
-import matplotlib
 import powerlaw
 from scipy import optimize, stats
 from sklearn.neighbors import KernelDensity
@@ -15,22 +14,63 @@ import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import scipy as sp
 import scipy.stats as stats
 
 
 from .constants import *
 
+logger = logging.getLogger(WW_NAME)
+
 # PyTorch has 2 separate SVD methods, one for the vals, and one for the factorization
+# https://pytorch.org/docs/stable/generated/torch.linalg.eig.html
 # https://pytorch.org/docs/stable/generated/torch.linalg.svd.html
 # https://pytorch.org/docs/stable/generated/torch.linalg.svdvals.html
+_eig_full_accurate = lambda W: sp.linalg.eig(W)
 _svd_full_accurate = lambda W: sp.linalg.svd(W, compute_uv=True)
 _svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
+
+# Handle PyTorch imports
+torch_version = "unavailable"
+# These functions will all be overridden iff torch is available.
+torch_load_sd = lambda file_name: \
+    logger.fatal("Attempting to load a PyTorch state dict but torch is unavailable")
+torch_infer_T = lambda layer: \
+    logger.fatal("Attempting to infer a PyTorch layer type but torch is unavailable")
+torch_set_WMs = lambda layer, W, B: \
+    logger.fatal("Attempting to set a PyTorch weight matrix but torch is unavailable")
+
 try:
     import torch
+
+    # Handle torch related functions here that do not need CUDA, such as loading models.
+    torch_load_sd = lambda sd_filename: \
+        torch.load(sd_filename, map_location=torch.device('cpu'))
+
+    torch_version = torch.__version__
+    def _infer_T(layer):
+        type_name = str(type(layer))
+        if   isinstance(layer, torch.nn.Linear   ) or 'Linear'    in type_name: return LAYER_TYPE.DENSE
+        elif isinstance(layer, torch.nn.Conv1d   ) or 'Conv1D'    in type_name: return LAYER_TYPE.CONV1D
+        elif isinstance(layer, torch.nn.Conv2d   ) or 'Conv2D'    in type_name: return LAYER_TYPE.CONV2D
+        elif isinstance(layer, torch.nn.Embedding) or 'Embedding' in type_name: return LAYER_TYPE.EMBEDDING
+        elif 'norm' in type_name.lower():
+            return LAYER_TYPE.NORM
+        return LAYER_TYPE.UNKNOWN
+    torch_infer_T = _infer_T
+
+    def _set_WMs(layer, W, B):
+        with torch.no_grad():
+            layer.weight = torch.nn.Parameter(torch.from_numpy(W))
+            if B is not None:
+                layer.bias = torch.nn.Parameter(torch.from_numpy(B))
+    torch_set_WMs = _set_WMs
+
     if torch.cuda.is_available():
         to_np = lambda t: t.to("cpu").numpy()
+        def _eig_full_fast(M):
+            L, V = torch.linalg.eig(torch.Tensor(M).to("cuda"))
+            return to_np(L), to_np(V)
         def _svd_full_fast(M):
             U, S, Vh = torch.linalg.svd(torch.Tensor(M).to("cuda"))
             return to_np(U), to_np(S), to_np(Vh)
@@ -38,13 +78,18 @@ try:
             S = torch.linalg.svdvals(torch.Tensor(M).to("cuda"))
             return to_np(S)
     else:
-        logger = logging.getLogger(WW_NAME)
         logger.warning("PyTorch is available but CUDA is not. Defaulting to scipy for SVD")
-        raise ModuleNotFoundError()
-except ModuleNotFoundError:
+        raise ImportError()
+except ImportError:
     # if torch / cuda are not available, default to scipy
+    _eig_full_fast = _eig_full_accurate
     _svd_full_fast = _svd_full_accurate
     _svd_vals_fast = _svd_vals_accurate
+
+def eig_full(W, method=ACCURATE_SVD):
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD?
+    if method == ACCURATE_SVD: return _eig_full_accurate(W)
+    if method == FAST_SVD:     return _eig_full_fast(W)
 
 def svd_full(W, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
@@ -55,6 +100,58 @@ def svd_vals(W, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
     if method == ACCURATE_SVD: return _svd_vals_accurate(W)
     if method == FAST_SVD:     return _svd_vals_fast(W)
+
+# Handle keras imports
+keras_version = "unavailable"
+# These functions will all be overridden iff keras is available.
+keras_infer_T = lambda layer: \
+    logger.fatal("Attempting to infer a Keras layer type but keras is unavailable")
+
+try:
+    from tensorflow import keras
+    # Handle keras related functions here that do not need CUDA, such as loading models.
+    keras_version = keras.__version__
+    def _infer_T(layer):
+        type_name = str(type(layer))
+        if   isinstance(layer, keras.layers.Dense    ) or 'Dense'     in type_name: return LAYER_TYPE.DENSE
+        elif isinstance(layer, keras.layers.Conv1d   ) or 'Conv1D'    in type_name: return LAYER_TYPE.CONV1D
+        elif isinstance(layer, keras.layers.Conv2d   ) or 'Conv2D'    in type_name: return LAYER_TYPE.CONV2D
+        elif isinstance(layer, keras.layers.Flatten  ) or 'Flatten'   in type_name: return LAYER_TYPE.FLATTENED
+        elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in type_name: return LAYER_TYPE.EMBEDDING
+        elif isinstance(layer, keras.layers.LayerNormalization) or 'LayerNorm' in type_name:
+            return LAYER_TYPE.NORM
+        return LAYER_TYPE.UNKNOWN
+    keras_infer_T = _infer_T
+except ImportError:
+    pass
+
+# Handle tensorflow imports
+tf_version = "unavailable"
+try:
+    from tensorflow import __version__ as tf_version
+except ImportError:
+    pass
+
+
+# Handle onnx imports
+onnx_version = "unavailable"
+onnx_get_weights = lambda node: \
+    logger.fatal("Attempting to load an ONNX weight matrix but onnx is unavailable")
+onnx_set_weights = lambda node: \
+    logger.fatal("Attempting to set an ONNX weight matrix but onnx is unavailable")
+try:
+    import onnx
+    onnx_version = onnx.__version__
+
+    from onnx import numpy_helper
+    onnx_get_weights = lambda node: numpy_helper.to_array(node) #@pydevd suppress warning
+    onnx_set_weights = lambda layer, idx, W: \
+        layer.model.graph.initializer[idx].CopyFrom(
+            numpy_helper.from_array(W) #@pydevd suppress warning
+        )
+except ImportError:
+    pass
+
 
 # ## Generalized Entropy
 # Trace Normalization
@@ -600,6 +697,7 @@ def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.1, 1.25, 0.01)
     
     return brute_output[0][0], brute_output[1]  # sigma_optimized, resid
 
+# import pandas as pd
 # def fit_mp_findspikes(evals, Q):
 #     '''Remove eigen (spikes) from largest to smallest'''
 #     evals = sorted(evals)[::-1]

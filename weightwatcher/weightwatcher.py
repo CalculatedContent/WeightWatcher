@@ -16,23 +16,17 @@ import sys, os, re, io
 import glob, json
 import traceback
 import tempfile
-import logging
 
 #from deprecated import deprecated
 import inspect
 
-
 import numpy as np
 import pandas as pd
-import scipy as sp
-import scipy.linalg
-
-import matplotlib
+from scipy import stats
 import matplotlib.pyplot as plt
 import powerlaw
 
 
-import sklearn
 from sklearn.decomposition import TruncatedSVD
 
 from copy import deepcopy
@@ -57,7 +51,6 @@ import importlib
 
 from .RMT_Util import *
 from .constants import *
-from numpy import vectorize
 
 
 # WW_NAME moved to constants.py
@@ -165,13 +158,10 @@ class ONNXLayer:
             logger.debug("Unsupported ONNX Layer, dims = {}".format(self.dims))
             
     def get_weights(self):
-        return numpy_helper.to_array(self.node) #@pydevd suppress warning
+        return onnx_get_weights(self.node)
 
-
-    
     def set_weights(self, idx, W):
-        T = numpy_helper.from_array(W) #@pydevd suppress warning
-        self.model.graph.initializer[idx].CopyFrom(T)
+        onnx_set_weights(self, idx, W)
 
         
         
@@ -315,40 +305,10 @@ class WWLayer:
         
         # Keras TF 2.x types
         if self.framework==FRAMEWORK.KERAS:
-            if isinstance(layer, keras.layers.Dense) or 'Dense' in str(type(layer)):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif isinstance(layer, keras.layers.Conv1D)  or  'Conv1D' in str(type(layer)):               
-                the_type = LAYER_TYPE.CONV1D
-            
-            elif isinstance(layer, keras.layers.Conv2D) or 'Conv2D' in str(type(layer)):             
-                the_type = LAYER_TYPE.CONV2D
-                                
-            elif isinstance(layer, keras.layers.Flatten) or 'Flatten' in str(type(layer)):
-                the_type = LAYER_TYPE.FLATTENED
-                
-            elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in str(type(layer)):
-                the_type = LAYER_TYPE.EMBEDDING
-                
-            elif isinstance(layer, tf.keras.layers.LayerNormalization) or 'LayerNorn' in str(type(layer)):
-                the_type = LAYER_TYPE.NORM
-        
-        # PyTorch        
+            the_type = keras_infer_T(layer)
+        # PyTorch
         elif self.framework==FRAMEWORK.PYTORCH:
-            if isinstance(layer, nn.Linear) or 'Linear' in str(type(layer)):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif isinstance(layer, nn.Conv1d) or  'Conv1D' in str(type(layer)):
-                the_type = LAYER_TYPE.CONV1D
-            
-            elif isinstance(layer, nn.Conv2d) or 'Conv2D' in str(type(layer)):
-                the_type = LAYER_TYPE.CONV2D
-                
-            elif isinstance(layer, nn.Embedding) or 'Embedding' in str(type(layer)):
-                the_type = LAYER_TYPE.EMBEDDING
-    
-            elif  'norm' in str(type(layer)).lower() :
-                the_type = LAYER_TYPE.NORM
+            the_type = torch_infer_T(layer)
 
         # ONNX
         elif self.framework==FRAMEWORK.ONNX:
@@ -457,8 +417,7 @@ class WWLayer:
   
 
         elif self.framework == FRAMEWORK.ONNX:      
-            onnx_layer = self.layer
-            weights = onnx_layer.get_weights()
+            weights = self.layer.get_weights()
             has_weights = True
             
         elif self.framework == FRAMEWORK.PYSTATEDICT:      
@@ -1203,7 +1162,7 @@ class WWStackedLayerIterator(WWLayerIterator):
             #Height, Width = W.shape[0], W.shape[1]
                
             #W = W/np.linalg.norm(W)
-            W = (W - np.median(W))/sp.stats.median_abs_deviation(W)
+            W = (W - np.median(W))/stats.median_abs_deviation(W)
             W = np.pad(W, ((0, 0), (0, Mmax-Width)) ) 
             Wmats_padded.append(W)
                 
@@ -1276,8 +1235,8 @@ class WeightWatcher(object):
     def banner(self):
         versions = "\npython      version {}".format(sys.version)
         versions += "\nnumpy       version {}".format(np.__version__)            
-        #versions += "\ntensforflow version {}".format(tf.__version__)
-        #versions += "\nkeras       version {}".format(tf.keras.__version__)
+        #versions += "\ntensforflow version {}".format(tf_version)
+        #versions += "\nkeras       version {}".format(keras_version)
         return "\n{}{}".format(self.header(), versions)
 
     def __repr__(self):
@@ -1324,28 +1283,14 @@ class WeightWatcher(object):
 
         banner = ""
         if framework==FRAMEWORK.KERAS:
-            #import tensorflow as tf
-            #from tensorflow import keras
-            
-            global tf, keras
-            tf = importlib.import_module('tensorflow')
-            keras = importlib.import_module('tensorflow.keras')
-        
-            banner = f"tensorflow version {tf.__version__}"+"\n"
-            banner += f"keras version {keras.__version__}"
+            banner = f"tensorflow version {tf_version}"+"\n"
+            banner += f"keras version {keras_version}"
             
         elif framework==FRAMEWORK.PYTORCH or framework==FRAMEWORK.PYSTATEDICT:
-            
-            global torch, nn
-            torch = importlib.import_module('torch')
-            nn = importlib.import_module('torch.nn')
-
-            banner = f"torch version {torch.__version__}"
+            banner = f"torch version {torch_version}"
 
         elif framework==FRAMEWORK.ONNX:
-            import onnx
-            from onnx import numpy_helper
-            banner = f"onnx version {onnx.__version__}"   
+            banner = f"onnx version {onnx_version}"
         else:
             logger.warning(f"Unknown or unsupported framework {framework}")
             banner = ""
@@ -1611,7 +1556,6 @@ class WeightWatcher(object):
 
             W = W.astype(float)
             logger.debug("Running {} SVD:  W.shape={}  n_comp = {}".format(params[SVD_METHOD], W.shape, n_comp))
-            #sv = sp.linalg.svd(W, compute_uv=False)
             sv = svd_vals(W, method=params[SVD_METHOD])
             sv = sv.flatten()
             sv = np.sort(sv)[-n_comp:]
@@ -2606,7 +2550,6 @@ class WeightWatcher(object):
                 W = Wrand.reshape(W.shape)
                 W = W.astype(float)
                 logger.debug("Running Randomized Full SVD")
-                #sv = sp.linalg.svd(W, compute_uv=False)
                 sv = svd_vals(W, method=params[SVD_METHOD])
                 sv = sv.flatten()
                 sv = np.sort(sv)[-n_comp:]    
@@ -3258,7 +3201,6 @@ class WeightWatcher(object):
         # TODO: replace this with truncated SVD
         # can't we just apply the svd transform...test
         # keep this old method for historical comparison
-        #u, s, vh = sp.linalg.svd(W, compute_uv=True)
         u, s, vh = svd_full(W, method=svd_method)
 
         # s is ordered highest to lowest
@@ -3608,12 +3550,8 @@ class WeightWatcher(object):
             layer.set_weights(W)
             
         elif framework==FRAMEWORK.PYTORCH:
-            # see: https://discuss.pytorch.org/t/fix-bias-and-weights-of-a-layer/75120/4
-            # this may be deprecated
-            layer.weight.data = torch.from_numpy(W)
-            if B is not None:
-                layer.bias.data = torch.from_numpy(B)
-                
+            torch_set_WMs(layer, W, B)
+
         # See; https://github.com/onnx/onnx/issues/2978
         elif framework==FRAMEWORK.ONNX:
             #if B is not None:
@@ -3700,7 +3638,7 @@ class WeightWatcher(object):
             else:
                 X = np.matmul(W.T, W)
 
-            evals, V = sp.linalg.eig(X)
+            evals, V = eig_full(W, method=params[SVD_METHOD])
             all_evals.extend(evals)
 
             vec_entropies = []
@@ -3866,8 +3804,10 @@ class WeightWatcher(object):
         config = {}
         
         if os.path.exists(state_dict_filename):
-            state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
+            state_dict = torch_load_sd(state_dict_filename)
             logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
+        else:
+            logger.fatal(f"PyTorch state_dict {state_dict_filename} not found")
     
         weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
         

@@ -7,7 +7,6 @@ import sys, os
 import warnings
 
 from joblib._multiprocessing_helpers import mp
-import matplotlib
 import powerlaw
 from scipy import optimize, stats
 from sklearn.neighbors import KernelDensity
@@ -15,7 +14,6 @@ import tqdm
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import scipy as sp
 import scipy.stats as stats
 
@@ -699,6 +697,7 @@ def fit_density_with_range(evals, Q, bw=0.1, sigma_range=(slice(0.1, 1.25, 0.01)
     
     return brute_output[0][0], brute_output[1]  # sigma_optimized, resid
 
+# import pandas as pd
 # def fit_mp_findspikes(evals, Q):
 #     '''Remove eigen (spikes) from largest to smallest'''
 #     evals = sorted(evals)[::-1]

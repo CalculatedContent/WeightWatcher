@@ -16,21 +16,17 @@ import sys, os, re, io
 import glob, json
 import traceback
 import tempfile
-import logging
 
 #from deprecated import deprecated
 import inspect
 
 import numpy as np
 import pandas as pd
-import scipy as sp
-
-import matplotlib
+from scipy import stats
 import matplotlib.pyplot as plt
 import powerlaw
 
 
-import sklearn
 from sklearn.decomposition import TruncatedSVD
 
 from copy import deepcopy
@@ -55,7 +51,6 @@ import importlib
 
 from .RMT_Util import *
 from .constants import *
-from numpy import vectorize
 
 
 # WW_NAME moved to constants.py
@@ -1167,7 +1162,7 @@ class WWStackedLayerIterator(WWLayerIterator):
             #Height, Width = W.shape[0], W.shape[1]
                
             #W = W/np.linalg.norm(W)
-            W = (W - np.median(W))/sp.stats.median_abs_deviation(W)
+            W = (W - np.median(W))/stats.median_abs_deviation(W)
             W = np.pad(W, ((0, 0), (0, Mmax-Width)) ) 
             Wmats_padded.append(W)
                 

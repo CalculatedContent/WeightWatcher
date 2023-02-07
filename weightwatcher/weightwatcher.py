@@ -296,6 +296,7 @@ class WWLayer:
         return "WWLayer {}  {} {} {}  skipped {}".format(self.layer_id, self.name,
                                                        self.framework.name, self.the_type.name, self.skipped)
         
+         
     def layer_type(self, layer):
         """Given a framework layer, determine the weightwatcher LAYER_TYPE
         This can detect basic Keras and PyTorch classes by type, and will try to infer the type otherwise. """
@@ -305,10 +306,40 @@ class WWLayer:
         
         # Keras TF 2.x types
         if self.framework==FRAMEWORK.KERAS:
-            the_type = keras_infer_T(layer)
-        # PyTorch
+            if isinstance(layer, keras.layers.Dense) or 'Dense' in str(type(layer)):
+                the_type = LAYER_TYPE.DENSE
+                
+            elif isinstance(layer, keras.layers.Conv1D)  or  'Conv1D' in str(type(layer)):               
+                the_type = LAYER_TYPE.CONV1D
+            
+            elif isinstance(layer, keras.layers.Conv2D) or 'Conv2D' in str(type(layer)):             
+                the_type = LAYER_TYPE.CONV2D
+                                
+            elif isinstance(layer, keras.layers.Flatten) or 'Flatten' in str(type(layer)):
+                the_type = LAYER_TYPE.FLATTENED
+                
+            elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in str(type(layer)):
+                the_type = LAYER_TYPE.EMBEDDING
+                
+            elif isinstance(layer, tf.keras.layers.LayerNormalization) or 'LayerNorn' in str(type(layer)):
+                the_type = LAYER_TYPE.NORM
+        
+        # PyTorch        
         elif self.framework==FRAMEWORK.PYTORCH:
-            the_type = torch_infer_T(layer)
+            if isinstance(layer, nn.Linear) or 'Linear' in str(type(layer)):
+                the_type = LAYER_TYPE.DENSE
+                
+            elif isinstance(layer, nn.Conv1d) or  'Conv1D' in str(type(layer)):
+                the_type = LAYER_TYPE.CONV1D
+            
+            elif isinstance(layer, nn.Conv2d) or 'Conv2D' in str(type(layer)):
+                the_type = LAYER_TYPE.CONV2D
+                
+            elif isinstance(layer, nn.Embedding) or 'Embedding' in str(type(layer)):
+                the_type = LAYER_TYPE.EMBEDDING
+    
+            elif  'norm' in str(type(layer)).lower() :
+                the_type = LAYER_TYPE.NORM
 
         # ONNX
         elif self.framework==FRAMEWORK.ONNX:
@@ -1274,7 +1305,7 @@ class WeightWatcher(object):
         return framework
 
 
-    
+   
     @staticmethod
     def load_framework_imports(framework):
         """load tensorflow, pytorch, or onnx depending on the framework 
@@ -1283,14 +1314,39 @@ class WeightWatcher(object):
 
         banner = ""
         if framework==FRAMEWORK.KERAS:
-            banner = f"tensorflow version {tf_version}"+"\n"
-            banner += f"keras version {keras_version}"
+            #import tensorflow as tf
+            #from tensorflow import keras
+            
+            global tf, keras
+            try:
+                tf = importlib.import_module('tensorflow')
+                keras = importlib.import_module('tensorflow.keras')
+        
+                banner = f"tensorflow version {tf.__version__}"+"\n"
+                banner += f"keras version {keras.__version__}"
+            except ImportError:
+                logger.fatal("Can not load tensorflow or keras, stopping")
             
         elif framework==FRAMEWORK.PYTORCH or framework==FRAMEWORK.PYSTATEDICT:
-            banner = f"torch version {torch_version}"
+            
+            global torch, nn
+            try:
+                torch = importlib.import_module('torch')
+                nn = importlib.import_module('torch.nn')
+    
+                banner = f"torch version {torch.__version__}"
+            except ImportError:
+                logger.fatal("Can not load torch,  stopping")
+            
 
         elif framework==FRAMEWORK.ONNX:
-            banner = f"onnx version {onnx_version}"
+            try:
+                import onnx
+                from onnx import numpy_helper
+                banner = f"onnx version {onnx.__version__}"   
+            except ImportError:
+                logger.fatal("Can not load onnc, stopping")
+                
         else:
             logger.warning(f"Unknown or unsupported framework {framework}")
             banner = ""
@@ -3529,6 +3585,7 @@ class WeightWatcher(object):
         return ww_layer
 
 
+    
     # TODO: put this on the layer itself
     def replace_layer_weights(self, framework, idx, layer, W, B=None):
         """Replace the old layer weights with the new weights
@@ -3550,8 +3607,12 @@ class WeightWatcher(object):
             layer.set_weights(W)
             
         elif framework==FRAMEWORK.PYTORCH:
-            torch_set_WMs(layer, W, B)
-
+            # see: https://discuss.pytorch.org/t/fix-bias-and-weights-of-a-layer/75120/4
+            # this may be deprecated
+            layer.weight.data = torch.from_numpy(W)
+            if B is not None:
+                layer.bias.data = torch.from_numpy(B)
+                
         # See; https://github.com/onnx/onnx/issues/2978
         elif framework==FRAMEWORK.ONNX:
             #if B is not None:
@@ -3564,7 +3625,6 @@ class WeightWatcher(object):
             logger.debug(f"Layer {layer.layer_id} skipped, Layer Type {layer.the_type} not supported")
 
         return
-   
 
     def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):

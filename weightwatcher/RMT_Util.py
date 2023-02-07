@@ -17,10 +17,10 @@ import numpy as np
 import scipy as sp
 import scipy.stats as stats
 
-
 from .constants import *
 
 logger = logging.getLogger(WW_NAME)
+
 
 # PyTorch has 2 separate SVD methods, one for the vals, and one for the factorization
 # https://pytorch.org/docs/stable/generated/torch.linalg.eig.html
@@ -30,41 +30,9 @@ _eig_full_accurate = lambda W: sp.linalg.eig(W)
 _svd_full_accurate = lambda W: sp.linalg.svd(W, compute_uv=True)
 _svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
 
-# Handle PyTorch imports
-torch_version = "unavailable"
-# These functions will all be overridden iff torch is available.
-torch_load_sd = lambda file_name: \
-    logger.fatal("Attempting to load a PyTorch state dict but torch is unavailable")
-torch_infer_T = lambda layer: \
-    logger.fatal("Attempting to infer a PyTorch layer type but torch is unavailable")
-torch_set_WMs = lambda layer, W, B: \
-    logger.fatal("Attempting to set a PyTorch weight matrix but torch is unavailable")
-
+# 
 try:
     import torch
-
-    # Handle torch related functions here that do not need CUDA, such as loading models.
-    torch_load_sd = lambda sd_filename: \
-        torch.load(sd_filename, map_location=torch.device('cpu'))
-
-    torch_version = torch.__version__
-    def _infer_T(layer):
-        type_name = str(type(layer))
-        if   isinstance(layer, torch.nn.Linear   ) or 'Linear'    in type_name: return LAYER_TYPE.DENSE
-        elif isinstance(layer, torch.nn.Conv1d   ) or 'Conv1D'    in type_name: return LAYER_TYPE.CONV1D
-        elif isinstance(layer, torch.nn.Conv2d   ) or 'Conv2D'    in type_name: return LAYER_TYPE.CONV2D
-        elif isinstance(layer, torch.nn.Embedding) or 'Embedding' in type_name: return LAYER_TYPE.EMBEDDING
-        elif 'norm' in type_name.lower():
-            return LAYER_TYPE.NORM
-        return LAYER_TYPE.UNKNOWN
-    torch_infer_T = _infer_T
-
-    def _set_WMs(layer, W, B):
-        with torch.no_grad():
-            layer.weight = torch.nn.Parameter(torch.from_numpy(W))
-            if B is not None:
-                layer.bias = torch.nn.Parameter(torch.from_numpy(B))
-    torch_set_WMs = _set_WMs
 
     if torch.cuda.is_available():
         to_np = lambda t: t.to("cpu").numpy()
@@ -80,6 +48,7 @@ try:
     else:
         logger.warning("PyTorch is available but CUDA is not. Defaulting to scipy for SVD")
         raise ImportError()
+    
 except ImportError:
     # if torch / cuda are not available, default to scipy
     _eig_full_fast = _eig_full_accurate
@@ -101,56 +70,7 @@ def svd_vals(W, method=ACCURATE_SVD):
     if method == ACCURATE_SVD: return _svd_vals_accurate(W)
     if method == FAST_SVD:     return _svd_vals_fast(W)
 
-# Handle keras imports
-keras_version = "unavailable"
-# These functions will all be overridden iff keras is available.
-keras_infer_T = lambda layer: \
-    logger.fatal("Attempting to infer a Keras layer type but keras is unavailable")
 
-try:
-    from tensorflow import keras
-    # Handle keras related functions here that do not need CUDA, such as loading models.
-    keras_version = keras.__version__
-    def _infer_T(layer):
-        type_name = str(type(layer))
-        if   isinstance(layer, keras.layers.Dense    ) or 'Dense'     in type_name: return LAYER_TYPE.DENSE
-        elif isinstance(layer, keras.layers.Conv1d   ) or 'Conv1D'    in type_name: return LAYER_TYPE.CONV1D
-        elif isinstance(layer, keras.layers.Conv2d   ) or 'Conv2D'    in type_name: return LAYER_TYPE.CONV2D
-        elif isinstance(layer, keras.layers.Flatten  ) or 'Flatten'   in type_name: return LAYER_TYPE.FLATTENED
-        elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in type_name: return LAYER_TYPE.EMBEDDING
-        elif isinstance(layer, keras.layers.LayerNormalization) or 'LayerNorm' in type_name:
-            return LAYER_TYPE.NORM
-        return LAYER_TYPE.UNKNOWN
-    keras_infer_T = _infer_T
-except ImportError:
-    pass
-
-# Handle tensorflow imports
-tf_version = "unavailable"
-try:
-    from tensorflow import __version__ as tf_version
-except ImportError:
-    pass
-
-
-# Handle onnx imports
-onnx_version = "unavailable"
-onnx_get_weights = lambda node: \
-    logger.fatal("Attempting to load an ONNX weight matrix but onnx is unavailable")
-onnx_set_weights = lambda node: \
-    logger.fatal("Attempting to set an ONNX weight matrix but onnx is unavailable")
-try:
-    import onnx
-    onnx_version = onnx.__version__
-
-    from onnx import numpy_helper
-    onnx_get_weights = lambda node: numpy_helper.to_array(node) #@pydevd suppress warning
-    onnx_set_weights = lambda layer, idx, W: \
-        layer.model.graph.initializer[idx].CopyFrom(
-            numpy_helper.from_array(W) #@pydevd suppress warning
-        )
-except ImportError:
-    pass
 
 
 # ## Generalized Entropy

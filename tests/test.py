@@ -1267,6 +1267,11 @@ class Test_Keras(unittest.TestCase):
 		print("\n-------------------------------------\nIn Test_Keras:", self._testMethodName)
 		self.model = VGG16()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+	def tearDown(self):
+		
+		tf.keras.backend.clear_session()
+		
 
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe

@@ -1269,7 +1269,6 @@ class Test_Keras(unittest.TestCase):
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 	def tearDown(self):
-		
 		tf.keras.backend.clear_session()
 		
 
@@ -1498,6 +1497,10 @@ class Test_Distances(unittest.TestCase):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
+		
+	def tearDown(self):
+		tf.keras.backend.clear_session()
+		
 		
 		
 	def get_weights_and_biases_from_Keras(self):

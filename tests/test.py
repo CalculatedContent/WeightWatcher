@@ -1271,6 +1271,9 @@ class Test_Keras(unittest.TestCase):
 	def tearDown(self):
 		tf.keras.backend.clear_session()
 		
+	def tearDownClass(self):
+		tf.keras.backend.clear_session()
+		
 
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -1499,6 +1502,9 @@ class Test_Distances(unittest.TestCase):
 		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
 		
 	def tearDown(self):
+		tf.keras.backend.clear_session()
+		
+	def tearDownClass(self):
 		tf.keras.backend.clear_session()
 		
 		

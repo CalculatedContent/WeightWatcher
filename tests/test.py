@@ -321,6 +321,8 @@ class Test_VGG11(unittest.TestCase):
 	def tearDownClass(cls):
 		gc.collect()
 		tf.keras.backend.clear_session()
+		torch.cuda.empty_cache()
+
 			
 	def setUp(self):
 		"""I run before every test in this class
@@ -334,6 +336,7 @@ class Test_VGG11(unittest.TestCase):
 		del self.watcher
 		gc.collect()
 		tf.keras.backend.clear_session()
+		torch.cuda.empty_cache()
 		
 			
 

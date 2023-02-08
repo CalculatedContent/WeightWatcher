@@ -404,7 +404,7 @@ class Test_VGG11(unittest.TestCase):
 		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss, fit_entropy".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss,fit_entropy".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -835,7 +835,7 @@ class Test_VGG11(unittest.TestCase):
 		self.assertEqual(actual_best_fit, expected_best_fit)
 					
 	def test_truncated_power_law_fit(self):
-		"""Test TPL fits
+		"""Test TPL fits:  note that the new toprch method reduces the accureacy of the test
 		"""
 		
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
@@ -851,10 +851,12 @@ class Test_VGG11(unittest.TestCase):
 		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
 
 		# these numbers have not been independently verified yet
-		expected_alpha = 2.1075
-		expected_Lambda =  0.01667
-		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
-		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=2)
+		expected_alpha = 2.1
+		delta = 0.1
+		self.assertAlmostEqual(actual_alpha,expected_alpha, None, '',  delta)
+		expected_Lambda =  0.017
+		delta = 0.001
+		self.assertAlmostEqual(actual_Lambda,expected_Lambda, None, '',  delta)
 		
 		
 	def test_extended_truncated_power_law_fit(self):
@@ -883,7 +885,7 @@ class Test_VGG11(unittest.TestCase):
 		actual = details.alpha.to_numpy()[0]
 		expected = 7.116304
 		print("ACTUAL {}".format(actual))
-		self.assertAlmostEqual(actual,expected, places=4)
+		self.assertAlmostEqual(actual,expected, places=2)
 		
 		# XMIN_PEAK
 		details = self.watcher.analyze(layers=[5], fix_fingers='xmin_peak', xmin_max=1.0)

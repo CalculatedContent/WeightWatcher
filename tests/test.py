@@ -16,6 +16,7 @@ import numpy as np
 import pandas as pd
 import torchvision.models as models
 import weightwatcher as ww
+import tensorflow as tf
 
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 

@@ -1390,7 +1390,8 @@ class Test_ResNet(unittest.TestCase):
 	def tearDownClass(cls):
 		gc.collect()
 		tf.keras.backend.clear_session()	
-		
+		torch.cuda.empty_cache()
+	
 		
 	def setUp(self):
 		"""I run before every test in this class
@@ -1441,11 +1442,13 @@ class Test_RMT_Util(unittest.TestCase):
 	def tearDownClass(cls):
 		gc.collect()
 		tf.keras.backend.clear_session()
+		torch.cuda.empty_cache()
 
 
 	def tearDown(self):
 		gc.collect()
 		tf.keras.backend.clear_session()
+		torch.cuda.empty_cache()
 
 
 	def test_vector_entropy(self):
@@ -1703,12 +1706,14 @@ class TestPyTorchSVD(unittest.TestCase):
 	def tearDownClass(cls):
 		gc.collect()
 		tf.keras.backend.clear_session()
+		torch.cuda.empty_cache()
 
 
 	def tearDown(self):
 		gc.collect()
 		tf.keras.backend.clear_session()
-		
+		torch.cuda.empty_cache()
+
 
 	def test_torch_svd(self):
 		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:

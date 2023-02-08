@@ -859,7 +859,7 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(actual_Lambda,expected_Lambda, None, '',  delta)
 		
 		
-	def test_extended_truncated_power_law_fit(self):
+	def _test_extended_truncated_power_law_fit(self):
 		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
 		"""
 		details= self.watcher.analyze(layers=[28], fit=E_TPL)

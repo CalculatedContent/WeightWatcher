@@ -18,6 +18,8 @@ import pandas as pd
 import torchvision.models as models
 import weightwatcher as ww
 
+import gc
+
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 
@@ -1270,6 +1272,9 @@ class Test_Keras(unittest.TestCase):
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 	def tearDown(self):
+		del self.model 
+		del self.watcher
+		gc.collect()
 		tf.keras.backend.clear_session()
 		
 	def tearDownClass(self):

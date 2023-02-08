@@ -1264,6 +1264,11 @@ class Test_Keras(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		
+	@classmethod
+	def tearDownClass(cls):
+		gc.collect()
+		tf.keras.backend.clear_session()
+		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1277,9 +1282,9 @@ class Test_Keras(unittest.TestCase):
 		gc.collect()
 		tf.keras.backend.clear_session()
 		
-	def tearDownClass(self):
-		tf.keras.backend.clear_session()
+		
 
+		
 
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -1502,6 +1507,11 @@ class Test_Distances(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		
+	@classmethod
+	def tearDownClass(cls):
+		gc.collect()
+		tf.keras.backend.clear_session()
+		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1509,10 +1519,12 @@ class Test_Distances(unittest.TestCase):
 		
 		
 	def tearDown(self):
+		del self.model 
+		del self.watcher
+		gc.collect()
 		tf.keras.backend.clear_session()
 		
-	def tearDownClass(self):
-		tf.keras.backend.clear_session()
+
 		
 		
 	def get_weights_and_biases_from_Keras(self):

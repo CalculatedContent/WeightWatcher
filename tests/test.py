@@ -32,6 +32,10 @@ class Test_VGG11_noModel(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		
+	@classmethod
+	def tearDownClass(cls):
+		gc.collect()
+		tf.keras.backend.clear_session()
 		
 	def setUp(self):
 		"""I run before every test in this class
@@ -40,7 +44,12 @@ class Test_VGG11_noModel(unittest.TestCase):
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
 
-
+	def tearDown(self):
+		del self.model 
+		del self.watcher
+		gc.collect()
+		tf.keras.backend.clear_session()
+		
 
 	def test_basic_columns_no_model(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -193,6 +202,11 @@ class Test_VGG11_Distances(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
+
+	@classmethod
+	def tearDownClass(cls):
+		gc.collect()
+		tf.keras.backend.clear_session()
 		
 	def setUp(self):
 		"""I run before every test in this class
@@ -200,6 +214,13 @@ class Test_VGG11_Distances(unittest.TestCase):
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+	def tearDown(self):
+		del self.model 
+		del self.watcher
+		gc.collect()
+		tf.keras.backend.clear_session()
+		
 		
 	def test_same_distances(self):
 		"""Test that the distance method works correctly between the same model
@@ -287,7 +308,12 @@ class Test_VGG11(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		
+	
+	@classmethod
+	def tearDownClass(cls):
+		gc.collect()
+		tf.keras.backend.clear_session()
+			
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -295,6 +321,12 @@ class Test_VGG11(unittest.TestCase):
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
+	def tearDown(self):
+		del self.model 
+		del self.watcher
+		gc.collect()
+		tf.keras.backend.clear_session()
+		
 			
 
 	def test_basic_columns(self):
@@ -1341,14 +1373,23 @@ class Test_ResNet(unittest.TestCase):
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
+	@classmethod
+	def tearDownClass(cls):
+		gc.collect()
+		tf.keras.backend.clear_session()	
 		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
 		self.model = models.resnet18()#weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
-
-		pass
+		
+	def tearDown(self):
+		del self.model 
+		del self.watcher
+		gc.collect()
+		tf.keras.backend.clear_session()
+		
 	
 	def test_N_ge_M(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
@@ -1524,7 +1565,9 @@ class Test_Distances(unittest.TestCase):
 		gc.collect()
 		tf.keras.backend.clear_session()
 		
-
+	def tearDownClass(cls):
+		gc.collect()
+		tf.keras.backend.clear_session()
 		
 		
 	def get_weights_and_biases_from_Keras(self):

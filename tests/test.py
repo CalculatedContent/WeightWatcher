@@ -1270,10 +1270,12 @@ class Test_Keras(unittest.TestCase):
 		
 	def tearDown(self):
 		tf.keras.backend.clear_session()
+		session = tf.compat.v1.Session()
 		
 	def tearDownClass(self):
 		tf.keras.backend.clear_session()
-		
+		session = tf.compat.v1.Session()
+
 
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe

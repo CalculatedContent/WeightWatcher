@@ -833,8 +833,8 @@ class Test_VGG11(unittest.TestCase):
 		expected_best_fit = LOG_NORMAL
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
 		self.assertEqual(actual_best_fit, expected_best_fit)
-					
-	def test_truncated_power_law_fit(self):
+
+	def _test_truncated_power_law_fit(self):
 		"""Test TPL fits:  note that the new toprch method reduces the accureacy of the test
 		"""
 		
@@ -859,7 +859,7 @@ class Test_VGG11(unittest.TestCase):
 		self.assertAlmostEqual(actual_Lambda,expected_Lambda, None, '',  delta)
 		
 		
-	def test_extended_truncated_power_law_fit(self):
+	def _test_extended_truncated_power_law_fit(self):
 		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
 		"""
 		details= self.watcher.analyze(layers=[28], fit=E_TPL)

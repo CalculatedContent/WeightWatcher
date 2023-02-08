@@ -36,14 +36,23 @@ try:
 
     if torch.cuda.is_available():
         to_np = lambda t: t.to("cpu").numpy()
+
+        def torch_wrapper(M, f):
+            torch.cuda.empty_cache()
+            with torch.no_grad():
+                M_cuda = torch.Tensor(M).to("cuda")
+                rvals = f(M_cuda)
+            del M_cuda
+            return rvals
+
         def _eig_full_fast(M):
-            L, V = torch.linalg.eig(torch.Tensor(M).to("cuda"))
+            L, V = torch_wrapper(M, lambda M: torch.linalg.eig(M))
             return to_np(L), to_np(V)
         def _svd_full_fast(M):
-            U, S, Vh = torch.linalg.svd(torch.Tensor(M).to("cuda"))
+            U, S, Vh = torch_wrapper(M, lambda M: torch.linalg.svd(M))
             return to_np(U), to_np(S), to_np(Vh)
         def _svd_vals_fast(M):
-            S = torch.linalg.svdvals(torch.Tensor(M).to("cuda"))
+            S = torch_wrapper(M, lambda M: torch.linalg.svdvals(M))
             return to_np(S)
     else:
         logger.warning("PyTorch is available but CUDA is not. Defaulting to scipy for SVD")

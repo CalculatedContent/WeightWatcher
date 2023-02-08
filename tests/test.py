@@ -2,6 +2,7 @@ import sys, logging
 import unittest
 import warnings
 
+import tensorflow as tf
 from tensorflow.keras.applications.vgg16 import VGG16
 
 from transformers import TFAutoModelForSequenceClassification
@@ -16,7 +17,6 @@ import numpy as np
 import pandas as pd
 import torchvision.models as models
 import weightwatcher as ww
-import tensorflow as tf
 
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
@@ -1504,12 +1504,14 @@ class Test_Distances(unittest.TestCase):
 		"""
 		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
 		
+		
 	def tearDown(self):
+		tf.keras.backend.get_session().close()
 		tf.keras.backend.clear_session()
 		
 	def tearDownClass(self):
+		tf.keras.backend.get_session().close()
 		tf.keras.backend.clear_session()
-		
 		
 		
 	def get_weights_and_biases_from_Keras(self):

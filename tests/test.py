@@ -1270,11 +1270,9 @@ class Test_Keras(unittest.TestCase):
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 	def tearDown(self):
-		tf.keras.backend.get_session().close()
 		tf.keras.backend.clear_session()
 		
 	def tearDownClass(self):
-		tf.keras.backend.get_session().close()
 		tf.keras.backend.clear_session()
 
 
@@ -1506,11 +1504,9 @@ class Test_Distances(unittest.TestCase):
 		
 		
 	def tearDown(self):
-		tf.keras.backend.get_session().close()
 		tf.keras.backend.clear_session()
 		
 	def tearDownClass(self):
-		tf.keras.backend.get_session().close()
 		tf.keras.backend.clear_session()
 		
 		

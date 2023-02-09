@@ -7,13 +7,9 @@ from tensorflow.keras.applications.vgg16 import VGG16
 import torch
 
 from transformers import TFAutoModelForSequenceClassification
-from weightwatcher import  DEFAULT_PARAMS 
-from weightwatcher import  LAYER_TYPE 
-from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW, LOG_NORMAL
 from weightwatcher import RMT_Util
 from weightwatcher.constants import  *
 
-import numpy as np
 import numpy as np
 import pandas as pd
 import torchvision.models as models

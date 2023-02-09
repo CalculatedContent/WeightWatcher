@@ -1339,7 +1339,7 @@ class Test_ResNet(Test_Base):
 		"""
 		self.model = models.resnet18()#weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
-		
+
 		
 	def test_N_ge_M(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
@@ -1599,7 +1599,7 @@ class TestPyTorchSVD(Test_Base):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
-		
+
 
 	def test_torch_svd(self):
 		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:
@@ -1624,6 +1624,76 @@ class TestPyTorchSVD(Test_Base):
 			self.assertLess(np.max(np.abs(details_fast.alpha - details_accurate.alpha)), 0.02)
 
 
-	
+class TestPandas(Test_Base):
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn TestPandas:", self._testMethodName)
+		self.model = models.resnet18()
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+	def test_column_names_describe_basic(self):
+		expected_columns = ['layer_id', 'name', 'M', 'N', 'Q', 'layer_type', 'longname',
+							'num_evals', 'rf']
+
+		details = self.watcher.describe(layers=[67])
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
+							'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+							'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67])
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze_randomize(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
+ 					        'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+					        'log_spectral_norm', 'longname', 'matrix_rank', 'max_rand_eval', 'norm',
+					        'num_evals', 'num_fingers', 'num_pl_spikes', 'rand_W_scale',
+					        'rand_bulk_max', 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank',
+					        'rand_num_spikes', 'rand_sigma_mp', 'rank_loss', 'rf', 'sigma',
+					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+					        'ww_maxdist', 'ww_softrank', 'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67], randomize=True)
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze_intra(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'Xflag', 'alpha',
+					        'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+					        'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+					        'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+					        'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[64, 67], intra=True)
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze_mp_fit(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'W_scale', 'alpha',
+							'alpha_weighted', 'best_fit', 'bulk_max', 'bulk_min', 'entropy',
+							'fit_entropy', 'has_esd', 'lambda_max', 'layer_type', 'log_alpha_norm',
+							'log_norm', 'log_spectral_norm', 'longname', 'matrix_rank',
+							'mp_softrank', 'norm', 'num_evals', 'num_fingers', 'num_pl_spikes',
+							'num_spikes', 'rank_loss', 'rf', 'sigma', 'sigma_mp', 'spectral_norm',
+							'stable_rank', 'sv_max', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67], mp_fit=True)
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+
 if __name__ == '__main__':
 	unittest.main()

@@ -1601,6 +1601,7 @@ class TestPandas(Test_Base):
 							'num_evals', 'rf']
 
 		details = self.watcher.describe(layers=[67])
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
 
@@ -1614,6 +1615,7 @@ class TestPandas(Test_Base):
 							'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67])
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
 
@@ -1629,6 +1631,7 @@ class TestPandas(Test_Base):
 					        'ww_maxdist', 'ww_softrank', 'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], randomize=True)
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
 
@@ -1642,6 +1645,7 @@ class TestPandas(Test_Base):
 					        'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[64, 67], intra=True)
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
 
@@ -1655,6 +1659,7 @@ class TestPandas(Test_Base):
 							'stable_rank', 'sv_max', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], mp_fit=True)
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
 

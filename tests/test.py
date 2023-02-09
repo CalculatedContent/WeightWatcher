@@ -7,13 +7,9 @@ from tensorflow.keras.applications.vgg16 import VGG16
 import torch
 
 from transformers import TFAutoModelForSequenceClassification
-from weightwatcher import  DEFAULT_PARAMS 
-from weightwatcher import  LAYER_TYPE 
-from weightwatcher import  PL, TPL, E_TPL, POWER_LAW, TRUNCATED_POWER_LAW, LOG_NORMAL
 from weightwatcher import RMT_Util
 from weightwatcher.constants import  *
 
-import numpy as np
 import numpy as np
 import pandas as pd
 import torchvision.models as models
@@ -24,20 +20,30 @@ import gc
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 
-class Test_VGG11_noModel(unittest.TestCase):
-	
-	"""Same as Test_VGG11 methods, but the model is not specified in setup"""
-
+class Test_Base(unittest.TestCase):
 	@classmethod
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		
+
 	@classmethod
 	def tearDownClass(cls):
 		gc.collect()
 		tf.keras.backend.clear_session()
 		torch.cuda.empty_cache()
+
+
+	def tearDown(self):
+		if hasattr(self, 'model'  ): del self.model
+		if hasattr(self, 'watcher'): del self.watcher
+		gc.collect()
+		tf.keras.backend.clear_session()
+		torch.cuda.empty_cache()
+
+
+class Test_VGG11_noModel(Test_Base):
+	
+	"""Same as Test_VGG11 methods, but the model is not specified in setup"""
 
 		
 	def setUp(self):
@@ -47,13 +53,6 @@ class Test_VGG11_noModel(unittest.TestCase):
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
 
-	def tearDown(self):
-		del self.model 
-		del self.watcher
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-		
 
 	def test_basic_columns_no_model(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -70,9 +69,7 @@ class Test_VGG11_noModel(unittest.TestCase):
 		Q = details.Q.to_numpy()[0]
 
 		self.assertAlmostEqual(Q, N/M, places=2)
-		
 
-		
 		
 	def test_analyze_columns_no_model(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -200,35 +197,14 @@ class Test_VGG11_noModel(unittest.TestCase):
 			
 
 
-class Test_VGG11_Distances(unittest.TestCase):
+class Test_VGG11_Distances(Test_Base):
 
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-
-	@classmethod
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
-		
-	def tearDown(self):
-		del self.model 
-		del self.watcher
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-		
 		
 	def test_same_distances(self):
 		"""Test that the distance method works correctly between the same model
@@ -310,20 +286,13 @@ class Test_VGG11_Distances(unittest.TestCase):
 
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
-class Test_VGG11(unittest.TestCase):
+class Test_VGG11(Test_Base):
 
 	@classmethod
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
 	
-	@classmethod
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-			
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -331,14 +300,6 @@ class Test_VGG11(unittest.TestCase):
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
-	def tearDown(self):
-		del self.model 
-		del self.watcher
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-		
-			
 
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -1052,8 +1013,8 @@ class Test_VGG11(unittest.TestCase):
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
 
-		self.assertEquals(np.max(esd_before),np.max(esd_after))
-		self.assertEquals(np.min(esd_before),np.min(esd_after))
+		self.assertEqual(np.max(esd_before),np.max(esd_after))
+		self.assertEqual(np.min(esd_before),np.min(esd_after))
 
 		
 	def test_svd_sharpness2(self):
@@ -1240,7 +1201,7 @@ class Test_VGG11(unittest.TestCase):
 
 		actual = np.max(evals)
 		expected =  np.max(un_rescaled_evals)
-		self.assertAlmostEquals(actual, expected)
+		self.assertAlmostEqual(actual, expected)
 
 		
 		
@@ -1293,7 +1254,7 @@ class Test_VGG11(unittest.TestCase):
 		esd = self.watcher.get_ESD(layer=28)
 		fit = powerlaw.Fit(esd,  xmax=np.max(esd))
 		actual = RMT_Util.line_entropy(fit.Ds)
-		self.assertAlmostEquals(expected, actual, None, '', 0.01)
+		self.assertAlmostEqual(expected, actual, None, '', 0.01)
 
 		
 	def test_same_models(self):
@@ -1303,18 +1264,11 @@ class Test_VGG11(unittest.TestCase):
 		pass
 
 
-class Test_Keras(unittest.TestCase):
+class Test_Keras(Test_Base):
 	@classmethod
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		
-	@classmethod
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
 		
 	def setUp(self):
 		"""I run before every test in this class
@@ -1323,14 +1277,6 @@ class Test_Keras(unittest.TestCase):
 		self.model = VGG16()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
-	def tearDown(self):
-		del self.model 
-		del self.watcher
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-	
 
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -1382,18 +1328,11 @@ class Test_Keras(unittest.TestCase):
 		self.assertTrue((N >= M).all)
 
 
-class Test_ResNet(unittest.TestCase):
+class Test_ResNet(Test_Base):
 	@classmethod
 	def setUpClass(cls):
 		"""I run only once for this class
 		"""
-		
-	@classmethod
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()	
-		torch.cuda.empty_cache()
-	
 		
 	def setUp(self):
 		"""I run before every test in this class
@@ -1402,14 +1341,6 @@ class Test_ResNet(unittest.TestCase):
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 		
-	def tearDown(self):
-		del self.model 
-		del self.watcher
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-		
-	
 	def test_N_ge_M(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
 		"""
@@ -1428,7 +1359,7 @@ class Test_ResNet(unittest.TestCase):
 		
 	
 
-class Test_RMT_Util(unittest.TestCase):
+class Test_RMT_Util(Test_Base):
 	@classmethod
 	def setUpClass(cls):
 		"""I run only once for this class
@@ -1440,19 +1371,6 @@ class Test_RMT_Util(unittest.TestCase):
 		print("\n-------------------------------------\nIn Test_ResNet:", self._testMethodName)
 		
 			
-	@classmethod
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-
-	def tearDown(self):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-
 	def test_vector_entropy(self):
 		u = np.array([1,1,1,1])
 		actual_s = RMT_Util.vector_entropy(u)
@@ -1507,7 +1425,7 @@ class Test_RMT_Util(unittest.TestCase):
 		self.assertAlmostEqual(actual, expected,  places=3)
 
 
-class Test_Vector_Metrics(unittest.TestCase):
+class Test_Vector_Metrics(Test_Base):
 	@classmethod
 	def setUpClass(cls):
 		"""I run only once for this class
@@ -1550,19 +1468,19 @@ class Test_Vector_Metrics(unittest.TestCase):
 		iterator =  watcher.iterate_vectors(vectors)
 		for num, v in enumerate(iterator):
 			print("v= ",v)
-		self.assertEquals(1, num+1)
+		self.assertEqual(1, num+1)
 
 		vectors = np.array([[0,1,2,3,4],[0,1,2,3,4]])
 		iterator =  watcher.iterate_vectors(vectors)
 		for num, v in enumerate(iterator):
 			print("v= ",v)
-		self.assertEquals(2, num+1)
+		self.assertEqual(2, num+1)
 
 		vectors = [np.array([0,1,2,3,4]),np.array([0,1,2,3,4]),np.array([0,1,2,3,4])]
 		iterator =  watcher.iterate_vectors(vectors)
 		for num, v in enumerate(iterator):
 			print("v= ",v)
-		self.assertEquals(3, num+1)
+		self.assertEqual(3, num+1)
 
 	def test_vector_metrics(self):
 		watcher = ww.WeightWatcher()
@@ -1572,7 +1490,7 @@ class Test_Vector_Metrics(unittest.TestCase):
 		print(metrics)
 
 
-class Test_Distances(unittest.TestCase):
+class Test_Distances(Test_Base):
 	"""If we ever implement the idea of combining the biases into,  W+b_>W', then this class will 
 		contain the unit tests for this.  
 	"""
@@ -1581,31 +1499,10 @@ class Test_Distances(unittest.TestCase):
 		"""I run only once for this class
 		"""
 		
-	@classmethod
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_Vector_Metrics:", self._testMethodName)
-		
-		
-	def tearDown(self):
-		del self.model 
-		del self.watcher
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-		
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		
 		
 	def get_weights_and_biases_from_Keras(self):
 		"""Test that we can get both weights and biases from pyTorch models"""
@@ -1688,7 +1585,7 @@ class Test_Distances(unittest.TestCase):
 		pass
 	
 
-class TestPyTorchSVD(unittest.TestCase):
+class TestPyTorchSVD(Test_Base):
 	"""
 	Tests for discrepancies between the scipy and torch implementations of SVD.
 	"""
@@ -1703,19 +1600,6 @@ class TestPyTorchSVD(unittest.TestCase):
 		"""
 		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
 		
-
-	@classmethod
-	def tearDownClass(cls):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
-
-	def tearDown(self):
-		gc.collect()
-		tf.keras.backend.clear_session()
-		torch.cuda.empty_cache()
-
 
 	def test_torch_svd(self):
 		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:

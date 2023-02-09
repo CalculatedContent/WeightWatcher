@@ -287,12 +287,6 @@ class Test_VGG11_Distances(Test_Base):
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
 class Test_VGG11(Test_Base):
-
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-	
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1265,11 +1259,6 @@ class Test_VGG11(Test_Base):
 
 
 class Test_Keras(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1329,11 +1318,6 @@ class Test_Keras(Test_Base):
 
 
 class Test_ResNet(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1360,11 +1344,6 @@ class Test_ResNet(Test_Base):
 	
 
 class Test_RMT_Util(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1426,11 +1405,6 @@ class Test_RMT_Util(Test_Base):
 
 
 class Test_Vector_Metrics(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1494,11 +1468,6 @@ class Test_Distances(Test_Base):
 	"""If we ever implement the idea of combining the biases into,  W+b_>W', then this class will 
 		contain the unit tests for this.  
 	"""
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1589,11 +1558,6 @@ class TestPyTorchSVD(Test_Base):
 	"""
 	Tests for discrepancies between the scipy and torch implementations of SVD.
 	"""
-
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
 
 	def setUp(self):
 		"""I run before every test in this class

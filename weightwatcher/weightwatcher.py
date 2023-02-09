@@ -1567,7 +1567,7 @@ class WeightWatcher(object):
                     logger.fatal(f"unknown distance method {method}")
 
                 data_df = pd.DataFrame.from_records(data, index=[ilayer])
-                distances = pd.concat([distances, data_df])
+                distances = pd.concat([distances, data_df], ignore_index=True)
                 ilayer += 1
 
         except:
@@ -2285,7 +2285,7 @@ class WeightWatcher(object):
                 # issue 137
                 # details = details.append(ww_layer.get_row(), ignore_index=True)
                 data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
-                details = pd.concat([details,data])
+                details = pd.concat([details,data], ignore_index=True)
 
         self.details = details
         return details
@@ -2395,7 +2395,7 @@ class WeightWatcher(object):
                 # issue 137
                 #details = details.append(ww_layer.get_row(), ignore_index=True)
                 data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
-                details = pd.concat([details,data])
+                details = pd.concat([details,data], ignore_index=True)
 
         return details
 

@@ -1201,7 +1201,7 @@ class Test_VGG11(Test_Base):
 
 		actual = np.max(evals)
 		expected =  np.max(un_rescaled_evals)
-		self.assertAlmostEquals(actual, expected)
+		self.assertAlmostEqual(actual, expected)
 
 		
 		
@@ -1254,7 +1254,7 @@ class Test_VGG11(Test_Base):
 		esd = self.watcher.get_ESD(layer=28)
 		fit = powerlaw.Fit(esd,  xmax=np.max(esd))
 		actual = RMT_Util.line_entropy(fit.Ds)
-		self.assertAlmostEquals(expected, actual, None, '', 0.01)
+		self.assertAlmostEqual(expected, actual, None, '', 0.01)
 
 		
 	def test_same_models(self):

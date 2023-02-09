@@ -1013,8 +1013,8 @@ class Test_VGG11(Test_Base):
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
 
-		self.assertEquals(np.max(esd_before),np.max(esd_after))
-		self.assertEquals(np.min(esd_before),np.min(esd_after))
+		self.assertEqual(np.max(esd_before),np.max(esd_after))
+		self.assertEqual(np.min(esd_before),np.min(esd_after))
 
 		
 	def test_svd_sharpness2(self):
@@ -1468,19 +1468,19 @@ class Test_Vector_Metrics(Test_Base):
 		iterator =  watcher.iterate_vectors(vectors)
 		for num, v in enumerate(iterator):
 			print("v= ",v)
-		self.assertEquals(1, num+1)
+		self.assertEqual(1, num+1)
 
 		vectors = np.array([[0,1,2,3,4],[0,1,2,3,4]])
 		iterator =  watcher.iterate_vectors(vectors)
 		for num, v in enumerate(iterator):
 			print("v= ",v)
-		self.assertEquals(2, num+1)
+		self.assertEqual(2, num+1)
 
 		vectors = [np.array([0,1,2,3,4]),np.array([0,1,2,3,4]),np.array([0,1,2,3,4])]
 		iterator =  watcher.iterate_vectors(vectors)
 		for num, v in enumerate(iterator):
 			print("v= ",v)
-		self.assertEquals(3, num+1)
+		self.assertEqual(3, num+1)
 
 	def test_vector_metrics(self):
 		watcher = ww.WeightWatcher()

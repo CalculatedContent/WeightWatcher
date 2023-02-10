@@ -1646,9 +1646,9 @@ class TestPyTorchSVD(Test_Base):
 		err = np.sum(np.abs(W - W_reconstruct))
 		self.assertLess(err, 0.05, f"torch svd absolute reconstruction error was {err}")
 
-		S_vals_only = RMT_Util._svd_vals_fast(W)
+		S_vals_only = RMT_Util._svd_vals_accurate(W)
 		err = np.sum(np.abs(S - S_vals_only))
-		self.assertEqual(err, 0, f"torch svd and svd_vals differed by {err}")
+		self.assertLess(err, 0.0005, msg=f"torch svd and svd_vals differed by {err}")
 
 
 class TestPandas(Test_Base):

@@ -1564,6 +1564,18 @@ class TestPyTorchSVD(Test_Base):
 		"""
 		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
 
+	def test_torch_svd_no_torch(self):
+		"""tests that the SVD still runs  even if torch is not available"""
+		
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
+		expected_details= watcher.analyze(layers=[28], svd_method="accurate")
+		expected_length_of_details = len(expected_details)
+		
+		self.assertTrue(RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate)
+		self.assertEqual(1, expected_length_of_details)
+
+		
 
 	def test_torch_svd(self):
 		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:
@@ -1586,6 +1598,57 @@ class TestPyTorchSVD(Test_Base):
 
 		for f in ["spectral_norm", "stable_rank", "xmax",]:
 			self.assertLess(np.max(np.abs(details_fast.alpha - details_accurate.alpha)), 0.02)
+			
+			
+	def test_bad_methods(self):
+		W = np.ones((3,3))
+
+		with self.assertRaises(AssertionError, msg="eig_full accepted a bad method"):
+			RMT_Util.eig_full(W, "BAD_METHOD")
+
+		with self.assertRaises(AssertionError, msg="svd_full accepted a bad method"):
+			RMT_Util.svd_full(W, "BAD_METHOD")
+
+		with self.assertRaises(AssertionError, msg="svd_vals accepted a bad method"):
+			RMT_Util.svd_vals(W, "BAD_METHOD")
+
+	def torch_available(self):
+		try:
+			from torch.cuda import is_available
+			return is_available()
+		except ImportError:
+			return False
+
+	def test_torch_availability(self):
+		if self.torch_available():
+			print("torch is available and cuda is available")
+			self.assertFalse(RMT_Util._eig_full_accurate is RMT_Util._eig_full_fast)
+			self.assertFalse(RMT_Util._svd_full_accurate is RMT_Util._svd_full_fast)
+			self.assertFalse(RMT_Util._svd_vals_accurate is RMT_Util._svd_vals_fast)
+		else:
+			print("torch is not available or cuda is not available")
+			self.assertTrue(RMT_Util._eig_full_accurate is RMT_Util._eig_full_fast)
+			self.assertTrue(RMT_Util._svd_full_accurate is RMT_Util._svd_full_fast)
+			self.assertTrue(RMT_Util._svd_vals_accurate is RMT_Util._svd_vals_fast)
+			
+
+	def test_torch_linalg(self):
+		# Note that if torch is not available then this will test scipy instead.
+		W = np.random.random((50,50))
+		L, V = RMT_Util._eig_full_fast(W)
+		W_reconstruct = np.matmul(V, np.matmul(np.diag(L), np.linalg.inv(V)))
+		err = np.sum(np.abs(W - W_reconstruct))
+		self.assertLess(err, 0.002, f"torch eig absolute reconstruction error was {err}")
+
+		W = np.random.random((50,100))
+		U, S, Vh = RMT_Util._svd_full_fast(W)
+		W_reconstruct = np.matmul(U, np.matmul(np.diag(S), Vh[:50,:]))
+		err = np.sum(np.abs(W - W_reconstruct))
+		self.assertLess(err, 0.05, f"torch svd absolute reconstruction error was {err}")
+
+		S_vals_only = RMT_Util._svd_vals_fast(W)
+		err = np.sum(np.abs(S - S_vals_only))
+		self.assertEqual(err, 0, f"torch svd and svd_vals differed by {err}")
 
 
 class TestPandas(Test_Base):

@@ -287,12 +287,6 @@ class Test_VGG11_Distances(Test_Base):
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
 class Test_VGG11(Test_Base):
-
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-	
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1265,11 +1259,6 @@ class Test_VGG11(Test_Base):
 
 
 class Test_Keras(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1329,17 +1318,12 @@ class Test_Keras(Test_Base):
 
 
 class Test_ResNet(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
 		self.model = models.resnet18()#weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
-		
+
 		
 	def test_N_ge_M(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers
@@ -1360,11 +1344,6 @@ class Test_ResNet(Test_Base):
 	
 
 class Test_RMT_Util(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1426,11 +1405,6 @@ class Test_RMT_Util(Test_Base):
 
 
 class Test_Vector_Metrics(Test_Base):
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1494,11 +1468,6 @@ class Test_Distances(Test_Base):
 	"""If we ever implement the idea of combining the biases into,  W+b_>W', then this class will 
 		contain the unit tests for this.  
 	"""
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-		
 	def setUp(self):
 		"""I run before every test in this class
 		"""
@@ -1590,16 +1559,11 @@ class TestPyTorchSVD(Test_Base):
 	Tests for discrepancies between the scipy and torch implementations of SVD.
 	"""
 
-	@classmethod
-	def setUpClass(cls):
-		"""I run only once for this class
-		"""
-
 	def setUp(self):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
-		
+
 
 	def test_torch_svd(self):
 		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:
@@ -1624,6 +1588,81 @@ class TestPyTorchSVD(Test_Base):
 			self.assertLess(np.max(np.abs(details_fast.alpha - details_accurate.alpha)), 0.02)
 
 
-	
+class TestPandas(Test_Base):
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn TestPandas:", self._testMethodName)
+		self.model = models.resnet18()
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+	def test_column_names_describe_basic(self):
+		expected_columns = ['layer_id', 'name', 'M', 'N', 'Q', 'layer_type', 'longname',
+							'num_evals', 'rf']
+
+		details = self.watcher.describe(layers=[67])
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
+							'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+							'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67])
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze_randomize(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
+ 					        'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+					        'log_spectral_norm', 'longname', 'matrix_rank', 'max_rand_eval', 'norm',
+					        'num_evals', 'num_fingers', 'num_pl_spikes', 'rand_W_scale',
+					        'rand_bulk_max', 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank',
+					        'rand_num_spikes', 'rand_sigma_mp', 'rank_loss', 'rf', 'sigma',
+					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+					        'ww_maxdist', 'ww_softrank', 'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67], randomize=True)
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze_intra(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'Xflag', 'alpha',
+					        'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+					        'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+					        'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+					        'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[64, 67], intra=True)
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze_mp_fit(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'W_scale', 'alpha',
+							'alpha_weighted', 'best_fit', 'bulk_max', 'bulk_min', 'entropy',
+							'fit_entropy', 'has_esd', 'lambda_max', 'layer_type', 'log_alpha_norm',
+							'log_norm', 'log_spectral_norm', 'longname', 'matrix_rank',
+							'mp_softrank', 'norm', 'num_evals', 'num_fingers', 'num_pl_spikes',
+							'num_spikes', 'rank_loss', 'rf', 'sigma', 'sigma_mp', 'spectral_norm',
+							'stable_rank', 'sv_max', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67], mp_fit=True)
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+
 if __name__ == '__main__':
 	unittest.main()

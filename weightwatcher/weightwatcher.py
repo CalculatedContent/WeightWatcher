@@ -1513,7 +1513,7 @@ class WeightWatcher(object):
         if not same:
             raise Exception("Sorry, models are from different frameworks")
         
-        distances = pd.DataFrame(columns=['layer_id', 'name', 'delta_Wb', 'method', 'combine_Wb', 'M', 'N', 'b_shape'])
+        distances = pd.DataFrame()
         data = {}
         ilayer = 0
         try:      
@@ -1567,7 +1567,7 @@ class WeightWatcher(object):
                     logger.fatal(f"unknown distance method {method}")
 
                 data_df = pd.DataFrame.from_records(data, index=[ilayer])
-                distances = pd.concat([distances, data_df])
+                distances = pd.concat([distances, data_df], ignore_index=True)
                 ilayer += 1
 
         except:
@@ -1575,7 +1575,11 @@ class WeightWatcher(object):
             logger.error("Sorry, problem comparing models")
             logger.error(msg)
             raise Exception("Sorry, problem comparing models: "+msg)
-        
+
+        # Reorder the columns so that layer_id and name come first.
+        lead_cols = ['layer_id', 'name', 'delta_Wb', 'method', 'combine_Wb', 'M', 'N', 'b_shape']
+        distances = distances[lead_cols + [c for c in distances.columns if not c in lead_cols]]
+
         distances.set_index('layer_id', inplace=True)
         avg_dWb = np.mean(distances['delta_Wb'].to_numpy())
         return avg_dWb, distances
@@ -2238,8 +2242,8 @@ class WeightWatcher(object):
         
         layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)     
         
-        details = pd.DataFrame(columns=['layer_id', 'name'])
-        
+        details = pd.DataFrame(columns=[])
+
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.debug("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
@@ -2285,7 +2289,11 @@ class WeightWatcher(object):
                 # issue 137
                 # details = details.append(ww_layer.get_row(), ignore_index=True)
                 data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
-                details = pd.concat([details,data])
+                details = pd.concat([details,data], ignore_index=True)
+
+        # Reorder the columns so that layer_id and name come first.
+        lead_cols = ["layer_id", "name"]
+        details = details[lead_cols + [c for c in details.columns if not c in lead_cols]]
 
         self.details = details
         return details
@@ -2375,7 +2383,7 @@ class WeightWatcher(object):
         params = self.normalize_params(params)
 
         layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)            
-        details = pd.DataFrame(columns=['layer_id', 'name'])
+        details = pd.DataFrame(columns=[])
            
         num_all_evals = 0
         for ww_layer in layer_iterator:
@@ -2395,8 +2403,11 @@ class WeightWatcher(object):
                 # issue 137
                 #details = details.append(ww_layer.get_row(), ignore_index=True)
                 data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
-                details = pd.concat([details,data])
+                details = pd.concat([details,data], ignore_index=True)
 
+        # Reorder the columns so that layer_id and name come first.
+        lead_cols = ["layer_id", "name"]
+        details = details[lead_cols + [c for c in details.columns if not c in lead_cols]]
         return details
 
     def valid_params(self, params):

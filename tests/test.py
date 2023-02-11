@@ -8,6 +8,7 @@ import torch
 
 from transformers import TFAutoModelForSequenceClassification
 from weightwatcher import RMT_Util
+from weightwatcher import WW_powerlaw
 from weightwatcher.constants import  *
 
 import numpy as np
@@ -1552,7 +1553,7 @@ class Test_Distances(Test_Base):
 		"""Test that we can get both weights and biases from ONNX models"""
 		
 		pass
-	
+
 
 class TestPyTorchSVD(Test_Base):
 	"""
@@ -1566,7 +1567,7 @@ class TestPyTorchSVD(Test_Base):
 
 	def test_torch_svd_no_torch(self):
 		"""tests that the SVD still runs  even if torch is not available"""
-		
+
 		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
 		expected_details= watcher.analyze(layers=[28], svd_method="accurate")
@@ -1650,6 +1651,80 @@ class TestPyTorchSVD(Test_Base):
 		err = np.sum(np.abs(S - S_vals_only))
 		self.assertLess(err, 0.0005, msg=f"torch svd and svd_vals differed by {err}")
 
+
+class TestPowerLaw(Test_Base):
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn TestPowerLaw:", self._testMethodName)
+		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+	def _check_fit_attributes(self, fit):
+		self.assertIsInstance(fit, WW_powerlaw.Fit, msg=f"fit was {type(fit)}")
+
+		types = {
+			"alpha"               : (np.float64, ),
+			"alphas"              : (np.ndarray, ),
+			"D"                   : (np.float64, ),
+			"Ds"                  : (np.ndarray, ),
+			"sigma"               : (np.float64, ),
+			"sigmas"              : (np.ndarray, ),
+			"xmin"                : (np.float64, ),
+			"xmins"               : (np.ndarray, ),
+			"xmax"                : (float, type(None)),
+			"distribution_compare":	(type(self.setUp), ),	#i.e., function
+			"plot_pdf"            : (type(self.setUp), ),	#i.e., function
+		}
+		for field, the_types in types.items():
+			self.assertTrue(hasattr(fit, field), msg=f"fit object does not have attribute {field}")
+			val = getattr(fit, field)
+			self.assertTrue(isinstance(val, the_types), msg=f"fit.{field} was type {type(val)}")
+
+	def _check_fit_attribute_len(self, fit, evals):
+		M = len(evals)
+		self.assertEqual(len(fit.alphas), M-1)
+		self.assertEqual(len(fit.sigmas), M-1)
+		self.assertEqual(len(fit.xmins), M-1)
+		self.assertEqual(len(fit.Ds), M-1)
+
+	def _check_fit_optimality(self, fit):
+		i = np.argmin(fit.Ds)
+		self.assertEqual(fit.alpha, fit.alphas[i])
+		self.assertEqual(fit.sigma, fit.sigmas[i])
+		self.assertEqual(fit.D, fit.Ds[i])
+
+	def test_fit_attributes(self):
+		params = DEFAULT_PARAMS.copy()
+		params[SVD_METHOD] = FAST_SVD
+		evals = self.watcher.get_ESD(layer=67, params=params)
+		fit = WW_powerlaw.pl_fit(evals, distribution=POWER_LAW)
+
+		self.assertAlmostEqual(fit.alpha, 3.3835113, places=3)
+		self.assertAlmostEqual(fit.sigma, 0.3103067, places=4)
+		self.assertAlmostEqual(fit.D, 	  0.0266789, places=4)
+
+		self._check_fit_attributes(fit)
+
+		self._check_fit_attribute_len(fit, evals)
+
+		self._check_fit_optimality(fit)
+
+	def test_fit_clipped_powerlaw(self):
+		params = DEFAULT_PARAMS.copy()
+		params[SVD_METHOD] = FAST_SVD
+		evals = self.watcher.get_ESD(layer=67, params=params)
+		fit, num_fingers = RMT_Util.fit_clipped_powerlaw(evals)
+
+		self.assertEqual(num_fingers, 0, msg=f"num_fingers was {num_fingers}")
+
+		self._check_fit_attributes(fit)
+
+		self._check_fit_attribute_len(fit, evals)
+
+		self._check_fit_optimality(fit)
+
+	# TODO: Add a test that checks that the plot_pdf method does what it's supposed to
 
 class TestPandas(Test_Base):
 	def setUp(self):

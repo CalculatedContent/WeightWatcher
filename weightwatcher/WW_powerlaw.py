@@ -27,3 +27,5 @@ def pl_compare(fit, dist):
     with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
         warnings.simplefilter(action='ignore', category=RuntimeWarning)
         return fit.distribution_compare(dist, TRUNCATED_POWER_LAW, normalized_ratio=True)
+
+Fit = powerlaw.Fit

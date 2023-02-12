@@ -24,21 +24,11 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import matplotlib.pyplot as plt
-import powerlaw
 
 
 from sklearn.decomposition import TruncatedSVD
 
 from copy import deepcopy
-
-# remove warnings from powerlaw unless testing
-import sys
-if not sys.warnoptions:
-    import warnings
-    warnings.simplefilter("ignore")
-
-# for powerlaw warnings
-from contextlib import redirect_stdout, redirect_stderr
 
 import importlib
 
@@ -51,6 +41,7 @@ import importlib
 
 from .RMT_Util import *
 from .constants import *
+from .WW_powerlaw import *
 
 
 # WW_NAME moved to constants.py
@@ -2691,20 +2682,6 @@ class WeightWatcher(object):
                      
          """
          
-        # when calling powerlaw methods, 
-        # trap warnings, stdout and stderr 
-        def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW):
-            f = io.StringIO()
-            with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
-                warnings.simplefilter(action='ignore', category=RuntimeWarning)
-                return powerlaw.Fit(data, xmin=xmin, xmax=xmax, verbose=verbose, distribution=distribution, xmin_distribution=distribution)
-
-        def pl_compare(fit, dist):
-            f = io.StringIO()
-            with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
-                warnings.simplefilter(action='ignore', category=RuntimeWarning)
-                return fit.distribution_compare(dist, TRUNCATED_POWER_LAW, normalized_ratio=True)
-    
         status = None
         
         # defaults for failed status

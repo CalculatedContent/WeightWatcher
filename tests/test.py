@@ -2299,10 +2299,12 @@ class TestPowerLaw(Test_Base):
 		print("\n-------------------------------------\nIn TestPowerLaw:", self._testMethodName)
 		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		params = DEFAULT_PARAMS.copy()
+		params[SVD_METHOD] = FAST_SVD
+		self.evals = self.watcher.get_ESD(layer=67, params=params)
+
 
 	def _check_fit_attributes(self, fit):
-		self.assertIsInstance(fit, WW_powerlaw.Fit, msg=f"fit was {type(fit)}")
-
 		types = {
 			"alpha"               : (np.float64, ),
 			"alphas"              : (np.ndarray, ),
@@ -2310,9 +2312,9 @@ class TestPowerLaw(Test_Base):
 			"Ds"                  : (np.ndarray, ),
 			"sigma"               : (np.float64, ),
 			"sigmas"              : (np.ndarray, ),
-			"xmin"                : (np.float64, ),
+			"xmin"                : (np.float32, np.float64, ),
 			"xmins"               : (np.ndarray, ),
-			"xmax"                : (float, type(None)),
+			"xmax"                : (np.float32, np.float64, float, type(None)),
 			"distribution_compare":	(type(self.setUp), ),	#i.e., function
 			"plot_pdf"            : (type(self.setUp), ),	#i.e., function
 		}
@@ -2334,11 +2336,26 @@ class TestPowerLaw(Test_Base):
 		self.assertEqual(fit.sigma, fit.sigmas[i])
 		self.assertEqual(fit.D, fit.Ds[i])
 
+	def test_PL_speed(self):
+		"""
+		If the re-implementation of powerlaw is not faster then we should switch back.
+		"""
+		from time import time
+		start_time = time()
+		_ = WW_powerlaw.powerlaw.Fit(self.evals, distribution=POWER_LAW)
+		PL_time = time() - start_time
+
+		start_time = time()
+		_ = WW_powerlaw.Fit(self.evals, distribution=POWER_LAW)
+		WW_time = time() - start_time
+		print(f"WW powerlaw time is {PL_time / WW_time:0.02f}x faster with M = {len(self.evals)}")
+
+		self.assertLess(WW_time, PL_time)
+
+
 	def test_fit_attributes(self):
-		params = DEFAULT_PARAMS.copy()
-		params[SVD_METHOD] = FAST_SVD
-		evals = self.watcher.get_ESD(layer=67, params=params)
-		fit = WW_powerlaw.pl_fit(evals, distribution=POWER_LAW)
+		fit = WW_powerlaw.Fit(self.evals, distribution=POWER_LAW)
+		self.assertIsInstance(fit, WW_powerlaw.Fit, msg=f"fit was {type(fit)}")
 
 		self.assertAlmostEqual(fit.alpha, 3.3835113, places=3)
 		self.assertAlmostEqual(fit.sigma, 0.3103067, places=4)
@@ -2346,21 +2363,18 @@ class TestPowerLaw(Test_Base):
 
 		self._check_fit_attributes(fit)
 
-		self._check_fit_attribute_len(fit, evals)
+		self._check_fit_attribute_len(fit, self.evals)
 
 		self._check_fit_optimality(fit)
 
 	def test_fit_clipped_powerlaw(self):
-		params = DEFAULT_PARAMS.copy()
-		params[SVD_METHOD] = FAST_SVD
-		evals = self.watcher.get_ESD(layer=67, params=params)
-		fit, num_fingers = RMT_Util.fit_clipped_powerlaw(evals)
+		fit, num_fingers = RMT_Util.fit_clipped_powerlaw(self.evals)
 
 		self.assertEqual(num_fingers, 0, msg=f"num_fingers was {num_fingers}")
 
 		self._check_fit_attributes(fit)
 
-		self._check_fit_attribute_len(fit, evals)
+		self._check_fit_attribute_len(fit, self.evals)
 
 		self._check_fit_optimality(fit)
 

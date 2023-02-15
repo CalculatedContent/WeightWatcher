@@ -1181,11 +1181,12 @@ class Test_VGG11(Test_Base):
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
-		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False)
+		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False,
+									   svd_method=ACCURATE_SVD)
 		#d = self.watcher.get_details(results=results)
 		a = details.alpha.to_numpy()
-		self.assertAlmostEqual(a[0],1.65014, places=4)
-		self.assertAlmostEqual(a[1],1.57297, places=4)
+		self.assertAlmostEqual(a[0],1.74859, places=4)
+		self.assertAlmostEqual(a[1],1.66595, places=4)
 		self.assertAlmostEqual(a[3],1.43459, places=4)
  		
 		# spectral norm

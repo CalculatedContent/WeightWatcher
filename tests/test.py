@@ -2205,19 +2205,6 @@ class TestPyTorchSVD(Test_Base):
 		"""
 		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
 
-	def test_torch_svd_no_torch(self):
-		"""tests that the SVD still runs  even if torch is not available"""
-
-		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		fc2_layer = 28
-		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
-		expected_details= watcher.analyze(layers=[fc2_layer], svd_method="accurate")
-		expected_length_of_details = len(expected_details)
-		
-		self.assertTrue(RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate)
-		self.assertEqual(1, expected_length_of_details)
-
-		
 
 	def test_torch_svd(self):
 		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:

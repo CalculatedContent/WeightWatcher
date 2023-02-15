@@ -42,15 +42,16 @@ class WWFit(object):
         self.xmins = self.data[:-1]
         self.distribution = distribution
 
-        if   self.distribution == POWER_LAW:            self.fit_power_law()
+        self.dists = {}
+        if   self.distribution == POWER_LAW:
+            self.fit_power_law()
+            self.dists[POWER_LAW] = self
 
         i = np.argmin(self.Ds)
         self.xmin = self.xmins[i]
         self.alpha = self.alphas[i]
         self.sigma = self.sigmas[i]
         self.D = self.Ds[i]
-
-        self.dists = {}
 
     def __str__(self):
         return f"WWFit({self.distribution} xmin: {self.xmin:0.04f}, alpha: {self.alpha:0.04f}, sigma: {self.sigma:0.04f}, data: {len(self.data)})"
@@ -71,6 +72,15 @@ class WWFit(object):
                 ))
 
         self.sigmas = (self.alphas - 1) / np.sqrt(self.N - np.arange(self.N-1))
+
+    def __getattr__(self, item):
+        """ Needed for replicating the behavior of the powerlaw.Fit class"""
+        if item in self.dists: return self.dists[item]
+        raise AttributeError(item)
+
+    def plot_pdf(self, *args, **kwargs):
+        """ Needed for replicating the behavior of the powerlaw.Fit class"""
+        powerlaw.plot_pdf(data=self.data, *args, **kwargs)
 
     def distribution_compare(self, _dist1, _dist2, **kwargs):
         """

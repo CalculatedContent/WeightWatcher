@@ -1825,7 +1825,7 @@ class Test_VGG11(Test_Base):
 		
 		import powerlaw
 		esd = self.watcher.get_ESD(layer=self.fc2_layer)
-		fit = powerlaw.Fit(esd,  xmax=np.max(esd))
+		fit = powerlaw.Fit(esd,  xmax=None)
 		actual = RMT_Util.line_entropy(fit.Ds)
 		self.assertAlmostEqual(expected, actual, None, '', 0.01)
 

@@ -112,7 +112,7 @@ Fit = WWFit
 # when calling powerlaw methods,
 # trap warnings, stdout and stderr
 def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW):
-    if distribution == POWER_LAW:
+    if distribution == POWER_LAW and not hasattr(xmin, "__iter__"):
         return WWFit(data, xmin=xmin, xmax=xmax, distribution=distribution)
 
     f = io.StringIO()

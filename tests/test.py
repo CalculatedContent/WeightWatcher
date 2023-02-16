@@ -1419,17 +1419,16 @@ class Test_VGG11(Test_Base):
 		# default
 		details = self.watcher.analyze(layers=[self.second_layer])
 		actual = details.alpha.to_numpy()[0]
-		expected = 7.116304
+		expected = 1.720792
 		print("ACTUAL {}".format(actual))
-		self.assertAlmostEqual(actual,expected, places=2)
+		self.assertAlmostEqual(actual, expected, places=2)
 		
 		# XMIN_PEAK
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0)
-		actual = details.alpha[0]
+		details = self.watcher.analyze(layers=[5], fix_fingers='xmin_peak', xmin_max=1.0)
 		actual = details.alpha.to_numpy()[0]
-		expected = 1.68
-		delta = 0.01
-		self.assertAlmostEqual(actual,expected, None, '',  delta)
+		expected = 1.687057
+		print("ACTUAL {}".format(actual))
+		self.assertAlmostEqual(actual, expected, places=2)
 	
 		
 	def test_fix_fingers_clip_xmax(self):

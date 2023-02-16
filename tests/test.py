@@ -2368,6 +2368,20 @@ class TestPowerLaw(Test_Base):
 
 	# TODO: Add a test that checks that the plot_pdf method does what it's supposed to
 
+class TestPlots(Test_Base):
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn TestPlots:", self._testMethodName)
+		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+	def testPlots(self):
+		""" Simply tests that the plot functions will not generate an exception.
+			Does not guarantee correctness, yet.
+		"""
+		self.watcher.analyze(layers=[67], plot=True, randomize=True)
+
 class TestPandas(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class

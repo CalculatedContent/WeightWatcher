@@ -150,7 +150,10 @@ class FRAMEWORK(IntFlag):
     KERAS = auto()
     ONNX = auto()
     PYSTATEDICT = auto()
-    
+    PYSTATEDICTFILE = auto()
+    KERASH5 = auto()
+    KERASH5FILE = auto()
+
 
 class CHANNELS(IntFlag):
     UNKNOWN = auto()

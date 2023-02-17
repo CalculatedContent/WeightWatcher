@@ -24,14 +24,10 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import matplotlib.pyplot as plt
-
-
 from sklearn.decomposition import TruncatedSVD
 
 from copy import deepcopy
-
 import importlib
-
 
 #
 # this is use to allow editing in Eclipse but also
@@ -55,7 +51,6 @@ mpl_logger.setLevel(logging.WARNING)
 
 
 
-
 def main():
     """
     Weight Watcher
@@ -63,8 +58,316 @@ def main():
     print("WeightWatcher command line support coming later. https://calculationconsulting.com")
 
 
+# TODO: make all these methods abstract
+# can't do this until all the class methods are implemented and tested
 
-class PyStateDictLayer:
+class FrameworkLayer:
+    """Base class for all classes that wrap the layer from each Framework and Format
+    Each FrameworkLayer is specifically typed to make it easier to manage the different and growing
+    """
+    
+    def __init__(self, layer, layer_id, name, longname="", weights=None, bias=None, 
+                 the_type = LAYER_TYPE.UNKNOWN, skipped=False, framework=FRAMEWORK.UNKNOWN, 
+                 channels=CHANNELS.UNKNOWN, plot_id=None):
+        
+        self.layer = layer
+        self.layer_id = layer_id
+        
+        # read weights and biases
+        self.name = name
+        self.longname =  longname
+        self.weights = weights
+        self.bias = bias
+        self.the_type = the_type
+        self.skipped = skipped
+        self.framework = framework
+        self.channels = channels
+        
+        if plot_id is None:
+            self.plot_id = f"{layer_id}"
+        else:
+            self.plot_id = plot_id
+            
+            
+        if self.name is None and hasattr(self.layer, 'name'):
+            self.name = self.layer.name
+        elif self.name is None:
+            self.name = str(self.layer)
+            self.name = re.sub(r'\(.*', '', self.name)
+            
+        if self.longname is None and hasattr(self.layer, 'longname'):
+            self.longname = self.layer.longname
+        elif self.longname is None:
+            self.longname = name
+
+    #@abc.abstractmethod:=
+    def has_biases(self):
+        pass
+    
+    #@abc.abstractmethod:
+    def get_weights_and_biases(self):
+        pass
+
+    #@abc.abstractmethod:
+    def replace_layer_weights(self, W, B=None):
+        pass
+  
+
+  
+class KerasLayer(FrameworkLayer):
+
+    
+    def __init__(self, layer, layer_id=-1, name=None, longname = None):
+
+        the_type = self.layer_type(layer)
+        channels = CHANNELS.FIRST
+        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, the_type=the_type, 
+                                framework=FRAMEWORK.KERAS, channels=channels)
+
+    
+    def layer_type(self, layer):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic Keras  classes by type, and will try to infer the type otherwise. """
+    
+
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        typestr = (str(type(layer))).lower()     
+        
+        # Keras TF 2.x types
+        if isinstance(layer, keras.layers.Dense) or 'dense' in typestr:
+           the_type = LAYER_TYPE.DENSE
+           
+        elif isinstance(layer, keras.layers.Conv1D)  or  'conv1d' in typestr:               
+           the_type = LAYER_TYPE.CONV1D
+        
+        elif isinstance(layer, keras.layers.Conv2D) or 'conv2d' in typestr:             
+           the_type = LAYER_TYPE.CONV2D
+                           
+        elif isinstance(layer, keras.layers.Flatten) or 'flatten' in typestr:
+           the_type = LAYER_TYPE.FLATTENED
+           
+        elif isinstance(layer, keras.layers.Embedding) or 'embedding' in typestr:
+           the_type = LAYER_TYPE.EMBEDDING
+           
+        elif isinstance(layer, tf.keras.layers.LayerNormalization) or 'layernorn' in typestr:
+           the_type = LAYER_TYPE.NORM
+           
+        return the_type
+        
+
+    # only works for dense layers
+    def has_biases(self):
+        return self.layer.use_bias is True
+    
+         
+    def get_weights_and_biases(self):
+        """extract the original weights (as a tensor) for the layer, and biases for the layer, if present
+        
+        these wil be set in the enclosing WWLayer
+        """
+         
+        has_weights, has_biases = False, False
+        weights, biases = None, None
+                   
+        w = self.layer.get_weights()
+        if self.the_type==LAYER_TYPE.CONV2D:
+            weights = w[0]
+            biases = None
+            has_weights = True
+        elif self.the_type==LAYER_TYPE.CONV1D:
+            weights = w[0]
+            biases = None
+            has_weights = True
+        elif self.the_type==LAYER_TYPE.EMBEDDING:
+            weights = w[0]
+            biases = None
+            has_weights = True
+        elif self.the_type==LAYER_TYPE.DENSE:
+            weights = w[0]
+            has_weights = True
+            if self.has_biases():
+                biases = w[1]
+                has_biases = True
+
+        else: 
+            logger.info("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
+    
+        return has_weights, weights, has_biases, biases  
+
+
+
+    def replace_layer_weights(self, W, B=None):
+        """My not work,, see https://stackoverflow.com/questions/51354186/how-to-update-weights-manually-with-keras"""
+        
+        if self.has_biases() and B is not None:
+            W = [W, B]
+        self.layer.set_weights(W)
+            
+            
+    @staticmethod
+    def get_layer_iterator(model):
+        def layer_iter_():
+
+            def traverse_(layer):
+                "not recursive, just iterate over all submodules if present"
+                if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
+                    yield KerasLayer(layer)
+                else:                        
+                    for sublayer in layer.submodules:
+                        yield KerasLayer(sublayer)
+                
+            for layer in model.layers:
+                yield from traverse_(layer)
+
+        return layer_iter_() 
+    
+
+      
+class PyTorchLayer(FrameworkLayer):
+    
+    def __init__(self, layer, layer_id=-1, name=None, longname = None):
+        
+        the_type = self.layer_type(layer)
+        channels = CHANNELS.LAST
+        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, the_type=the_type, 
+                                framework=FRAMEWORK.KERAS, channels=channels)        
+    
+    def layer_type(self, layer):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        typestr = (str(type(layer))).lower()     
+         
+        if isinstance(layer, torch.nn.Linear) or 'linear' in typestr:
+             the_type = LAYER_TYPE.DENSE
+             
+        elif isinstance(layer, torch.nn.Conv1d) or  'conv1d' in typestr:
+             the_type = LAYER_TYPE.CONV1D
+         
+        elif isinstance(layer, torch.nn.Conv2d) or 'conv2d' in typestr:
+             the_type = LAYER_TYPE.CONV2D
+             
+        elif isinstance(layer, torch.nn.Embedding) or 'embedding' in typestr:
+             the_type = LAYER_TYPE.EMBEDDING
+         
+        elif  'norm' in str(type(layer)).lower() :
+             the_type = LAYER_TYPE.NORM
+
+           
+        return the_type
+        
+        
+    def has_biases(self):
+        return self.layer.bias is not None
+    
+    def get_weights_and_biases(self):
+        """extract the original weights (as a tensor) for the layer, and biases for the layer, if present
+        
+        expects self.layer to be set   
+        """
+         
+        has_weights, has_biases = False, False
+        weights, biases = None, None
+
+        if hasattr(self.layer, 'weight'): 
+            w = [np.array(self.layer.weight.data.clone().cpu())]
+            if self.the_type==LAYER_TYPE.CONV2D:
+                weights = w[0]
+                biases = None
+                has_weights = True
+            elif self.the_type==LAYER_TYPE.CONV1D:
+                weights = w[0]
+                biases = None
+                has_weights = True
+            elif self.the_type==LAYER_TYPE.EMBEDDING:
+                weights = w[0]
+                biases = None
+                has_weights = True
+            elif self.the_type==LAYER_TYPE.DENSE:
+                weights = w[0]
+                biases = self.layer.bias.data.clone().cpu()
+                biases = biases.detach().numpy()
+                has_weights = True
+                has_biases = True
+            elif self.the_type not in [LAYER_TYPE.NORM]: 
+                logger.info("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
+            else:
+                pass           
+        
+        return has_weights, weights, has_biases, biases  
+    
+    
+    def replace_layer_weights(self, W, B=None):
+            
+        self.layer.weight.data = torch.from_numpy(W)
+        if self.has_biases() and B is not None:
+            self.layer.bias.data = torch.from_numpy(B)
+        
+    
+    @staticmethod
+    def get_layer_iterator(model):
+        def layer_iter_():
+            #for layer in model.modules():
+            for longname, layer in model.named_modules():
+                setattr(layer, 'longname', longname)
+                yield PyTorchLayer(layer, longname=longname)                        
+        return layer_iter_()     
+    
+    
+      
+    
+class KerasH5Layer(FrameworkLayer):
+    def __init__(self, layer):
+        pass
+    
+    
+    def layer_type(self, layer):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        typestr = (str(type(layer))).lower()            
+        
+        return the_type
+        
+    
+    
+class KerasH5FileLayer(FrameworkLayer):
+    def __init__(self, layer):
+        pass
+    
+    def layer_type(self, layer):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        typestr = (str(type(layer))).lower()     
+        
+        return the_type
+        
+        
+
+
+class PyStateDictLayer(FrameworkLayer):  
+    def __init__(self, layer):
+        pass
+  
+    def layer_type(self, layer):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        typestr = (str(type(layer))).lower()     
+                 
+            
+        return the_type
+         
+    
+    
+      
+class PyStateDictFileLayer(FrameworkLayer):
     """Helper class to support layers directly from pyTorch StateDict
         
       Currently only supports DENSE layers
@@ -76,51 +379,58 @@ class PyStateDictLayer:
     def __init__(self, weights_dir, layer_config):
         
         self.layer_config = layer_config
-        self.layer_id = -1
+        layer_id = layer_config['layer_id']
         
         # read weights and biases
-        self.name = layer_config['name']
-        self.longname = layer_config['longname']
-        self.weight = None
-        self.bias = None
-        self.the_type = LAYER_TYPE.UNKNOWN
+        name = layer_config['name']
+        longname = layer_config['longname']
+        the_type = LAYER_TYPE.UNKNOWN
                 
         weightfile = layer_config['weightfile']
         weightfile = os.path.join(weights_dir, weightfile)
-        self.weights = np.load(weightfile)
+        weights = np.load(weightfile)
         self.weightfile = weightfile
 
         if layer_config['biasfile']:
             biasfile = layer_config['biasfile']
             biasfile = os.path.join(weights_dir, biasfile)
-            self.bias = np.load(biasfile) 
-            self.biasfile = biasfile
+            bias = np.load(biasfile) 
+            biasfile = biasfile
         
-        if len(self.weights.shape)==2:
-            self.the_type = LAYER_TYPE.DENSE
-        else:
-            self.the_type = LAYER_TYPE.UNKNOWN
+        the_type = self.layer_type(weights)
+        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, weights=weights, bias=bias, the_type=the_type, framework=FRAMEWORK.PYSTATEDICT)
+    
+    
+
+    # TODO: change to dims
+    def layer_type(self, weights):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+
+        the_type = LAYER_TYPE.UNKNOWN
+        if len(weights.shape)==2:
+            the_type = LAYER_TYPE.DENSE
+        
+        return the_type
 
 
+    @staticmethod
+    def get_layer_iterator(model):
+        def layer_iter_():
+            weights_dir =  self.config ['weights_dir']
+            logger.debug(f"iterating over layers in {weights_dir}")
             
-    def has_bias(self):
-        return self.bias is not None
-
-    def get_bias(self):
-        return self.bias
+            for layer_id, layer_config in self.config['layers'].items():
+                py_layer = PyStateDictLayer(weights_dir, layer_config)
+                py_layer.layer_id = layer_id
+                yield py_layer            
+        return layer_iter_()   
     
-    def set_weights(self, W):
-        self.weights = W
-                   
-    def get_weights(self):
-        return self.weights
-    
-    def set_bias(self, b):
-        self.bias = b
         
 
 
-class ONNXLayer:
+
+class ONNXLayer(FrameworkLayer):
     """Helper class to support ONNX layers
     
     Turns out the op_type is option, so we have to 
@@ -132,74 +442,90 @@ class ONNXLayer:
     """
     
     def __init__(self, model, inode, node):
+        
         self.model = model
+        self.dims = node.dims     
 
-        self.node = node
-        self.layer_id = inode
-        self.plot_id = f"{inode}"
-        self.name = node.name
-        self.dims = node.dims
-        self.the_type = LAYER_TYPE.UNKNOWN
+        layer = node
+        layer_id = inode
+        name = node.name
+            
+        the_type = self.layer_type(dims)
+        channels = CHANNELS.LAST
+        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, the_type=the_type, 
+                                framework=FRAMEWORK.ONNX, channels=channels)     
 
-        if len(self.dims) == 4:
-            self.the_type = LAYER_TYPE.CONV2D
-        elif len(self.dims) == 2:
-            self.the_type = LAYER_TYPE.DENSE
-        else:
-            logger.debug("Unsupported ONNX Layer, dims = {}".format(self.dims))
             
     def get_weights(self):
         return onnx_get_weights(self.node)
 
-    def set_weights(self, idx, W):
+    def set_weights(self, W):
+        idx = self.layer_id
         onnx_set_weights(self, idx, W)
 
+
+    def layer_type(self, dims):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE
+        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        
+        if len(self.dims) == 4:
+            the_type = LAYER_TYPE.CONV2D
+        elif len(self.dims) == 2:
+            the_type = LAYER_TYPE.DENSE
+        else:
+            logger.debug("Unsupported ONNX Layer, dims = {}".format(self.dims))
+                
+        return the_type
+
+        
+            
+    def replace_layer_weights(self, W, B=None):
+        
+        self.set_weights(W)
+        if B is not None:
+            logger.fatal("dont know hownto set Bias on ONNX models, stopping")
+
+
+    @staticmethod
+    def get_layer_iterator(model):
+        def layer_iter_():
+            for inode, node in enumerate(model.graph.initializer):
+                yield ONNXLayer(model, inode, node)             
+        return layer_iter_() 
+
+    
         
         
 class WWLayer:
     """WW wrapper layer to Keras and PyTorch Layer layer objects
        Uses python metaprogramming to add result columns for the final details dataframe"""
        
-    def __init__(self, layer, layer_id=-1, name=None,
-                 longname = None,
-                 the_type=LAYER_TYPE.UNKNOWN, 
-                 framework=FRAMEWORK.UNKNOWN, 
-                 channels=CHANNELS.UNKNOWN,
-                 skipped=False, make_weights=True, params=None):
+    def __init__(self, framework_layer, layer_id=-1, skipped=False, make_weights=True, params=None):
         
         if params is None: params = DEFAULT_PARAMS.copy()
         
-        self.layer = layer
+        self.framework_layer = framework_layer
         self.layer_id = layer_id  
-        self.plot_id = f"{layer_id}"
-        self.name = name
-        if longname:
-            self.longname = name
-        else:
-            self.longname = name
+        self.plot_id = framework_layer.plot_id
+        self.name = framework_layer.name
+        self.longname = framework_layer.longname
+
+
         self.skipped = skipped
-        self.the_type = the_type
-        self.framework = framework      
-        self.channels = channels
+        self.the_type = framework_layer.the_type
+        self.framework = framework_layer.framework      
+        self.channels = framework_layer.channels
         
-        # get the LAYER_TYPE
-        self.the_type = self.layer_type(self.layer)
-                
-        if self.name is None and hasattr(self.layer, 'name'):
-            self.name = self.layer.name
-        elif self.name is None:
-            self.name = str(self.layer)
-            self.name = re.sub(r'\(.*', '', self.name)
-            
-        if self.longname is None and hasattr(self.layer, 'longname'):
-            self.longname = self.layer.longname
-        else:
-            self.longname = name
 
         # original weights (tensor) and biases
         self.has_weights = False
         self.weights = None
   
+        self.has_biases = False
+        self.biases = None
+        
         # extracted weight matrices
         self.num_W = 0
         self.Wmats = []
@@ -284,81 +610,10 @@ class WWLayer:
         return "WWLayer()"
 
     def __str__(self):
-        return "WWLayer {}  {} {} {}  skipped {}".format(self.layer_id, self.name,
-                                                       self.framework.name, self.the_type.name, self.skipped)
-        
-         
-    def layer_type(self, layer):
-        """Given a framework layer, determine the weightwatcher LAYER_TYPE
-        This can detect basic Keras and PyTorch classes by type, and will try to infer the type otherwise. """
+        return "WWLayer {}  {} {}  skipped {}".format(self.layer_id, self.name,
+                                                        self.the_type.name, self.skipped)
 
-        the_type = LAYER_TYPE.UNKNOWN
-        typestr = (str(type(layer))).lower()     
-        
-        # Keras TF 2.x types
-        if self.framework==FRAMEWORK.KERAS:
-            if isinstance(layer, keras.layers.Dense) or 'Dense' in str(type(layer)):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif isinstance(layer, keras.layers.Conv1D)  or  'Conv1D' in str(type(layer)):               
-                the_type = LAYER_TYPE.CONV1D
-            
-            elif isinstance(layer, keras.layers.Conv2D) or 'Conv2D' in str(type(layer)):             
-                the_type = LAYER_TYPE.CONV2D
-                                
-            elif isinstance(layer, keras.layers.Flatten) or 'Flatten' in str(type(layer)):
-                the_type = LAYER_TYPE.FLATTENED
-                
-            elif isinstance(layer, keras.layers.Embedding) or 'Embedding' in str(type(layer)):
-                the_type = LAYER_TYPE.EMBEDDING
-                
-            elif isinstance(layer, tf.keras.layers.LayerNormalization) or 'LayerNorn' in str(type(layer)):
-                the_type = LAYER_TYPE.NORM
-        
-        # PyTorch        
-        elif self.framework==FRAMEWORK.PYTORCH:
-            if isinstance(layer, nn.Linear) or 'Linear' in str(type(layer)):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif isinstance(layer, nn.Conv1d) or  'Conv1D' in str(type(layer)):
-                the_type = LAYER_TYPE.CONV1D
-            
-            elif isinstance(layer, nn.Conv2d) or 'Conv2D' in str(type(layer)):
-                the_type = LAYER_TYPE.CONV2D
-                
-            elif isinstance(layer, nn.Embedding) or 'Embedding' in str(type(layer)):
-                the_type = LAYER_TYPE.EMBEDDING
-    
-            elif  'norm' in str(type(layer)).lower() :
-                the_type = LAYER_TYPE.NORM
 
-        # ONNX
-        elif self.framework==FRAMEWORK.ONNX:
-            if isinstance(layer,ONNXLayer):
-                the_type = layer.the_type
-            
-        # PYStateDict
-        elif self.framework==FRAMEWORK.PYSTATEDICT:
-            if isinstance(layer,PyStateDictLayer):
-                the_type = layer.the_type
-                
-        # allow user to specify model type with file mapping
-        
-        # try to infer type (i.e for huggingface)
-        elif self.framework==FRAMEWORK.UNKNOWN:
-            if typestr.endswith(".linear'>"):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif typestr.endswith(".dense'>"):
-                the_type = LAYER_TYPE.DENSE
-                
-            elif typestr.endswith(".conv1d'>"):
-                the_type = LAYER_TYPE.CONV1D
-                
-            elif typestr.endswith(".conv2d'>"):
-                the_type = LAYER_TYPE.CONV2D
-        
-        return the_type
     
     def make_weights(self):
         """ Constructor for WWLayer class.  Make a ww (wrapper)_layer from a framework layer, or return None if layer is skipped.
@@ -366,95 +621,24 @@ class WWLayer:
         
         has_weights = False;
         if not self.skipped:
-            has_weights, weights, has_biases, biases = self.get_weights_and_biases()
+            has_weights, weights, has_biases, biases = self.framework_layer.get_weights_and_biases()
             
             self.has_weights = has_weights
             self.has_biases = has_biases
             
             if has_biases:
                 self.biases = biases   
-                
+                self.has_biases = True
+            
             if has_weights:    
                 self.weights = weights
                 self.set_weight_matrices(weights)
     
         return self
         
-    def get_weights_and_biases(self):
-        """extract the original weights (as a tensor) for the layer, and biases for the layer, if present
-        """
-        
-        has_weights, has_biases = False, False
-        weights, biases = None, None
-    
-        if self.framework == FRAMEWORK.PYTORCH:
-            if hasattr(self.layer, 'weight'): 
-                w = [np.array(self.layer.weight.data.clone().cpu())]
-                if self.the_type==LAYER_TYPE.CONV2D:
-                    weights = w[0]
-                    biases = None
-                    has_weights = True
-                elif self.the_type==LAYER_TYPE.CONV1D:
-                    weights = w[0]
-                    biases = None
-                    has_weights = True
-                elif self.the_type==LAYER_TYPE.EMBEDDING:
-                    weights = w[0]
-                    biases = None
-                    has_weights = True
-                elif self.the_type==LAYER_TYPE.DENSE:
-                    weights = w[0]
-                    biases = self.layer.bias
-                    has_weights = True
-                    has_biases = True
-                elif self.the_type not in [LAYER_TYPE.NORM]: 
-                    logger.info("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
-                else:
-                    pass
 
-                
-        elif self.framework == FRAMEWORK.KERAS:
-            w = self.layer.get_weights()
-            if self.the_type==LAYER_TYPE.CONV2D:
-                weights = w[0]
-                biases = None
-                has_weights = True
-            elif self.the_type==LAYER_TYPE.CONV1D:
-                weights = w[0]
-                biases = None
-                has_weights = True
-            elif self.the_type==LAYER_TYPE.EMBEDDING:
-                weights = w[0]
-                biases = None
-                has_weights = True
-            elif self.the_type==LAYER_TYPE.DENSE:
-                weights = w[0]
-                biases = w[1]
-                has_weights = True
-                has_biases = True
-                #print("KERAS WandB",self.the_type, weights.shape, biases.shape)
-
-            else: 
-                logger.info("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
   
 
-        elif self.framework == FRAMEWORK.ONNX:      
-            weights = self.layer.get_weights()
-            has_weights = True
-            
-        elif self.framework == FRAMEWORK.PYSTATEDICT:      
-            weights = self.layer.get_weights()
-            has_weights = True
-            
-            biases = None
-            has_biases = self.layer.has_bias()
-            if has_biases:
-                biases = self.layer.get_bias()
-            
-            
-        
-        return has_weights, weights, has_biases, biases  
-      
     def set_weight_matrices(self, weights, combine_weights_and_biases=False):#, conv2d_fft=False, conv2d_norm=True):
         """extract the weight matrices from the framework layer weights (tensors)
         sets the weights and detailed properties on the ww (wrapper) layer 
@@ -554,6 +738,8 @@ class WWLayer:
             return "LAST"
         else:
             return "UNKNOWN"
+        
+        
         
     def conv2D_Wmats(self, Wtensor, channels=CHANNELS.UNKNOWN):
         """Extract W slices from a 4 layer_id conv2D tensor of shape: (N,M,i,j) or (M,N,i,j).  
@@ -673,7 +859,15 @@ class WWLayer:
         logger.fatal("not implemented yet")
         return
     
+    
+    def get_weights_and_biases(self):
+        return self.framework_layer.get_weights_and_biases()
+        
+    def replace_layer_weights(self, W, B=None):
+        return self.framework_layer.replace_layer_weights(W=W, B=B,)
 
+
+    
     
 class ModelIterator:
     """Iterator that loops over ww wrapper layers, with original matrices (tensors) and biases (optional) available.
@@ -757,50 +951,17 @@ class ModelIterator:
         layer_iter = None
         
         if self.framework == FRAMEWORK.KERAS:
-            def layer_iter_():
+            layer_iter = KerasLayer.get_layer_iterator(model) 
 
-                def traverse_(layer):
-                    "not recursive, just iterate over all submodules if present"
-                    if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
-                        yield layer
-                    else:                        
-                        for sublayer in layer.submodules:
-                            yield sublayer
-                    
-                for layer in model.layers:
-                    yield from traverse_(layer)
-
-            layer_iter = layer_iter_()
-
-        # TODO: make wrapper for layer which include longname
-        # or add longname to layer object dynamically with setarr
         elif self.framework == FRAMEWORK.PYTORCH:
-            def layer_iter_():
-                #for layer in model.modules():
-                for longname, layer in model.named_modules():
-                    setattr(layer, 'longname', longname)
-
-                    yield layer                        
-            layer_iter = layer_iter_()    
-            
+            layer_iter = PyTorchLayer.get_layer_iterator(model) 
 
         elif self.framework == FRAMEWORK.ONNX:
-            def layer_iter_():
-                for inode, node in enumerate(model.graph.initializer):
-                    yield ONNXLayer(model, inode, node)                        
-            layer_iter = layer_iter_()    
+            layer_iter = ONNXLayer.get_layer_iterator(model) 
             
         elif self.framework == FRAMEWORK.PYSTATEDICT:
-            def layer_iter_():
-                weights_dir =  self.config ['weights_dir']
-                logger.debug(f"iterating over layers in {weights_dir}")
-                
-                for layer_id, layer_config in self.config['layers'].items():
-                    py_layer = PyStateDictLayer(weights_dir, layer_config)
-                    py_layer.layer_id = layer_id
-                    yield py_layer            
-            layer_iter = layer_iter_()   
-    
+            layer_iter = PyStateDictFileLayer.get_layer_iterator(model) 
+            
         else:
             layer_iter = None
             
@@ -912,10 +1073,7 @@ class WWLayerIterator(ModelIterator):
         for curr_layer in self.model_iter:
             curr_id, self.k = self.k, self.k + 1
             
-            ww_layer = WWLayer(curr_layer, layer_id=curr_id, 
-                               framework=self.framework, 
-                               channels=self.channels,
-                               params=self.params)
+            ww_layer = WWLayer(curr_layer, layer_id=curr_id, params=self.params)
             
             self.apply_filters(ww_layer)
             
@@ -1214,9 +1372,9 @@ class WWStackedLayerIterator(WWLayerIterator):
     
 
     
-class WeightWatcher(object):
+class WeightWatcher:
 
-    def __init__(self, model=None, framework=None, log_level=None, ):
+    def __init__(self, model=None, framework=None, log_level=None):
         """ model is set or is none
             the framework can be set or it is inferred
         
@@ -1238,7 +1396,7 @@ class WeightWatcher(object):
             if self.valid_framework(framework):
                 self.framework = framework
                 banner += "\n"+ self.load_framework_imports(framework)
-                print(banner)
+                logger.info(banner)
             else:
                 logger.fatal("Could not infer framework from model, stopping")
         
@@ -1323,7 +1481,6 @@ class WeightWatcher(object):
             global torch, nn
             try:
                 torch = importlib.import_module('torch')
-                nn = importlib.import_module('torch.nn')
     
                 banner = f"torch version {torch.__version__}"
             except ImportError:
@@ -1899,7 +2056,7 @@ class WeightWatcher(object):
         title = "{} {}".format(layer_id, name)
 
         xmin = None  # TODO: allow other xmin settings
-        xmax = np.max(evals)
+        xmax = None #issue  199np.max(evals)
         plot = params[PLOT]
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
@@ -1939,7 +2096,6 @@ class WeightWatcher(object):
 
     def make_layer_iterator(self, model=None, layers=[], params=None):
         """Constructor for the Layer Iterator; See analyze(...)
-        
          """
          
         if params is None: params = DEFAULT_PARAMS.copy()
@@ -2237,7 +2393,7 @@ class WeightWatcher(object):
 
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.debug("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.debug("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
                 
                 # maybe not necessary
                 self.apply_normalize_Wmats(ww_layer, params)
@@ -2379,7 +2535,7 @@ class WeightWatcher(object):
         num_all_evals = 0
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
                 if ww2x:
                     num_evals = ww_layer.M
@@ -3357,7 +3513,7 @@ class WeightWatcher(object):
         
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
                 
                 if method==LAMBDA_MIN:
                     self.apply_esd(ww_layer, params)
@@ -3389,8 +3545,8 @@ class WeightWatcher(object):
         if params is None: params = DEFAULT_PARAMS.copy()
         
         num_smooth = params['num_smooth']
-      
-        layer = ww_layer.layer
+        # BUG HERE
+        layer = ww_layer.framework_layer
         layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
         layer_name = ww_layer.name
@@ -3446,7 +3602,7 @@ class WeightWatcher(object):
             if new_W.shape != old_W.shape:
                 new_W=new_W.T
                 
-            self.replace_layer_weights(framework, layer_id, layer, new_W, new_B)
+            self.replace_layer_weights(layer_id, layer, new_W, new_B)
 
                     
         # if not ww2x, then we need to divide num_smooth / rf   
@@ -3496,7 +3652,7 @@ class WeightWatcher(object):
             else:
                 logger.warning("Something went wrong, channels not defined or detected for Conv2D layer, layer {} {} skipped ".format(layer_id, layer_name))
             
-            self.replace_layer_weights(framework, layer_id, layer, new_W)
+            self.replace_layer_weights(layer_id, layer, new_W)
     
 
         else:
@@ -3547,7 +3703,7 @@ class WeightWatcher(object):
             
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
                 self.apply_svd_sharpness(ww_layer, params)
         
         logger.info("Returning sharpened model")
@@ -3575,44 +3731,12 @@ class WeightWatcher(object):
 
     
     # TODO: put this on the layer itself
-    def replace_layer_weights(self, framework, idx, layer, W, B=None):
-        """Replace the old layer weights with the new weights
-        
-        framework:  FRAMEWORK.KERAS | FRAMEWORK.PYTORCH
-        
-        layer: is the framework layerm, not an instance of WWLayer
-        
-        new_W:  numpy array 
-        new_B:  numpy vector (array)
-        
-        
-        """
-        
-        if framework==FRAMEWORK.KERAS:
-            # (I think) this works for Dense and Conv2D, not sure about other layers
-            if B is not None:
-                W = [W, B]     
-            layer.set_weights(W)
-            
-        elif framework==FRAMEWORK.PYTORCH:
-            # see: https://discuss.pytorch.org/t/fix-bias-and-weights-of-a-layer/75120/4
-            # this may be deprecated
-            layer.weight.data = torch.from_numpy(W)
-            if B is not None:
-                layer.bias.data = torch.from_numpy(B)
-                
-        # See; https://github.com/onnx/onnx/issues/2978
-        elif framework==FRAMEWORK.ONNX:
-            #if B is not None:
-            #    W = [W, B]   
-            #else:
-            #    W = [W]
-            layer.set_weights(idx, W)
-   
-        else:
-            logger.debug(f"Layer {layer.layer_id} skipped, Layer Type {layer.the_type} not supported")
-
+    def replace_layer_weights(self, idx, framework_layer, W, B=None):
+        """Replace the old layer weights with the new weights in the framework layer"""
+    
+        framework_layer.replace_layer_weights(W, B=B)
         return
+
 
     def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
@@ -3636,7 +3760,7 @@ class WeightWatcher(object):
         
         for id, ww_layer in enumerate(layer_iterator):
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.layer)))
+                logger.info("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.frameword_layer)))
                 self.apply_analyze_eigenvectors(ww_layer, params)
                 
         return   
@@ -3903,6 +4027,11 @@ class WeightWatcher(object):
     @staticmethod 
     def process_pytorch_bins(model_dir=None, tmp_dir="/tmp"):
         """Read the pytorch config and state_dict files, and create tmp direct, and write W and b .npy files
+        
+        Used currently to evaluate very large models downloaded from HuggingFace 
+        
+        Notice: the .bin files are parts of oystatedict files, but not contain the ['model'[ key
+         
         
         Parameters:  
         

@@ -585,6 +585,8 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Practical AI](https://changelog.com/practicalai/194)
 
+- [Latest Results](https://www.youtube.com/watch?v=rojbXvK9mJg)
+
 #### 2021 Short Presentations
 
 - [MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)

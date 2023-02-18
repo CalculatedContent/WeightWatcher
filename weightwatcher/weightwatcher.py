@@ -68,7 +68,7 @@ class FrameworkLayer:
     
     def __init__(self, layer, layer_id, name, longname="", weights=None, bias=None, 
                  the_type = LAYER_TYPE.UNKNOWN, skipped=False, framework=FRAMEWORK.UNKNOWN, 
-                 channels=CHANNELS.UNKNOWN, plot_id=None):
+                 channels=CHANNELS.UNKNOWN, plot_id=None, has_bias=False):
         
         self.layer = layer
         self.layer_id = layer_id
@@ -76,12 +76,12 @@ class FrameworkLayer:
         # read weights and biases
         self.name = name
         self.longname =  longname
-        self.weights = weights
-        self.bias = bias
         self.the_type = the_type
         self.skipped = skipped
         self.framework = framework
         self.channels = channels
+        self.has_bias = has_bias
+        
         
         if plot_id is None:
             self.plot_id = f"{layer_id}"
@@ -99,13 +99,30 @@ class FrameworkLayer:
             self.longname = self.layer.longname
         elif self.longname is None:
             self.longname = name
+            
+            
+    def layer_type(self, layer):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE"""
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        typestr = (str(type(layer))).lower()     
+          
+            
+        return the_type
+    
+    
+    @staticmethod
+    def get_layer_iterator(model):
+        """should return an interator over the layer, that builds the subclass object"""
+        pass
 
     #@abc.abstractmethod:=
     def has_biases(self):
-        pass
+        return self.has_bias
     
     #@abc.abstractmethod:
     def get_weights_and_biases(self):
+        """   return has_weights, weights, has_biases, biases  """
         pass
 
     #@abc.abstractmethod:
@@ -200,7 +217,7 @@ class KerasLayer(FrameworkLayer):
     def replace_layer_weights(self, W, B=None):
         """My not work,, see https://stackoverflow.com/questions/51354186/how-to-update-weights-manually-with-keras"""
         
-        if self.has_biases() and B is not None:
+        if self.has_biases():
             W = [W, B]
         self.layer.set_weights(W)
             
@@ -231,7 +248,7 @@ class PyTorchLayer(FrameworkLayer):
         the_type = self.layer_type(layer)
         channels = CHANNELS.LAST
         FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, the_type=the_type, 
-                                framework=FRAMEWORK.KERAS, channels=channels)        
+                                framework=FRAMEWORK.PYTORCH, channels=channels)        
     
     def layer_type(self, layer):
         """Given a framework layer, determine the weightwatcher LAYER_TYPE
@@ -270,6 +287,8 @@ class PyTorchLayer(FrameworkLayer):
          
         has_weights, has_biases = False, False
         weights, biases = None, None
+        
+        # DO WE NEED TO LONE THE DATA or cane we just detach it ?
 
         if hasattr(self.layer, 'weight'): 
             w = [np.array(self.layer.weight.data.clone().cpu())]
@@ -302,7 +321,7 @@ class PyTorchLayer(FrameworkLayer):
     def replace_layer_weights(self, W, B=None):
             
         self.layer.weight.data = torch.from_numpy(W)
-        if self.has_biases() and B is not None:
+        if self.has_biases():
             self.layer.bias.data = torch.from_numpy(B)
         
     
@@ -351,20 +370,108 @@ class KerasH5FileLayer(FrameworkLayer):
 
 
 class PyStateDictLayer(FrameworkLayer):  
-    def __init__(self, layer):
-        pass
+    def __init__(self, model, layer_id, name):
+    
+        self.model = model  # model_state_dict
+        self.layer = name
+        
+        the_type = self.layer_type(self.layer)
+        FrameworkLayer.__init__(self, name, layer_id, name, longname=name, the_type=the_type, 
+                                framework=FRAMEWORK.PYSTATEDICT, channels=CHANNELS.LAST) 
+        
+        
+    def has_biases(self):
+        bias_key = self.layer + '.bias'
+        if bias_key in self.model:
+            return True
+        return False
   
     def layer_type(self, layer):
-        """Given a framework layer, determine the weightwatcher LAYER_TYPE
-        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE"""
         
         the_type = LAYER_TYPE.UNKNOWN
-        typestr = (str(type(layer))).lower()     
-                 
-            
+          
+        has_weights, weights, has_biases, biases = self.get_weights_and_biases()
+        
+        if len(weights.shape)==2:
+            the_type = LAYER_TYPE.DENSE
+        elif len(weights.shape)==4:
+            the_type = LAYER_TYPE.CONV2D
+        
         return the_type
-         
     
+
+    
+                              
+    def get_layer_iterator(model_state_dict):
+        """model is just a dict, but we need the name of the dict"""
+        
+        def layer_iter_():
+           layer_id = -1 
+           for key in model_state_dict.keys():
+            # Check if the key corresponds to a weight matrix
+            if key.endswith('.weight'):
+                # Extract the weight matrix and layer name
+                weights = model_state_dict[key]
+                layer_name = key[:-len('.weight')]
+                # Check if the layer has a bias vector
+                bias_key = layer_name + '.bias'
+                if bias_key in model_state_dict:
+                    biases = model_state_dict[bias_key]
+                else:
+                    biases = None
+        
+                if type(weights)==torch.Tensor:
+                    weights = weights.data.cpu().detach().numpy()
+                    if biases is not None:
+                        biases = biases.data.cpu().detach().numpy()
+                    
+                # we may need to change this, set valid later
+                # because we want al the layers for describe
+                if weights is not None:
+                    layer_id += 1
+                    yield PyStateDictLayer(model_state_dict, layer_id, layer_name)
+
+        return layer_iter_()
+    
+    
+    def get_weights_and_biases(self):
+        """   return has_weights, weights, has_biases, biases  """
+        
+        model_state_dict = self.model
+        weight_key = self.layer+'.weight'
+        bias_key = self.layer+'.bias'
+
+        weights = model_state_dict[weight_key]
+        biases = None
+        if self.has_biases():
+            biases = model_state_dict[bias_key]
+
+        if type(weights)==torch.Tensor:
+            weights = weights.data.cpu().detach().numpy()
+            if self.has_biases():
+                biases = biases.data.cpu().detach().numpy()
+                    
+        return True, weights, self.has_biases(), biases
+    
+    
+    def replace_layer_weights(self, W, B=None):
+        """ replace weights and biases in the underlying layer
+        
+        expects to replace with torch arrays
+        """
+        
+        model_state_dict = self.model
+        weight_key = self.layer+'.weight'
+        bias_key = self.layer + '.bias'
+        
+        model_state_dict[weight_key] = torch.from_numpy(W)
+        if self.has_biases():
+            model_state_dict[bias_key] = torch.from_numpy(B)
+        
+        return 
+        
+        
     
       
 class PyStateDictFileLayer(FrameworkLayer):
@@ -678,7 +785,7 @@ class WWLayer:
             pass
         
         else:
-            logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, type(self.layer)))
+            logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, type(self.framework_layer)))
     
         self.N = N
         self.M = M
@@ -908,9 +1015,9 @@ class ModelIterator:
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()            
      
-    
-        if self.framework == FRAMEWORK.PYSTATEDICT:
-            self.config = self.read_pystatedict_config(model_dir=model)
+        # not used yet -- this wil be moved
+        #if self.framework == FRAMEWORK.PYSTATEFILEDICT:
+        #    self.config = self.read_pystatedict_config(model_dir=model)
         
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()       
@@ -960,7 +1067,8 @@ class ModelIterator:
             layer_iter = ONNXLayer.get_layer_iterator(model) 
             
         elif self.framework == FRAMEWORK.PYSTATEDICT:
-            layer_iter = PyStateDictFileLayer.get_layer_iterator(model) 
+            layer_iter = PyStateDictLayer.get_layer_iterator(model) 
+    
             
         else:
             layer_iter = None
@@ -1450,6 +1558,11 @@ class WeightWatcher:
                 return FRAMEWORK.KERAS 
             elif is_framework(name='onnx'):
                 return FRAMEWORK.ONNX
+            elif is_framework(name='OrderedDict'):
+                # currently only pystatedict is supported
+                # but this could be changed
+                # we could dig inside the model and find the weight tuypes, 
+                return FRAMEWORK.PYSTATEDICT
             
         return framework
 

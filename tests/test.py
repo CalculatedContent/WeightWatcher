@@ -85,6 +85,7 @@ class Test_KerasLayers(Test_Base):
 		self.assertTrue(actual_layer.plot_id is not None)
 		self.assertFalse(actual_layer.skipped)
 		self.assertEqual(actual_layer.channels, CHANNELS.FIRST)
+		self.assertEqual(actual_layer.framework,FRAMEWORK.KERAS)
 		self.assertEqual(actual_layer.the_type, LAYER_TYPE.DENSE)
 		self.assertTrue(actual_layer.has_biases())
 
@@ -258,6 +259,7 @@ class Test_PyTorchLayers(Test_Base):
 		
 		self.assertTrue(actual_layer.plot_id is not None)
 		self.assertFalse(actual_layer.skipped)
+		self.assertEqual(actual_layer.framework,FRAMEWORK.PYTORCH)
 		self.assertEqual(actual_layer.channels, CHANNELS.LAST)
 		self.assertEqual(actual_layer.the_type, LAYER_TYPE.DENSE)
 		self.assertTrue(actual_layer.has_biases())
@@ -404,6 +406,187 @@ class Test_PyTorchLayers(Test_Base):
 		
 	
 		
+	
+
+class Test_PyStateDictLayers(Test_Base):
+	
+	
+	def setUp(self):
+		"""I run before every test in this class
+		
+			Creats a VGG16 model and gets the last layer,
+			
+		"""
+		#import inspect
+
+		print("\n-------------------------------------\nIn TestLayers:", self._testMethodName)
+		ww.weightwatcher.torch = torch
+		self.model = models.resnet18().state_dict()
+		#for cls in inspect.getmro(type(self.model)):
+		#	print(str(cls))
+                
+		for key in self.model.keys():
+			if key.endswith('.weight'):
+				layer_name = key[:-len('.weight')]
+				self.last_layer_name = layer_name	
+			
+			
+	def test_pytorch_layer_constructor(self):
+				
+		expected_layer_id = 21
+		expected_name = self.last_layer_name 
+		expected_longname = expected_name
+
+		actual_layer = ww.weightwatcher.PyStateDictLayer(self.model, expected_layer_id, self.last_layer_name)
+
+		print(actual_layer)
+		
+		actual_name = actual_layer.name
+		self.assertEqual(expected_name, actual_name)
+		
+		actual_longname = actual_layer.longname
+		self.assertEqual(expected_longname, actual_longname)
+		
+		self.assertTrue(actual_layer.plot_id is not None)
+		self.assertFalse(actual_layer.skipped)
+		self.assertEqual(actual_layer.channels, CHANNELS.LAST)
+		self.assertEqual(actual_layer.framework,FRAMEWORK.PYSTATEDICT)
+		self.assertEqual(actual_layer.the_type, LAYER_TYPE.DENSE)
+		self.assertTrue(actual_layer.has_biases())
+
+		expected_type = "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
+		actual_type = str(type(actual_layer))
+		self.assertEqual(expected_type, actual_type)
+	
+	
+	
+	
+	def test_ww_layer_iterator(self):
+		"""Test that the layer iterators iterates over al layers as expected"""
+		
+		expected_num_layers = 21 # I think 16 is the flattened layer
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		
+		self.assertTrue(layer_iterator is not None)
+		num_layers = 0
+		for ww_layer in layer_iterator:
+			num_layers += 1
+		self.assertEqual(expected_num_layers, num_layers)
+		
+		
+		expected_type = "<class 'weightwatcher.weightwatcher.WWLayer'>"
+		actual_type = str(type(ww_layer))
+		self.assertEqual(expected_type, actual_type)
+		
+	def get_last_layer(self):
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		num_layers = 0
+		for ww_layer in layer_iterator:
+			num_layers += 1
+			print(ww_layer)
+		return ww_layer
+	
+	def test_ww_layer_attributes(self):
+		
+		ww_layer = self.get_last_layer()
+					
+		expected_type = "<class 'weightwatcher.weightwatcher.WWLayer'>"
+		actual_type = str(type(ww_layer))
+		self.assertEqual(expected_type, actual_type)
+		
+		expected_name = 'fc'
+		actual_name = ww_layer.name
+		self.assertEqual(expected_name, actual_name)
+		
+		framework_layer = ww_layer.framework_layer
+		self.assertTrue(framework_layer is not None)
+		
+		expected_type = "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
+		actual_type = str(type(framework_layer))
+		self.assertEqual(expected_type, actual_type)
+	
+		self.assertEqual(ww_layer.name, framework_layer.name)
+		
+		# swhy is longname none ?
+		print(f"the longname is {framework_layer.longname}")
+		
+		has_weights, weights, has_biases, biases  = ww_layer.get_weights_and_biases()
+		self.assertTrue(has_weights)
+		self.assertTrue(has_biases)
+		self.assertTrue(weights is not None)
+		self.assertTrue(biases is not None)
+		
+		expected_W_shape = (1000, 512)
+		expected_B_shape = (1000,)
+		actual_W_shape = weights.shape
+		actual_B_shape = biases.shape
+		
+		self.assertEqual(expected_W_shape, actual_W_shape)
+		self.assertEqual(expected_B_shape, actual_B_shape)
+		
+
+
+	def test_replace_weights_only(self):
+	
+		last_layer = self.get_last_layer()
+		has_weights, weights, has_biases, biases   = last_layer.get_weights_and_biases()
+
+		expected_old_W_min = np.min(weights)
+		expected_old_B_min = np.min(biases)
+
+
+		new_weights = np.ones_like(weights)	
+		
+		last_layer.replace_layer_weights(new_weights, biases)
+		has_replaced_weights, replaced_weights, has_replaced_biases, replaced_biases   = last_layer.get_weights_and_biases()
+		replaced_new_W_min = np.min(replaced_weights) # 1.
+		replaced_new_B_min = np.min(replaced_biases) # 1.0
+
+		self.assertEqual(replaced_new_W_min, 1.0)
+		self.assertEqual(replaced_new_B_min, expected_old_B_min)
+
+		# put the weights back
+		last_layer.replace_layer_weights(weights, biases)
+		has_replaced_weights, replaced_weights, has_replaced_biases, replaced_biases   = last_layer.get_weights_and_biases()
+		replaced_new_W_min = np.min(replaced_weights) # 1.0
+		replaced_new_B_min = np.min(replaced_biases) # 1.0
+
+		self.assertEqual(replaced_new_W_min, expected_old_W_min)
+		self.assertEqual(replaced_new_B_min, expected_old_B_min)
+	
+	def test_replace_weights_and_biases(self):
+			
+		last_layer = self.get_last_layer()
+		has_weights, weights, has_biases, biases   = last_layer.get_weights_and_biases()
+
+
+		expected_old_W_min = np.min(weights)
+		expected_old_B_min = np.min(biases)
+
+
+		new_weights = np.ones_like(weights)	
+		new_biases = 2*np.ones_like(biases)	
+
+		
+		last_layer.replace_layer_weights(new_weights, new_biases)
+		has_replaced_weights, replaced_weights, has_replaced_biases, replaced_biases   = last_layer.get_weights_and_biases()
+		
+		replaced_new_W_min = np.min(replaced_weights) # 1.
+		replaced_new_B_min = np.min(replaced_biases) # 1.0
+
+		self.assertEqual(replaced_new_W_min, 1.0)
+		self.assertEqual(replaced_new_B_min, 2.0)
+
+		# put the weights back
+		last_layer.replace_layer_weights(weights, biases)
+		has_replaced_weights, replaced_weights, has_replaced_biases, replaced_biases   = last_layer.get_weights_and_biases()
+		replaced_new_W_min = np.min(replaced_weights) # 1.0
+		replaced_new_B_min = np.min(replaced_biases) # 1.0
+
+		self.assertEqual(replaced_new_W_min, expected_old_W_min)
+		self.assertEqual(replaced_new_B_min, expected_old_B_min)
+		
+	
 class Test_VGG11_noModel(Test_Base):
 	
 	"""Same as Test_VGG11 methods, but the model is not specified in setup """

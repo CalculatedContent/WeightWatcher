@@ -1767,7 +1767,7 @@ class Test_VGG11(Test_Base):
 	def test_rescale_eigenvalues(self):	
 		"""test rescaling un rescaling evals"""
 		
-		evals = self.watcher.get_ESD(layer=28)
+		evals = self.watcher.get_ESD(layer=self.fc2_layer)
 		rescaled_evals, Wscale = RMT_Util.rescale_eigenvalues(evals)
 		un_rescaled_evals = RMT_Util.un_rescale_eigenvalues(rescaled_evals, Wscale)
 
@@ -1783,7 +1783,7 @@ class Test_VGG11(Test_Base):
 		N, M = 4096, 4096
 		iterator = self.watcher.make_layer_iterator(layers=[self.fc2_layer])
 		for ww_layer in iterator:
-			self.assertEqual(ww_layer.layer_id,28)
+			self.assertEqual(ww_layer.layer_id,self.fc2_layer)
 			W = ww_layer.Wmats[0]
 			self.assertEqual(W.shape,(N,M))
 			
@@ -1804,7 +1804,7 @@ class Test_VGG11(Test_Base):
 		N, M = 4096, 4096
 		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[self.fc2_layer])
 		for ww_layer in iterator:
-			self.assertEqual(ww_layer.layer_id,28)
+			self.assertEqual(ww_layer.layer_id,self.fc2_layer)
 			W = ww_layer.Wmats[0]
 			self.assertEqual(W.shape,(N,M))
 			
@@ -1819,11 +1819,11 @@ class Test_VGG11(Test_Base):
 			
 	#TODO: add test fit entropy
 	def test_fit_entropy_on_layer(self):
-		details = self.watcher.analyze(model=self.model, layers=[self.fc1_layer])
+		details = self.watcher.analyze(model=self.model, layers=[self.fc2_layer])
 		expected = details.fit_entropy.to_numpy()[0]
 		
 		import powerlaw
-		esd = self.watcher.get_ESD(layer=28)
+		esd = self.watcher.get_ESD(layer=self.fc2_layer)
 		fit = powerlaw.Fit(esd,  xmax=np.max(esd))
 		actual = RMT_Util.line_entropy(fit.Ds)
 		self.assertAlmostEqual(expected, actual, None, '', 0.01)

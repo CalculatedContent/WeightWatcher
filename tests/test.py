@@ -854,22 +854,15 @@ class Test_VGG11(Test_Base):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
-		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
 		
-  # self.first_layer = 2
-  # self.second_layer = 5
-  # self.fc2_layer = 25
-  # self.fc2_layer = 28
-  # self.fc3_layer = 31
-  # self.fc_layers = [25,28,31]
-
-		self.first_layer = 0
-		self.second_layer = 1
-		self.fc1_layer = 8
-		self.fc2_layer = 9
-		self.fc3_layer = 10
-		self.fc_layers = [8,9,10]
+		self.first_layer = 2
+		self.second_layer = 5
+		self.fc2_layer = 25
+		self.fc2_layer = 28
+		self.fc3_layer = 31
+		self.fc_layers = [25,28,31]
 		
 		self.min_layer_id = self.first_layer
 
@@ -1463,8 +1456,7 @@ class Test_VGG11(Test_Base):
 
 
 	def test_svd_smoothing(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
-		"""
+		"""Test the svd smoothing on layer FC2 of VGG"""
 		
 		# 819 =~ 4096*0.2
 		self.watcher.SVDSmoothing(layers=[self.fc2_layer])
@@ -1474,8 +1466,8 @@ class Test_VGG11(Test_Base):
 		
 		
 	def test_svd_smoothing_with_model(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
-		"""
+		"""Test the svd smoothing on layer FC2 of VGG"""
+
 		
 		# 819 =~ 4096*0.2
 		self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer])
@@ -1851,8 +1843,16 @@ class Test_VGG11_StateDict(Test_VGG11):
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
+		self.first_layer = 0
+		self.second_layer = 1
+		self.fc1_layer = 8
+		self.fc2_layer = 9
+		self.fc3_layer = 10
+		self.fc_layers = [8,9,10]
+				
+		self.min_layer_id = self.first_layer
 
-
+		
 
 class Test_Keras(Test_Base):
 	def setUp(self):

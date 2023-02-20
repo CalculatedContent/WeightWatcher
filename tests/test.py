@@ -669,7 +669,7 @@ class Test_VGG11_noModel(Test_Base):
 		"""
  		
 	
-		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
+		esd_before = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer) 
 		
 		self.watcher.SVDSharpness(model=self.model, layers=[self.fc2_layer])
 		esd_after = self.watcher.get_ESD(layer=28) 

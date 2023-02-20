@@ -623,7 +623,7 @@ class Test_VGG11_noModel(Test_Base):
 		"""Test that new results are returns a valid pandas dataframe
 		"""
 		
-		details = self.watcher.analyze(model=self.model, layers=[28])
+		details = self.watcher.analyze(model=self.model, layers=[self.fc2_layer])
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
 		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss,fit_entropy".split(',')
@@ -638,7 +638,7 @@ class Test_VGG11_noModel(Test_Base):
 		"""
 		
 		# 819 =~ 4096*0.2
-		self.watcher.SVDSmoothing(model=self.model, layers=[28])
+		self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer])
 		esd = self.watcher.get_ESD(layer=28) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)
@@ -671,7 +671,7 @@ class Test_VGG11_noModel(Test_Base):
 	
 		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
 		
-		self.watcher.SVDSharpness(model=self.model, layers=[28])
+		self.watcher.SVDSharpness(model=self.model, layers=[self.fc2_layer])
 		esd_after = self.watcher.get_ESD(layer=28) 
 		
 		print("max esd before {}".format(np.max(esd_before)))
@@ -694,7 +694,7 @@ class Test_VGG11_noModel(Test_Base):
 		"""Test that permute and unpermute methods work
 		"""
 		N, M = 4096, 4096
-		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[self.fc2_layer])
 		for ww_layer in iterator:
 			self.assertEqual(ww_layer.layer_id,28)
 			W = ww_layer.Wmats[0]
@@ -719,7 +719,7 @@ class Test_VGG11_noModel(Test_Base):
 					 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank', 
 					 'rand_num_spikes', 'rand_sigma_mp']
        
-		details = self.watcher.analyze(model=self.model, layers = [28], randomize=False)	
+		details = self.watcher.analyze(model=self.model, layers = self.fc2_layer, randomize=False)	
 		for column in rand_columns:
 			self.assertNotIn(column, details.columns)
 			
@@ -732,7 +732,7 @@ class Test_VGG11_noModel(Test_Base):
 		"""Test PL fits on intra
 		"""
 
-		details= self.watcher.analyze(model=self.model, layers=[25, 28], intra=True, randomize=False, vectors=False)
+		details= self.watcher.analyze(model=self.model, layers=self.fc_layers, intra=True, randomize=False, vectors=False)
 		actual_alpha = details.alpha[0]
 		actual_best_fit = details.best_fit[0]
 		print(actual_alpha,actual_best_fit)
@@ -791,7 +791,7 @@ class Test_VGG11_Distances(Test_Base):
                 """
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[28])
+		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[self.fc2_layer])
 		actual_mean_distance = avg_dist
 		expected_mean_distance = 0.0
 
@@ -835,14 +835,43 @@ class Test_VGG11_Distances(Test_Base):
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
 class Test_VGG11(Test_Base):
+	"""
+	  layer_id    name     M  ...      longname  num_evals rf
+0          2  Conv2d     3  ...    features.0         27  9
+1          5  Conv2d    64  ...    features.3        576  9
+2          8  Conv2d   128  ...    features.6       1152  9
+3         10  Conv2d   256  ...    features.8       2304  9
+4         13  Conv2d   256  ...   features.11       2304  9
+5         15  Conv2d   512  ...   features.13       4608  9
+6         18  Conv2d   512  ...   features.16       4608  9
+7         20  Conv2d   512  ...   features.18       4608  9
+8         25  Linear  4096  ...  classifier.0       4096  1
+9         28  Linear  4096  ...  classifier.3       4096  1
+10        31  Linear  1000  ...  classifier.6       1000  1
+"""
+
 	def setUp(self):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
-		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
+		
+  # self.first_layer = 2
+  # self.second_layer = 5
+  # self.fc2_layer = 25
+  # self.fc2_layer = 28
+  # self.fc3_layer = 31
+  # self.fc_layers = [25,28,31]
 
 
+		self.first_layer = 0
+		self.second_layer = 1
+		self.fc2_layer = 8
+		self.fc2_layer = 9
+		self.fc3_layer = 10
+		self.fc_layers = [8,9,10]
+		
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
 		"""
@@ -1036,7 +1065,7 @@ class Test_VGG11(Test_Base):
 		details = self.watcher.describe(layers=[])
 		print(details)
 		
-		details = self.watcher.describe(layers=[25,28,31])
+		details = self.watcher.describe(layers=self.fc_layers)
 		print(details)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
@@ -1054,7 +1083,7 @@ class Test_VGG11(Test_Base):
 		details = self.watcher.describe(layers=[])
 		print(details)
 		
-		details = self.watcher.describe(layers=[-25,-28,-31])
+		details = self.watcher.describe(layers = -self.fc_layers)
 		print(details)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
@@ -1121,7 +1150,7 @@ class Test_VGG11(Test_Base):
 		"""
 		
 		# default	
-		details = self.watcher.describe(layers=[2])
+		details = self.watcher.describe(layers=[self.second_layer])
 		N = details.N.to_numpy()[0]
 		M = details.M.to_numpy()[0]
 		rf = details.rf.to_numpy()[0]
@@ -1150,7 +1179,7 @@ class Test_VGG11(Test_Base):
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
-		details = self.watcher.analyze(layers=[5], ww2x=True, randomize=False, plot=False, mp_fit=False)
+		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False)
 		#d = self.watcher.get_details(results=results)
 		a = details.alpha.to_numpy()
 		self.assertAlmostEqual(a[0],1.65014, places=4)
@@ -1175,7 +1204,7 @@ class Test_VGG11(Test_Base):
 	def test_get_summary(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
-		details = self.watcher.analyze(layers=[5])
+		details = self.watcher.analyze(layers=[self.second_layer])
 		returned_summary = self.watcher.get_summary(details)
 		
 		print(returned_summary)
@@ -1191,7 +1220,7 @@ class Test_VGG11(Test_Base):
 		self.assertEqual(11, len(description))
 		
 		
-		details = self.watcher.analyze(model=self.model, layers=[5])
+		details = self.watcher.analyze(model=self.model, layers=[self.second_layer])
 		returned_summary = self.watcher.get_summary(details)
 		
 		print(returned_summary)
@@ -1203,7 +1232,6 @@ class Test_VGG11(Test_Base):
 	def test_get_summary_with_new_model(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
-		
 		
 		new_model =  models.vgg13(weights='VGG13_Weights.IMAGENET1K_V1')
 		description = self.watcher.describe(model=new_model)
@@ -1223,14 +1251,16 @@ class Test_VGG11(Test_Base):
 		"""Test that eigenvalues are available in the watcher (no model specified here)
 		"""
 
-		esd = self.watcher.get_ESD(layer=5)
+		print(self.watcher.describe())
+		
+		esd = self.watcher.get_ESD(layer=self.second_layer)
 		self.assertEqual(len(esd), 576)
 
 	def test_getESD_with_model(self):
 		"""Test that eigenvalues are available while specifying the model explicitly
 		"""
 
-		esd = self.watcher.get_ESD(model=self.model, layer=5)
+		esd = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer)
 		self.assertEqual(len(esd), 576)
 
 	def test_randomize(self):
@@ -1241,11 +1271,11 @@ class Test_VGG11(Test_Base):
 					 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank', 
 					 'rand_num_spikes', 'rand_sigma_mp']
        
-		details = self.watcher.analyze(layers = [28], randomize=False)	
+		details = self.watcher.analyze(layers = [self.fc2_layer], randomize=False)	
 		for column in rand_columns:
 			self.assertNotIn(column, details.columns)
 			
-		details = self.watcher.analyze(layers = [28], randomize=True)	
+		details = self.watcher.analyze(layers = [self.fc2_layer], randomize=True)	
 		for column in rand_columns:	
 			self.assertIn(column, details.columns)
 
@@ -1256,7 +1286,7 @@ class Test_VGG11(Test_Base):
 		Test rand distance Not very accuracte since it is random
 		"""
 		
-		details= self.watcher.analyze(layers=[28], randomize=True)
+		details= self.watcher.analyze(layers=[self.fc2_layer], randomize=True)
 		actual = details.rand_distance[0]
 		expected = 0.29
 		self.assertAlmostEqual(actual,expected, places=2)
@@ -1283,7 +1313,7 @@ class Test_VGG11(Test_Base):
 		   Not very accuracte since it relies on randomizing W
 		"""
 		
-		details= self.watcher.analyze(layers=[28], randomize=True)
+		details= self.watcher.analyze(layers=[self.fc2_layer], randomize=True)
 		print(details)
 		actual = details.ww_maxdist[0]/100.0
 		expected = 39.9/100.0
@@ -1311,7 +1341,7 @@ class Test_VGG11(Test_Base):
 		"""Test PL fits on intra
 		"""
 
-		details= self.watcher.analyze(layers=[25, 28], intra=True, randomize=False, vectors=False)
+		details= self.watcher.analyze(layers=self.fc_layers, intra=True, randomize=False, vectors=False)
 		actual_alpha = details.alpha[0]
 		actual_best_fit = details.best_fit[0]
 		print(actual_alpha,actual_best_fit)
@@ -1326,7 +1356,7 @@ class Test_VGG11(Test_Base):
 		"""Test PL fits on intram, sparsify off, more accurate
 			"""
 			
-		details= self.watcher.analyze(layers=[25, 28], intra=True, sparsify=False)
+		details= self.watcher.analyze(layers=[self.fc_layers], intra=True, sparsify=False)
 		actual_alpha = details.alpha[0]
 		actual_best_fit = details.best_fit[0]
 		print(actual_alpha,actual_best_fit)
@@ -1347,7 +1377,7 @@ class Test_VGG11(Test_Base):
 
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
-		details= self.watcher.analyze(layers=[28], fit='TPL')
+		details= self.watcher.analyze(layers=[self.fc2_layer], fit='TPL')
 		actual_alpha = details.alpha[0]
 		actual_Lambda = details.Lambda[0]
 
@@ -1365,7 +1395,7 @@ class Test_VGG11(Test_Base):
 	def _test_extended_truncated_power_law_fit(self):
 		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
 		"""
-		details= self.watcher.analyze(layers=[28], fit=E_TPL)
+		details= self.watcher.analyze(layers=[self.fc1_layer], fit=E_TPL)
 		actual_alpha = details.alpha[0]
 		actual_Lambda = details.Lambda[0]
 
@@ -1384,14 +1414,14 @@ class Test_VGG11(Test_Base):
 		"""
 		
 		# default
-		details = self.watcher.analyze(layers=[5])
+		details = self.watcher.analyze(layers=[self.second_layer])
 		actual = details.alpha.to_numpy()[0]
 		expected = 7.116304
 		print("ACTUAL {}".format(actual))
 		self.assertAlmostEqual(actual,expected, places=2)
 		
 		# XMIN_PEAK
-		details = self.watcher.analyze(layers=[5], fix_fingers='xmin_peak', xmin_max=1.0)
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0)
 		actual = details.alpha[0]
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.68
@@ -1404,7 +1434,7 @@ class Test_VGG11(Test_Base):
 		"""
 		
 		# CLIP_XMAX
-		details = self.watcher.analyze(layers=[5], fix_fingers='clip_xmax')
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax')
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.6635
 		self.assertAlmostEqual(actual,expected, places=4)
@@ -1418,7 +1448,7 @@ class Test_VGG11(Test_Base):
 		"""
  		
 		print("----test_density_fit-----")
-		details = self.watcher.analyze(layers = [25], ww2x=True, randomize=False, plot=False, mp_fit=True)
+		details = self.watcher.analyze(layers = [self.fc1_layer], ww2x=True, randomize=False, plot=False, mp_fit=True)
 		print(details.columns)
 		print("num spikes", details.num_spikes)
 		print("sigma mp", details.sigma_mp)
@@ -1434,8 +1464,8 @@ class Test_VGG11(Test_Base):
 		"""
 		
 		# 819 =~ 4096*0.2
-		self.watcher.SVDSmoothing(layers=[28])
-		esd = self.watcher.get_ESD(layer=28) 
+		self.watcher.SVDSmoothing(layers=[self.fc2_layer])
+		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)
 		
@@ -1445,8 +1475,8 @@ class Test_VGG11(Test_Base):
 		"""
 		
 		# 819 =~ 4096*0.2
-		self.watcher.SVDSmoothing(model=self.model, layers=[28])
-		esd = self.watcher.get_ESD(layer=28) 
+		self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer])
+		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)
 
@@ -1478,8 +1508,8 @@ class Test_VGG11(Test_Base):
 		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
-		self.watcher.SVDSmoothing(layers=[28], percent=-0.2)
-		esd = self.watcher.get_ESD(layer=28) 
+		self.watcher.SVDSmoothing(layers=[self.fc2_layer], percent=-0.2)
+		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		# 3277 = 4096 - 819
 		print("num comps = {}".format(num_comps))
@@ -1502,8 +1532,8 @@ class Test_VGG11(Test_Base):
 
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
-		self.watcher.SVDSmoothing(layers=[28], percent=0.2)
-		esd = self.watcher.get_ESD(layer=28) 
+		self.watcher.SVDSmoothing(layers=[self.fc2_layer], percent=0.2)
+		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		# 3277 = 4096 - 819
 		print("num comps = {}".format(num_comps))
@@ -1517,8 +1547,8 @@ class Test_VGG11(Test_Base):
  			
 		esd_before = self.watcher.get_ESD(layer=28) 
 		
-		self.watcher.SVDSharpness(layers=[28])
-		esd_after = self.watcher.get_ESD(layer=28) 
+		self.watcher.SVDSharpness(layers=[self.fc2_layer])
+		esd_after = self.watcher.get_ESD(layer=self.fc2_layer) 
 		
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
@@ -1532,10 +1562,10 @@ class Test_VGG11(Test_Base):
 		"""Test the svd smoothing on 1 lyaer of VGG
 		"""
  		
-		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
+		esd_before = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer) 
 		
-		self.watcher.SVDSharpness(layers=[28])
-		esd_after = self.watcher.get_ESD(layer=28) 
+		self.watcher.SVDSharpness(layers=[self.fc2_layer])
+		esd_after = self.watcher.get_ESD(layer=self.fc2_layer) 
 		
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
@@ -1549,8 +1579,8 @@ class Test_VGG11(Test_Base):
 		Test that we can get the ESD when setting the model explicitly
 		""" 
 	
-		esd_before = self.watcher.get_ESD(model=self.model, layer=28) 
-		esd_after = self.watcher.get_ESD(layer=28) 
+		esd_before = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer) 
+		esd_after = self.watcher.get_ESD(layer=self.fc2_layer) 
 		
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
@@ -1645,7 +1675,7 @@ class Test_VGG11(Test_Base):
 		self.assertEqual(actual_ids,expected_ids)
 
 		
-		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[self.fc2_layer])
 		num = 0
 		for ww_layer in iterator:
 			self.assertEqual(ww_layer.layer_id,28)
@@ -1751,7 +1781,7 @@ class Test_VGG11(Test_Base):
 		"""Test that permute and unpermute methods work
 		"""
 		N, M = 4096, 4096
-		iterator = self.watcher.make_layer_iterator(layers=[28])
+		iterator = self.watcher.make_layer_iterator(layers=[self.fc2_layer])
 		for ww_layer in iterator:
 			self.assertEqual(ww_layer.layer_id,28)
 			W = ww_layer.Wmats[0]
@@ -1772,7 +1802,7 @@ class Test_VGG11(Test_Base):
 		"""Test that permute and unpermute methods work
 		"""
 		N, M = 4096, 4096
-		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[28])
+		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[self.fc2_layer])
 		for ww_layer in iterator:
 			self.assertEqual(ww_layer.layer_id,28)
 			W = ww_layer.Wmats[0]
@@ -1789,7 +1819,7 @@ class Test_VGG11(Test_Base):
 			
 	#TODO: add test fit entropy
 	def test_fit_entropy_on_layer(self):
-		details = self.watcher.analyze(model=self.model, layers=[28])
+		details = self.watcher.analyze(model=self.model, layers=[self.fc1_layer])
 		expected = details.fit_entropy.to_numpy()[0]
 		
 		import powerlaw
@@ -1804,6 +1834,21 @@ class Test_VGG11(Test_Base):
 		
 		# TODO: finish
 		pass
+
+
+
+
+class Test_VGG11_StateDict(Test_VGG11):
+	"""All the same tests as for VGG11, but using the statedict option"""
+	
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+
 
 
 class Test_Keras(Test_Base):
@@ -1864,12 +1909,12 @@ class Test_Keras(Test_Base):
 		N = details.N.to_numpy()
 		self.assertTrue((N >= M).all)
 
-
+        
 class Test_ResNet(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		self.model = models.resnet18()#weights='ResNet18_Weights.IMAGENET1K_V1')
+		self.model = models.resnet18()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
 		
@@ -1888,9 +1933,45 @@ class Test_ResNet(Test_Base):
 		details = self.watcher.describe()		
 		self.assertTrue((details.M * details.rf == details.num_evals).all())
 		
-		
-	
 
+
+
+class Test_ResNet_Models(Test_Base):
+	"""Replaces old Test_ResNet with SubTests and multple models"""
+	
+    
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_ResNet:", self._testMethodName)
+			
+		self.models = [models.resnet18(), models.resnet18().state_dict()]
+		self.model_names = ["resnet18()", "resnet18().state_dict()"]
+		
+		
+	def test_weight_watcher(self):
+		for i, model in enumerate(self.models):
+			name = self.model_names[i]
+			with self.subTest(f"ResNet model {name}", i=i):	
+				watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
+				details = watcher.describe()
+
+				M = details.M.to_numpy()
+				N = details.N.to_numpy()
+				self.assertTrue((N >= M).all())
+
+
+	def test_num_evals(self):
+		for i, model in enumerate(self.models):
+			name = self.model_names[i]
+			with self.subTest(f"ResNet model {name}", i=i):	
+				watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
+				details = watcher.describe()	
+					
+				self.assertTrue((details.M * details.rf == details.num_evals).all())
+              
+
+		
 class Test_RMT_Util(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
@@ -2057,7 +2138,7 @@ class Test_Distances(Test_Base):
 		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
 		
-		details = watcher.describe(layers=[25,28,31])
+		details = watcher.describe(layers=self.fclayers)
 		print(details)
 		
 		N = details.N.to_numpy()[0]
@@ -2117,7 +2198,7 @@ class TestPyTorchSVD(Test_Base):
 
 		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
-		expected_details= watcher.analyze(layers=[28], svd_method="accurate")
+		expected_details= watcher.analyze(layers=[self.fc2_layer], svd_method="accurate")
 		expected_length_of_details = len(expected_details)
 		
 		self.assertTrue(RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate)
@@ -2135,10 +2216,10 @@ class TestPyTorchSVD(Test_Base):
 
 		from time import time
 		start = time()
-		details_fast = watcher.analyze(layers=[25,28,31], svd_method="fast")
+		details_fast = watcher.analyze(layers=self.fclayers, svd_method="fast")
 		print(f"PyTorch (fast): {time() - start}s")
 		start = time()
-		details_accurate = watcher.analyze(layers=[25,28,31], svd_method="accurate")
+		details_accurate = watcher.analyze(layers=self.fclayers, svd_method="accurate")
 		print(f"SciPy (accurate): {time() - start}s")
 
 		for f in ["alpha", "alpha_weighted", "D", "sigma", "sv_max", "xmin"]:

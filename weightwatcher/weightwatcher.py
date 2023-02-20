@@ -336,40 +336,12 @@ class PyTorchLayer(FrameworkLayer):
     
     
       
-    
-class KerasH5Layer(FrameworkLayer):
-    def __init__(self, layer):
-        pass
-    
-    
-    def layer_type(self, layer):
-        """Given a framework layer, determine the weightwatcher LAYER_TYPE
-        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
-        
-        the_type = LAYER_TYPE.UNKNOWN
-        typestr = (str(type(layer))).lower()            
-        
-        return the_type
-        
-    
-    
-class KerasH5FileLayer(FrameworkLayer):
-    def __init__(self, layer):
-        pass
-    
-    def layer_type(self, layer):
-        """Given a framework layer, determine the weightwatcher LAYER_TYPE
-        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
-        
-        the_type = LAYER_TYPE.UNKNOWN
-        typestr = (str(type(layer))).lower()     
-        
-        return the_type
-        
         
 
 
 class PyStateDictLayer(FrameworkLayer):  
+    """Similar to the PyTorch iteraror, but the layer ids may be different"""
+    
     def __init__(self, model, layer_id, name):
     
         self.model = model  # model_state_dict
@@ -477,13 +449,19 @@ class PyStateDictLayer(FrameworkLayer):
 class PyStateDictFileLayer(FrameworkLayer):
     """Helper class to support layers directly from pyTorch StateDict
         
-      Currently only supports DENSE layers
+      Currently only supports DENSE layers: need to update
       
       initializer reads weights and bias file directly from disk
+      
+      would like to adapt to pystatedict to read off file
+      we should let the user specify, and then it will create the temp files automatically ?
                 
     """
     
-    def __init__(self, weights_dir, layer_config):
+    def __init__(self, config, layer_config):
+        
+        self.config = config
+        weights_dir =  config['weights_dir']
         
         self.layer_config = layer_config
         layer_id = layer_config['layer_id']
@@ -498,14 +476,18 @@ class PyStateDictFileLayer(FrameworkLayer):
         weights = np.load(weightfile)
         self.weightfile = weightfile
 
+        has_bias = False
         if layer_config['biasfile']:
             biasfile = layer_config['biasfile']
             biasfile = os.path.join(weights_dir, biasfile)
             bias = np.load(biasfile) 
             biasfile = biasfile
+            has_bias = True
         
         the_type = self.layer_type(weights)
-        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, weights=weights, bias=bias, the_type=the_type, framework=FRAMEWORK.PYSTATEDICT)
+        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, weights=weights, bias=bias, the_type=the_type, 
+                                framework=FRAMEWORK.PYSTATEDICT, channles=CHANNELS.LAST, has_bias=has_bias)
+    
     
     
 
@@ -517,18 +499,20 @@ class PyStateDictFileLayer(FrameworkLayer):
         the_type = LAYER_TYPE.UNKNOWN
         if len(weights.shape)==2:
             the_type = LAYER_TYPE.DENSE
+        elif len(weights.shape)==4:
+            the_type = LAYER_TYPE.CONV2D
         
         return the_type
 
 
     @staticmethod
-    def get_layer_iterator(model):
+    def get_layer_iterator(config):
         def layer_iter_():
-            weights_dir =  self.config ['weights_dir']
+            weights_dir =  config['weights_dir']
             logger.debug(f"iterating over layers in {weights_dir}")
             
-            for layer_id, layer_config in self.config['layers'].items():
-                py_layer = PyStateDictLayer(weights_dir, layer_config)
+            for layer_id, layer_config in config['layers'].items():
+                py_layer = PyStateDictLayer(config, layer_config)
                 py_layer.layer_id = layer_id
                 yield py_layer            
         return layer_iter_()   
@@ -1015,22 +999,15 @@ class ModelIterator:
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()            
      
-        # not used yet -- this wil be moved
-        #if self.framework == FRAMEWORK.PYSTATEFILEDICT:
-        #    self.config = self.read_pystatedict_config(model_dir=model)
-        
+        # TODL check that this actually works...or should this be done in set_model ?
+        if self.framework == FRAMEWORK.PYSTATEDICTFILE:
+            model = WeightWatcher.read_pystatedict_config(model_dir=model)
+            
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()       
         
         
-    
-    def read_pystatedict_config(self, model_dir):
-        filename = os.path.join(model_dir,"ww.config")
-        with open(filename, "r") as f:
-            config = json.load(f)
-            
-        return config
-    
+        
     
     
   
@@ -1536,12 +1513,15 @@ class WeightWatcher:
     @staticmethod
     def valid_framework(framework):
         """is a valid FRAMEWORK constant """
-        valid = framework in [ FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.ONNX]
+        valid = framework in [ FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.ONNX,  FRAMEWORK.PYSTATEDICTFILE,]
         return valid
         
     
     @staticmethod
     def infer_framework(model):
+        
+
+       
         
         def is_framework(name='UNKNOWN'):
             found = False
@@ -1561,9 +1541,15 @@ class WeightWatcher:
             elif is_framework(name='OrderedDict'):
                 # currently only pystatedict is supported
                 # but this could be changed
-                # we could dig inside the model and find the weight tuypes, 
+                # we could dig inside the model and find the weight types, 
                 return FRAMEWORK.PYSTATEDICT
             
+            # elif model is a directory with valid confg inside
+            #    return FRAMEWORK.PYSTATEDICTFILE
+            #
+            # elif model is a json fole
+            #    return FRAMEWORK.KERASJSONFILE
+                
         return framework
 
 
@@ -2581,7 +2567,9 @@ class WeightWatcher:
         return summary
 
     def set_model_(self, model):
-        """Set the model if it has not been set for this object"""
+        """Set the model if it has not been set for this object
+        
+        maybe we should read the config file here ?  maybe user should specify the config file ?"""
         
         self.model = model or self.model
         if self.model is None:
@@ -4223,7 +4211,28 @@ class WeightWatcher:
             json.dump(config, f)
             
         return filename
+    
+    @staticmethod 
+    def read_pystatedict_config(model_dir):
+        """read the pystate config file, ww_config, 
+        which has been previously created by running
+        """
         
+        # check file is present ?
+        filename = os.path.join(model_dir,"ww.config")
+        with open(filename, "r") as f:
+            config = json.load(f)
+            
+        return config
+    
+    @staticmethod 
+    def found_pystate_config(model_dir):
+        found = False
+        if os.path.isdir(model_dir):
+            config_filename = os.path.join(model_dir, 'ww_config')
+            found = os.path.isfile(config_filename)
+            
+        return found
     
 
         

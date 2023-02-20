@@ -866,7 +866,7 @@ class Test_VGG11(Test_Base):
 
 		self.first_layer = 0
 		self.second_layer = 1
-		self.fc2_layer = 8
+		self.fc1_layer = 8
 		self.fc2_layer = 9
 		self.fc3_layer = 10
 		self.fc_layers = [8,9,10]
@@ -1548,7 +1548,7 @@ class Test_VGG11(Test_Base):
 		"""Test the svd smoothing on 1 layer of VGG
 		"""
  			
-		esd_before = self.watcher.get_ESD(layer=28) 
+		esd_before = self.watcher.get_ESD(layer=self.fc2_layer) 
 		
 		self.watcher.SVDSharpness(layers=[self.fc2_layer])
 		esd_after = self.watcher.get_ESD(layer=self.fc2_layer) 

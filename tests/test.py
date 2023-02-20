@@ -639,7 +639,7 @@ class Test_VGG11_noModel(Test_Base):
 		
 		# 819 =~ 4096*0.2
 		self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer])
-		esd = self.watcher.get_ESD(layer=28) 
+		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)
 		
@@ -672,7 +672,7 @@ class Test_VGG11_noModel(Test_Base):
 		esd_before = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer) 
 		
 		self.watcher.SVDSharpness(model=self.model, layers=[self.fc2_layer])
-		esd_after = self.watcher.get_ESD(layer=28) 
+		esd_after = self.watcher.get_ESD(layer=self.fc2_layer) 
 		
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
@@ -696,7 +696,7 @@ class Test_VGG11_noModel(Test_Base):
 		N, M = 4096, 4096
 		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[self.fc2_layer])
 		for ww_layer in iterator:
-			self.assertEqual(ww_layer.layer_id,28)
+			self.assertEqual(ww_layer.layer_id,self.fc2_layer)
 			W = ww_layer.Wmats[0]
 			self.assertEqual(W.shape,(N,M))
 			
@@ -723,7 +723,7 @@ class Test_VGG11_noModel(Test_Base):
 		for column in rand_columns:
 			self.assertNotIn(column, details.columns)
 			
-		details = self.watcher.analyze(layers = [28], randomize=True)	
+		details = self.watcher.analyze(layers = [self.fc2_layer], randomize=True)	
 		for column in rand_columns:	
 			self.assertIn(column, details.columns)
 			

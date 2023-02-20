@@ -217,7 +217,7 @@ class KerasLayer(FrameworkLayer):
     def replace_layer_weights(self, W, B=None):
         """My not work,, see https://stackoverflow.com/questions/51354186/how-to-update-weights-manually-with-keras"""
         
-        if self.has_biases():
+        if self.has_biases() and B is not None:
             W = [W, B]
         self.layer.set_weights(W)
             
@@ -277,7 +277,7 @@ class PyTorchLayer(FrameworkLayer):
         
         
     def has_biases(self):
-        return self.layer.bias is not None
+        return self.layer.bias is not None and self.layer.bias.data is not None
     
     def get_weights_and_biases(self):
         """extract the original weights (as a tensor) for the layer, and biases for the layer, if present
@@ -321,8 +321,9 @@ class PyTorchLayer(FrameworkLayer):
     def replace_layer_weights(self, W, B=None):
             
         self.layer.weight.data = torch.from_numpy(W)
-        if self.has_biases():
+        if self.has_biases() and B is not None:
             self.layer.bias.data = torch.from_numpy(B)
+        
         
     
     @staticmethod
@@ -379,7 +380,7 @@ class PyStateDictLayer(FrameworkLayer):
         """model is just a dict, but we need the name of the dict"""
         
         def layer_iter_():
-           layer_id = -1 
+           layer_id = 0
            for key in model_state_dict.keys():
             # Check if the key corresponds to a weight matrix
             if key.endswith('.weight'):
@@ -438,7 +439,7 @@ class PyStateDictLayer(FrameworkLayer):
         bias_key = self.layer + '.bias'
         
         model_state_dict[weight_key] = torch.from_numpy(W)
-        if self.has_biases():
+        if self.has_biases() and B is not None:
             model_state_dict[bias_key] = torch.from_numpy(B)
         
         return 

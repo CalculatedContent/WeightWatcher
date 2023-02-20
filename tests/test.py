@@ -863,8 +863,9 @@ class Test_VGG11(Test_Base):
 		self.fc2_layer = 28
 		self.fc3_layer = 31
 		self.fc_layers = [25,28,31]
-		
 		self.min_layer_id = self.first_layer
+		
+		return
 
 		
 	def test_basic_columns(self):
@@ -1075,10 +1076,14 @@ class Test_VGG11(Test_Base):
 		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
 		"""
 		
+		skip_layers =  [-x for x in self.fc_layers]
+		self.assertEqual(len(skip_layers), 3)
+		print("skip these layers",skip_layers)
+
 		details = self.watcher.describe(layers=[])
 		print(details)
 		
-		details = self.watcher.describe(layers = -self.fc_layers)
+		details = self.watcher.describe(layers=skip_layers)
 		print(details)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]

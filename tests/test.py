@@ -836,7 +836,7 @@ class Test_VGG11_Distances(Test_Base):
 
 class Test_VGG11(Test_Base):
 	"""
-	  layer_id    name     M  ...      longname  num_evals rf
+	layer_id    name     M  ...      longname  num_evals rf
 0          2  Conv2d     3  ...    features.0         27  9
 1          5  Conv2d    64  ...    features.3        576  9
 2          8  Conv2d   128  ...    features.6       1152  9
@@ -864,13 +864,15 @@ class Test_VGG11(Test_Base):
   # self.fc3_layer = 31
   # self.fc_layers = [25,28,31]
 
-
 		self.first_layer = 0
 		self.second_layer = 1
 		self.fc2_layer = 8
 		self.fc2_layer = 9
 		self.fc3_layer = 10
 		self.fc_layers = [8,9,10]
+		
+		self.min_layer_id = self.first_layer
+
 		
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -1150,7 +1152,8 @@ class Test_VGG11(Test_Base):
 		"""
 		
 		# default	
-		details = self.watcher.describe(layers=[self.second_layer])
+		details = self.watcher.describe(layers=[self.first_layer])
+		print(details)
 		N = details.N.to_numpy()[0]
 		M = details.M.to_numpy()[0]
 		rf = details.rf.to_numpy()[0]
@@ -1668,7 +1671,7 @@ class Test_VGG11(Test_Base):
 		num = 0
 		actual_ids = []
 		for ww_layer in iterator:
-			self.assertGreater(ww_layer.layer_id,0)
+			self.assertGreater(ww_layer.layer_id,self.min_layer_id-1)
 			actual_ids.append(ww_layer.layer_id)
 			num += 1
 		self.assertEqual(num,11)
@@ -2197,8 +2200,9 @@ class TestPyTorchSVD(Test_Base):
 		"""tests that the SVD still runs  even if torch is not available"""
 
 		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		fc2_layer = 28
 		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
-		expected_details= watcher.analyze(layers=[self.fc2_layer], svd_method="accurate")
+		expected_details= watcher.analyze(layers=[fc2_layer], svd_method="accurate")
 		expected_length_of_details = len(expected_details)
 		
 		self.assertTrue(RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate)

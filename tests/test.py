@@ -1261,7 +1261,7 @@ class Test_VGG11(Test_Base):
 		"""Test that eigenvalues are available while specifying the model explicitly
 		"""
 
-		esd = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer)
+		esd = self.watcher.get_ESD(model=self.model, layer=self.second_layer)
 		self.assertEqual(len(esd), 576)
 
 	def test_randomize(self):

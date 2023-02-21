@@ -2713,13 +2713,17 @@ class WeightWatcher:
                 logger.warning("unknown channels {}".format(channels))
                 valid = False
 
-        # layer ids must be all positive or all negative
-
+        # layer can be an  list of all + or all -  integers
+        # eventually this to be exteneisvly united tested
         filters = params.get(LAYERS) 
         if filters is not None:
-            filter_ids = [int(f) for f in filters if  isinstance(f, numbers.Integral)]
-
+            if isinstance(filters, numbers.Integral):
+                filters = [filters]
+            elif isinstance(filters, np.ndarray):
+                filters = filters.tolist()
           
+            filter_ids = [int(f) for f in filters if isinstance(f, numbers.Integral)]
+
             if len(filter_ids) > 0:
                 if np.max(filter_ids) > 0 and np.min(filter_ids) < 0:
                     logger.warning("layer filter ids must be all > 0 or < 0: {}".format(filter_ids))

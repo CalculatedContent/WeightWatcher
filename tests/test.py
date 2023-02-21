@@ -598,6 +598,17 @@ class Test_VGG11_noModel(Test_Base):
 		print("\n-------------------------------------\nIn Test_VGG11_noModel:", self._testMethodName)
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
+		
+		self.first_layer = 2
+		self.second_layer = 5
+		self.third_layer = 8
+
+		self.fc1_layer = 25
+		self.fc2_layer = 28
+		self.fc3_layer = 31
+		
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+		self.min_layer_id = self.first_layer
 
 
 	def test_basic_columns_no_model(self):
@@ -654,7 +665,7 @@ class Test_VGG11_noModel(Test_Base):
 		self.assertEqual(11, len(description))
 		
 		
-		details = self.watcher.analyze(model=self.model, layers=[5])
+		details = self.watcher.analyze(model=self.model, layers=[self.fc2_layer])
 		returned_summary = self.watcher.get_summary(details)
 		
 		print(returned_summary)
@@ -685,7 +696,7 @@ class Test_VGG11_noModel(Test_Base):
 		"""Test that eigenvalues are available while specifying the model explicitly
 		"""
 
-		esd = self.watcher.get_ESD(model=self.model, layer=5)
+		esd = self.watcher.get_ESD(model=self.model, layer=self.second_layer)
 		self.assertEqual(len(esd), 576)
 		
 		
@@ -859,6 +870,8 @@ class Test_VGG11(Test_Base):
 		
 		self.first_layer = 2
 		self.second_layer = 5
+		self.third_layer = 8
+
 		self.fc1_layer = 25
 		self.fc2_layer = 28
 		self.fc3_layer = 31
@@ -871,6 +884,7 @@ class Test_VGG11(Test_Base):
   #
   # self.first_layer = 1
   # self.second_layer = 2
+  # self.third_layer = 8
   # self.fc1_layer = 9
   # self.fc2_layer = 10
   # self.fc3_layer = 11
@@ -1274,7 +1288,7 @@ class Test_VGG11(Test_Base):
 		self.assertEqual(13, len(description))
 		
 		
-		details = self.watcher.analyze(model=new_model, layers=[32])
+		details = self.watcher.analyze(model=new_model, layers=[self.fc3_layerr])
 		returned_summary = self.watcher.get_summary(details)
 		
 		print(returned_summary)
@@ -1377,7 +1391,8 @@ class Test_VGG11(Test_Base):
 		"""Test PL fits on intra
 		"""
 
-		details= self.watcher.analyze(layers=self.fc_layers, intra=True, randomize=False, vectors=False)
+		print(self.fc_layers[0:2])
+		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, randomize=False, vectors=False)
 		actual_alpha = details.alpha[0]
 		actual_best_fit = details.best_fit[0]
 		print(actual_alpha,actual_best_fit)
@@ -1392,7 +1407,7 @@ class Test_VGG11(Test_Base):
 		"""Test PL fits on intram, sparsify off, more accurate
 			"""
 			
-		details= self.watcher.analyze(layers=[self.fc_layers], intra=True, sparsify=False)
+		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, sparsify=False)
 		actual_alpha = details.alpha[0]
 		actual_best_fit = details.best_fit[0]
 		print(actual_alpha,actual_best_fit)
@@ -1642,10 +1657,11 @@ class Test_VGG11(Test_Base):
 
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
-		esd_before = self.watcher.get_ESD(layer=8) 
 		
-		self.watcher.SVDSharpness(layers=[8])
-		esd_after = self.watcher.get_ESD(layer=8) 
+		esd_before = self.watcher.get_ESD(layer=self.third_layer) 
+		
+		self.watcher.SVDSharpness(layers=[third_layer])
+		esd_after = self.watcher.get_ESD(layer=self.third_layer) 
 		
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))
@@ -1892,6 +1908,7 @@ class Test_VGG11_StateDict(Test_VGG11):
 
 		self.first_layer = 1
 		self.second_layer = 2
+		self.third_layer = 8
 		self.fc1_layer = 9
 		self.fc2_layer = 10
 		self.fc3_layer = 11

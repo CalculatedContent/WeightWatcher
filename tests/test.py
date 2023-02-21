@@ -855,7 +855,7 @@ class Test_VGG11(Test_Base):
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)		
 		
 		self.first_layer = 2
 		self.second_layer = 5
@@ -866,9 +866,38 @@ class Test_VGG11(Test_Base):
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
 		
+  # self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+  # self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+  #
+  # self.first_layer = 1
+  # self.second_layer = 2
+  # self.fc1_layer = 9
+  # self.fc2_layer = 10
+  # self.fc3_layer = 11
+  #
+  # self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+  # self.min_layer_id = self.first_layer
+  #
+
 		return
 
 		
+	def test_layer_ids(self):
+		"""Test that framework layer iteraor sets the layer ids as expected"""
+		
+		print(type(self.model))
+		details = self.watcher.describe()
+		print(details)
+		
+		layer_ids = details.layer_id.to_numpy()
+		self.assertEqual(layer_ids[0], self.first_layer)
+		self.assertEqual(layer_ids[1], self.second_layer)
+		self.assertEqual(layer_ids[-3], self.fc1_layer)
+		self.assertEqual(layer_ids[-2], self.fc2_layer)
+		self.assertEqual(layer_ids[-1], self.fc3_layer)
+
+
+			
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
 		"""
@@ -1150,6 +1179,10 @@ class Test_VGG11(Test_Base):
 		"""Test dimensions of Conv2D layer
 		"""
 		
+			# default	
+		details = self.watcher.describe()
+		print(details)
+		
 		# default	
 		details = self.watcher.describe(layers=[self.first_layer])
 		print(details)
@@ -1198,7 +1231,7 @@ class Test_VGG11(Test_Base):
 	def test_get_details(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
-		actual_details = self.watcher.analyze(layers=[5])
+		actual_details = self.watcher.analyze(layers=[self.second_layer])
 		expected_details = self.watcher.get_details()
 		
 		self.assertEqual(len(actual_details), len(expected_details), "actual and expected details differ")
@@ -1580,8 +1613,15 @@ class Test_VGG11(Test_Base):
 		Test that we can get the ESD when setting the model explicitly
 		""" 
 	
+		details = self.watcher.describe(model=self.model)
+		print(details)
+		 
 		esd_before = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer) 
 		esd_after = self.watcher.get_ESD(layer=self.fc2_layer) 
+		
+		print(len(esd_before))
+		print(len(esd_after))
+
 		
 		print("max esd before {}".format(np.max(esd_before)))
 		print("max esd after {}".format(np.max(esd_after)))

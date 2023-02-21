@@ -225,15 +225,18 @@ class KerasLayer(FrameworkLayer):
     @staticmethod
     def get_layer_iterator(model):
         def layer_iter_():
-
+            lyaer_id = 0
             def traverse_(layer):
                 "not recursive, just iterate over all submodules if present"
                 if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
-                    yield KerasLayer(layer)
+                    keras_layer = KerasLayer(layer, layer_id)
+                    layer_id += 1
+                    yield keras_layer
                 else:                        
                     for sublayer in layer.submodules:
-                        yield KerasLayer(sublayer)
-                
+                        keras_layer = KerasLayer(sublayer, layer_id)
+                        layer_id += 1
+                        yield keras_layer
             for layer in model.layers:
                 yield from traverse_(layer)
 
@@ -330,9 +333,12 @@ class PyTorchLayer(FrameworkLayer):
     def get_layer_iterator(model):
         def layer_iter_():
             #for layer in model.modules():
+            layer_id = 0
             for longname, layer in model.named_modules():
                 setattr(layer, 'longname', longname)
-                yield PyTorchLayer(layer, longname=longname)                        
+                pytorch_layer = PyTorchLayer(layer, layer_id, longname=longname)  
+                layer_id += 1 
+                yield pytorch_layer                 
         return layer_iter_()     
     
     
@@ -347,7 +353,7 @@ class PyStateDictLayer(FrameworkLayer):
     
         self.model = model  # model_state_dict
         self.layer = name
-        
+
         the_type = self.layer_type(self.layer)
         FrameworkLayer.__init__(self, name, layer_id, name, longname=name, the_type=the_type, 
                                 framework=FRAMEWORK.PYSTATEDICT, channels=CHANNELS.LAST) 
@@ -403,7 +409,8 @@ class PyStateDictLayer(FrameworkLayer):
                 # because we want al the layers for describe
                 if weights is not None:
                     layer_id += 1
-                    yield PyStateDictLayer(model_state_dict, layer_id, layer_name)
+                    the_layer = PyStateDictLayer(model_state_dict, layer_id, layer_name)
+                    yield the_layer
 
         return layer_iter_()
     
@@ -1007,10 +1014,7 @@ class ModelIterator:
         self.model_iter = self.model_iter_(model) 
         self.layer_iter = self.make_layer_iter_()       
         
-        
-        
-    
-    
+
   
     
     def __iter__(self):
@@ -1157,10 +1161,12 @@ class WWLayerIterator(ModelIterator):
     def ww_layer_iter_(self):
         """Create a generator for iterating over ww_layers, created lazily """
         for curr_layer in self.model_iter:
+            # here is the bug...the layer ide
             curr_id, self.k = self.k, self.k + 1
-            
-            ww_layer = WWLayer(curr_layer, layer_id=curr_id, params=self.params)
-            
+        # maybe set to old_layer_id
+           # ww_layer = WWLayer(curr_layer, layer_id=curr_id, params=self.params)
+            ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
+           
             self.apply_filters(ww_layer)
             
             if not self.layer_supported(ww_layer):

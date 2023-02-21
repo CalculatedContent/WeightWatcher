@@ -225,7 +225,7 @@ class KerasLayer(FrameworkLayer):
     @staticmethod
     def get_layer_iterator(model):
         def layer_iter_():
-            lyaer_id = 0
+            layer_id = 0
             def traverse_(layer):
                 "not recursive, just iterate over all submodules if present"
                 if not hasattr(layer, 'submodules') or len(layer.submodules)==0:

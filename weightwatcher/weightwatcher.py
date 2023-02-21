@@ -1102,11 +1102,12 @@ class WWLayerIterator(ModelIterator):
             
         for f in filters:
             tf = type(f)
+            print(f"FILTER {f}")
         
             if tf is LAYER_TYPE:
                 logger.info("Filtering layer by type {}".format(str(f)))
                 self.filter_types.append(f)
-            elif tf is int:
+            elif (tf is int) or (tf is np.integer) or (tf is np.int64):
                 logger.info("Filtering layer by id {}".format(f))
                 self.filter_ids.append(f) 
             elif tf is str:
@@ -1168,7 +1169,7 @@ class WWLayerIterator(ModelIterator):
             ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
            
             self.apply_filters(ww_layer)
-            
+
             if not self.layer_supported(ww_layer):
                 ww_layer.skipped = True
                         
@@ -3194,7 +3195,6 @@ class WeightWatcher:
             logger.error("Can not find layer name {} in valid layer_names {}".format(layer, layer_names))
             return []
     
-
         layer_iter = WWLayerIterator(model=self.model, framework=self.framework, filters=[layer], params=params)     
         details = pd.DataFrame(columns=['layer_id', 'name'])
            
@@ -3203,11 +3203,11 @@ class WeightWatcher:
         assert(ww_layer.has_weights)
         
         if not random:
-            logger.info("Getting ESD for layer {} ".format(layer))
+            logger.info(f"Getting ESD for layer {layer} ; ww_layer id = {ww_layer.layer_id}")
             self.apply_esd(ww_layer, params)
             esd = ww_layer.evals
         else:
-            logger.info("Getting Randomized ESD for layer {} ".format(layer))
+            logger.info(f"Getting Randomized ESD for layer {layer} ")
             self.apply_random_esd(ww_layer, params)
             esd = ww_layer.rand_evals
 
@@ -3663,7 +3663,7 @@ class WeightWatcher:
         channels= ww_layer.channels
 
         
-        if framework not in [FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.ONNX]:
+        if framework not in [FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.ONNX, FRAMEWORK.PYSTATEDICT]:
             logger.error("Sorry, SVDSmoothing does not support this model framework ")
             return 
 

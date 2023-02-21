@@ -1102,8 +1102,7 @@ class WWLayerIterator(ModelIterator):
             
         for f in filters:
             tf = type(f)
-            print(f"FILTER {f}")
-        
+
             if tf is LAYER_TYPE:
                 logger.info("Filtering layer by type {}".format(str(f)))
                 self.filter_types.append(f)

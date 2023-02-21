@@ -1910,6 +1910,10 @@ class Test_Keras(Test_Base):
 		self.model = VGG16()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
+	def test_kayer_ids(self):
+		details = self.watcher.describe()
+		print(details)
+		
 
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe

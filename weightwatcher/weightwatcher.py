@@ -134,7 +134,7 @@ class FrameworkLayer:
 class KerasLayer(FrameworkLayer):
 
     
-    def __init__(self, layer, layer_id=-1, name=None, longname = None):
+    def __init__(self, layer, layer_id, name=None, longname = None):
 
         the_type = self.layer_type(layer)
         channels = CHANNELS.FIRST
@@ -225,8 +225,8 @@ class KerasLayer(FrameworkLayer):
     @staticmethod
     def get_layer_iterator(model):
         def layer_iter_():
-            layer_id = 0
             def traverse_(layer):
+                layer_id = 0
                 "not recursive, just iterate over all submodules if present"
                 if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
                     keras_layer = KerasLayer(layer, layer_id)
@@ -246,7 +246,7 @@ class KerasLayer(FrameworkLayer):
       
 class PyTorchLayer(FrameworkLayer):
     
-    def __init__(self, layer, layer_id=-1, name=None, longname = None):
+    def __init__(self, layer, layer_id, name=None, longname = None):
         
         the_type = self.layer_type(layer)
         channels = CHANNELS.LAST

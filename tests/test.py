@@ -1501,7 +1501,6 @@ class Test_VGG11(Test_Base):
 		# 819 =~ 4096*0.2
 		self.watcher.SVDSmoothing(layers=[self.fc2_layer])
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
-		print(f"len esd = {len(esd)}")
 		num_comps = len(esd[esd > 10**-10])
 		self.assertEqual(num_comps, 819)
 		

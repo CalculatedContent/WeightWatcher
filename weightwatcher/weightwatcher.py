@@ -1108,7 +1108,7 @@ class WWLayerIterator(ModelIterator):
                 self.filter_types.append(f)
             elif (tf is int) or (tf is np.integer) or (tf is np.int64):
                 logger.info("Filtering layer by id {}".format(f))
-                self.filter_ids.append(f) 
+                self.filter_ids.append(int(f)) 
             elif tf is str:
                 logger.info("Filtering layer by name {}".format(f))
                 self.filter_names.append(f) 

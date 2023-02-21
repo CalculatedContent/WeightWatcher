@@ -28,6 +28,7 @@ from sklearn.decomposition import TruncatedSVD
 
 from copy import deepcopy
 import importlib
+import numbers
 
 #
 # this is use to allow editing in Eclipse but also
@@ -1106,7 +1107,7 @@ class WWLayerIterator(ModelIterator):
             if tf is LAYER_TYPE:
                 logger.info("Filtering layer by type {}".format(str(f)))
                 self.filter_types.append(f)
-            elif (tf is int) or (tf is np.integer) or (tf is np.int64):
+            elif isinstance(f, numbers.Integral):
                 logger.info("Filtering layer by id {}".format(f))
                 self.filter_ids.append(int(f)) 
             elif tf is str:
@@ -2713,9 +2714,11 @@ class WeightWatcher:
                 valid = False
 
         # layer ids must be all positive or all negative
+
         filters = params.get(LAYERS) 
         if filters is not None:
-            filter_ids = [int(f) for f in filters if type(f) is int]
+            filter_ids = [int(f) for f in filters if  isinstance(f, numbers.Integral)]
+
           
             if len(filter_ids) > 0:
                 if np.max(filter_ids) > 0 and np.min(filter_ids) < 0:
@@ -3186,7 +3189,7 @@ class WeightWatcher:
         layer_names = details['name'].to_numpy()
         
         
-        if type(layer) is int and layer not in layer_ids:
+        if isinstance(layer, numbers.Integral) and layer not in layer_ids:
             logger.error("Can not find layer id {} in valid layer_ids {}".format(layer, layer_ids))
             return []
         
@@ -3228,8 +3231,8 @@ class WeightWatcher:
         details = self.describe(model=self.model)
         layer_ids = details['layer_id'].to_numpy()
         layer_names = details['name'].to_numpy()
-        
-        if type(layer) is int and layer not in layer_ids:
+             
+        if isinstance(layer, numbers.Integral) and layer not in layer_ids:
             logger.error("Can not find layer id {} in valid layer_ids {}".format(layer, layer_ids))
             return []
         

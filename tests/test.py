@@ -1719,7 +1719,7 @@ class Test_VGG11(Test_Base):
 		iterator = self.watcher.make_layer_iterator(model=self.model, layers=[self.fc2_layer])
 		num = 0
 		for ww_layer in iterator:
-			self.assertEqual(ww_layer.layer_id,28)
+			self.assertEqual(ww_layer.layer_id,self.fc2_layer)
 			num += 1
 		self.assertEqual(num,1)
 

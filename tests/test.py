@@ -634,7 +634,7 @@ class Test_VGG11_noModel(Test_Base):
 			
 					
 	def test_svd_smoothing_no_model(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		"""
 		
 		# 819 =~ 4096*0.2
@@ -665,7 +665,7 @@ class Test_VGG11_noModel(Test_Base):
 		
 				
 	def test_svd_sharpness_no_model(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		"""
  		
 	
@@ -855,7 +855,7 @@ class Test_VGG11(Test_Base):
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
 		
 		self.first_layer = 2
 		self.second_layer = 5
@@ -1518,7 +1518,7 @@ class Test_VGG11(Test_Base):
 
 
 	def test_svd_smoothing_alt(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		The intent is that test_svd_smoothing and test_svd_smoothing_lat are exactly the same
 		except that:
 
@@ -1595,7 +1595,7 @@ class Test_VGG11(Test_Base):
 			
 		
 	def test_svd_sharpness_with_model(self):
-		"""Test the svd smoothing on 1 lyaer of VGG
+		"""Test the svd smoothing on 1 layer of VGG
 		"""
  		
 		esd_before = self.watcher.get_ESD(model=self.model, layer=self.fc2_layer) 

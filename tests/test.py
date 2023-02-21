@@ -866,18 +866,19 @@ class Test_VGG11(Test_Base):
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
 		
-		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
-		
-		self.first_layer = 1
-		self.second_layer = 2
-		self.fc1_layer = 9
-		self.fc2_layer = 10
-		self.fc3_layer = 11
-		
-		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
-		self.min_layer_id = self.first_layer
-		  
+  # self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+  # self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
+  #
+  # self.first_layer = 1
+  # self.second_layer = 2
+  # self.fc1_layer = 9
+  # self.fc2_layer = 10
+  # self.fc3_layer = 11
+  #
+  # self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+  # self.min_layer_id = self.first_layer
+  #
+
 
 		return
 

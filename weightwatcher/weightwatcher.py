@@ -224,12 +224,13 @@ class KerasLayer(FrameworkLayer):
             
             
     @staticmethod
-    def get_layer_iterator(model, start_id = 0):
+    def get_layer_iterator(model, start_id=0):
         """ start_id is 0 for back compatbility"""
+        layer_id = start_id
         def layer_iter_():
             def traverse_(layer):
-                layer_id = start_id
                 "not recursive, just iterate over all submodules if present"
+                nonlocal layer_id 
                 if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
                     keras_layer = KerasLayer(layer, layer_id)
                     layer_id += 1
@@ -1009,15 +1010,15 @@ class ModelIterator:
                 
         self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
-        self.model_iter = self.model_iter_(model, start_id=start_id) 
+        self.model_iter = self.model_iter_(model,start_id) 
         self.layer_iter = self.make_layer_iter_()            
      
         # TODL check that this actually works...or should this be done in set_model ?
-        if self.framework == FRAMEWORK.PYSTATEDICTFILE:
-            model = WeightWatcher.read_pystatedict_config(model_dir=model)
-            
-            self.model_iter = self.model_iter_(model,start_id=start_id) 
-            self.layer_iter = self.make_layer_iter_()       
+        # if self.framework == FRAMEWORK.PYSTATEDICTFILE:
+        #     model = WeightWatcher.read_pystatedict_config(model_dir=model)
+        #
+        #     self.model_iter = self.model_iter_(model,start_id) 
+        #     self.layer_iter = self.make_layer_iter_()       
         
 
   
@@ -1171,13 +1172,14 @@ class WWLayerIterator(ModelIterator):
     def ww_layer_iter_(self):
         """Create a generator for iterating over ww_layers, created lazily """
         for curr_layer in self.model_iter:
-            # here is the bug...the layer ide
+            
+           # old counting method
            # curr_id, self.k = self.k, self.k + 1
            # ww_layer = WWLayer(curr_layer, layer_id=curr_id, params=self.params)
-            ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
            
-            self.apply_filters(ww_layer)
+            ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
 
+            self.apply_filters(ww_layer)
             if not self.layer_supported(ww_layer):
                 ww_layer.skipped = True
                         

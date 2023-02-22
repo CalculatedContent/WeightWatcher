@@ -1983,6 +1983,13 @@ class Test_Keras(Test_Base):
 		N = details.N.to_numpy()
 		self.assertTrue((N >= M).all)
 
+
+	def test_layer_ids(self):
+		"""Test that the layer_ids are signed as expected"""
+		
+		details = self.watcher.describe()
+		print(details)
+		
         
 class Test_ResNet(Test_Base):
 	def setUp(self):

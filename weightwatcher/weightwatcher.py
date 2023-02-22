@@ -224,10 +224,11 @@ class KerasLayer(FrameworkLayer):
             
             
     @staticmethod
-    def get_layer_iterator(model):
+    def get_layer_iterator(model, start_id = 0):
+        """ start_id is 0 for back compatbility"""
         def layer_iter_():
             def traverse_(layer):
-                layer_id = 0
+                layer_id = start_id
                 "not recursive, just iterate over all submodules if present"
                 if not hasattr(layer, 'submodules') or len(layer.submodules)==0:
                     keras_layer = KerasLayer(layer, layer_id)
@@ -331,10 +332,11 @@ class PyTorchLayer(FrameworkLayer):
         
     
     @staticmethod
-    def get_layer_iterator(model):
+    def get_layer_iterator(model,start_id=0):
+        """ start_id is 0 for back compatbility"""
         def layer_iter_():
             #for layer in model.modules():
-            layer_id = 0
+            layer_id = start_id
             for longname, layer in model.named_modules():
                 setattr(layer, 'longname', longname)
                 pytorch_layer = PyTorchLayer(layer, layer_id, longname=longname)  
@@ -383,11 +385,13 @@ class PyStateDictLayer(FrameworkLayer):
 
     
                               
-    def get_layer_iterator(model_state_dict):
-        """model is just a dict, but we need the name of the dict"""
+    def get_layer_iterator(model_state_dict, start_id=0):
+        """model is just a dict, but we need the name of the dict
+        
+        start_id = 0 is ok since al counting starts at 1 for this layer"""
         
         def layer_iter_():
-           layer_id = 0
+           layer_id = start_id 
            for key in model_state_dict.keys():
             # Check if the key corresponds to a weight matrix
             if key.endswith('.weight'):
@@ -999,21 +1003,21 @@ class ModelIterator:
          
         self.params = params
         if params[START_IDS]:
-            self.k = params[START_IDS] # 0 | 1
+            start_id = params[START_IDS] 
         else:
-            self.k = DEFAULT_START_ID
+            start_id = DEFAULT_START_ID
                 
         self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
-        self.model_iter = self.model_iter_(model) 
+        self.model_iter = self.model_iter_(model, start_id=start_id) 
         self.layer_iter = self.make_layer_iter_()            
      
         # TODL check that this actually works...or should this be done in set_model ?
         if self.framework == FRAMEWORK.PYSTATEDICTFILE:
             model = WeightWatcher.read_pystatedict_config(model_dir=model)
             
-        self.model_iter = self.model_iter_(model) 
-        self.layer_iter = self.make_layer_iter_()       
+            self.model_iter = self.model_iter_(model,start_id=start_id) 
+            self.layer_iter = self.make_layer_iter_()       
         
 
   
@@ -1034,24 +1038,29 @@ class ModelIterator:
         
     
     
-    def model_iter_(self, model):
+    def model_iter_(self, model, start_id=0):
         """Return a generator for iterating over the layers in the model.  
         Also detects the framework being used. 
-        Used by base class and child classes to iterate over the framework layers """
+        Used by base class and child classes to iterate over the framework layers 
+        
+        start_id = 0 is inc luded for back compability; really all counting should start at 1"""
         layer_iter = None
         
+        # sart_id can be erro (for back compatability) or one (better)
         if self.framework == FRAMEWORK.KERAS:
-            layer_iter = KerasLayer.get_layer_iterator(model) 
+            layer_iter = KerasLayer.get_layer_iterator(model, start_id=start_id) 
 
         elif self.framework == FRAMEWORK.PYTORCH:
-            layer_iter = PyTorchLayer.get_layer_iterator(model) 
-
+            layer_iter = PyTorchLayer.get_layer_iterator(model,start_id=start_id) 
+ 
         elif self.framework == FRAMEWORK.ONNX:
             layer_iter = ONNXLayer.get_layer_iterator(model) 
             
         elif self.framework == FRAMEWORK.PYSTATEDICT:
             layer_iter = PyStateDictLayer.get_layer_iterator(model) 
-    
+            
+        elif self.framework == FRAMEWORK.PYSTATEDICTFILE:
+            layer_iter = PyStateDictLayer.get_layer_iterator(model) 
             
         else:
             layer_iter = None
@@ -1163,8 +1172,7 @@ class WWLayerIterator(ModelIterator):
         """Create a generator for iterating over ww_layers, created lazily """
         for curr_layer in self.model_iter:
             # here is the bug...the layer ide
-            curr_id, self.k = self.k, self.k + 1
-        # maybe set to old_layer_id
+           # curr_id, self.k = self.k, self.k + 1
            # ww_layer = WWLayer(curr_layer, layer_id=curr_id, params=self.params)
             ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
            

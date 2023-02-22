@@ -101,7 +101,7 @@ class Test_KerasLayers(Test_Base):
 		actual_type = str(type(keras_layer))
 		self.assertEqual(expected_type, actual_type)
 		
-	
+
 	
 	
 	def test_ww_layer_iterator(self):
@@ -119,6 +119,7 @@ class Test_KerasLayers(Test_Base):
 		expected_type = "<class 'weightwatcher.weightwatcher.WWLayer'>"
 		actual_type = str(type(ww_layer))
 		self.assertEqual(expected_type, actual_type)
+		
 		
 	def get_last_layer(self):
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)

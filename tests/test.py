@@ -376,9 +376,6 @@ class Test_PyTorchLayers(Test_Base):
 		last_layer = self.get_last_layer()
 		has_weights, weights, has_biases, biases   = last_layer.get_weights_and_biases()
 
-		print(type(biases))
-
-
 		expected_old_W_min = np.min(weights)
 		expected_old_B_min = np.min(biases)
 
@@ -766,83 +763,122 @@ class Test_VGG11_Distances(Test_Base):
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
+		self.first_layer = 2
+		self.second_layer = 5
+		self.third_layer = 8
+
+		self.fc1_layer = 25
+		self.fc2_layer = 28
+		self.fc3_layer = 31
+		
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+		self.min_layer_id = self.first_layer
+		
+		return
+	
+	
+		
 	def test_same_distances(self):
 		"""Test that the distance method works correctly between the same model
         """
         
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2)
-		actual_mean_distance = avg_dist
+		avg_dW, avg_db, distances = self.watcher.distances(m1, m2)
+		
+		actual_mean_distance = avg_dW
 		expected_mean_distance = 0.0	                       
 		self.assertEqual(actual_mean_distance,expected_mean_distance)
+		
+		actual_mean_distance = avg_db
+		expected_mean_distance = 0.0	                       
+		self.assertEqual(actual_mean_distance,expected_mean_distance)
+		
+		print(distances)
 
 	def test_distances(self):
 		"""Test that the distance method works correctly between different model
                 """
 		m1 = models.vgg11()
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2)
-		actual_mean_distance = avg_dist
+		avg_dW, avg_db, distances = self.watcher.distances(m1, m2)
+	
+		print(avg_dW,avg_db)
+		actual_mean_distance = avg_dW
 		expected_mean_distance = 46.485
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
+		actual_mean_distance = avg_db
+		expected_mean_distance = 0.67622
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
+		print(distances)
 
-	def test_raw_distances(self):
-		"""Test that the distance method works correctly when methdod='RAW'
-                """
+		
+
+	def test_Euclidian_distances(self):
+		"""Test that the distance method works correctly when method='EUCLIDEAN'
+        """
+                
 		m1 = models.vgg11()
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 46.485
+		avg_dW, avg_db, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
+		
+		actual_mean_distance = avg_dW
+		expected_mean_distance = 30.2
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
+		# biased not implemented yet in layers
+		actual_mean_distance = avg_db
+		expected_mean_distance = 0.00
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
 
 
-	def test_raw_distances_w_one_layer(self):
+	def test_Euclidian_distances_w_one_layer(self):
 		"""Test that the distance method works correctly when methdod='RAW', 1 layer
                 """
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=RAW, layers=[self.fc2_layer])
-		actual_mean_distance = avg_dist
+		avg_dW, avg_db, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, layers=[self.fc2_layer])
+		actual_mean_distance = avg_dW
 		expected_mean_distance = 0.0
 
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 		# TODO: test length of distances also
 
-	# TODO implement
-	def test_CKA_distances_TODO(self):
+	# TODO implement with centering
+	def test_CKA_distances(self):
 		"""Test that the distance method works correctly for CKA method,  ww2x False | True
                 """
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA)
-		actual_mean_distance = avg_dist
+		avg_dW, avg_db, distances =  self.watcher.distances(m1, m2, method=CKA, ww2x=False)
+		
+		print("====== ww2x=False ========")
+		print(distances)
+		
+		actual_mean_distance = avg_dW
 		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
+		actual_mean_distance = avg_db
+		expected_mean_distance = 1.0
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		
+		print("====== ww2x=False ========")
+		print(distances)
 
 		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
-		actual_mean_distance = avg_dist
+		actual_mean_distance = avg_dW
 		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-	# TODO implement
-	def test_EUCLIDEAN_distances_TODO(self):
-		"""Test that the distance method works correctly for EUCLIDEAN method,  ww2x=False | True
-                """
-		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-
-		avg_dist, distances = self.watcher.distances(m1, m2, method=EUCLIDEAN, ww2x=True)
-		actual_mean_distance = avg_dist
-		expected_mean_distance = 1.0
-		#self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 		
+		actual_mean_distance = avg_db
+		expected_mean_distance = 1.0
+		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 		
+
 
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
@@ -879,21 +915,6 @@ class Test_VGG11(Test_Base):
 		
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
-		
-		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
-		
-		self.first_layer = 1
-		self.second_layer = 2
-		self.third_layer = 8
-		self.fc1_layer = 9
-		self.fc2_layer = 10
-		self.fc3_layer = 11
-		
-		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
-		self.min_layer_id = self.first_layer
-
-
 
 		return
 
@@ -2248,26 +2269,7 @@ class Test_Distances(Test_Base):
 		
 		pass
 
-	
-	def get_weights_only_from_Keras(self):
-		"""Test that we can get both weights and biases from Keras models"""
-		
-		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		watcher = ww.WeightWatcher(model = model, log_level=logging.WARNING)
-		
-		pass
-	
-		
-	def get_weights_only_from_pyTorch(self):
-		"""Test that we can get both weights and biases from pyTorch models"""
-		
-		pass
-	
-	
-	def get_weights_only_from_Onnx(self):
-		"""Test that we can get both weights and biases from ONNX models"""
-		
-		pass
+
 
 
 class TestPyTorchSVD(Test_Base):

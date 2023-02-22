@@ -894,7 +894,7 @@ class WWLayer:
                             
         elif detected_channels != channels:
             logger.warning("warning, expected channels {},  detected channels {}".format(self.channel_str(channels),self.channel_str(detected_channels)))
-            # flip how we extract the WMats
+            # flip how we extract the Wmats
             # reverse of above extraction
             if detected_channels == CHANNELS.LAST:
                 logger.debug("Flipping LAST to FIRST Channel, {}x{} ()x{}".format(N, M, imax, jmax))   
@@ -1667,10 +1667,17 @@ class WeightWatcher:
 
         return same
 
-    # TODO: unit test (and move to RMT util?)
-    def matrix_distance(self, W1, b1,  W2, b2,  method=EUCLIDEAN, combine_Wb=True):
-        """helper method to compute the matrix distance or overlap"""
 
+    # TODO: unit test (and move to RMT util?)
+    def matrix_distance(self, W1, W2, method=EUCLIDEAN):
+        """helper method to compute the matrix distance or overlap
+        
+         currently supports EUCLIDEAN, CKA (uncentered) 
+         
+         Note: this works for 1-d matrices (vectors) also
+         
+        """
+        
         dist = 0.0
         # valid method ?
         valid_params = method in [RAW, EUCLIDEAN, CKA]
@@ -1683,33 +1690,19 @@ class WeightWatcher:
             logger.warning(f"Weight matrices are different shapes:  {W1.shape} =/= {W2.shape}")
             valid_input = False
 
-        if combine_Wb:
-            if b1 is  None or b2 is None:
-                logger.warning("biases are Null")
-                valid_input = False
-            elif b1.shape!=b2.shape:
-                logger.warning(f"biases are different shapes:  {b1.shape} =/= {b2.shape}")
-                valid_input = False
-
         if not valid_params or not valid_input:
             logger.fatal("invalid input, stopping")
             return ERROR
 
 
-        Wb1, Wb2, = W1, W2
-        if combine_Wb:
-            logger.debug("Combining weights and biases")
-            Wb1 = combine_weights_and_biases(W1, b1)
-            Wb2 = combine_weights_and_biases(W2, b2)
-
         if method in [RAW, EUCLIDEAN]:
-            dist = np.linalg.norm(Wb1-Wb2)
+            dist = np.linalg.norm(W1-W2)
         elif method==CKA:
             # TODO:  replace with a call to the Apache 2.0 python codde for CKA
             # These methods will be add to RMT_Util or just from CKA.oy directly
-            dist = np.linalg.norm(np.dot(Wb1.T,Wb2))
-            norm1 = np.linalg.norm(np.dot(Wb1.T,Wb1))
-            norm2 = np.linalg.norm(np.dot(Wb2.T,Wb2))
+            dist = np.linalg.norm(np.dot(W1.T,W2))
+            norm1 = np.linalg.norm(np.dot(W1.T,W1))
+            norm2 = np.linalg.norm(np.dot(W2.T,W2))
             norm = norm1*norm2
             if norm < 0.000001:
                 norm = norm + 0.000001
@@ -1720,25 +1713,22 @@ class WeightWatcher:
         return dist
 
 
-    def distances(self, model_1, model_2, 
-                  layers = [], start_ids = 0, ww2x = False, channels = None, 
-                  method = RAW, combine_Wb= False):
+    def distances(self, model_1, model_2,  method = RAW,
+                  layers = [], start_ids = 0, ww2x = False, channels = None):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
         
 
         methods: 
-             'raw'      ||W_1-W_2|| , but using raw tensores
+             'raw'      ||W_1-W_2|| , but using raw tensores (not supported yet)
 
              'euclidean'      ||W_1-W_2|| , using layer weight matrices that are extracted
 
-             'cka'     || W_1 . W_2|| / ||W1|| ||W12||
+             'cka'     || W_1 . W_2|| / ||W1|| ||W12||   (not centered yet)
            
         output: avg delta W, a details dataframe
            
         models should be the same size and from the same framework
-
-        Note: Currently only RAW is supported and combibeWb is not working yet
            
         """
         
@@ -1758,13 +1748,18 @@ class WeightWatcher:
             logger.error(msg)
             raise Exception(msg)
         params = self.normalize_params(params)
+        
+        #if method==CKA and ww2x is not True:
+        #    msg = "can not process Conv2D layers with CKA unless ww2x=True"
+        #    logger.error(msg)
+        #    raise Exception(msg)
 
         #  specific distance input checks here
         if method is None:
             method == RAW
         else:
             method = method.lower()
-        if method not in [RAW]:#, EUCLIDEAN, CKA]:
+        if method not in [RAW, EUCLIDEAN, CKA]:
             msg = "Error, method not valid: \n {}".format(method)
             logger.error(msg)
             raise Exception(msg)
@@ -1774,6 +1769,7 @@ class WeightWatcher:
         layer_iter_1 = self.make_layer_iterator(model=model_1, layers=layers, params=params)           
         layer_iter_2 = self.make_layer_iterator(model=model_2, layers=layers, params=params)           
         
+        print("LAYER ITER TYPE", type(layer_iter_1))
         same = layer_iter_1.framework == layer_iter_2.framework 
         if not same:
             raise Exception("Sorry, models are from different frameworks")
@@ -1788,48 +1784,44 @@ class WeightWatcher:
                     data['slice_id'] = layer_1.slice_id
                 data['name'] = layer_1.name
                 data['longname'] = layer_1.longname
-                data['method'] = RAW
+                data['method'] = method
 
-                if method==RAW:
+                if method in [RAW]:
                     if layer_1.has_weights:
-                        W1, b1  = layer_1.weights, None
-                        W2, b2  = layer_2.weights, None
+                        has_weights1, W1, has_biases1, b1  = layer_1.get_weights_and_biases()
+                        has_weights2, W2, has_biases2, b2  = layer_2.get_weights_and_biases()
+                        
+                        print(W1.shape, W2.shape)
                         data['M'] = np.min(W1.shape)
                         data['N'] = np.max(W1.shape)
+                        data['delta_W'] = self.matrix_distance(W1, W2, method)
 
-                        if layer_1.has_biases:
-                            b1 = layer_1.biases 
-                            b2 = layer_2.biases                  
+                        if b1 is not None and b2 is not None and len(b1)==len(b2):       
                             data['b_shape'] = b1.shape
-                            
+                            data['delta_b'] = self.matrix_distance(b1, b2, method)
                         else:
                             data['b_shape'] = UNKNOWN
-                            combine_Wb = False
+                            data['delta_b'] = 0
                             
-                    data['delta_Wb'] = self.matrix_distance(W1, b1,  W2, b2, RAW, combine_Wb)
-                    data['combine_Wb'] = combine_Wb
-                    
-                    # older approach, deprecated now
-                    # data['delta_W'] =
-                    # data['delta_b'] =
-
+                # THiS should work for ww2x=/True. but not tested yet
                 elif method in [EUCLIDEAN, CKA]:
-                    W1s, b1 = layer_1.Wmats, None
-                    W2s, b2 = layer_2.Wmats, None
-                    combine_Wb = False
-
-                    dist = 0
-                    for W1, W2 in zip(W1s, W2s):
-                        dist += self.matrix_distance(W1, b1,  W2, b2, method, combine_Wb)
-
-                    data['W_shape'] = W1.shape
-                    data['n_shape'] = UNKNOWN
-
-                    data['delta_Wb'] = dist/len(W1s)
-                    data['combine_Wb'] = combine_Wb
-                    
+                    if layer_1.has_weights:
+                        W1_mats = layer_1.Wmats
+                        W2_mats = layer_2.Wmats
+                        
+                        data['M'] = np.min(W1_mats[0].shape)
+                        data['N'] = np.max(W1_mats[0].shape)
+                        data['delta_W'] = 0.0
+    
+                        data['b_shape'] = UNKNOWN
+                        data['delta_b'] = 0.0
+                                
+                        for W1, W2 in zip(W1_mats,W2_mats):
+                            data['delta_W'] += self.matrix_distance(W1, W2, method)
+                        data['delta_W'] /= float(len(W1_mats))
+                                           
                 else:
-                    logger.fatal(f"unknown distance method {method}")
+                    logger.fatal(f"unsupported distance method {method}")
 
                 data_df = pd.DataFrame.from_records(data, index=[ilayer])
                 distances = pd.concat([distances, data_df], ignore_index=True)
@@ -1842,12 +1834,14 @@ class WeightWatcher:
             raise Exception("Sorry, problem comparing models: "+msg)
 
         # Reorder the columns so that layer_id and name come first.
-        lead_cols = ['layer_id', 'name', 'delta_Wb', 'method', 'combine_Wb', 'M', 'N', 'b_shape']
+        lead_cols = ['method', 'layer_id', 'name', 'delta_W', 'delta_b', 'M', 'N', 'b_shape']
         distances = distances[lead_cols + [c for c in distances.columns if not c in lead_cols]]
 
         distances.set_index('layer_id', inplace=True)
-        avg_dWb = np.mean(distances['delta_Wb'].to_numpy())
-        return avg_dWb, distances
+        avg_dW = np.mean(distances['delta_W'].to_numpy())
+        avg_db = np.mean(distances['delta_b'].to_numpy())
+
+        return avg_dW, avg_db, distances
     
     def combined_eigenvalues(self, Wmats, N, M, n_comp, params=None):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
@@ -2046,7 +2040,7 @@ class WeightWatcher:
     
     def apply_permute_W(self, ww_layer, params=None):
         """Randomize the layer weight matrices by using a deterministic permutation
-        This will replace the WMats ; they can be recovered by apply_unpermute_W()
+        This will replace the Wmats ; they can be recovered by apply_unpermute_W()
          """
          
         if params is None: params = DEFAULT_PARAMS.copy()
@@ -2073,7 +2067,7 @@ class WeightWatcher:
       
     def apply_unpermute_W(self, ww_layer, params=None):
         """Unpermute the layer weight matrices after the deterministic permutation
-        This will replace the WMats ; only works if applied after  apply_permute_W()
+        This will replace the Wmats ; only works if applied after  apply_permute_W()
          """
         
         if params is None: params = DEFAULT_PARAMS.copy()

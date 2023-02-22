@@ -1700,13 +1700,14 @@ class WeightWatcher:
         elif method==CKA:
             # TODO:  replace with a call to the Apache 2.0 python codde for CKA
             # These methods will be add to RMT_Util or just from CKA.oy directly
+            
             dist = np.linalg.norm(np.dot(W1.T,W2))
-            norm1 = np.linalg.norm(np.dot(W1.T,W1))
-            norm2 = np.linalg.norm(np.dot(W2.T,W2))
-            norm = norm1*norm2
+            norm1 =  np.linalg.norm(np.dot(W1.T,W1))
+            norm2 =  np.linalg.norm(np.dot(W2,W2.T))
+            norm = np.sqrt(norm1*norm2)
             if norm < 0.000001:
                 norm = norm + 0.000001
-            dist = dist / (norm1*norm2)
+            dist = dist / norm
         else:
             logger.warning(f"Unknown distances method {CKA}")
 
@@ -1769,7 +1770,6 @@ class WeightWatcher:
         layer_iter_1 = self.make_layer_iterator(model=model_1, layers=layers, params=params)           
         layer_iter_2 = self.make_layer_iterator(model=model_2, layers=layers, params=params)           
         
-        print("LAYER ITER TYPE", type(layer_iter_1))
         same = layer_iter_1.framework == layer_iter_2.framework 
         if not same:
             raise Exception("Sorry, models are from different frameworks")

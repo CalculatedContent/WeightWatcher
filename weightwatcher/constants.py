@@ -41,11 +41,30 @@ DEFAULT_MAX_N = 10
 SVD = 'svd' # TruncatedSVD for Smoothing
 RMT = 'rmt' # pyRMT / RIE Removed for 0.6.5
 
+# Power Law Fitting methods
+#  xmax-Npne is now default
+FIT = 'fit'
 PL = 'PL'
-TPL = 'TPL'
-E_TPL = 'E_TPL' #extended power law
-TRUNCATED_POWER_LAW = 'truncated_power_law'
 POWER_LAW = 'power_law'
+POWERLAW = 'powerlaw'
+
+PL_PACKAGE = 'pl_package'
+POWERLAW_PACKAGE = 'powerlaw'
+WW_POWERLAW_PACKAGE = 'ww'
+DEFAULT_POWERLAW_PACKAGE = WW_POWERLAW_PACKAGE
+
+# forcing xmax only available for older powerlaw package 
+
+XMAX = 'xmax'
+XMAX_FORCE = 'force' 
+DEFAULT_XMAX = None
+
+TPL = 'TPL'
+TRUNCATED_POWER_LAW = 'truncated_power_law'
+FIX_FINGERS = 'fix_fingers'
+E_TPL = 'E_TPL' #extended power law
+
+#
 LOG_NORMAL = 'lognormal'
 EXPONENTIAL = 'exponential'
 
@@ -81,9 +100,12 @@ GLOROT_FIT = 'glorot_fit'
 WW2X = 'ww2x'
 VECTORS = 'vectors'
 SMOOTH = 'smooth'
-FIX_FINGERS = 'fix_fingers'
 MP_FIT = 'mp_fit'
-FIT = 'fit'
+
+# maybe should be True
+DEFAULT_WW2X = False
+
+
 
 RESCALE = 'rescale'
 RANDOMIZE = 'randomize'
@@ -122,7 +144,8 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
                   SVD_METHOD:ACCURATE_SVD,  FIX_FINGERS:None, FIT:POWER_LAW,
                   SPARSIFY: True, DETX: True,  MP_FIT:False,
                   MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, MAX_N:DEFAULT_MAX_N,
-                  TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False}
+                  TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False,
+                  PL_PACKAGE:DEFAULT_POWERLAW_PACKAGE, XMAX:DEFAULT_XMAX}
 
 
 EVALS_THRESH = 0.00001
@@ -174,13 +197,6 @@ class METRICS():
     MP_SOFTRANK = "mp_softrank"
     MATRIX_RANK = "matrix_rank"
     MATRIX_ENTROPY = "entropy"
-
-
-# XMAX, XMIN not really used
-    
-class XMAX(IntFlag):
-    UNKNOWN = auto()
-    AUTO = auto()
 
 
 class XMIN(IntFlag):

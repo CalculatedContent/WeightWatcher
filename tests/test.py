@@ -44,6 +44,57 @@ class Test_Base(unittest.TestCase):
 		tf.keras.backend.clear_session()
 		torch.cuda.empty_cache()
 		
+class Test_ValidParams(Test_Base):
+
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn TestLayers:", self._testMethodName)
+
+	def test_valid_params(self):
+		params = DEFAULT_PARAMS.copy()
+
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertTrue(valid)
+		
+	def test_invalid_PL_package_settings(self):
+		params = DEFAULT_PARAMS.copy()
+
+		params[XMAX]='force'
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+	
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[XMAX]='force'
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+		
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[FIT]=TPL
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+		
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[FIT]=E_TPL
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+		
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[FIT]=TRUNCATED_POWER_LAW
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+				
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[FIX_FINGERS]=CLIP_XMAX
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+		
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[FIX_FINGERS]=CLIP_XMAX
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+		
+		
 		
 
 class Test_KerasLayers(Test_Base):

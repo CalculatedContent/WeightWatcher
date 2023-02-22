@@ -1496,7 +1496,7 @@ class WeightWatcher:
 
         if model is not None:
             framework = self.infer_framework(model)
-            if self.valid_framework(framework):
+            if WeightWatcher.valid_framework(framework):
                 self.framework = framework
                 banner += "\n"+ self.load_framework_imports(framework)
                 logger.info(banner)
@@ -1744,7 +1744,7 @@ class WeightWatcher:
         params[START_IDS] = start_ids
 
         logger.info("params {}".format(params))
-        if not self.valid_params(params):
+        if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
@@ -2167,7 +2167,7 @@ class WeightWatcher:
         title = "{} {}".format(layer_id, name)
 
         xmin = None  # TODO: allow other xmin settings
-        xmax = None #issue  199np.max(evals)
+        xmax = params[XMAX]#issue  199np.max(evals)
         plot = params[PLOT]
         sample = False  # TODO:  decide if we want sampling for large evals       
         sample_size = None
@@ -2213,7 +2213,7 @@ class WeightWatcher:
         self.set_model_(model)
             
         logger.info("params {}".format(params))
-        if not self.valid_params(params):
+        if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
@@ -2261,7 +2261,7 @@ class WeightWatcher:
 
         df = pd.DataFrame(columns=["length", "entropy", "discrete_entropy", "localization_ratio", "participation_ratio"])
 
-        if not self.valid_vectors(vectors):
+        if not WeightWatcher.valid_vectors(vectors):
             logger.warning("vectors not specified correctly, returning -1")
             return -1
 
@@ -2331,7 +2331,7 @@ class WeightWatcher:
                 glorot_fix=False,
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=False,
+                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=DEFAULT_WW2X,
                 deltas=False, intra=False, vectors=False, channels=None, 
                 stacked=False,
                 fix_fingers=False, xmin_max = None,  max_N=10,
@@ -2339,7 +2339,10 @@ class WeightWatcher:
                 detX=False,
                 svd_method=FAST_SVD,
                 tolerance=WEAK_RANK_LOSS_TOLERANCE,
-                start_ids=0):
+                start_ids=DEFAULT_START_ID,
+                powerlaw_package=WW_POWERLAW_PACKAGE,
+                xmax=DEFAULT_XMAX
+                ):
         """
         Analyze the weight matrices of a model.
 
@@ -2444,8 +2447,20 @@ class WeightWatcher:
         params:  N/A yet
             a dictionary of default parameters, which can be set but will be over-written by 
 
-        start_ids:  0 | 1
+        start_ids:  0 (default) | 1
            Start layer id counter at 0 or 1
+           Only can be reset for PyTorch models, used when the layer_id=0 is undesirable
+           
+        powerlaw_package: 'ww' (default) | 'powerlaw'
+           Lets users reset the powerlaw package to the older version on pypi
+           
+        xmax: None | 'force'
+           If 'force', resets the powerlaw_package to 'powerlaw'
+           Must be set to use fix_fingers, TPL, E_TPL
+           Can not set 'force' and use the new default powerlaw_package: 'ww' 
+           
+           Setting to 'force' may cause the powerlw fits to find undesirable local minima, which can induce fingers
+           
         """
 
         self.set_model_(model)          
@@ -2457,7 +2472,7 @@ class WeightWatcher:
         # can not specify params on input yet
         # maybe just have a different analyze() that only uses this 
         
-        params=DEFAULT_PARAMS.copy()
+   xmax == XMAX.AUTO      params=DEFAULT_PARAMS.copy()
         
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
@@ -2492,7 +2507,7 @@ class WeightWatcher:
 
             
         logger.debug("params {}".format(params))
-        if not self.valid_params(params):
+        if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
@@ -2589,7 +2604,7 @@ class WeightWatcher:
             
         if self.framework is None:
             self.framework = self.infer_framework(self.model) 
-            if not self.valid_framework(self.framework):
+            if not WeightWatcher.valid_framework(self.framework):
                 logger.fatal(f"{self.framework} is not a valid framework, stopping")
                 
         return 
@@ -2636,7 +2651,7 @@ class WeightWatcher:
 
 
         logger.info("params {}".format(params))
-        if not self.valid_params(params):
+        if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
@@ -2670,7 +2685,8 @@ class WeightWatcher:
         details = details[lead_cols + [c for c in details.columns if not c in lead_cols]]
         return details
 
-    def valid_params(self, params):
+    @staticmethod
+    def valid_params(params):
         """Validate the input parameters, return True if valid, False otherwise"""
         
         valid = True        
@@ -2680,10 +2696,10 @@ class WeightWatcher:
             logger.warning("param xmin unknown, ignoring {}".format(xmin))
             valid = False
             
-        xmax = params.get('xmax')
-        if xmax and xmax not in [XMAX.UNKNOWN, XMIN.AUTO]:
-            logger.warning("param xmax unknown, ignoring {}".format(xmax))
-            valid = False
+        #xmax = params.get('xmax')
+        #if xmax and xmax not in [XMAX.UNKNOWN, XMIN.AUTO]:
+        #    logger.warning("param xmax unknown, ignoring {}".format(xmax))
+        #    valid = False
         
         min_evals = params.get('min_evals') 
         max_evals = params.get('max_evals')
@@ -2772,6 +2788,33 @@ class WeightWatcher:
         if start_ids not in [0,1]:
             logger.fatal(f"Layer Ids must start at 0 or 1, start_ids={start_ids}")
             valid = False
+            
+        pl_pckge = params[PL_PACKAGE]
+        if pl_pckge not in [POWERLAW_PACKAGE, WW_POWERLAW_PACKAGE]:
+            logger.fatal(f"Powerlaw Package not valid={pl_pckge}, default is {DEFAULT_POWERLAW_PACKAGE}")
+            valid = False
+            
+        xmax = params[XMAX]
+        if xmax not in [True, None, 'force']:
+            logger.fatal(f"xmax must be None or 'force', xmax={xmax}")
+            valid = False
+        
+                
+        if pl_pckge==WW_POWERLAW_PACKAGE:
+            if xmax:
+                logger.fatal(f"xmax must be None if using {PL_PACKAGE}={WW_POWERLAW_PACKAGE}")
+                valid = False
+            elif fit_type not in [PL, POWER_LAW]:
+                logger.fatal(f"{PL_PACKAGE} only supports PowerLaw fits, but {FIT}={fit_type}")
+                valid = False
+            elif fix_fingers: 
+                logger.fatal(f"{PL_PACKAGE} does not support the fix_fingers option, but {FIX_FINGERS}={fix_fingers}")
+                valid = False
+                
+        if ((xmax is None) or (xmax is False)) and fix_fingers in [XMIN_PEAK, CLIP_XMAX]:
+            logger.fatal(f"{FIX_FINGERS} requires that xmax='force', failing" )
+            valid = False
+            
                 
         return valid
     
@@ -2997,8 +3040,11 @@ class WeightWatcher:
             logger.info("chosing {} eigenvalues from {} ".format(sample_size, len(evals)))
             evals = np.random.choice(evals, size=sample_size)
                     
-        if xmax == XMAX.AUTO or xmax is XMAX.UNKNOWN or xmax is None or xmax == -1:
+        if xmax == XMAX_FORCE
+            logger.info("forcing xmax, alpha may be over-estimated")
             xmax = np.max(evals)
+        else:
+            xmax = None
             
         if fix_fingers==XMIN_PEAK:
             logger.info("fix the fingers by setting xmin to the peak of the ESD")
@@ -3615,7 +3661,7 @@ class WeightWatcher:
         # need to access static method on  Model class
 
         logger.info("params {}".format(params))
-        if not self.valid_params(params):
+        if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
@@ -3809,7 +3855,7 @@ class WeightWatcher:
         # need to access static method on  Model class
 
         logger.info("params {}".format(params))
-        if not self.valid_params(params):
+        if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)
@@ -3866,7 +3912,7 @@ class WeightWatcher:
         params[SAVEFIG] = savefig
         
         logger.debug("params {}".format(params))
-        if not self.valid_params(params):
+        if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
             logger.error(msg)
             raise Exception(msg)

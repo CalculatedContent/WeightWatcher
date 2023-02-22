@@ -880,19 +880,19 @@ class Test_VGG11(Test_Base):
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
 		
-  # self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
-  # self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)
-  #
-  # self.first_layer = 1
-  # self.second_layer = 2
-  # self.third_layer = 8
-  # self.fc1_layer = 9
-  # self.fc2_layer = 10
-  # self.fc3_layer = 11
-  #
-  # self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
-  # self.min_layer_id = self.first_layer
-  #
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+		self.first_layer = 1
+		self.second_layer = 2
+		self.third_layer = 8
+		self.fc1_layer = 9
+		self.fc2_layer = 10
+		self.fc3_layer = 11
+		
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+		self.min_layer_id = self.first_layer
+
 
 
 		return
@@ -1288,8 +1288,8 @@ class Test_VGG11(Test_Base):
 		description = self.watcher.describe(model=new_model)
 		self.assertEqual(13, len(description))
 		
-		
-		details = self.watcher.analyze(model=new_model, layers=[self.fc3_layerr])
+		fc3_layer = description.layer_id.to_numpy()[-1]
+		details = self.watcher.analyze(model=new_model, layers=fc3_layer)
 		returned_summary = self.watcher.get_summary(details)
 		
 		print(returned_summary)
@@ -1347,7 +1347,7 @@ class Test_VGG11(Test_Base):
 		   Not very accuracte since it relies on randomizing W
 		"""
 		#
-		details= self.watcher.analyze(layers=[31], randomize=True, mp_fit=True)
+		details= self.watcher.analyze(layers=[self.fc3_layer], randomize=True, mp_fit=True)
 		print(details[['ww_softrank','mp_softrank', 'lambda_max', 'rand_bulk_max', 'max_rand_eval']])
 		actual = details.ww_softrank[0]
 		expected = details.mp_softrank[0]
@@ -1543,21 +1543,12 @@ class Test_VGG11(Test_Base):
 
 		test_svd_smoothing_alt() allows for a negative input, which throws away the top N eigenvectors
 
-		Note:  I changed the APi on these method recently and that may be the bug
-		this needs to be stabilzed for the ww.0.5 release
-		
-		---
-		
-		This fails in the total test, but works individually ?
-
 		"""
  		
 		print("----test_svd_smoothing_alt-----")
 
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
 		#model = models.vgg11(pretrained=True)
-		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		self.watcher.SVDSmoothing(layers=[self.fc2_layer], percent=-0.2)
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
@@ -1569,19 +1560,12 @@ class Test_VGG11(Test_Base):
 	def test_svd_smoothing_alt2(self):
 		"""Test the svd smoothing on 1 layer of VGG
 		
-		---
-		
-		This fails in the total test, but works individually ?		
-		
 		"""
  		
 		print("----test_svd_smoothing_alt2-----")
 		
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
 		#model = models.vgg11(pretrained=True)
-		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-
-		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
 		self.watcher.SVDSmoothing(layers=[self.fc2_layer], percent=0.2)
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
@@ -1661,7 +1645,7 @@ class Test_VGG11(Test_Base):
 		
 		esd_before = self.watcher.get_ESD(layer=self.third_layer) 
 		
-		self.watcher.SVDSharpness(layers=[third_layer])
+		self.watcher.SVDSharpness(layers=[self.third_layer])
 		esd_after = self.watcher.get_ESD(layer=self.third_layer) 
 		
 		print("max esd before {}".format(np.max(esd_before)))
@@ -1745,6 +1729,7 @@ class Test_VGG11(Test_Base):
 	
 	def test_start_ids_1(self):
 		"""same as  test_make_ww_iterator, but checks that the ids can start at 1, not 0
+		
 		"""
 		
 		details = self.watcher.describe()
@@ -1760,6 +1745,7 @@ class Test_VGG11(Test_Base):
 
 		# test decribe
 		details = self.watcher.describe(start_ids=1)
+		print(details)
 		actual_ids = details.layer_id.to_numpy().tolist()
 		self.assertEqual(actual_ids,expected_ids)
 
@@ -1771,7 +1757,7 @@ class Test_VGG11(Test_Base):
 		params = DEFAULT_PARAMS.copy()
 		params[START_IDS]=1
 		params[MIN_EVALS]=1 # there may be a side effect that resets this
-
+		
 		# test iterator
 		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
 		num = 0
@@ -1919,6 +1905,26 @@ class Test_VGG11_StateDict(Test_VGG11):
 		
 		return
 
+	def test_start_ids_1(self):
+		"""same as  test_make_ww_iterator, but checks that the ids can start at 1, not 0
+		   BUT FOR PyStateDict, we ALWAYS start at 1
+		"""
+		
+		details = self.watcher.describe()
+		print(details, len(details))
+		actual_num_layers = len(details)
+		expected_num_layers = 11
+		expected_ids = details.layer_id.to_numpy().tolist()
+
+		self.assertEqual(actual_num_layers, expected_num_layers)
+		self.assertEqual(len(expected_ids), expected_num_layers)
+
+
+		# test decribe
+		details = self.watcher.describe(start_ids=1)
+		print(details)
+		actual_ids = details.layer_id.to_numpy().tolist()
+		self.assertEqual(actual_ids,expected_ids)
 		
 
 class Test_Keras(Test_Base):

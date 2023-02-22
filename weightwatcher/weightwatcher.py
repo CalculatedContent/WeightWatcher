@@ -2471,8 +2471,7 @@ class WeightWatcher:
         # I need to figure this out
         # can not specify params on input yet
         # maybe just have a different analyze() that only uses this 
-        
-   xmax == XMAX.AUTO      params=DEFAULT_PARAMS.copy()
+        params=DEFAULT_PARAMS.copy()
         
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
@@ -3040,7 +3039,7 @@ class WeightWatcher:
             logger.info("chosing {} eigenvalues from {} ".format(sample_size, len(evals)))
             evals = np.random.choice(evals, size=sample_size)
                     
-        if xmax == XMAX_FORCE
+        if xmax == XMAX_FORCE:
             logger.info("forcing xmax, alpha may be over-estimated")
             xmax = np.max(evals)
         else:
@@ -3082,7 +3081,7 @@ class WeightWatcher:
             except Exception:
                 status = FAILED
              
-        elif xmin == XMAX.AUTO  or xmin is None or xmin == -1: 
+        elif xmin is None or xmin == -1: 
             logger.debug("powerlaw.Fit no xmin , distribution={} ".format(distribution))
             try:
                 nz_evals = evals[evals > thresh]

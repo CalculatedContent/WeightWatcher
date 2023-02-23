@@ -651,7 +651,7 @@ class Test_VGG11_noModel(Test_Base):
 		self.params = DEFAULT_PARAMS.copy()
 		# use older power lae
 		self.params[PL_PACKAGE]=POWERLAW
-		self.params[XMAX]=FORCE
+		self.params[XMAX]=XMAX_FORCE
 		
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
@@ -1463,7 +1463,9 @@ class Test_VGG11(Test_Base):
 		self.assertAlmostEqual(actual,expected, places=2)
 		
 	def test_reset_params(self):
-		"""test that params are reset / normalized ()"""
+		"""test that params are reset / normalized ()
+	
+		note: for 0.7, this test was modified to include the PL_PACKAGE param"""
 		
 		params = DEFAULT_PARAMS.copy()
 		params['fit']=PL
@@ -1475,7 +1477,12 @@ class Test_VGG11(Test_Base):
 		params = DEFAULT_PARAMS.copy()
 		params['fit']=TPL
 		valid = self.watcher.valid_params(params)
-		self.assertTrue(valid)
+		if params[PL_PACKAGE]!=POWERLAW:
+			self.assertFalse(valid)
+		else:
+			self.assertTrue(valid)
+		
+		
 		params = self.watcher.normalize_params(params)
 		self.assertEqual(params['fit'], TRUNCATED_POWER_LAW)
 		

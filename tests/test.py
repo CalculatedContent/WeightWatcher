@@ -926,11 +926,13 @@ class Test_VGG11_Distances(Test_Base):
 		actual_mean_distance = avg_db
 		expected_mean_distance = 0.0
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
-		
-		print("====== ww2x=False ========")
-		print(distances)
 
-		avg_dist, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
+
+		avg_dW, avg_db, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
+				
+		print("====== ww2x=True ========")
+		print(distances)
+		
 		actual_mean_distance = avg_dW
 		expected_mean_distance = 1.0
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)

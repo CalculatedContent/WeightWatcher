@@ -1982,7 +1982,7 @@ class Test_VGG11_StateDict(Test_VGG11):
 		self.params = DEFAULT_PARAMS.copy()
 		# use older power lae
 		self.params[PL_PACKAGE]=POWERLAW
-		self.params[XMAX]=FORCE
+		self.params[XMAX]=XMAX_ORCE
 		
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)

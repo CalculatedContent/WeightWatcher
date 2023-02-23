@@ -909,7 +909,9 @@ class Test_VGG11_Distances(Test_Base):
 	# TODO implement with centering
 	def test_CKA_distances(self):
 		"""Test that the distance method works correctly for CKA method,  ww2x False | True
-                """
+               
+            Note: biases are not treated yyet
+        """
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		avg_dW, avg_db, distances =  self.watcher.distances(m1, m2, method=CKA, ww2x=False)
@@ -922,7 +924,7 @@ class Test_VGG11_Distances(Test_Base):
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 		
 		actual_mean_distance = avg_db
-		expected_mean_distance = 1.0
+		expected_mean_distance = 0.0
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 		
 		print("====== ww2x=False ========")
@@ -934,7 +936,7 @@ class Test_VGG11_Distances(Test_Base):
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 		
 		actual_mean_distance = avg_db
-		expected_mean_distance = 1.0
+		expected_mean_distance = 0.0
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 		
 

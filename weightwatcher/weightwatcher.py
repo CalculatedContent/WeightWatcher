@@ -2182,6 +2182,7 @@ class WeightWatcher:
         layer_name = "Layer {}".format(plot_id)
         
         fit_type =  params[FIT]
+        print(f"APPLY XMAX = {xmax}")
 
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
@@ -2340,7 +2341,7 @@ class WeightWatcher:
                 svd_method=FAST_SVD,
                 tolerance=WEAK_RANK_LOSS_TOLERANCE,
                 start_ids=DEFAULT_START_ID,
-                powerlaw_package=WW_POWERLAW_PACKAGE,
+                pl_package=WW_POWERLAW_PACKAGE,
                 xmax=DEFAULT_XMAX
                 ):
         """
@@ -2503,6 +2504,9 @@ class WeightWatcher:
 
         params[SAVEFIG] = savefig
         #params[SAVEDIR] = savedir
+        
+        params[PL_PACKAGE] = pl_package
+        params[XMAX] = xmax
 
             
         logger.debug("params {}".format(params))
@@ -3007,7 +3011,6 @@ class WeightWatcher:
         D = -1
         sigma = -1
         xmin = -1  # not set / error
-        xmax = None # or -1
         num_pl_spikes = -1
         best_fit = UNKNOWN
         fit = None
@@ -3043,7 +3046,10 @@ class WeightWatcher:
             logger.info("forcing xmax, alpha may be over-estimated")
             xmax = np.max(evals)
         else:
+            logger.debug("xmax not set, fast PL method in place")
             xmax = None
+            
+        print(f"XMAX = {xmax}")
             
         if fix_fingers==XMIN_PEAK:
             logger.info("fix the fingers by setting xmin to the peak of the ESD")

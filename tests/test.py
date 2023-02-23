@@ -1552,16 +1552,16 @@ class Test_VGG11(Test_Base):
 	def test_fix_fingers_xmin_peak(self):
 		"""Test fix fingers xmin_peak 
 		"""
-		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
 		# default
-		details = self.watcher.analyze(layers=[self.second_layer])
+		details = self.watcher.analyze(layers=[self.second_layer], pl_package=POWERLAW, xmax=XMAX_FORCE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 7.116304
 		print("ACTUAL {}".format(actual))
 		self.assertAlmostEqual(actual,expected, places=2)
 		
 		# XMIN_PEAK
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0)
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0, pl_package=POWERLAW, xmax=XMAX_FORCE)
 		actual = details.alpha[0]
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.68
@@ -1574,7 +1574,7 @@ class Test_VGG11(Test_Base):
 		"""
 		
 		# CLIP_XMAX
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax')
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW, xmax=XMAX_FORCE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.6635
 		self.assertAlmostEqual(actual,expected, places=4)
@@ -1982,7 +1982,7 @@ class Test_VGG11_StateDict(Test_VGG11):
 		self.params = DEFAULT_PARAMS.copy()
 		# use older power lae
 		self.params[PL_PACKAGE]=POWERLAW
-		self.params[XMAX]=XMAX_ORCE
+		self.params[XMAX]=XMAX_FORCE
 		
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)

@@ -2212,7 +2212,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 	
 	
 	
-class _Test_VGG11_Alpha_w_WWFit(Test_Base):	
+class Test_VGG11_Alpha_w_WWFit(Test_Base):	
 	"""Tests the  alpha calculations on VGG11 (pytorch) using the WWFit class'"""	
 	
 	def test_WWFit_available(self):

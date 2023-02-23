@@ -57,7 +57,9 @@ DEFAULT_POWERLAW_PACKAGE = WW_POWERLAW_PACKAGE
 
 XMAX = 'xmax'
 XMAX_FORCE = 'force' 
+FORCE = 'force' 
 DEFAULT_XMAX = None
+
 
 TPL = 'TPL'
 TRUNCATED_POWER_LAW = 'truncated_power_law'

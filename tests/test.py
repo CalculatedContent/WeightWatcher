@@ -30,6 +30,8 @@ class Test_Base(unittest.TestCase):
 		"""I run only once for this class
 		"""
 
+
+
 	@classmethod
 	def tearDownClass(cls):
 		gc.collect()
@@ -645,6 +647,12 @@ class Test_VGG11_noModel(Test_Base):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11_noModel:", self._testMethodName)
+		
+		self.params = DEFAULT_PARAMS.copy()
+		# use older power lae
+		self.params[PL_PACKAGE]=POWERLAW
+		self.params[XMAX]=FORCE
+		
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
 		
@@ -953,6 +961,13 @@ class Test_VGG11(Test_Base):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		
+		self.params = DEFAULT_PARAMS.copy()
+		# use older power lae
+		self.params[PL_PACKAGE]=POWERLAW
+		self.params[XMAX]=XMAX_FORCE
+
+
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
 		
@@ -966,7 +981,8 @@ class Test_VGG11(Test_Base):
 		
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
-
+		
+	
 		return
 
 		
@@ -1962,6 +1978,12 @@ class Test_VGG11_StateDict(Test_VGG11):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		
+		self.params = DEFAULT_PARAMS.copy()
+		# use older power lae
+		self.params[PL_PACKAGE]=POWERLAW
+		self.params[XMAX]=FORCE
+		
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 

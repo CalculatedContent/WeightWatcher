@@ -2182,7 +2182,6 @@ class WeightWatcher:
         layer_name = "Layer {}".format(plot_id)
         
         fit_type =  params[FIT]
-        print(f"APPLY XMAX = {xmax}")
 
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
@@ -3048,9 +3047,7 @@ class WeightWatcher:
         else:
             logger.debug("xmax not set, fast PL method in place")
             xmax = None
-            
-        print(f"XMAX = {xmax}")
-            
+                        
         if fix_fingers==XMIN_PEAK:
             logger.info("fix the fingers by setting xmin to the peak of the ESD")
             try:

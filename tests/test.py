@@ -1319,17 +1319,21 @@ class Test_VGG11(Test_Base):
 	## TODO:
 	#  add layers, ww2x=True/False
 	
-	def test_compute_alphas(self):
-		"""Test that alphas are computed and values are within thresholds
+	def test_compute_spectral_norms(self):
+		"""Test that spectral norms computed and values are within thresholds
+		
+		ths may not work with the new FAST SVD...
 		"""
 		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False)
-		#d = self.watcher.get_details(results=results)
-		a = details.alpha.to_numpy()
-		self.assertAlmostEqual(a[0],1.65014, places=4)
-		self.assertAlmostEqual(a[1],1.57297, places=4)
-		self.assertAlmostEqual(a[3],1.43459, places=4)
- 		
-		# spectral norm
+  # #d = self.watcher.get_details(results=results)
+  # a = details.alpha.to_numpy()
+  # self.assertAlmostEqual(a[0],1.65014, places=4)
+  # self.assertAlmostEqual(a[1],1.57297, places=4)
+  # self.assertAlmostEqual(a[3],1.43459, places=4)
+  #
+
+		
+		# SLOW method
 		a = details.spectral_norm.to_numpy()
 		self.assertAlmostEqual(a[0],20.2149, places=4)
 		self.assertAlmostEqual(a[1],24.8158, places=4)
@@ -1486,112 +1490,112 @@ class Test_VGG11(Test_Base):
 		params = self.watcher.normalize_params(params)
 		self.assertEqual(params['fit'], TRUNCATED_POWER_LAW)
 		
-		
-	def test_intra_power_law_fit(self):
-		"""Test PL fits on intra
-		"""
-
-		print(self.fc_layers[0:2])
-		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, randomize=False, vectors=False)
-		actual_alpha = details.alpha[0]
-		actual_best_fit = details.best_fit[0]
-		print(actual_alpha,actual_best_fit)
-
-		expected_alpha =  2.654 # not very accurate because of the sparisify transform
-		expected_best_fit = LOG_NORMAL
-		self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
-		self.assertEqual(actual_best_fit, expected_best_fit)
-		
-		
-	def test_intra_power_law_fit2(self):
-		"""Test PL fits on intram, sparsify off, more accurate
-			"""
-			
-		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, sparsify=False)
-		actual_alpha = details.alpha[0]
-		actual_best_fit = details.best_fit[0]
-		print(actual_alpha,actual_best_fit)
-
-
-		expected_alpha =  2.719 # close to exact ?
-		expected_best_fit = LOG_NORMAL
-		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
-		self.assertEqual(actual_best_fit, expected_best_fit)
-
-	def _test_truncated_power_law_fit(self):
-		"""Test TPL fits:  note that the new toprch method reduces the accureacy of the test
-		"""
-		
-		# need model here; somehow self.model it gets corrupted by SVD smoothing
-		#model = models.vgg11(pretrained=True)
-		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-
-		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
-		
-		details= self.watcher.analyze(layers=[self.fc2_layer], fit='TPL')
-		actual_alpha = details.alpha[0]
-		actual_Lambda = details.Lambda[0]
-
-		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
-
-		# these numbers have not been independently verified yet
-		expected_alpha = 2.1
-		delta = 0.1
-		self.assertAlmostEqual(actual_alpha,expected_alpha, None, '',  delta)
-		expected_Lambda =  0.017
-		delta = 0.001
-		self.assertAlmostEqual(actual_Lambda,expected_Lambda, None, '',  delta)
-		
-		
-	def _test_extended_truncated_power_law_fit(self):
-		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
-		"""
-		details= self.watcher.analyze(layers=[self.fc1_layer], fit=E_TPL)
-		actual_alpha = details.alpha[0]
-		actual_Lambda = details.Lambda[0]
-
-		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
-		
-		# these numbers have not been independently verified yet
-		expected_alpha = 2.07
-		expected_Lambda =  0.02
-		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
-		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=2)
-		 
-		
-		
-	def test_fix_fingers_xmin_peak(self):
-		"""Test fix fingers xmin_peak 
-		"""
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
-		# default
-		details = self.watcher.analyze(layers=[self.second_layer], pl_package=POWERLAW, xmax=XMAX_FORCE)
-		actual = details.alpha.to_numpy()[0]
-		expected = 7.116304
-		print("ACTUAL {}".format(actual))
-		self.assertAlmostEqual(actual,expected, places=2)
-		
-		# XMIN_PEAK
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0, pl_package=POWERLAW, xmax=XMAX_FORCE)
-		actual = details.alpha[0]
-		actual = details.alpha.to_numpy()[0]
-		expected = 1.68
-		delta = 0.01
-		self.assertAlmostEqual(actual,expected, None, '',  delta)
-	
-		
-	def test_fix_fingers_clip_xmax(self):
-		"""Test fix fingers clip_xmax
-		"""
-		
-		# CLIP_XMAX
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW, xmax=XMAX_FORCE)
-		actual = details.alpha.to_numpy()[0]
-		expected = 1.6635
-		self.assertAlmostEqual(actual,expected, places=4)
-		
-		num_fingers = details.num_fingers.to_numpy()[0]
-		self.assertEqual(num_fingers,1)
+ #
+ # def test_intra_power_law_fit(self):
+ # 	"""Test PL fits on intra
+ # 	"""
+ #
+ # 	print(self.fc_layers[0:2])
+ # 	details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, randomize=False, vectors=False)
+ # 	actual_alpha = details.alpha[0]
+ # 	actual_best_fit = details.best_fit[0]
+ # 	print(actual_alpha,actual_best_fit)
+ #
+ # 	expected_alpha =  2.654 # not very accurate because of the sparisify transform
+ # 	expected_best_fit = LOG_NORMAL
+ # 	self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
+ # 	self.assertEqual(actual_best_fit, expected_best_fit)
+ #
+ #
+ # def test_intra_power_law_fit2(self):
+ # 	"""Test PL fits on intram, sparsify off, more accurate
+ # 		"""
+ #
+ # 	details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, sparsify=False)
+ # 	actual_alpha = details.alpha[0]
+ # 	actual_best_fit = details.best_fit[0]
+ # 	print(actual_alpha,actual_best_fit)
+ #
+ #
+ # 	expected_alpha =  2.719 # close to exact ?
+ # 	expected_best_fit = LOG_NORMAL
+ # 	self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
+ # 	self.assertEqual(actual_best_fit, expected_best_fit)
+ #
+ # def _test_truncated_power_law_fit(self):
+ # 	"""Test TPL fits:  note that the new toprch method reduces the accureacy of the test
+ # 	"""
+ #
+ # 	# need model here; somehow self.model it gets corrupted by SVD smoothing
+ # 	#model = models.vgg11(pretrained=True)
+ # 	model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+ #
+ # 	self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
+ #
+ # 	details= self.watcher.analyze(layers=[self.fc2_layer], fit='TPL')
+ # 	actual_alpha = details.alpha[0]
+ # 	actual_Lambda = details.Lambda[0]
+ #
+ # 	self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
+ #
+ # 	# these numbers have not been independently verified yet
+ # 	expected_alpha = 2.1
+ # 	delta = 0.1
+ # 	self.assertAlmostEqual(actual_alpha,expected_alpha, None, '',  delta)
+ # 	expected_Lambda =  0.017
+ # 	delta = 0.001
+ # 	self.assertAlmostEqual(actual_Lambda,expected_Lambda, None, '',  delta)
+ #
+ #
+ # def _test_extended_truncated_power_law_fit(self):
+ # 	"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
+ # 	"""
+ # 	details= self.watcher.analyze(layers=[self.fc1_layer], fit=E_TPL)
+ # 	actual_alpha = details.alpha[0]
+ # 	actual_Lambda = details.Lambda[0]
+ #
+ # 	self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
+ #
+ # 	# these numbers have not been independently verified yet
+ # 	expected_alpha = 2.07
+ # 	expected_Lambda =  0.02
+ # 	self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
+ # 	self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=2)
+ #
+ #
+ #
+ # def test_fix_fingers_xmin_peak(self):
+ # 	"""Test fix fingers xmin_peak 
+ # 	"""
+ # 	self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
+ # 	# default
+ # 	details = self.watcher.analyze(layers=[self.second_layer], pl_package=POWERLAW, xmax=XMAX_FORCE)
+ # 	actual = details.alpha.to_numpy()[0]
+ # 	expected = 7.116304
+ # 	print("ACTUAL {}".format(actual))
+ # 	self.assertAlmostEqual(actual,expected, places=2)
+ #
+ # 	# XMIN_PEAK
+ # 	details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0, pl_package=POWERLAW, xmax=XMAX_FORCE)
+ # 	actual = details.alpha[0]
+ # 	actual = details.alpha.to_numpy()[0]
+ # 	expected = 1.68
+ # 	delta = 0.01
+ # 	self.assertAlmostEqual(actual,expected, None, '',  delta)
+ #
+ #
+ # def test_fix_fingers_clip_xmax(self):
+ # 	"""Test fix fingers clip_xmax
+ # 	"""
+ #
+ # 	# CLIP_XMAX
+ # 	details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW, xmax=XMAX_FORCE)
+ # 	actual = details.alpha.to_numpy()[0]
+ # 	expected = 1.6635
+ # 	self.assertAlmostEqual(actual,expected, places=4)
+ #
+ # 	num_fingers = details.num_fingers.to_numpy()[0]
+ # 	self.assertEqual(num_fingers,1)
 
 	
 	def test_density_fit(self):
@@ -2030,7 +2034,222 @@ class Test_VGG11_StateDict(Test_VGG11):
 		print(details)
 		actual_ids = details.layer_id.to_numpy().tolist()
 		self.assertEqual(actual_ids,expected_ids)
+			
+
+	
 		
+		
+		
+class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):	
+	"""Tests the alpha calculations on VGG11 (pytorch) using the old powerlaw package, xmax='force'"""
+	
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		
+		self.params = DEFAULT_PARAMS.copy()
+		# use older power lae
+		self.params[PL_PACKAGE]=POWERLAW
+		self.params[XMAX]=XMAX_FORCE
+
+
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
+		
+		self.first_layer = 2
+		self.second_layer = 5
+		self.third_layer = 8
+
+		self.fc1_layer = 25
+		self.fc2_layer = 28
+		self.fc3_layer = 31
+		
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+		self.min_layer_id = self.first_layer
+		
+	
+		return
+	
+	def test_powerlaw_package_available(self):
+		"""Test that the powerlaw package is available"""
+		import importlib
+
+		try:
+			importlib.import_module('powerlaw')
+		except ImportError:
+			self.fail("Failed to import powerlaw package")
+
+
+	
+		
+	## TODO:
+	#  add layers, ww2x=True/False
+	
+	def test_compute_alphas(self):
+		"""Test that alphas are computed and values are within thresholds
+		"""
+		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False)
+		#d = self.watcher.get_details(results=results)
+		a = details.alpha.to_numpy()
+		self.assertAlmostEqual(a[0],1.65014, places=4)
+		self.assertAlmostEqual(a[1],1.57297, places=4)
+		self.assertAlmostEqual(a[3],1.43459, places=4)
+ 		
+		# spectral norm
+		a = details.spectral_norm.to_numpy()
+		self.assertAlmostEqual(a[0],20.2149, places=4)
+		self.assertAlmostEqual(a[1],24.8158, places=4)
+		self.assertAlmostEqual(a[2],19.3795, places=4)
+		
+	def test_intra_power_law_fit(self):
+		"""Test PL fits on intra
+		"""
+
+		print(self.fc_layers[0:2])
+		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, randomize=False, vectors=False)
+		actual_alpha = details.alpha[0]
+		actual_best_fit = details.best_fit[0]
+		print(actual_alpha,actual_best_fit)
+
+		expected_alpha =  2.654 # not very accurate because of the sparisify transform
+		expected_best_fit = LOG_NORMAL
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
+		self.assertEqual(actual_best_fit, expected_best_fit)
+		
+		
+	def test_intra_power_law_fit2(self):
+		"""Test PL fits on intram, sparsify off, more accurate
+			"""
+			
+		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, sparsify=False)
+		actual_alpha = details.alpha[0]
+		actual_best_fit = details.best_fit[0]
+		print(actual_alpha,actual_best_fit)
+
+
+		expected_alpha =  2.719 # close to exact ?
+		expected_best_fit = LOG_NORMAL
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
+		self.assertEqual(actual_best_fit, expected_best_fit)
+
+	def _test_truncated_power_law_fit(self):
+		"""Test TPL fits:  note that the new toprch method reduces the accureacy of the test
+		"""
+		
+		# need model here; somehow self.model it gets corrupted by SVD smoothing
+		#model = models.vgg11(pretrained=True)
+		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
+
+		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
+		
+		details= self.watcher.analyze(layers=[self.fc2_layer], fit='TPL')
+		actual_alpha = details.alpha[0]
+		actual_Lambda = details.Lambda[0]
+
+		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
+
+		# these numbers have not been independently verified yet
+		expected_alpha = 2.1
+		delta = 0.1
+		self.assertAlmostEqual(actual_alpha,expected_alpha, None, '',  delta)
+		expected_Lambda =  0.017
+		delta = 0.001
+		self.assertAlmostEqual(actual_Lambda,expected_Lambda, None, '',  delta)
+		
+		
+	def _test_extended_truncated_power_law_fit(self):
+		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
+		"""
+		details= self.watcher.analyze(layers=[self.fc1_layer], fit=E_TPL)
+		actual_alpha = details.alpha[0]
+		actual_Lambda = details.Lambda[0]
+
+		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
+		
+		# these numbers have not been independently verified yet
+		expected_alpha = 2.07
+		expected_Lambda =  0.02
+		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
+		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=2)
+		 
+		
+		
+	def test_fix_fingers_xmin_peak(self):
+		"""Test fix fingers xmin_peak 
+		"""
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
+		# default
+		details = self.watcher.analyze(layers=[self.second_layer], pl_package=POWERLAW, xmax=XMAX_FORCE)
+		actual = details.alpha.to_numpy()[0]
+		expected = 7.116304
+		print("ACTUAL {}".format(actual))
+		self.assertAlmostEqual(actual,expected, places=2)
+		
+		# XMIN_PEAK
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0, pl_package=POWERLAW, xmax=XMAX_FORCE)
+		actual = details.alpha[0]
+		actual = details.alpha.to_numpy()[0]
+		expected = 1.68
+		delta = 0.01
+		self.assertAlmostEqual(actual,expected, None, '',  delta)
+	
+		
+	def test_fix_fingers_clip_xmax(self):
+		"""Test fix fingers clip_xmax
+		"""
+		
+		# CLIP_XMAX
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW, xmax=XMAX_FORCE)
+		actual = details.alpha.to_numpy()[0]
+		expected = 1.6635
+		self.assertAlmostEqual(actual,expected, places=4)
+		
+		num_fingers = details.num_fingers.to_numpy()[0]
+		self.assertEqual(num_fingers,1)
+
+
+	
+	
+	
+class _Test_VGG11_Alpha_w_WWFit(Test_Base):	
+	"""Tests the  alpha calculations on VGG11 (pytorch) using the WWFit class'"""	
+	
+	def test_WWFit_available(self):
+		"""Test that the WWFIt class is available"""
+		
+		pass
+	
+	
+class Test_VGG11_StateDict_Alpha_w_WWFit(Test_VGG11_Alpha_w_WWFit):	
+	"""Tests the  alpha calculations on VGG11 (pytorch, statedict format) using the WWFit class'"""	
+	
+	def setUp(self):
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		
+		self.params = DEFAULT_PARAMS.copy()
+		# use older power lae
+		self.params[PL_PACKAGE]=POWERLAW
+		self.params[XMAX]=XMAX_FORCE
+		
+		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+		self.first_layer = 1
+		self.second_layer = 2
+		self.third_layer = 8
+		self.fc1_layer = 9
+		self.fc2_layer = 10
+		self.fc3_layer = 11
+		
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+		self.min_layer_id = self.first_layer
+		
+		return
+	
+	
 
 class Test_Keras(Test_Base):
 	def setUp(self):

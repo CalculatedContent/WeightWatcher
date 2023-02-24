@@ -2447,10 +2447,42 @@ class Test_Keras(Test_Base):
 
 
 	def test_layer_ids(self):
-		"""Test that the layer_ids are signed as expected"""
+		"""Test that the layer_ids are signed as expected
+		
+		im not sure we are doing this consistantly with how we did it begore"""
 		
 		details = self.watcher.describe()
 		print(details)
+		actual_layer_ids = list(details.layer_id.to_numpy())
+		expected_layer_ids = [1, 2, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17, 20, 21, 22]
+		self.assertListEqual(actual_layer_ids, expected_layer_ids)
+		
+	def test_keras_model_with_no_bias(self):
+		"""Resolve uissue #201 to treat
+		
+		keras neural network contains dense layers WITHOUT BIAS TERM
+		
+		"""
+		
+		from keras.models import Sequential
+		from keras.layers import Dense, Activation
+		
+		model = Sequential()
+		model.add(Dense(100, input_shape=(190,), use_bias=False))
+		model.add(Activation("relu"))
+		model.add(Dense(10, use_bias=False))
+		model.add(Activation('sigmoid'))
+		
+		watcher = ww.WeightWatcher(model=model)
+		details = watcher.describe()
+		print(details)
+		self.assertTrue(len(details)==2)
+		
+		details = watcher.analyze()
+		print(details)
+		self.assertTrue(len(details)==1)
+		
+		
 		
         
 class Test_ResNet(Test_Base):

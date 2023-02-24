@@ -111,15 +111,20 @@ Fit = WWFit
 
 # when calling powerlaw methods,
 # trap warnings, stdout and stderr
-def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW):
-    if distribution == POWER_LAW and not hasattr(xmin, "__iter__"):
-        return WWFit(data, xmin=xmin, xmax=xmax, distribution=distribution)
-
-    f = io.StringIO()
-    with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
-        warnings.simplefilter(action='ignore', category=RuntimeWarning)
-        return powerlaw.Fit(data, xmin=xmin, xmax=xmax, verbose=verbose, distribution=distribution,
-                            xmin_distribution=distribution)
+def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
+    if pl_package==WW_POWERLAW_PACKAGE:
+        if distribution == POWER_LAW and not hasattr(xmin, "__iter__"):
+            return WWFit(data, xmin=xmin, xmax=xmax, distribution=distribution)
+    
+        
+    else:
+        f = io.StringIO()
+        with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
+            warnings.simplefilter(action='ignore', category=RuntimeWarning)
+            return powerlaw.Fit(data, xmin=xmin, xmax=xmax, verbose=verbose, distribution=distribution,
+                                xmin_distribution=distribution)
+            
+            
 
 def pl_compare(fit, dist):
     f = io.StringIO()

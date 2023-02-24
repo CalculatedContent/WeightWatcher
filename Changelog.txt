@@ -10,6 +10,7 @@ Added support for pyTorch StateDict format (in memory)
 SVD Fast method added (GPU enabled, on by default) #199
 PowerLaw fits now have default xmax=None
 WW_PowerLaw method is now the default PL fit 
+Simple CKA distance metric added (#148)
 
 
 

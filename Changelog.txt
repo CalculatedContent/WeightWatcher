@@ -3,6 +3,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.6.5]
+Preparation for release 0.7 
+Refactored WWLayer to WWLayer, WWFrameworkLayer, WWKerasLayer, ...
+Added support for pyTorch StateDict format (in memory)
+SVD Fast method added (GPU enabled, on by default) #199
+PowerLaw fits now have default xmax=None
+WW_PowerLaw method is now the default PL fit 
+
+
+
 
 ## [0.6.4.1 (testpypi)]]
 added plot esd5 to analyze() , plot of xmins vs alphas

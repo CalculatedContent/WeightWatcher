@@ -2182,7 +2182,7 @@ class WeightWatcher:
         layer_name = "Layer {}".format(plot_id)
         
         fit_type =  params[FIT]
-        pl_package = parrams[PL_PACKAGE]
+        pl_package = params[PL_PACKAGE]
 
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \

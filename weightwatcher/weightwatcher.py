@@ -2301,8 +2301,8 @@ class WeightWatcher:
             # vectors is a single numpy vector
             yield vectors
 
-
-    def valid_vectors(self, vectors):
+    @staticmethod
+    def valid_vectors(vectors):
         """Returns true if the input is 1 or more numpy vectors, 
         either as  a single vector, a list of vectors, or a numpy array of vectors, 
         and returns false otherwise"""

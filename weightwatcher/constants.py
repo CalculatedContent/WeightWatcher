@@ -25,8 +25,11 @@ LAYERS = 'layers'
 START_IDS = 'layer_ids_start' # 0 | 1
 
 TRUNCATED_SVD = 'truncated'
+TRUNCATED = 'truncated'
 ACCURATE_SVD = 'accurate'
+ACCURATE = 'accurate'
 FAST_SVD = 'fast'
+FAST = 'fast'
 SVD_METHOD = 'svd_method'
 VALID_SVD_METHODS = [FAST_SVD, ACCURATE_SVD]    # Add TRUNCATED_SVD here when ready to enable
 

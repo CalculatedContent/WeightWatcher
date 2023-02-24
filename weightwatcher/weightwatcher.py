@@ -2182,11 +2182,12 @@ class WeightWatcher:
         layer_name = "Layer {}".format(plot_id)
         
         fit_type =  params[FIT]
+        pl_package = parrams[PL_PACKAGE]
 
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
-                              fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type)
+                              fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type, pl_package=pl_package)
 
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -2987,7 +2988,7 @@ class WeightWatcher:
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
                      thresh=EVALS_THRESH,
                      fix_fingers=False, xmin_max = None, max_N = DEFAULT_MAX_N, 
-                     fit_type=POWER_LAW):
+                     fit_type=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
         """Fit eigenvalues to powerlaw or truncated_power_law
         
             if xmin is 
@@ -3061,9 +3062,12 @@ class WeightWatcher:
                 elif xmin_max <  0.95 * xmin2:
                     logger.fatal("XMIN max is too small, stopping  ")  
                     
+                if pl_package!=POWERLAW_PACKAGE:
+                    logger.fatal(f"Only  {POWERLAW_PACKAGE} supports fix_fingers, pl_package mis-specified, {pl_package}")
+                    
                 xmin_range = (np.log10(0.95 * xmin2), xmin_max)
                 logger.info(f"using new XMIN RANGE {xmin_range}")
-                fit = pl_fit(data=nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution)  
+                fit = pl_fit(data=nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution, pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -3077,7 +3081,11 @@ class WeightWatcher:
                 if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):
                     max_N = DEFAULT_MAX_N
                 logger.debug(f"max N = {max_N}")
-                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)   
+            
+                if pl_package!=POWERLAW_PACKAGE:
+                    logger.fatal(f"Only  {POWERLAW_PACKAGE} supports fix_fingers, pl_package mis-specified, {pl_package}")
+                    
+                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -3088,7 +3096,7 @@ class WeightWatcher:
             logger.debug("powerlaw.Fit no xmin , distribution={} ".format(distribution))
             try:
                 nz_evals = evals[evals > thresh]
-                fit = pl_fit(data=nz_evals, xmax=xmax, verbose=False, distribution=distribution)  
+                fit = pl_fit(data=nz_evals, xmax=xmax, verbose=False, distribution=distribution, pl_package=pl_package) 
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -3098,7 +3106,7 @@ class WeightWatcher:
         else: 
             #logger.debug("POWERLAW DEFAULT XMIN SET ")
             try:
-                fit = pl_fit(data=evals, xmin=xmin,  verbose=False, distribution=distribution)  
+                fit = pl_fit(data=evals, xmin=xmin,  verbose=False, distribution=distribution, pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED

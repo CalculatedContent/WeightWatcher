@@ -61,6 +61,13 @@ class Test_ValidParams(Test_Base):
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertTrue(valid)
 		
+				
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[FIX_FINGERS]=CLIP_XMAX
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertTrue(valid)
+		
+		
 	def test_invalid_PL_package_settings(self):
 		params = DEFAULT_PARAMS.copy()
 
@@ -92,11 +99,7 @@ class Test_ValidParams(Test_Base):
 		params[FIX_FINGERS]=CLIP_XMAX
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
-		
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
-		params[FIX_FINGERS]=CLIP_XMAX
-		valid = ww.WeightWatcher.valid_params(params)
-		self.assertFalse(valid)
+
 		
 		
 		
@@ -2168,7 +2171,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 
 
 	
-		
+		t
 	## TODO:
 	#  add layers, ww2x=True/False
 	
@@ -2294,7 +2297,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		"""
 		
 		# CLIP_XMAX
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW, xmax=XMAX_FORCE)
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.6635
 		self.assertAlmostEqual(actual,expected, places=4)
@@ -2352,6 +2355,23 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		self.assertAlmostEqual(a[0],1.74859, places=4)
 		self.assertAlmostEqual(a[1],1.66595, places=4)
 		self.assertAlmostEqual(a[3],1.43459, places=4)
+		
+		
+	def test_fix_fingers_clip_xmax(self):
+		"""Test fix fingers clip_xmax
+		"""
+		
+		# CLIP_XMAX
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=WW_POWERLAW_PACKAGE)
+		actual = details.alpha.to_numpy()[0]
+		expected = 1.6635
+		self.assertAlmostEqual(actual,expected, places=4)
+		
+		num_fingers = details.num_fingers.to_numpy()[0]
+		self.assertEqual(num_fingers,1)
+		
+		
+		
 		
 		
 class Test_VGG11_StateDict_Alpha_w_WWFit(Test_VGG11_Alpha_w_WWFit):	

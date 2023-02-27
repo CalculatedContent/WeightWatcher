@@ -2155,7 +2155,7 @@ class WeightWatcher:
     
     
  
-    def apply_fit_powerlaw(self, ww_layer, params=None):
+    def _powerlaw(self, ww_layer, params=None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                 
         if params is None: params = DEFAULT_PARAMS.copy()
@@ -2529,7 +2529,7 @@ class WeightWatcher:
                 self.apply_esd(ww_layer, params)
                 
                 if ww_layer.evals is not None:
-                    self.apply_fit_powerlaw(ww_layer, params)
+                    self._powerlaw(ww_layer, params)
                     if params[MP_FIT]:
                         logger.debug("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
@@ -2778,7 +2778,8 @@ class WeightWatcher:
             valid = False
             
         if fit_type==E_TPL and fix_fingers is not None:
-            logger.warning("E-TPL set, fix_fingers being reset to XMIN_PEAK")
+            logger.warning("E-TPL and fix_fingers can not both be set")
+            valid = False
 
 
         intra = params[INTRA]
@@ -2810,13 +2811,10 @@ class WeightWatcher:
             elif fit_type not in [PL, POWER_LAW]:
                 logger.fatal(f"{PL_PACKAGE} only supports PowerLaw fits, but {FIT}={fit_type}")
                 valid = False
-            elif fix_fingers: 
-                logger.fatal(f"{PL_PACKAGE} does not support the fix_fingers option, but {FIX_FINGERS}={fix_fingers}")
-                valid = False
                 
-        if ((xmax is None) or (xmax is False)) and fix_fingers in [XMIN_PEAK, CLIP_XMAX]:
-            logger.fatal(f"{FIX_FINGERS} requires that xmax='force', failing" )
-            valid = False
+        if ((xmax is None) or (xmax is False) or (xmax!=FORCE)) and fix_fingers in [XMIN_PEAK, CLIP_XMAX]:
+            logger.warning(f"{FIX_FINGERS} ignores xmax = {xmax}" )
+            valid = True
             
                 
         return valid
@@ -3082,10 +3080,10 @@ class WeightWatcher:
                     max_N = DEFAULT_MAX_N
                 logger.debug(f"max N = {max_N}")
             
-                if pl_package!=POWERLAW_PACKAGE:
-                    logger.fatal(f"Only  {POWERLAW_PACKAGE} supports fix_fingers, pl_package mis-specified, {pl_package}")
+                if xmax!='force':
+                    logger.fatal(f"xmax is ignored when specifying xmax = {xmax}")
                     
-                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot)
+                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -3691,7 +3689,7 @@ class WeightWatcher:
                 
                 if method==LAMBDA_MIN:
                     self.apply_esd(ww_layer, params)
-                    self.apply_fit_powerlaw(ww_layer, params)
+                    self._powerlaw(ww_layer, params)
                     params['num_smooth'] = ww_layer.num_pl_spikes
                 elif method==DETX:
                     self.apply_esd(ww_layer, params)

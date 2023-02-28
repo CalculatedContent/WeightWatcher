@@ -18,6 +18,8 @@ import scipy as sp
 import scipy.stats as stats
 
 from .constants import *
+from .WW_powerlaw import *
+
 
 logger = logging.getLogger(WW_NAME)
 
@@ -711,7 +713,7 @@ def fit_xxx_powerlaw(evals, xmin=None):
     return fit
     
 # check alpha is decreasing
-def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False):
+def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False, pl_package=WW_POWERLAW_PACKAGE):
     """Fits a powerlaw only, not a truncated power law
        clips off the max evals until a powerlaw is found, or stops half-way into the ESD
        
@@ -742,16 +744,20 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
         #warnings.simplefilter(action='ignore', category=RuntimeWarning) 
             
     #assert(evals[-1]> evals[0]) 
-    xmax = np.max(evals)
+    xmax = None #np.max(evals)
 
-    
     if xmin is not None and xmin != -1:
-        prev_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+        #prev_fit =  powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+        prev_fit =  pl_fit(data=evals, xmin=xmin, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
     else:
-        prev_fit = powerlaw.Fit(evals, xmax=xmax)
-        
-    R, p = prev_fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
-    logger.info(f"fit alpha {prev_fit.alpha:0.2f} sigma {prev_fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
+        #prev_fit = powerlaw.Fit(evals, xmax=xmax)
+        prev_fit =  pl_fit(data=evals, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
+
+     
+    R = 1.0
+    p = 0.01
+    #R, p = prev_fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
+    #logger.info(f"fit alpha {prev_fit.alpha:0.2f} sigma {prev_fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
 
     prev_alpha = prev_fit.alpha
     prev_sigma = prev_fit.sigma
@@ -763,16 +769,19 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
     
     for idx in range(2,max_N):
         xmax = np.max(evals[-idx])
+        
          
         if xmin is not None and xmin != -1:
-            fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+            #fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+            fit = pl_fit(data=evals[:-idx], xmin=xmin, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
         else:
-            fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+            #fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+            fit = pl_fit(data=evals[:-idx], verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
   
         
         # this is only meaningful if the orginal fit is a TPL and the new fit is a PL
         # stop when distribution becomes power law
-        R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
+        #R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
         logger.info(f"{idx} fit alpha {fit.alpha:0.4f} sigma {fit.sigma:0.4f} TPL or PL? {R:0.4f}")     
         #if R > 0.0:
         #    break
@@ -808,9 +817,9 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
             xmax = np.max(evals[-idy])
     
             if xmin is not None and xmin != -1:
-                check_fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
+                check_fit = pl_fit(data=evals, xmin=xmin, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
             else:
-                check_fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
+                check_fit = pl_fit(evals, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
             logger.info(f"checking fit {idy} xmax {xmax:0.4f}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}")     
 
                 

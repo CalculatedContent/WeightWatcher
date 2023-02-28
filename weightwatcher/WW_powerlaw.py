@@ -23,6 +23,11 @@ supported_distributions = {
     'lognormal_positive':       powerlaw.Lognormal_Positive,
 }
 
+
+import logging
+logger = logging.getLogger(WW_NAME) 
+
+
 class WWFit(object):
     def __init__(self, data, xmin=None, xmax=None, distribution=POWER_LAW):
         assert distribution in [POWER_LAW], distribution
@@ -112,12 +117,12 @@ Fit = WWFit
 # when calling powerlaw methods,
 # trap warnings, stdout and stderr
 def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
-    if pl_package==WW_POWERLAW_PACKAGE:
-        if distribution == POWER_LAW and not hasattr(xmin, "__iter__"):
-            return WWFit(data, xmin=xmin, xmax=xmax, distribution=distribution)
-    
+    if pl_package==WW_POWERLAW_PACKAGE and distribution==POWER_LAW:
+        logger.info("PL FIT running NEW power law method")
+        return WWFit(data, xmin=xmin, xmax=xmax, distribution=distribution)
         
     else:
+        logger.info("PL FIT running OLD power law method")
         f = io.StringIO()
         with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
             warnings.simplefilter(action='ignore', category=RuntimeWarning)

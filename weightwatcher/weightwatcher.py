@@ -3014,6 +3014,8 @@ class WeightWatcher:
         fit = None
         num_fingers = 0
         
+        fit_entropy = -1
+        
         # check    
         num_evals = len(evals)
         logger.debug("fitting {} on {} eigenvalues".format(fit_type, num_evals))
@@ -3088,14 +3090,17 @@ class WeightWatcher:
                 status = FAILED
              
         elif xmin is None or xmin == -1: 
-            logger.debug("powerlaw.Fit no xmin , distribution={} ".format(distribution))
+            logger.info(f"Running powerlaw.Fit no xmin, xmax={xmax}. distribution={distribution} pl_package={pl_package}")
             try:
                 nz_evals = evals[evals > thresh]
+                logger.info(f"CALLING PL FIT")
                 fit = pl_fit(data=nz_evals, xmax=xmax, verbose=False, distribution=distribution, pl_package=pl_package) 
                 status = SUCCESS 
-            except ValueError:
+            except ValueError as err:
+                logger.warning(str(err))
                 status = FAILED
-            except Exception:
+            except Exception as err:
+                logger.warning(str(err))
                 status = FAILED
 
         else: 
@@ -3138,7 +3143,7 @@ class WeightWatcher:
             best_fit = dists[np.argmax(Rs)]
             
             fit_entropy = line_entropy(fit.Ds)
-
+ 
             
             # check status for over-trained, under-trained    
             # maybe should remove this

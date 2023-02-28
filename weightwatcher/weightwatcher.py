@@ -3073,15 +3073,12 @@ class WeightWatcher:
                 status = FAILED
                 
         elif fix_fingers==CLIP_XMAX:
-            logger.info("fix the fingers by fitting a clipped power law")
+            logger.info(f"fix the fingers by fitting a clipped power law using pl_package = {pl_package}")
             try:
                 nz_evals = evals[evals > thresh]
                 if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):
                     max_N = DEFAULT_MAX_N
                 logger.debug(f"max N = {max_N}")
-            
-                if xmax!='force':
-                    logger.fatal(f"xmax is ignored when specifying xmax = {xmax}")
                     
                 fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 

@@ -1209,6 +1209,8 @@ class WWLayerIterator(ModelIterator):
 
         ww2x = self.params.get(WW2X)
         conv2d_fft = self.params.get(CONV2D_FFT)
+        if conv2d_fft:
+            rf = 1.0
         
         logger.debug("layer_supported  N {} max evals {}".format(N, max_evals))
         
@@ -1240,7 +1242,7 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   
-        elif (not ww2x) and max_evals and M * rf > max_evals:
+        elif (not ww2x)  and (not conv2d_fft) and max_evals and M * rf > max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         

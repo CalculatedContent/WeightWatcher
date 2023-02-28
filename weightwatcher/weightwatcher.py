@@ -1208,6 +1208,7 @@ class WWLayerIterator(ModelIterator):
         max_evals = self.params.get('max_evals')
 
         ww2x = self.params.get(WW2X)
+        conv2d_fft = self.params.get(CONV2D_FFT)
         
         logger.debug("layer_supported  N {} max evals {}".format(N, max_evals))
         

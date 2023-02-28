@@ -1537,9 +1537,7 @@ class WeightWatcher:
     
     @staticmethod
     def infer_framework(model):
-        
 
-       
         
         def is_framework(name='UNKNOWN'):
             found = False
@@ -1791,7 +1789,6 @@ class WeightWatcher:
                         has_weights1, W1, has_biases1, b1  = layer_1.get_weights_and_biases()
                         has_weights2, W2, has_biases2, b2  = layer_2.get_weights_and_biases()
                         
-                        print(W1.shape, W2.shape)
                         data['M'] = np.min(W1.shape)
                         data['N'] = np.max(W1.shape)
                         data['delta_W'] = self.matrix_distance(W1, W2, method)
@@ -2455,8 +2452,10 @@ class WeightWatcher:
         powerlaw_package: 'ww' (default) | 'powerlaw'
            Lets users reset the powerlaw package to the older version on pypi
            
-        xmax: None | 'force'
+        xmax: None | -1 | -2 ... |  'force'
            If 'force', resets the powerlaw_package to 'powerlaw'
+           if an int (-1, -2), ignores the top N eigenvalues
+           
            Must be set to use fix_fingers, TPL, E_TPL
            Can not set 'force' and use the new default powerlaw_package: 'ww' 
            
@@ -2698,11 +2697,6 @@ class WeightWatcher:
         if xmin and xmin not in [XMIN.UNKNOWN, XMIN.AUTO, XMIN.PEAK]:
             logger.warning("param xmin unknown, ignoring {}".format(xmin))
             valid = False
-            
-        #xmax = params.get('xmax')
-        #if xmax and xmax not in [XMAX.UNKNOWN, XMIN.AUTO]:
-        #    logger.warning("param xmax unknown, ignoring {}".format(xmax))
-        #    valid = False
         
         min_evals = params.get('min_evals') 
         max_evals = params.get('max_evals')
@@ -2793,26 +2787,28 @@ class WeightWatcher:
             logger.fatal(f"Layer Ids must start at 0 or 1, start_ids={start_ids}")
             valid = False
             
-        pl_pckge = params[PL_PACKAGE]
-        if pl_pckge not in [POWERLAW_PACKAGE, WW_POWERLAW_PACKAGE]:
-            logger.fatal(f"Powerlaw Package not valid={pl_pckge}, default is {DEFAULT_POWERLAW_PACKAGE}")
+        pl_package = params[PL_PACKAGE]
+        if pl_package not in [POWERLAW_PACKAGE, WW_POWERLAW_PACKAGE]:
+            logger.fatal(f"Powerlaw Package not valid={pl_package}, default is {DEFAULT_POWERLAW_PACKAGE}")
             valid = False
             
         xmax = params[XMAX]
-        if xmax not in [True, None, 'force']:
+        if not isinstance(xmax, int) and xmax not in [False, None, 'force']:
             logger.fatal(f"xmax must be None or 'force', xmax={xmax}")
             valid = False
-        
-                
-        if pl_pckge==WW_POWERLAW_PACKAGE:
-            if xmax:
-                logger.fatal(f"xmax must be None if using {PL_PACKAGE}={WW_POWERLAW_PACKAGE}")
+        elif isinstance(xmax, int) and xmax==0:
+            logger.fatal(f"xmax can not be 0")
+            valid = False
+                            
+        if pl_package==WW_POWERLAW_PACKAGE:
+            if xmax=='force':
+                logger.fatal(f"xmax=force not available if using {PL_PACKAGE}={WW_POWERLAW_PACKAGE}")
                 valid = False
-            elif fit_type not in [PL, POWER_LAW]:
+            if fit_type not in [PL, POWER_LAW]:
                 logger.fatal(f"{PL_PACKAGE} only supports PowerLaw fits, but {FIT}={fit_type}")
                 valid = False
                 
-        if ((xmax is None) or (xmax is False) or (xmax!=FORCE)) and fix_fingers in [XMIN_PEAK, CLIP_XMAX]:
+        if ((xmax is None) or (xmax is False) or (xmax!=FORCE) or (isinstance(xmax, int))) and fix_fingers in [XMIN_PEAK, CLIP_XMAX]:
             logger.warning(f"{FIX_FINGERS} ignores xmax = {xmax}" )
             valid = True
             
@@ -3045,6 +3041,15 @@ class WeightWatcher:
         if xmax == XMAX_FORCE:
             logger.info("forcing xmax, alpha may be over-estimated")
             xmax = np.max(evals)
+        elif isinstance(xmax, int):
+            xmax = np.abs(xmax)
+            if xmax > len(evals)/2:
+                logger.warning("xmax is too large, stopping")
+                status = FAILED
+            else:
+                logger.info(f"clipping off {xmax} top eigenvalues")
+                evals = evals[:-xmax] 
+                xmax = None
         else:
             logger.debug("xmax not set, fast PL method in place")
             xmax = None

@@ -52,6 +52,7 @@ class Test_ValidParams(Test_Base):
 
 	def setUp(self):
 		"""I run before every test in this class
+			
 		"""
 		print("\n-------------------------------------\nIn Test_ValidParams:", self._testMethodName)
 
@@ -61,48 +62,63 @@ class Test_ValidParams(Test_Base):
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertTrue(valid)
 		
-				
+		params = DEFAULT_PARAMS.copy()		
 		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
 		params[FIX_FINGERS]=CLIP_XMAX
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertTrue(valid)
+		
+		params = DEFAULT_PARAMS.copy()
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[XMAX]= -1
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertTrue(valid)
+		
+		params = DEFAULT_PARAMS.copy()
+		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[XMAX] = 1
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertTrue(valid)
+		
+		params = DEFAULT_PARAMS.copy()
+		params[PL_PACKAGE]=POWERLAW_PACKAGE
+		params[XMAX]='force'
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertTrue(valid)
 		
 		
 	def test_invalid_PL_package_settings(self):
 		params = DEFAULT_PARAMS.copy()
-
-		params[XMAX]='force'
-		valid = ww.WeightWatcher.valid_params(params)
-		self.assertFalse(valid)
-	
 		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
 		params[XMAX]='force'
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 		
+		params = DEFAULT_PARAMS.copy()
 		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
 		params[FIT]=TPL
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 		
+		params = DEFAULT_PARAMS.copy()
 		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
 		params[FIT]=E_TPL
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 		
+		params = DEFAULT_PARAMS.copy()
 		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
 		params[FIT]=TRUNCATED_POWER_LAW
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 				
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
-		params[fix_fingers]=CLIP_XMAX
+
+		params = DEFAULT_PARAMS.copy()
+		params[XMAX]=0
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 
-		
-		
-		
+
 
 class Test_KerasLayers(Test_Base):
 	
@@ -983,6 +999,14 @@ class Test_Albert(Test_Base):
 		actual_alpha = details.alpha.to_numpy()[0]
 		expected_alpha = 6.883741560463132
 		self.assertAlmostEqual(actual_alpha,expected_alpha)
+		
+		
+	def test_xmax_set(self):
+		"""test that xmax=-1 ignores the top eigenvalues"""
+		details = self.watcher.analyze(layers=[17], xmax=-1)
+		actual_alpha = details.alpha.to_numpy()[0]
+		expected_alpha = 3.0
+		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.1 )
 		
 		
 				

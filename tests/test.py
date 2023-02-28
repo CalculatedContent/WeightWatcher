@@ -2196,7 +2196,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		self.assertEqual(num_fingers,1)
 
 
-	
+
 	
 	
 class Test_VGG11_Alpha_w_WWFit(Test_Base):	
@@ -2261,7 +2261,13 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		self.assertEqual(num_fingers,1)
 		
 		
+	def test_conv2d_fft(self):
+		"""Test the fft method"""
 		
+		details = self.watcher.analyze(layers=[2], conv2d_fft=True)
+		actual = details.alpha.to_numpy()[0]
+		expected = 2.144
+		self.assertAlmostEqual(actual,expected, places=4)
 		
 		
 class Test_VGG11_StateDict_Alpha_w_WWFit(Test_VGG11_Alpha_w_WWFit):	

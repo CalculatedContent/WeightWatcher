@@ -1235,7 +1235,7 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N, max_evals))
             return False
 
-        elif (not ww2x) and min_evals and M * rf < min_evals:
+        elif (not ww2x) and (not conv2d_fft) and min_evals and M * rf < min_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   

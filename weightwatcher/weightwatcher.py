@@ -2535,7 +2535,14 @@ class WeightWatcher:
                 
                 # maybe not necessary
                 self.apply_normalize_Wmats(ww_layer, params)
+                
+                # TODO: dd apply_fft
+               
+               # if params[FFT]:
+                     self.apply_fft(ww_layer, params)
+                    
                 self.apply_esd(ww_layer, params)
+                
                 
                 if ww_layer.evals is not None:
                     self.apply_powerlaw(ww_layer, params)
@@ -3097,7 +3104,7 @@ class WeightWatcher:
                     max_N = DEFAULT_MAX_N
                 logger.debug(f"max N = {max_N}")
                     
-                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
+                fit, num_fingers = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED

@@ -122,7 +122,15 @@ def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LA
         return WWFit(data, xmin=xmin, xmax=xmax, distribution=distribution)
         
     else:
-        logger.info("PL FIT running OLD power law method")
+        
+        if xmax==FORCE:
+            xmax==np.max(data)
+            logger.info("PL FIT running OLD power law method with xmax='force")
+        elif xmax==None or xmax is False:
+            logger.info("PL FIT running OLD power law method with xmax=None")
+        else:
+            logger.info("PL FIT running OLD power law method with specific xmax={xmax:0.2f}")
+
         f = io.StringIO()
         with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
             warnings.simplefilter(action='ignore', category=RuntimeWarning)

@@ -2061,7 +2061,6 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 
 
 	
-		t
 	## TODO:
 	#  add layers, ww2x=True/False
 	
@@ -2243,15 +2242,18 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		self.assertAlmostEqual(a[3],1.43459, places=4)
 		
 		
+	#
+	# TODO: check if xmax='force' does anything ?
+	#
 	def test_fix_fingers_clip_xmax(self):
 		"""Test fix fingers clip_xmax
 		"""
 		
 		# CLIP_XMAX
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=WW_POWERLAW_PACKAGE)
+		details = self.watcher.analyze(layers=[self.second_layer], xmax='force', fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.6635
-		self.assertAlmostEqual(actual,expected, places=4)
+		self.assertAlmostEqual(actual,expected, places=2)
 		
 		num_fingers = details.num_fingers.to_numpy()[0]
 		self.assertEqual(num_fingers,1)

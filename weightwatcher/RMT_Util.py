@@ -714,7 +714,8 @@ def fit_xxx_powerlaw(evals, xmin=None):
     return fit
     
 # check alpha is decreasing
-def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False, pl_package=WW_POWERLAW_PACKAGE):
+# DO WE NEED XMAX='force'?
+def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False, pl_package=WW_POWERLAW_PACKAGE):
     """Fits a powerlaw only, not a truncated power law
        clips off the max evals until a powerlaw is found, or stops half-way into the ESD
        
@@ -749,10 +750,10 @@ def fit_clipped_powerlaw(evals, xmin=None, verbose=False, max_N=DEFAULT_MAX_N, m
 
     if xmin is not None and xmin != -1:
         #prev_fit =  powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
-        prev_fit =  pl_fit(data=evals, xmin=xmin, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
+        prev_fit =  pl_fit(data=evals, xmin=xmin, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
     else:
         #prev_fit = powerlaw.Fit(evals, xmax=xmax)
-        prev_fit =  pl_fit(data=evals, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
+        prev_fit =  pl_fit(data=evals, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
 
      
     R = 1.0

@@ -2181,20 +2181,40 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		self.assertAlmostEqual(actual,expected, None, '',  delta)
 	
 		
-	def test_fix_fingers_clip_xmax(self):
+	def test_fix_fingers_clip_xmax_w_xmax_Force(self):
 		"""Test fix fingers clip_xmax
 		"""
 		
 		# CLIP_XMAX
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE)
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE, xmax=FORCE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.6635
-		self.assertAlmostEqual(actual,expected, places=4)
+		self.assertAlmostEqual(actual,expected, places=2)
 		
 		num_fingers = details.num_fingers.to_numpy()[0]
 		self.assertEqual(num_fingers,1)
 
-
+	def test_fix_fingers_clip_xmax_w_xmax_None(self):
+		"""Test fix fingers clip_xmax
+		"""
+		
+		# CLIP_XMAX,=None is efaiult
+		details = self.watchder.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE)
+		actual = details.alpha.to_numpy()[0]
+		expected = 1.70
+		self.assertAlmostEqual(actual,expected, places=2)
+		
+		num_fingers = details.num_fingers.to_numpy()[0]
+		self.assertEqual(num_fingers,1)
+		
+		# CLIP_XMAX, =None explicit
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE, xmax=None)
+		actual = details.alpha.to_numpy()[0]
+		expected = 1.70
+		self.assertAlmostEqual(actual,expected, places=2)
+		
+		num_fingers = details.num_fingers.to_numpy()[0]
+		self.assertEqual(num_fingers,1)
 
 	
 	

@@ -77,7 +77,6 @@ def svd_full(W, method=ACCURATE_SVD):
     if method == FAST_SVD:     return _svd_full_fast(W)
 
 def svd_vals(W, method=ACCURATE_SVD):
-    print(type(W), W.shape)
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
     if method == ACCURATE_SVD: return _svd_vals_accurate(W)
     if method == FAST_SVD:     return _svd_vals_fast(W)
@@ -740,13 +739,13 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
         logger = logging.getLogger("RMT_Util")
         logger.setLevel(logging.INFO)
                 
-    logger.info(f"fit_clipped_powerlaw {max_N} ")
+    logger.info(f"fit_clipped_powerlaw: max_N={max_N} xmax={xmax}")
     fit = None
     #with warnings.catch_warnings():
         #warnings.simplefilter(action='ignore', category=RuntimeWarning) 
             
     #assert(evals[-1]> evals[0]) 
-    xmax = None #np.max(evals)
+    # xmaxxmax = None #np.max(evals)
 
     if xmin is not None and xmin != -1:
         #prev_fit =  powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
@@ -755,58 +754,58 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
         #prev_fit = powerlaw.Fit(evals, xmax=xmax)
         prev_fit =  pl_fit(data=evals, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
 
-     
-    R = 1.0
-    p = 0.01
+    
+    # NOT USED ANYMORE
+    #R = 1.0
+    #p = 0.01
     #R, p = prev_fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
     #logger.info(f"fit alpha {prev_fit.alpha:0.2f} sigma {prev_fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
 
     prev_alpha = prev_fit.alpha
     prev_sigma = prev_fit.sigma
-    prev_R = R
+    #prev_R = R
     first_fit = prev_fit
     best_fit = first_fit
 
     num_fingers = 0
     
     for idx in range(2,max_N):
-        xmax = np.max(evals[-idx])
+        if xmax is not None and xmax is not False:
+            xmax = np.max(evals[-idx])
         
          
         if xmin is not None and xmin != -1:
             #fit = powerlaw.Fit(evals, xmin=xmin, xmax=xmax, verbose=verbose)
-            fit = pl_fit(data=evals[:-idx], xmin=xmin, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
+            fit = pl_fit(data=evals[:-idx], xmin=xmin, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
         else:
             #fit = powerlaw.Fit(evals, xmax=xmax, verbose=verbose)
-            fit = pl_fit(data=evals[:-idx], verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
+            fit = pl_fit(data=evals[:-idx], xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
   
         
         # this is only meaningful if the orginal fit is a TPL and the new fit is a PL
         # stop when distribution becomes power law
         #R, p = fit.distribution_compare('truncated_power_law', 'power_law', normalized_ratio=True)
-        logger.info(f"{idx} fit alpha {fit.alpha:0.4f} sigma {fit.sigma:0.4f} TPL or PL? {R:0.4f}")     
+        logger.info(f"fix_fingers: idx={idx} fit alpha {fit.alpha:0.4f}  sigma {fit.sigma:0.4f} xmax={xmax}")     
         #if R > 0.0:
         #    break
    
-        
-        logger.info(f"{idx} fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f} TPL or PL? {R:0.4f}")     
-
         if ((fit.alpha + alpha_thresh) < first_fit.alpha) : #and fit.sigma < prev_sigma:
-            logger.info(f"stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
+            logger.info(f"fix_fingers: best fit found stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
             best_fit = fit
             num_fingers = idx - 1
+            print(best_fit)
 
             break
         
         if min_alpha is not None and fit.alpha <= min_alpha: 
-            print(f"stopping at min alpha = {fit.alpha:0.2f}")  
+            logger.info(f"stopping at min alpha = {fit.alpha:0.2f}")  
             break
         
         
         prev_fit = fit
         prev_alpha = fit.alpha
         prev_sigma = fit.sigma
-        prev_R = R
+        #prev_R = R
 
             
     if idx == max_N:
@@ -814,22 +813,27 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
         fit = first_fit
     else:
     #  provide the next 3 alpha, and issue a warning if they are out of whack
-        print("checking alpha")
+        logger.info(f"fix_fingers: checking final alpha, starting with idx={idx}, xmax={xmax}")
         for idy in range(idx+1, idx+4):
-            xmax = np.max(evals[-idy])
-    
+            data = evals[:-idy]
+            if xmax is not None and xmax is not False:
+                xmax = np.max(data)
+                logger.debug(f"fix_fingers: checking final alpha: idy={idx}, xmax={xmax}")
+
+            # TODO: fix , allows xmax settings
+            # if xmax==-1 ?
             if xmin is not None and xmin != -1:
-                check_fit = pl_fit(data=evals, xmin=xmin, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
+                check_fit = pl_fit(data=data, xmin=xmin, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
             else:
-                check_fit = pl_fit(evals, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
-            logger.info(f"checking fit {idy} xmax {xmax:0.4f}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}")     
+                check_fit = pl_fit(data=data, xmax=xmax, verbose=verbose, distribution=POWER_LAW, pl_package=pl_package)
+            logger.info(f"checking fit {idy}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}  xmax {xmax}")     
 
                 
-            
             if np.abs(check_fit.alpha - fit.alpha) > alpha_thresh/2.0 :
-                logger.warning("clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
+                logger.warning(f"clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
                 break
 
+    
     return best_fit, num_fingers
              
         

@@ -117,20 +117,17 @@ Fit = WWFit
 # when calling powerlaw methods,
 # trap warnings, stdout and stderr
 def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
+    
+    if xmax==FORCE:
+        xmax==np.max(data)
+    
     if pl_package==WW_POWERLAW_PACKAGE and distribution==POWER_LAW:
         logger.info("PL FIT running NEW power law method")
         return WWFit(data, xmin=xmin, xmax=xmax, distribution=distribution)
         
     else:
         
-        if xmax==FORCE:
-            xmax==np.max(data)
-            logger.info("PL FIT running OLD power law method with xmax='force")
-        elif xmax==None or xmax is False:
-            logger.info("PL FIT running OLD power law method with xmax=None")
-        else:
-            logger.info("PL FIT running OLD power law method with specific xmax={xmax:0.2f}")
-
+        logger.info(f"PL FIT running OLD power law method with  xmax={xmax}")
         f = io.StringIO()
         with redirect_stdout(f), redirect_stderr(f), warnings.catch_warnings():
             warnings.simplefilter(action='ignore', category=RuntimeWarning)

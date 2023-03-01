@@ -2773,9 +2773,14 @@ class WeightWatcher:
             
             
         fix_fingers =  params[FIX_FINGERS]
+        xmax = params[XMAX]
         if fix_fingers:
             if fix_fingers not in [XMIN_PEAK, CLIP_XMAX]:
-                logger.warning("Unknown how to fix fingers {}, deactivating".format(fix_fingers))
+                logger.warning(f"Unknown how to fix fingers {fix_fingers}, deactivating")
+                valid=False
+            elif xmax is not None and xmax is not False and isinstance(xmax,int):
+                logger.warning(f"Can not set fix fingers, with xmax ={xmax}")
+                valid=False
             else:
                 logger.info("Fixing fingers using  {}".format(fix_fingers))
                 
@@ -3094,7 +3099,7 @@ class WeightWatcher:
                 status = FAILED
                 
         elif fix_fingers==CLIP_XMAX:
-            logger.info(f"fix the fingers by fitting a clipped power law using pl_package = {pl_package}")
+            logger.info(f"fix the fingers by fitting a clipped power law using pl_package = {pl_package}, xmax={xmax}")
             try:
                 nz_evals = evals[evals > thresh]
                 if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):

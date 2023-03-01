@@ -2192,7 +2192,7 @@ class WeightWatcher:
         pl_package = params[PL_PACKAGE]
 
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
-            self.fitapply_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
+            self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
                               fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type, pl_package=pl_package)
 
@@ -2988,7 +2988,7 @@ class WeightWatcher:
         plt.show(); plt.clf()
         
 
-    def fitapply_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
                      thresh=EVALS_THRESH,
                      fix_fingers=False, xmin_max = None, max_N = DEFAULT_MAX_N, 

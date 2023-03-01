@@ -77,6 +77,7 @@ def svd_full(W, method=ACCURATE_SVD):
     if method == FAST_SVD:     return _svd_full_fast(W)
 
 def svd_vals(W, method=ACCURATE_SVD):
+    print(type(W), W.shape)
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
     if method == ACCURATE_SVD: return _svd_vals_accurate(W)
     if method == FAST_SVD:     return _svd_vals_fast(W)

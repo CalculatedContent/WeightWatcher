@@ -2209,13 +2209,9 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		print("\n-------------------------------------\nIn Test_VGG11_Alpha_w_WWFit:", self._testMethodName)
 		
 		self.params = DEFAULT_PARAMS.copy()
-		# use older power lae
-		self.params[PL_PACKAGE]=POWERLAW
-		self.params[XMAX]=XMAX_FORCE
-
 
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
 		
 		self.first_layer = 2
 		self.second_layer = 5

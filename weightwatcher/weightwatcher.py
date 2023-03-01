@@ -777,6 +777,7 @@ class WWLayer:
                 n_comp = M*rf # TODO: bug fixed, check valid
             else:
                 Wmats, N, M, n_comp = self.get_conv2D_fft(weights)
+                print("WMATS: ", len(Wmats),Wmats[0].shape)
             
         elif the_type == LAYER_TYPE.NORM:
             #logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
@@ -832,6 +833,8 @@ class WWLayer:
         # run FFT on each channel
         fft_grid = [n, n]
         fft_coefs = np.fft.fft2(W, fft_grid, axes=fft_axes)
+        
+        print("FFT COEFS: ", type(fft_coefs), fft_coefs.shape)
         
         return [fft_coefs], N, M, n_comp
 
@@ -1073,6 +1076,8 @@ class ModelIterator:
          Override this method to change the type of iterator used by the child class"""
         return self.model_iter
     
+    
+    #TODO: this should be deprecated
     def set_channels(self, channels=None):
         """Set the channels flag for the framework, with the ability to override"""
                 
@@ -1176,6 +1181,8 @@ class WWLayerIterator(ModelIterator):
            # old counting method
            # curr_id, self.k = self.k, self.k + 1
            # ww_layer = WWLayer(curr_layer, layer_id=curr_id, params=self.params)
+           
+           # NOte; of comv2d_fft is specified, the FFT is still run
            
             ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
 
@@ -2155,7 +2162,7 @@ class WeightWatcher:
     
     
  
-    def _powerlaw(self, ww_layer, params=None):
+    def apply_powerlaw(self, ww_layer, params=None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
                 
         if params is None: params = DEFAULT_PARAMS.copy()
@@ -2185,7 +2192,7 @@ class WeightWatcher:
         pl_package = params[PL_PACKAGE]
 
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
-            self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
+            self.fitapply_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
                               fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type, pl_package=pl_package)
 
@@ -2531,7 +2538,7 @@ class WeightWatcher:
                 self.apply_esd(ww_layer, params)
                 
                 if ww_layer.evals is not None:
-                    self._powerlaw(ww_layer, params)
+                    self.apply_powerlaw(ww_layer, params)
                     if params[MP_FIT]:
                         logger.debug("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
@@ -2981,7 +2988,7 @@ class WeightWatcher:
         plt.show(); plt.clf()
         
 
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
+    def fitapply_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
                      thresh=EVALS_THRESH,
                      fix_fingers=False, xmin_max = None, max_N = DEFAULT_MAX_N, 
@@ -3090,7 +3097,7 @@ class WeightWatcher:
                     max_N = DEFAULT_MAX_N
                 logger.debug(f"max N = {max_N}")
                     
-                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
+                fit, num_fingers = fit_clippedapply_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -3101,7 +3108,6 @@ class WeightWatcher:
             logger.info(f"Running powerlaw.Fit no xmin, xmax={xmax}. distribution={distribution} pl_package={pl_package}")
             try:
                 nz_evals = evals[evals > thresh]
-                logger.info(f"CALLING PL FIT")
                 fit = pl_fit(data=nz_evals, xmax=xmax, verbose=False, distribution=distribution, pl_package=pl_package) 
                 status = SUCCESS 
             except ValueError as err:
@@ -3699,7 +3705,7 @@ class WeightWatcher:
                 
                 if method==LAMBDA_MIN:
                     self.apply_esd(ww_layer, params)
-                    self._powerlaw(ww_layer, params)
+                    self.apply_powerlaw(ww_layer, params)
                     params['num_smooth'] = ww_layer.num_pl_spikes
                 elif method==DETX:
                     self.apply_esd(ww_layer, params)

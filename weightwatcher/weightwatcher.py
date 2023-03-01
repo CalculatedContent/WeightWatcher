@@ -3097,7 +3097,7 @@ class WeightWatcher:
                     max_N = DEFAULT_MAX_N
                 logger.debug(f"max N = {max_N}")
                     
-                fit, num_fingers = fit_clippedapply_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
+                fit, num_fingers = fit_clipped_powerlaw(nz_evals, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED

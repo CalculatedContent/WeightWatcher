@@ -777,7 +777,6 @@ class WWLayer:
                 n_comp = M*rf # TODO: bug fixed, check valid
             else:
                 Wmats, N, M, n_comp = self.get_conv2D_fft(weights)
-                print("WMATS: ", len(Wmats),Wmats[0].shape)
             
         elif the_type == LAYER_TYPE.NORM:
             #logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
@@ -833,8 +832,6 @@ class WWLayer:
         # run FFT on each channel
         fft_grid = [n, n]
         fft_coefs = np.fft.fft2(W, fft_grid, axes=fft_axes)
-        
-        print("FFT COEFS: ", type(fft_coefs), fft_coefs.shape)
         
         return [fft_coefs], N, M, n_comp
 

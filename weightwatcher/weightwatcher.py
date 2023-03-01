@@ -2539,7 +2539,7 @@ class WeightWatcher:
                 # TODO: dd apply_fft
                
                # if params[FFT]:
-                     self.apply_fft(ww_layer, params)
+               #      self.apply_fft(ww_layer, params)
                     
                 self.apply_esd(ww_layer, params)
                 

@@ -2294,6 +2294,9 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 	#
 	def test_fix_fingers_clip_xmax_w_Force(self):
 		"""Test fix fingers clip_xmax
+		
+				this should give the same answer as the old POWERLAW_PACKAGE, with xmax=FORCE
+
 		"""
 		
 		# CLIP_XMAX
@@ -2308,16 +2311,18 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		
 	def test_fix_fingers_clip_xmax(self):
 		"""Test fix fingers clip_xmax
+		
+		this should give the same answer as the old POWERLAW_PACKAGE, with xmax=None and has NO fingers
 		"""
 		
 		# CLIP_XMAX
 		details = self.watcher.analyze(layers=[self.second_layer],  fix_fingers='clip_xmax', pl_package=WW_POWERLAW_PACKAGE)
 		actual = details.alpha.to_numpy()[0]
-		expected = 1.6635
+		expected = 1.72
 		self.assertAlmostEqual(actual,expected, places=2)
 		
 		num_fingers = details.num_fingers.to_numpy()[0]
-		self.assertEqual(num_fingers,1)
+		self.assertEqual(num_fingers,0)
 		
 	def test_conv2d_fft(self):
 		"""Test the FFT method"; why does this fail ? """

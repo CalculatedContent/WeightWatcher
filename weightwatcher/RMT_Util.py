@@ -792,7 +792,6 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
             logger.info(f"fix_fingers: best fit found stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
             best_fit = fit
             num_fingers = idx - 1
-            print(best_fit)
 
             break
         

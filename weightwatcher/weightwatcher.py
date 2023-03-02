@@ -1968,7 +1968,7 @@ class WeightWatcher:
         the_type = ww_layer.the_type
        
         if the_type==LAYER_TYPE.CONV2D:
-            logger.debug("applying 2D FFT on Conv2D Layer {} {} ".format(layer_id, name))
+            logger.info("applying 2D FFT on Conv2D Layer {} {} ".format(layer_id, name))
             
             Wmats = ww_layer.Wmats
             for iw, W in enumerate(Wmats):
@@ -1977,7 +1977,7 @@ class WeightWatcher:
                 
             ww_layer.fft = True
         else:
-            logger.debug("skipping 2D FFT  for  Layer {} {} ".format(layer_id, name))
+            logger.info("skipping 2D FFT  for  Layer {} {} ".format(layer_id, name))
 
             
         return ww_layer 

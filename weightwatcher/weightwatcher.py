@@ -623,6 +623,7 @@ class WWLayer:
         self.framework = framework_layer.framework      
         self.channels = framework_layer.channels
         
+        self.fft = False
 
         # original weights (tensor) and biases
         self.has_weights = False
@@ -1958,6 +1959,30 @@ class WeightWatcher:
         return ww_layer
                 
         
+        
+    def apply_conv2d_fft(self, ww_layer, params=None):
+        """compute the 2D fft of the layer weights, take real space part"""
+                
+        layer_id = ww_layer.layer_id
+        name = ww_layer.name
+        the_type = ww_layer.the_type
+       
+        if the_type==LAYER_TYPE.CONV2D:
+            logger.debug("applying 2D FFT on Conv2D Layer {} {} ".format(layer_id, name))
+            
+            for iw, W in enumerate(Wmats):
+                W = np.real(np.fft.fft2(W))
+                ww_layer.Wmats[iw]=W
+                
+            ww_layer.fft = True
+        else:
+            logger.debug("skipping 2D FFT  for  Layer {} {} ".format(layer_id, name))
+
+            
+        return ww_layer 
+
+
+    
                  
     def apply_esd(self, ww_layer, params=None):
         """run full SVD on layer weight matrices, compute ESD on combined eigenvalues, combine all, and save to layer """
@@ -2164,6 +2189,11 @@ class WeightWatcher:
             
         return ww_layer
     
+    
+  
+       
+        
+        
     
  
     def apply_powerlaw(self, ww_layer, params=None):
@@ -2565,8 +2595,8 @@ class WeightWatcher:
                 
                 # TODO: dd apply_fft
                
-               # if params[FFT]:
-               #      self.apply_fft(ww_layer, params)
+                if params[CONV2D_FFT]:
+                     self.apply_conv2d_fft(ww_layer, params)
                     
                 self.apply_esd(ww_layer, params)
                 

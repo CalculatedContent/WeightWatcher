@@ -1970,6 +1970,7 @@ class WeightWatcher:
         if the_type==LAYER_TYPE.CONV2D:
             logger.debug("applying 2D FFT on Conv2D Layer {} {} ".format(layer_id, name))
             
+            Wmats = ww_layer.Wmats
             for iw, W in enumerate(Wmats):
                 W = np.real(np.fft.fft2(W))
                 ww_layer.Wmats[iw]=W

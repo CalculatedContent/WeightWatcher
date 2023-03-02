@@ -933,15 +933,15 @@ class Test_VGG11_Distances(Test_Base):
 
 	# TODO implement with centering
 	def test_CKA_distances(self):
-		"""Test that the distance method works correctly for CKA method,  ww2x False | True
+		"""Test that the distance method works correctly for CKA method,  ww2x=False | pool=True
                
             Note: biases are not treated yyet
         """
 		m1 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
 		m2 = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		avg_dW, avg_db, distances =  self.watcher.distances(m1, m2, method=CKA, ww2x=False)
+		avg_dW, avg_db, distances =  self.watcher.distances(m1, m2, method=CKA, pool=True)
 		
-		print("====== ww2x=False ========")
+		print("====== pool=True ========")
 		print(distances)
 		
 		actual_mean_distance = avg_dW
@@ -953,9 +953,9 @@ class Test_VGG11_Distances(Test_Base):
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
 
 
-		avg_dW, avg_db, distances = self.watcher.distances(m1, m2, method=CKA, ww2x=True)
+		avg_dW, avg_db, distances = self.watcher.distances(m1, m2, method=CKA, pool=False)
 				
-		print("====== ww2x=True ========")
+		print("====== pool=False ========")
 		print(distances)
 		
 		actual_mean_distance = avg_dW
@@ -1211,14 +1211,22 @@ class Test_VGG11(Test_Base):
 		# only all positive or all negative layer id filters
 		with self.assertRaises(Exception) as context:
 			self.watcher.describe(layers=[-1,1])	
+					
+		#  deprecated: ww2x and kernel_fft 
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(kernel_fft=True)	
+			
+		#  deprecated: ww2x and kernel_fft 
+		with self.assertRaises(Exception) as context:
+			self.watcher.describe(ww2x=True)	
 						
-		# ww2x and conv2d_fft 
+		#  deprecated: ww2x and kernel_fft 
 		with self.assertRaises(Exception) as context:
-			self.watcher.describe(ww2x=True, conv2d_fft=True)	
+			self.watcher.describe(pool=False, kernel_fft=True)	
 
-		# intra and conv2d_fft
+		# intra and kernel_fft
 		with self.assertRaises(Exception) as context:
-			self.watcher.describe(intra=True, conv2d_fft=True)	
+			self.watcher.describe(intra=True, kernel_fft=True)	
 				
 				
 		# min_evals > max_evals
@@ -1233,10 +1241,12 @@ class Test_VGG11(Test_Base):
 		self.watcher.describe(savefig='tmpdir')	
  
 	def test_model_layer_types_ww2x(self):
-		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers"
+		"""Test that ww.LAYER_TYPE.DENSE filter is applied only to DENSE layers
+		
+			Note:  for 0.7 release, ww2x=True has been changed to pool=False
 		"""
  
-		details = self.watcher.describe(ww2x=True)
+		details = self.watcher.describe(pool=False)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
@@ -1374,8 +1384,10 @@ class Test_VGG11(Test_Base):
  		
 	def test_describe_model_ww2x(self):
 		"""Test that alphas are computed and values are within thresholds
+		
+		Note:  ww2x=True has been replaced with pool=False
 		"""
-		details = self.watcher.describe(ww2x=True)
+		details = self.watcher.describe(pool=False)
 		self.assertEqual(len(details), 75)
 		
 		
@@ -1415,7 +1427,7 @@ class Test_VGG11(Test_Base):
 		
 		ths may not work with the new FAST SVD...
 		"""
-		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False, svd_method=ACCURATE_SVD)
+		details = self.watcher.analyze(layers=[self.second_layer], pool=False, randomize=False, plot=False, mp_fit=False, svd_method=ACCURATE_SVD)
 
 		# SLOW method
 		a = details.spectral_norm.to_numpy()
@@ -1586,7 +1598,7 @@ class Test_VGG11(Test_Base):
 		"""
  		
 		print("----test_density_fit-----")
-		details = self.watcher.analyze(layers = [self.fc1_layer], ww2x=True, randomize=False, plot=False, mp_fit=True)
+		details = self.watcher.analyze(layers = [self.fc1_layer], pool=False, randomize=False, plot=False, mp_fit=True)
 		print(details.columns)
 		print("num spikes", details.num_spikes)
 		print("sigma mp", details.sigma_mp)
@@ -1772,7 +1784,7 @@ class Test_VGG11(Test_Base):
 		"""Test that the mp_fits works correctly for the randomized matrices
 		Note: the fits currently not consistent
 		"""
-		details = self.watcher.analyze(mp_fit=True,  randomize=True,  ww2x=False)
+		details = self.watcher.analyze(mp_fit=True,  randomize=True,  pool=True)
 		self.assertTrue((details.rand_sigma_mp < 1.10).all())
 		self.assertTrue((details.rand_sigma_mp > 0.96).all())
 		self.assertTrue((details.rand_num_spikes.to_numpy() < 80).all())
@@ -2066,12 +2078,12 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 
 	
 	## TODO:
-	#  add layers, ww2x=True/False
+	#  add layers, pool=False/False
 	
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds
 		"""
-		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False, 
+		details = self.watcher.analyze(layers=[self.second_layer], pool=False, randomize=False, plot=False, mp_fit=False, 
 									svd_method=ACCURATE_SVD, pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
 		#d = self.watcher.get_details(results=results)_method
 		a = details.alpha.to_numpy()
@@ -2083,7 +2095,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 
 
 	
-		details2 = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False,  
+		details2 = self.watcher.analyze(layers=[self.second_layer], pool=False, randomize=False, plot=False, mp_fit=False,  
 									pl_package=POWERLAW_PACKAGE, xmax=None)
 		#d = self.watcher.get_details(results=results)WW_
 		a2 = details2.alpha.to_numpy()
@@ -2281,7 +2293,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds using the XMax=None option
 		"""
-		details = self.watcher.analyze(layers=[self.second_layer], ww2x=True, randomize=False, plot=False, mp_fit=False, pl_package=WW_POWERLAW_PACKAGE)
+		details = self.watcher.analyze(layers=[self.second_layer], pool=False, randomize=False, plot=False, mp_fit=False, pl_package=WW_POWERLAW_PACKAGE)
 		#d = self.watcher.get_details(results=results)
 		a = details.alpha.to_numpy()
 		self.assertAlmostEqual(a[0],1.74859, places=4)
@@ -2324,13 +2336,13 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		num_fingers = details.num_fingers.to_numpy()[0]
 		self.assertEqual(num_fingers,0)
 		
-	def test_conv2d_fft(self):
+	def test_kernel_fft(self):
 		"""Test the FFT method"; why does this fail ? """
 		
-		details = self.watcher.describe(layers=[self.first_layer], conv2d_fft=True)
+		details = self.watcher.describe(layers=[self.first_layer], kernel_fft=True)
 		print(details)
 		
-		details = self.watcher.analyze(layers=[self.first_layer], conv2d_fft=True)
+		details = self.watcher.analyze(layers=[self.first_layer], kernel_fft=True)
 		actual = details.alpha.to_numpy()[0]
 		expected = 2.144
 		self.assertAlmostEqual(actual,expected, places=4)

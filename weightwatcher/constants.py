@@ -99,18 +99,20 @@ DELTA_ES = 'deltaEs'
 INTRA = 'intra'
 CONV2D_FFT = 'conv2d_fft'
 CONV2D_NORM = 'conv2d_norm'
+KERNEL_FFT = 'kernel_fft'
+
 
 GLOROT_FIT = 'glorot_fit'
 
-WW2X = 'ww2x'
+WW2X = 'ww2x'  # deprecated
+POOL = 'pool'
 VECTORS = 'vectors'
 SMOOTH = 'smooth'
 MP_FIT = 'mp_fit'
 
 # maybe should be True
-DEFAULT_WW2X = False
-
-
+DEFAULT_WW2X = False # deprecated
+DEFAULT_POOL = True
 
 RESCALE = 'rescale'
 RANDOMIZE = 'randomize'
@@ -144,8 +146,8 @@ DEFAULT_START_ID = 0
 # These are NOT the defaults...see analyze() for actual defaults
 DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZE: True, 
                   SAVEDIR:DEF_SAVE_DIR, SAVEFIG:True, RESCALE:True, PLOT:False,
-                  DELTA_ES:False, INTRA:False, CHANNELS_STR:None, CONV2D_FFT:False, 
-                  WW2X:False, VECTORS:True, SMOOTH:None, STACKED:False, 
+                  DELTA_ES:False, INTRA:False, CHANNELS_STR:None, CONV2D_FFT:False,  KERNEL_FFT:False, 
+                  WW2X:DEFAULT_WW2X, POOL:DEFAULT_POOL, VECTORS:True, SMOOTH:None, STACKED:False, 
                   SVD_METHOD:ACCURATE_SVD,  FIX_FINGERS:None, FIT:POWER_LAW,
                   SPARSIFY: True, DETX: True,  MP_FIT:False,
                   MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, MAX_N:DEFAULT_MAX_N,

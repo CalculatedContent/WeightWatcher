@@ -642,7 +642,7 @@ class WWLayer:
         self.conv2d_count = 1  # reset by slice iterator for back compatability with ww2x
         self.w_norm = 1 # reset if normalize, conv2D_norm, or glorot_fix used
 
-        # to be used for conv2d_fft approach
+        # to be used for kernel_fft approach
         self.inputs_shape = []
         self.outputs_shape = []
         
@@ -656,7 +656,7 @@ class WWLayer:
         # details, set by metaprogramming in apply_xxx() methods
         self.columns = []
         
-        # conv2d_fft
+        # kernel_fft
         # only applies to Conv2D layers
         # layer, this would be some kind of layer weight options
         self.params = params
@@ -744,11 +744,11 @@ class WWLayer:
 
   
 
-    def set_weight_matrices(self, weights, combine_weights_and_biases=False):#, conv2d_fft=False, conv2d_norm=True):
+    def set_weight_matrices(self, weights, combine_weights_and_biases=False):#, kernel_fft=False, conv2d_norm=True):
         """extract the weight matrices from the framework layer weights (tensors)
         sets the weights and detailed properties on the ww (wrapper) layer 
     
-        conv2d_fft not supported yet
+        kernel_fft not supported yet
         
         
         TODO: support W+b """
@@ -758,7 +758,7 @@ class WWLayer:
             return 
         
         the_type = self.the_type
-        conv2d_fft = self.params[CONV2D_FFT]
+        kernel_fft = self.params[KERNEL_FFT]
         
         N, M, n_comp, rf = 0, 0, 0, None
         Wmats = []
@@ -772,11 +772,11 @@ class WWLayer:
             
         # this is very slow with describe 
         elif the_type == LAYER_TYPE.CONV2D:
-            if not conv2d_fft:
+            if not kernel_fft:
                 Wmats, N, M, rf = self.conv2D_Wmats(weights, self.channels)
                 n_comp = M*rf # TODO: bug fixed, check valid
             else:
-                Wmats, N, M, n_comp = self.get_conv2D_fft(weights)
+                Wmats, N, M, n_comp = self.get_kernel_fft(weights)
             
         elif the_type == LAYER_TYPE.NORM:
             #logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
@@ -797,10 +797,10 @@ class WWLayer:
         return 
         
         
-    def get_conv2D_fft(self, W, n=32):
+    def get_kernel_fft(self, W, n=32):
         """Compute FFT of Conv2D CHANNELS, to apply SVD later"""
         
-        logger.info("get_conv2D_fft on W {}".format(W.shape))
+        logger.info("get_kernel_fft on W {}".format(W.shape))
 
         # is pytorch or tensor style 
         s = W.shape
@@ -1211,10 +1211,17 @@ class WWLayerIterator(ModelIterator):
         min_evals = self.params.get('min_evals')
         max_evals = self.params.get('max_evals')
 
-        ww2x = self.params.get(WW2X)
+        pool = self.params.get(POOL)
         conv2d_fft = self.params.get(CONV2D_FFT)
         if conv2d_fft:
             rf = 1.0
+            
+        # deprecated
+        # ww2x = self.params.get(WW2X)
+        kernel_fft = self.params.get(KERNEL_FFT)
+        if kernel_fft:
+            rf = 1.0
+            logger.fatal("kernel_fft not supported, stopping")
         
         logger.debug("layer_supported  N {} max evals {}".format(N, max_evals))
         
@@ -1234,19 +1241,19 @@ class WWLayerIterator(ModelIterator):
             return False
         
         
-        elif ww2x and min_evals and M  <  min_evals:
+        elif not pool and min_evals and M  <  min_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M, min_evals))
             return False
                   
-        elif ww2x and max_evals and M  >  max_evals:
+        elif not pool and max_evals and M  >  max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N, max_evals))
             return False
 
-        elif (not ww2x) and (not conv2d_fft) and min_evals and M * rf < min_evals:
+        elif (pool) and (not kernel_fft) and min_evals and M * rf < min_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   
-        elif (not ww2x)  and (not conv2d_fft) and max_evals and M * rf > max_evals:
+        elif (pool)  and (not kernel_fft) and max_evals and M * rf > max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         
@@ -1257,7 +1264,7 @@ class WWLayerIterator(ModelIterator):
     
 
 class WW2xSliceIterator(WWLayerIterator):
-    """Iterator variant that breaks Conv2D layers into slices for back compatability"""
+    """Iterator variant that breaks Conv2D layers into slices for back compatability; used when NOT POOLING"""
     from copy import deepcopy
 
     def ww_slice_iter_(self):
@@ -1288,7 +1295,7 @@ class WW2xSliceIterator(WWLayerIterator):
 
 class WWIntraLayerIterator(WW2xSliceIterator):
     """Iterator variant that iterates over N-1 layer pairs, forms ESD for cross correlations
-    
+        
     Note:  apply_esd computes eigenvalues
            for intra-layer fits, we need the singular values of X, not the eigenvalues
            so, for coinsistancy with other methods, we need to mix the notation
@@ -1389,7 +1396,7 @@ class WWStackedLayerIterator(WWLayerIterator):
     """Iterator variant that stcaks all weight matrices into a single WWLayer
     
     Notes: 
-    - Only supports ww2x=False 
+    - Only supports pool=True (ww2x=False )
     
     - The layer can be analyzed, but does not yet support SVDSmoothing, etc 
     
@@ -1720,7 +1727,7 @@ class WeightWatcher:
 
 
     def distances(self, model_1, model_2,  method = RAW,
-                  layers = [], start_ids = 0, ww2x = False, channels = None):
+                  layers = [], start_ids = 0, pool = True, channels = None):
         """Compute the distances between model_1 and model_2 for each layer. 
         Reports Frobenius norm of the distance between each layer weights (tensor)
         
@@ -1740,8 +1747,8 @@ class WeightWatcher:
         
         params = DEFAULT_PARAMS.copy()
         # not implemented here : 
-        #params[CONV2D_FFT] = conv2d_fft
-        params[WW2X] = ww2x   
+        #params[kernel_fft] = kernel_fft
+        params[POOL] = pool  
         params[CHANNELS_STR] = channels
         params[LAYERS] = layers
         # not implemented here:
@@ -1756,7 +1763,7 @@ class WeightWatcher:
         params = self.normalize_params(params)
         
         #if method==CKA and ww2x is not True:
-        #    msg = "can not process Conv2D layers with CKA unless ww2x=True"
+        #    msg = "can not process Conv2D layers with CKA unless ww2x=True | pool=False"
         #    logger.error(msg)
         #    raise Exception(msg)
 
@@ -1807,7 +1814,7 @@ class WeightWatcher:
                             data['b_shape'] = UNKNOWN
                             data['delta_b'] = 0
                             
-                # THiS should work for ww2x=/True. but not tested yet
+                # THiS should work for ww2x=True|pool=False. but not tested yet
                 elif method in [EUCLIDEAN, CKA]:
                     if layer_1.has_weights:
                         W1_mats = layer_1.Wmats
@@ -2226,7 +2233,7 @@ class WeightWatcher:
 
         #stacked = params['stacked']
         intra = params[INTRA]
-        ww2x = params[WW2X]
+        pool = params[POOL]
         stacked = params[STACKED]
         
         layer_iterator = None
@@ -2236,8 +2243,8 @@ class WeightWatcher:
         elif intra:
             logger.info("using Intra layer Analysis (experimental)")
             layer_iterator = WWIntraLayerIterator(self.model, self.framework, filters=layers, params=params)     
-        elif ww2x:
-            logger.info("Using weightwatcher 0.2x style layer and slice iterator")
+        elif not pool:
+            logger.info("Pooling eigenvalues, Using weightwatcher 0.2x style layer and slice iterator")
             layer_iterator = WW2xSliceIterator(self.model, self.framework, filters=layers, params=params)     
         else:
             layer_iterator = WWLayerIterator(self.model, self.framework, filters=layers, params=params)     
@@ -2336,7 +2343,9 @@ class WeightWatcher:
                 glorot_fix=False,
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
-                mp_fit=False, conv2d_fft=False, conv2d_norm=True,  ww2x=DEFAULT_WW2X,
+                mp_fit=False, conv2d_norm=True,  
+                ww2x=DEFAULT_WW2X, pool=DEFAULT_POOL,
+                kernel_fft=False, conv2d_fft=False, 
                 deltas=False, intra=False, vectors=False, channels=None, 
                 stacked=False,
                 fix_fingers=False, xmin_max = None,  max_N=10,
@@ -2382,13 +2391,24 @@ class WeightWatcher:
             Randomizes the W matrices, plots the ESD and fits to the MP distribution
             Attempts to find Correlation Traps by computing the number of spikes for the randomized ESD 
             
-        conv2d_fft:  N/A yet
-            For Conv2D layers, use FFT method.  Otherwise, extract and combine the weight matrices for each receptive field
-            Note:  for conf2d_fft, the ESD is automatically subsampled to max_evals eigenvalues max  N/A yet
-            Can not uses with ww2x
+        
             
-        ww2x:  bool, default: False
+        ww2x:  bool, default: False (deprecated)
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
+            This option is deprecated, please use pool = not ww2x
+            
+        kernel_fft:  (deprecated)
+            For Conv2D layers, apply FFT to the kernels.  O
+            Not supported anymore
+            
+            
+        pool: bool, default: True
+            For layers with multiple matrices (like COnv2D layers), pools the eigenvalues beforer running the  analysis
+            
+        conv2d_fft:  (experimental)
+            For Conv2D layers, apply the FFT method to the inpuyt/output maps (weight matrices) 
+            Can be used with or without pooling
+            
             
         savefig:  string,  default: 
             Save the figures generated in png files.  Default: save to ww-img
@@ -2475,10 +2495,13 @@ class WeightWatcher:
         if min_size or max_size:
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
         
-        # I need to figure this out
-        # can not specify params on input yet
-        # maybe just have a different analyze() that only uses this 
-        params=DEFAULT_PARAMS.copy()
+        
+        if ww2x:
+            logger.warning("WW2X option deprecated, reverting too POOL=False")
+            ww2x=False
+            pool=False
+            
+        params=DEFAULT_PARAMS.copy()          
         
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
@@ -2488,8 +2511,15 @@ class WeightWatcher:
         #params[NORMALIZE] = normalize   #removed 0.6.5
         params[GLOROT_FIT] = glorot_fix
         params[CONV2D_NORM] = conv2d_norm
-        params[CONV2D_FFT] = conv2d_fft
+        
+        params[POOL] = pool  
+        #deprecated
         params[WW2X] = ww2x   
+        params[kernel_fft] = kernel_fft
+
+        #experimental
+        params[CONV2D_FFT] = conv2d_fft
+
         params[DELTA_ES] = deltas 
         params[INTRA] = intra 
         params[CHANNELS_STR] = channels
@@ -2629,8 +2659,8 @@ class WeightWatcher:
     def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
                 min_size=None, max_size=None, 
                 glorot_fix=False, 
-                savefig=DEF_SAVE_DIR,
-                conv2d_fft=False, conv2d_norm=True,  ww2x=False, 
+                savefig=DEF_SAVE_DIR, ww2x=False, pool=True,
+                kernel_fft=False,  conv2d_fft=False, conv2d_norm=True, 
                 intra=False, channels=None, stacked=False,  start_ids=0):
         """
         Same as analyze() , but does not run the ESD or Power law fits
@@ -2646,6 +2676,11 @@ class WeightWatcher:
         if min_size or max_size:
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
 
+        if ww2x:
+            logger.warning("WW2X option deprecated, reverting too POOL=False")
+            ww2x=False
+            pool=False
+            
         params = DEFAULT_PARAMS.copy()
 
         params[MIN_EVALS] = min_evals 
@@ -2654,8 +2689,14 @@ class WeightWatcher:
         # params[NORMALIZE] = normalize  #removed 0.6.5 
         params[GLOROT_FIT] = glorot_fix
         params[CONV2D_NORM] = conv2d_norm
-        params[CONV2D_FFT] = conv2d_fft
+        
+        #deprecated
+        params[KERNEL_FFT] = kernel_fft
         params[WW2X] = ww2x   
+        
+        params[CONV2D_FFT] = conv2d_fft
+        params[POOL] = pool   
+        
         params[INTRA] = intra 
         params[CHANNELS_STR] = channels
         params[LAYERS] = layers
@@ -2681,9 +2722,9 @@ class WeightWatcher:
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
-                if ww2x:
+                if not pool:
                     num_evals = ww_layer.M
-                elif conv2d_fft:
+                elif kernel_fft:
                     num_evals = ww_layer.num_components
                 else:
                     num_evals = ww_layer.M * ww_layer.rf
@@ -2726,15 +2767,26 @@ class WeightWatcher:
             logger.warning("unrecognized svd_method {}. Must be one of {}".format(svd_method, VALID_SVD_METHODS))
             valid = False
             
-        # can not specify ww2x and conv2d_fft at same time
-        if params.get(WW2X) and params.get('conv2d_fft'):
-            logger.warning("can not specify ww2x and conv2d_fft")
+        
+        if params.get(WW2X):
+            logger.warning("ww2x option deprecated, please use pool=false")
             valid = False
             
             
-        # can not specify intra and conv2d_fft at same time
-        if params.get(INTRA) and params.get('conv2d_fft'):
-            logger.warning("can not specify intra and conv2d_fft")
+        if params.get(KERNEL_FFT):
+            logger.warning("KERNEL_FFT option not currently supported, may be deprecated")
+            valid = False
+            
+            
+            # can not specify ww2x and kernel_fft at same time
+        if not params.get(POOL) and params.get('kernel_fft'):
+            logger.warning("can not specify kernel_fft without pooll=True")
+            valid = False
+            
+            
+        # can not specify intra and kernel_fft at same time
+        if params.get(INTRA) and params.get('kernel_fft'):
+            logger.warning("can not specify intra and kernel_fft")
             valid = False
         
         # channels must be None, 'first', or 'last'
@@ -3655,7 +3707,7 @@ class WeightWatcher:
     #    
     #    return pyRMT.optimalShrinkage(W)
 
-    def SVDSmoothing(self, model=None, percent=0.2, ww2x=False, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):
+    def SVDSmoothing(self, model=None, percent=0.2, pool=True, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:
@@ -3663,24 +3715,25 @@ class WeightWatcher:
             If layer ids < 0, then skip the layers specified
             All layer ids must be > 0 or < 0
         
-        ww2x:
-            Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
-            
+        pool:
+            pool the eigenvalues before applying powerlaw analysis
+            if pool=False, Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
+        
         """
         
         self.set_model_(model)          
          
         params = DEFAULT_PARAMS.copy()
         
-        params[WW2X] = ww2x
+        params[POOL] = pool
         params[LAYERS] = layers
         params[FIT] = fit # only useful for method=LAMBDA_MINa
         params[PLOT] = False
         params[START_IDS] = start_ids
 
         
-        if ww2x:
-            msg = "ww2x not supported yet for SVDSmoothness, ending"
+        if not pool:
+            msg = "only pooling (not ww2x) is supported yet for SVDSmoothness, ending"
             logger.error(msg)
             raise Exception(msg)
         
@@ -3858,7 +3911,7 @@ class WeightWatcher:
         return ww_layer
         
 
-    def SVDSharpness(self, model=None,  ww2x=False, layers=[], plot=False, start_ids=0):
+    def SVDSharpness(self, model=None,  pool=True, layers=[], plot=False, start_ids=0):
         """Apply the SVD Sharpness Transform to model
         
         layers:
@@ -3866,7 +3919,8 @@ class WeightWatcher:
             If layer ids < 0, then skip the layers specified
             All layer ids must be > 0 or < 0
         
-        ww2x:
+        pool:
+            If False, dot not pool the eigenvalues before analyzing
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
             
         """
@@ -3874,13 +3928,13 @@ class WeightWatcher:
         self.set_model_(model)          
          
         params=DEFAULT_PARAMS.copy()
-        params[WW2X] = ww2x
+        params[POOL] = pool
         params[LAYERS] = layers
         params[PLOT] = plot
         params[START_IDS] = start_ids
 
-        if ww2x:
-            msg = "ww2x not supported yet for SVDSharpness, ending"
+        if not poolx:
+            msg = "omly pool=True, (not ww2x) is supported yet for SVDSharpness, ending"
             logger.error(msg)
             raise Exception(msg)
         

@@ -2166,21 +2166,31 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		
 		
 	def test_fix_fingers_xmin_peak(self):
-		"""Test fix fingers xmin_peak 
+		"""Test fix fingers xmin_peak.  Again, notice that wiothj and without FORCE give slightly different results
 		"""
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)	
+			
 		# default
-		details = self.watcher.analyze(layers=[self.second_layer], pl_package=POWERLAW, xmax=XMAX_FORCE)
+		details = self.watcher.analyze(layers=[self.second_layer], xmax=FORCE, pl_package=POWERLAW_PACKAGE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 7.116304
 		print("ACTUAL {}".format(actual))
 		self.assertAlmostEqual(actual,expected, places=2)
-		
-		# XMIN_PEAK
-		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0, pl_package=POWERLAW)
+
+		# XMIN_PEAK xmax FORCED
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmax=FORCE, xmin_max=1.0, pl_package=POWERLAW_PACKAGE)
 		actual = details.alpha[0]
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.68
+		delta = 0.01
+		self.assertAlmostEqual(actual,expected, None, '',  delta)
+		
+		
+		# XMIN_PEAK xmax None, sligltly different alphja
+		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='xmin_peak', xmin_max=1.0, pl_package=POWERLAW_PACKAGE)
+		actual = details.alpha[0]
+		actual = details.alpha.to_numpy()[0]
+		expected = 1.72
 		delta = 0.01
 		self.assertAlmostEqual(actual,expected, None, '',  delta)
 	
@@ -2194,7 +2204,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		expected = 7.12
 		self.assertAlmostEqual(actual,expected, places=2)
 		
-		# CLIP_XMAX
+		# CLIP_XMAX FORCED
 		details = self.watcher.analyze(layers=[self.second_layer], xmax=FORCE, fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.67
@@ -2202,6 +2212,8 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		
 		num_fingers = details.num_fingers.to_numpy()[0]
 		self.assertEqual(num_fingers,1)
+
+
 
 	def test_fix_fingers_clip_xmax_None(self):
 		"""Test fix fingers clip_xmax:  Note that there are NO fingers with xmax=None 
@@ -2213,14 +2225,14 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		expected = 1.72
 		self.assertAlmostEqual(actual,expected, places=2)
 		
-		# CLIP_XMAX,=None is efaiult
+		# CLIP_XMAX,=None is default, and there is no finger
 		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE)
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.72
 		self.assertAlmostEqual(actual,expected, places=2)
 		
 		num_fingers = details.num_fingers.to_numpy()[0]
-		self.assertEqual(num_fingers,1)
+		self.assertEqual(num_fingers,0)
 		
 		# CLIP_XMAX, =None explicit
 		details = self.watcher.analyze(layers=[self.second_layer], fix_fingers='clip_xmax', pl_package=POWERLAW_PACKAGE, xmax=None)

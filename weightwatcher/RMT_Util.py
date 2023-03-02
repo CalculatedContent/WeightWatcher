@@ -690,8 +690,8 @@ def save_fig(plt, figname, layer_id, savedir):
     plt.tight_layout()
     plt.savefig(figname)
     return 
-
-#TODO:
+ 
+#TODO: WHAT IS THIS?
 def fit_xxx_powerlaw(evals, xmin=None):
     N = int(len(evals)/4)
     xmax = np.max(evals)       
@@ -702,7 +702,6 @@ def fit_xxx_powerlaw(evals, xmin=None):
         prev_fit = powerlaw.Fit(evals, xmax=xmax)
        
     fit = prev_fit 
-    print(f"fit alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}")  
 
     prev_alpha = prev_fit.alpha
     prev_sigma = prev_fit.sigma

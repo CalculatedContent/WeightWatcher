@@ -305,6 +305,7 @@ class Test_KerasLayers(Test_Base):
 		self.assertEqual(replaced_new_B_min, expected_old_B_min)
 		
 		
+
 			
 
 class Test_PyTorchLayers(Test_Base):

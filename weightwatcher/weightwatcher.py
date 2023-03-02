@@ -3262,19 +3262,30 @@ class WeightWatcher:
         if plot:
             
             if status==SUCCESS:
+                min_evals_to_plot = (xmin/100)
+                
                 fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
                 fig2 = fit.plot_pdf(color='r', linewidth=2)
                 if fit_type==POWER_LAW:
                     fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+                
                 else:
                     fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
-            
-            plot_loghist(evals[evals>(xmin/100)], bins=100, xmin=xmin)
+            else:
+                xmin = -1
+                min_evals_to_plot = (0.4*np.max(evals)/100)
+
+            evals_to_plot = evals[evals>min_evals_to_plot]
+            plot_loghist(evals_to_plot, bins=100, xmin=xmin)
             title = "Log-Log ESD for {}\n".format(layer_name) 
-            title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \
-                r'$D_{KS}=$'+"{0:.3f}; ".format(D) + \
-                r"$\lambda_{min}=$"+"{0:.3f} ".format(xmin) + \
-                r"$\sigma=$"+"{0:.3f}".format(sigma) + "\n"
+            
+            if status==SUCCESS:
+                title = title + r"$\alpha=${0:.3f}; ".format(alpha) + \
+                    r'$D_{KS}=$'+"{0:.3f}; ".format(D) + \
+                    r"$\lambda_{min}=$"+"{0:.3f} ".format(xmin) + \
+                    r"$\sigma=$"+"{0:.3f}".format(sigma) + "\n"
+            else:
+                title = title + " PL FIT FAILED"
 
             plt.title(title)
             plt.legend()
@@ -3286,7 +3297,7 @@ class WeightWatcher:
     
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
-            plt.hist(evals, bins=num_bins, density=True)
+            plt.hist(evals_to_plot, bins=num_bins, density=True)
             title = "Lin-Lin ESD for {}".format(layer_name) 
             plt.title(title)
             plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
@@ -3297,7 +3308,7 @@ class WeightWatcher:
             plt.show(); plt.clf()
 
             # plot log eigenvalue histogram
-            nonzero_evals = evals[evals > 0.0]
+            nonzero_evals = evals_to_plot[evals_to_plot > 0.0]
             plt.hist(np.log10(nonzero_evals), bins=100, density=True)
             title = "Log-Lin ESD for {}".format(layer_name) 
             plt.title(title)

@@ -689,7 +689,7 @@ class Test_VGG11_noModel(Test_Base):
 		self.fc1_layer = 25
 		self.fc2_layer = 28
 		self.fc3_layer = 31
-		
+
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
 
@@ -2786,6 +2786,11 @@ class Test_PyTorchSVD(Test_Base):
 		"""I run before every test in this class
 		"""
 		print("\n-------------------------------------\nIn Test_PyTorchSVD:", self._testMethodName)
+		self.fc1_layer = 25
+		self.fc2_layer = 28
+		self.fc3_layer = 31
+
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 
 
 	def test_torch_svd(self):
@@ -2798,10 +2803,10 @@ class Test_PyTorchSVD(Test_Base):
 
 		from time import time
 		start = time()
-		details_fast = watcher.analyze(layers=self.fclayers, svd_method="fast")
+		details_fast = watcher.analyze(layers=self.fc_layers, svd_method="fast")
 		print(f"PyTorch (fast): {time() - start}s")
 		start = time()
-		details_accurate = watcher.analyze(layers=self.fclayers, svd_method="accurate")
+		details_accurate = watcher.analyze(layers=self.fc_layers, svd_method="accurate")
 		print(f"SciPy (accurate): {time() - start}s")
 
 		for f in ["alpha", "alpha_weighted", "D", "sigma", "sv_max", "xmin"]:

@@ -3014,6 +3014,21 @@ class TestPandas(Test_Base):
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
 
+	def test_column_names_analyze_detX(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
+							'alpha_weighted', 'best_fit', 'detX_num', 'detX_val',
+							'detX_val_unrescaled', 'entropy', 'fit_entropy', 'has_esd',
+							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+							'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67], detX=True)
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
 	def test_column_names_analyze_randomize(self):
 		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
  					        'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',

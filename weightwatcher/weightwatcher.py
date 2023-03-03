@@ -2164,12 +2164,17 @@ class WeightWatcher:
             if savefig:
                 save_fig(plt, "detX", plot_id, savedir)
             plt.show(); plt.clf()
-            
+
+        ww_layer.add_column('detX_num', detX_num)
+
+        detX_val_unrescaled = evals[detX_idx]
+
         evals = un_rescale_eigenvalues(evals, Wscale)
         detX_val = evals[detX_idx]
-        ww_layer.add_column('detX_num', detX_num)  
-        ww_layer.add_column('detX_val', detX_val)  
-            
+
+        ww_layer.add_column('detX_val', detX_val)
+        ww_layer.add_column('detX_val_unrescaled', detX_val_unrescaled)
+
         return ww_layer
     
     

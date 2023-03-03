@@ -1086,6 +1086,18 @@ class Test_VGG11(Test_Base):
 	
 		return
 
+	def test_print_watcher(self):
+		"""Issue #188"""
+		
+		results = self.watcher.results
+		self.assertTrue(results is None)
+		
+		try:
+			print(self.watcher)
+		except:
+			self.assertTrue(False, "watcher can not be printed")
+			
+					
 		
 	def test_layer_ids(self):
 		"""Test that framework layer iteraor sets the layer ids as expected"""
@@ -1100,8 +1112,16 @@ class Test_VGG11(Test_Base):
 		self.assertEqual(layer_ids[-3], self.fc1_layer)
 		self.assertEqual(layer_ids[-2], self.fc2_layer)
 		self.assertEqual(layer_ids[-1], self.fc3_layer)
-
-
+		
+		
+		
+	def test_get_framework_layer(self):
+		"""Issue #165, get the underlying framework layer"""
+		
+		layer = self.watcher.get_framework_layer(layer=self.fc1_layer)
+		self.assertTrue(isinstance(layer,torch.nn.modules.linear.Linear))
+		print(layer)
+		
 			
 	def test_basic_columns(self):
 		"""Test that new results are returns a valid pandas dataframe
@@ -1596,17 +1616,39 @@ class Test_VGG11(Test_Base):
 	
 	def test_density_fit(self):
 		"""Test the fitted sigma from the density fit: FIX
+		
+		There is something wrong with these fits, the sigma is way too low
 		"""
  		
-		print("----test_density_fit-----")
 		details = self.watcher.analyze(layers = [self.fc1_layer], pool=False, randomize=False, plot=False, mp_fit=True)
-		print(details.columns)
-		print("num spikes", details.num_spikes)
-		print("sigma mp", details.sigma_mp)
-		print("softrank", details.mp_softrank)
+		num_spikes = details.num_spikes.to_numpy()[0]
+		sigma_mp = details.sigma_mp.to_numpy()[0]
+		#mp_softrank = details.mp_softrank.to_numpy()[0])
+		
+		print("num spikes", num_spikes)
+		print("sigma mp", sigma_mp)
+		
+		print("I think something is wrong here")
 
-		#self.assertAlmostEqual(details.num_spikes, 13) #numofSig
-		#self.assertAlmostEqual(details.sigma_mp, 1.064648437) #sigma_mp
+		#self.assertAlmostEqual(num_spikes, 672) #numofSig
+		#self.assertAlmostEqual(sigma_mp, 0.7216) #sigma_mp
+		#self.assertAlmostEqual(details.np_softrank, 0.203082, places = 6) 
+		
+	def test_density_fit_on_randomized_W(self):
+		"""Test the fitted sigma from the density fit: FIX
+		
+		"""
+ 		
+		details = self.watcher.analyze(layers = [self.fc1_layer], pool=False, randomize=True, plot=False, mp_fit=True)
+		rand_num_spikes = details.rand_num_spikes.to_numpy()[0]
+		rand_sigma_mp = details.rand_sigma_mp.to_numpy()[0]
+		#mp_softrank = details.mp_softrank.to_numpy()[0])
+		
+		print("rand_num_spikes", rand_num_spikes)  # correlation trap ?
+		print("sigma mp", sigma_mp)
+
+		self.assertAlmostEqual(rand_num_spikes, 1) #numofSig
+		self.assertAlmostEqual(rand_sigma_mp, 1.0) #sigma_mp
 		#self.assertAlmostEqual(details.np_softrank, 0.203082, places = 6) 
 
 

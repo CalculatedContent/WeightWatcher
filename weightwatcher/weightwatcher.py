@@ -1506,6 +1506,8 @@ class WeightWatcher:
         self.model = model
         self.details = None
         self.framework = None
+        
+        self.results = None
 
         banner = self.banner()
 
@@ -3351,7 +3353,7 @@ class WeightWatcher:
             plt.legend()
             if savefig:
                 save_fig(plt, "esd5", plot_id, savedir)
-                plt.savefig("ww.layer{}.esd4.png".format(layer_id))
+                plt.savefig("ww.layer{}.esd5.png".format(layer_id))
                 
                                 
             plt.show(); plt.clf() 
@@ -3431,6 +3433,36 @@ class WeightWatcher:
         assert(ww_layer.has_weights)
         
         return ww_layer.Wmats
+    
+    
+    def get_framework_layer(self, model=None, layer=None, params=None):
+        """Get the underlying framework layer, specified by id or name)"""
+        
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
+        self.set_model_(model) 
+        
+        details = self.describe(model=self.model)
+        layer_ids = details['layer_id'].to_numpy()
+        layer_names = details['name'].to_numpy()
+             
+        if isinstance(layer, numbers.Integral) and layer not in layer_ids:
+            logger.error("Can not find layer id {} in valid layer_ids {}".format(layer, layer_ids))
+            return []
+        
+        elif type(layer) is str and layer not in layer_names:
+            logger.error("Can not find layer name {} in valid layer_names {}".format(layer, layer_names))
+            return []
+    
+        logger.info("Getting Weights for layer {} ".format(layer))
+
+        layer_iter = WWLayerIterator(model=self.model, framework=self.framework, filters=[layer], params=params)     
+        details = pd.DataFrame(columns=['layer_id', 'name'])
+           
+        ww_layer = next(layer_iter)
+        
+        return ww_layer.framework_layer.layer
+    
     
     def apply_norm_metrics(self, ww_layer, params=None):
         """Compute the norm metrics, as they depend on the eigenvalues"""

@@ -4012,7 +4012,7 @@ class WeightWatcher:
         params[PLOT] = plot
         params[START_IDS] = start_ids
 
-        if not poolx:
+        if not pool:
             msg = "omly pool=True, (not ww2x) is supported yet for SVDSharpness, ending"
             logger.error(msg)
             raise Exception(msg)

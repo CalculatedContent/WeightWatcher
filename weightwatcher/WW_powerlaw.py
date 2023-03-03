@@ -119,7 +119,7 @@ Fit = WWFit
 def pl_fit(data=None, xmin=None, xmax=None, verbose=False, distribution=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
     
     if xmax==FORCE:
-        xmax==np.max(data)
+        xmax=np.max(data)
     
     if pl_package==WW_POWERLAW_PACKAGE and distribution==POWER_LAW:
         logger.info("PL FIT running NEW power law method")

@@ -1645,7 +1645,7 @@ class Test_VGG11_Base(Test_Base):
 		#mp_softrank = details.mp_softrank.to_numpy()[0])
 		
 		print("rand_num_spikes", rand_num_spikes)  # correlation trap ?
-		print("sigma mp", sigma_mp)
+		print("rand_sigma mp", rand_sigma_mp)
 
 		self.assertAlmostEqual(rand_num_spikes, 1) #numofSig
 		self.assertAlmostEqual(rand_sigma_mp, 1.0) #sigma_mp

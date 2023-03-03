@@ -45,7 +45,7 @@ from .WW_powerlaw import *
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(WW_NAME) 
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 
 mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)

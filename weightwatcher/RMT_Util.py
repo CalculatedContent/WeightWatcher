@@ -132,19 +132,22 @@ def marchenko_pastur_pdf(x_min, x_max, Q, sigma=1.0, grid_size=0.001):
     """Return a discrete set of (x,y) values representing the Marchenko-Pastur distrbution from RMT.
     Computing on a grid of size 0.001 by default"""
     y = 1 / Q
-    x = np.arange(x_min+10**-9, x_max, grid_size)
 
     b = np.power(sigma * (1 + np.sqrt(1 / Q)), 2)  # Largest eigenvalue
-    a = np.power(sigma * (1 - np.sqrt(1 / Q)), 2)  # Smallest eigenvalu
-    
-    return x, (1 / (2 * np.pi * sigma * sigma * x * y)) * np.sqrt((b - x) * (x - a)+10**-9)
+    a = np.power(sigma * (1 - np.sqrt(1 / Q)), 2)  # Smallest eigenvalue
+
+    x_min = max(x_min, a)
+    x_max = min(x_max, b)
+    x = np.arange(x_min, x_max, grid_size)
+
+    return x, (1 / (2 * np.pi * sigma * sigma * x * y)) * np.sqrt((b - x) * (x - a))
 
 
 def quarter_circle_pdf(x_min, x_max, sigma=1.0, grid_size=0.001):
     """Return a discrete set of (x,y) values representing the Quarter-Circle distribution from RMT.
     Computing on a grid of size 0.001 by default"""
-    x = np.arange(x_min+10**-9, x_max, grid_size)
-    
+    x = np.arange(x_min, min(x_max, 2), grid_size)
+
     # When Q = 1, we look at the singular values instaed of eigenvalues
     return x, (1 / (np.pi * sigma * sigma)) * np.sqrt((4 - x ** 2)+10**-9)
 
@@ -249,7 +252,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
     percent_mass = 100.0 * (num_spikes) / len(to_fit)
 
     bulk_fit = np.sort(to_fit)[num_spikes:]
-    x_min, x_max = 0, np.max(bulk_fit)
+    x_min, x_max = np.min(bulk_fit), np.max(bulk_fit)
     
     if Q == 1:
         x, mp = quarter_circle_pdf(x_min, x_max, sigma)
@@ -279,12 +282,12 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0):
 
     if method == "MP":
         to_plot = np.sort(to_plot)
-        x_min, x_max = 0, np.max(to_plot)
+        x_min, x_max = np.min(to_plot), np.max(to_plot)
         x, y = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
     elif method == "QC":
         cutoff = np.sqrt(cutoff)
         to_plot = np.sort(to_plot)
-        x_min, x_max = 0, np.max(to_plot)
+        x_min, x_max = np.min(to_plot), np.max(to_plot)
         x, y = quarter_circle_pdf(x_min, x_max, sigma)
         
     plt.hist(to_plot, bins=100, alpha=0.6, color=color, density=True, label="ead")

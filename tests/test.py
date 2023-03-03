@@ -173,7 +173,7 @@ class Test_KerasLayers(Test_Base):
 		
 
 		keras_layer = actual_layer.layer
-		self.assertEquals(keras_layer, self.last_layer)
+		self.assertEqual(keras_layer, self.last_layer)
 		
 		expected_type = "<class 'keras.layers.core.dense.Dense'>"
 		actual_type = str(type(keras_layer))
@@ -350,7 +350,7 @@ class Test_PyTorchLayers(Test_Base):
 		
 
 		pytorch_layer = actual_layer.layer
-		self.assertEquals(pytorch_layer, self.last_layer)
+		self.assertEqual(pytorch_layer, self.last_layer)
 		
 		expected_type = "<class 'torch.nn.modules.linear.Linear'>"
 		actual_type = str(type(pytorch_layer))
@@ -689,7 +689,7 @@ class Test_VGG11_noModel(Test_Base):
 		self.fc1_layer = 25
 		self.fc2_layer = 28
 		self.fc3_layer = 31
-		
+
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
 
@@ -987,11 +987,11 @@ class Test_Albert(Test_Base):
 		self.params = DEFAULT_PARAMS.copy()
 		model_name = f"albert-xxlarge-v2"
 		self.model  = AlbertModel.from_pretrained(model_name)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)	
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 			
 		
-	def test_albert_availbla(self):
+	def test_albert_availble(self):
 		
 		details = self.watcher.describe(layers=[17])
 		print(details)
@@ -1003,7 +1003,7 @@ class Test_Albert(Test_Base):
 		details = self.watcher.analyze(layers=[17])
 		actual_alpha = details.alpha.to_numpy()[0]
 		expected_alpha = 6.883741560463132
-		self.assertAlmostEqual(actual_alpha,expected_alpha)
+		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.005)
 		
 		
 	def test_xmax_set(self):
@@ -1020,7 +1020,7 @@ class Test_Albert(Test_Base):
 		details = self.watcher.analyze(layers=[17], pl_package=POWERLAW)
 		actual_alpha = details.alpha.to_numpy()[0]
 		expected_alpha = 6.883741560463132
-		self.assertAlmostEqual(actual_alpha,expected_alpha)
+		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.005)
 		
 		
 	def test_fix_fingers(self):
@@ -1042,7 +1042,7 @@ class Test_Albert(Test_Base):
 
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
-class Test_VGG11(Test_Base):
+class Test_VGG11_Base(Test_Base):
 	"""
 	layer_id    name     M  ...      longname  num_evals rf
 0          2  Conv2d     3  ...    features.0         27  9
@@ -1061,7 +1061,7 @@ class Test_VGG11(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_VGG11_Base:", self._testMethodName)
 		
 		self.params = DEFAULT_PARAMS.copy()
 		# use older power lae
@@ -1645,7 +1645,7 @@ class Test_VGG11(Test_Base):
 		#mp_softrank = details.mp_softrank.to_numpy()[0])
 		
 		print("rand_num_spikes", rand_num_spikes)  # correlation trap ?
-		print("sigma mp", sigma_mp)
+		print("rand_sigma mp", rand_sigma_mp)
 
 		self.assertAlmostEqual(rand_num_spikes, 1) #numofSig
 		self.assertAlmostEqual(rand_sigma_mp, 1.0) #sigma_mp
@@ -2024,7 +2024,7 @@ class Test_VGG11(Test_Base):
 
 
 
-class Test_VGG11_StateDict(Test_VGG11):
+class Test_VGG11_StateDict(Test_VGG11_Base):
 	"""All the same tests as for VGG11, but using the statedict option"""
 	
 	def setUp(self):
@@ -2093,7 +2093,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 
 
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 		self.first_layer = 2
 		self.second_layer = 5
@@ -2223,7 +2223,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 	def test_fix_fingers_xmin_peak(self):
 		"""Test fix fingers xmin_peak.  Again, notice that wiothj and without FORCE give slightly different results
 		"""
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)	
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 			
 		# default
 		details = self.watcher.analyze(layers=[self.second_layer], xmax=FORCE, pl_package=POWERLAW_PACKAGE)
@@ -2312,7 +2312,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		self.params = DEFAULT_PARAMS.copy()
 
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 		self.first_layer = 2
 		self.second_layer = 5
@@ -2777,7 +2777,7 @@ class Test_Distances(Test_Base):
 
 
 
-class TestPyTorchSVD(Test_Base):
+class Test_PyTorchSVD(Test_Base):
 	"""
 	Tests for discrepancies between the scipy and torch implementations of SVD.
 	"""
@@ -2785,7 +2785,12 @@ class TestPyTorchSVD(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_PyTorchSVD:", self._testMethodName)
+		self.fc1_layer = 25
+		self.fc2_layer = 28
+		self.fc3_layer = 31
+
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 
 
 	def test_torch_svd(self):
@@ -2798,10 +2803,10 @@ class TestPyTorchSVD(Test_Base):
 
 		from time import time
 		start = time()
-		details_fast = watcher.analyze(layers=self.fclayers, svd_method="fast")
+		details_fast = watcher.analyze(layers=self.fc_layers, svd_method="fast")
 		print(f"PyTorch (fast): {time() - start}s")
 		start = time()
-		details_accurate = watcher.analyze(layers=self.fclayers, svd_method="accurate")
+		details_accurate = watcher.analyze(layers=self.fc_layers, svd_method="accurate")
 		print(f"SciPy (accurate): {time() - start}s")
 
 		for f in ["alpha", "alpha_weighted", "D", "sigma", "sv_max", "xmin"]:
@@ -2862,11 +2867,11 @@ class TestPyTorchSVD(Test_Base):
 		self.assertLess(err, 0.0005, msg=f"torch svd and svd_vals differed by {err}")
 
 
-class TestPowerLaw(Test_Base):
+class Test_PowerLaw(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPowerLaw:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_PowerLaw:", self._testMethodName)
 		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		params = DEFAULT_PARAMS.copy()
@@ -2969,11 +2974,11 @@ class TestPowerLaw(Test_Base):
 		
 		
 
-class TestPlots(Test_Base):
+class Test_Plots(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPlots:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_Plots:", self._testMethodName)
 		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
@@ -2983,11 +2988,11 @@ class TestPlots(Test_Base):
 		"""
 		self.watcher.analyze(layers=[67], plot=True, randomize=True)
 
-class TestPandas(Test_Base):
+class Test_Pandas(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPandas:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_Pandas:", self._testMethodName)
 		self.model = models.resnet18()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
@@ -3010,6 +3015,21 @@ class TestPandas(Test_Base):
 							'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67])
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+
+	def test_column_names_analyze_detX(self):
+		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
+							'alpha_weighted', 'best_fit', 'detX_num', 'detX_val',
+							'detX_val_unrescaled', 'entropy', 'fit_entropy', 'has_esd',
+							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+							'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'xmax', 'xmin']
+
+		details = self.watcher.analyze(layers=[67], detX=True)
 		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))

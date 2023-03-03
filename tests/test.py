@@ -173,7 +173,7 @@ class Test_KerasLayers(Test_Base):
 		
 
 		keras_layer = actual_layer.layer
-		self.assertEquals(keras_layer, self.last_layer)
+		self.assertEqual(keras_layer, self.last_layer)
 		
 		expected_type = "<class 'keras.layers.core.dense.Dense'>"
 		actual_type = str(type(keras_layer))
@@ -350,7 +350,7 @@ class Test_PyTorchLayers(Test_Base):
 		
 
 		pytorch_layer = actual_layer.layer
-		self.assertEquals(pytorch_layer, self.last_layer)
+		self.assertEqual(pytorch_layer, self.last_layer)
 		
 		expected_type = "<class 'torch.nn.modules.linear.Linear'>"
 		actual_type = str(type(pytorch_layer))

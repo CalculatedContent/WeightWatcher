@@ -2954,9 +2954,19 @@ class TestPowerLaw(Test_Base):
 		
 		We juit need to create some fake data that follows a Pareto distriibution"""
 		
+        # Generate sample data
+		np.random.seed(123)
+		data = np.random.pareto(2.5, 100)
 		
-		self.assertTrue(False)
+	
+		result = WW_powerlaw.pl_fit(data, xmax=np.max(data), pl_package=POWERLAW_PACKAGE)
+		expected_alpha = result.alpha
+		self.assertAlmostEqual(expected_alpha, 2.5, delta=0.1)
 
+		result = WW_powerlaw.pl_fit(data, xmax=np.max(data), pl_package=WW_POWERLAW_PACKAGE)
+		actual_alpha = result.alpha	
+		self.assertAlmostEqual(expected_alpha, actual_alpha, delta=0.1)
+		
 		
 
 class TestPlots(Test_Base):

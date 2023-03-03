@@ -249,7 +249,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
     percent_mass = 100.0 * (num_spikes) / len(to_fit)
 
     bulk_fit = np.sort(to_fit)[num_spikes:]
-    x_min, x_max = 0, np.max(bulk_fit)
+    x_min, x_max = np.min(bulk_fit), np.max(bulk_fit)
     
     if Q == 1:
         x, mp = quarter_circle_pdf(x_min, x_max, sigma)
@@ -279,12 +279,12 @@ def plot_density(to_plot, sigma, Q, method="MP", color='blue', cutoff=0.0):
 
     if method == "MP":
         to_plot = np.sort(to_plot)
-        x_min, x_max = 0, np.max(to_plot)
+        x_min, x_max = np.min(to_plot), np.max(to_plot)
         x, y = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
     elif method == "QC":
         cutoff = np.sqrt(cutoff)
         to_plot = np.sort(to_plot)
-        x_min, x_max = 0, np.max(to_plot)
+        x_min, x_max = np.min(to_plot), np.max(to_plot)
         x, y = quarter_circle_pdf(x_min, x_max, sigma)
         
     plt.hist(to_plot, bins=100, alpha=0.6, color=color, density=True, label="ead")

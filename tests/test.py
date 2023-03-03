@@ -1042,7 +1042,7 @@ class Test_Albert(Test_Base):
 
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
-class Test_VGG11(Test_Base):
+class Test_VGG11_Base(Test_Base):
 	"""
 	layer_id    name     M  ...      longname  num_evals rf
 0          2  Conv2d     3  ...    features.0         27  9
@@ -1061,7 +1061,7 @@ class Test_VGG11(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn Test_VGG11:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_VGG11_Base:", self._testMethodName)
 		
 		self.params = DEFAULT_PARAMS.copy()
 		# use older power lae
@@ -2024,7 +2024,7 @@ class Test_VGG11(Test_Base):
 
 
 
-class Test_VGG11_StateDict(Test_VGG11):
+class Test_VGG11_StateDict(Test_VGG11_Base):
 	"""All the same tests as for VGG11, but using the statedict option"""
 	
 	def setUp(self):
@@ -2777,7 +2777,7 @@ class Test_Distances(Test_Base):
 
 
 
-class TestPyTorchSVD(Test_Base):
+class Test_PyTorchSVD(Test_Base):
 	"""
 	Tests for discrepancies between the scipy and torch implementations of SVD.
 	"""
@@ -2785,7 +2785,7 @@ class TestPyTorchSVD(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPyTorchSVD:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_PyTorchSVD:", self._testMethodName)
 
 
 	def test_torch_svd(self):
@@ -2862,11 +2862,11 @@ class TestPyTorchSVD(Test_Base):
 		self.assertLess(err, 0.0005, msg=f"torch svd and svd_vals differed by {err}")
 
 
-class TestPowerLaw(Test_Base):
+class Test_PowerLaw(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPowerLaw:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_PowerLaw:", self._testMethodName)
 		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		params = DEFAULT_PARAMS.copy()
@@ -2969,11 +2969,11 @@ class TestPowerLaw(Test_Base):
 		
 		
 
-class TestPlots(Test_Base):
+class Test_Plots(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPlots:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_Plots:", self._testMethodName)
 		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
@@ -2983,11 +2983,11 @@ class TestPlots(Test_Base):
 		"""
 		self.watcher.analyze(layers=[67], plot=True, randomize=True)
 
-class TestPandas(Test_Base):
+class Test_Pandas(Test_Base):
 	def setUp(self):
 		"""I run before every test in this class
 		"""
-		print("\n-------------------------------------\nIn TestPandas:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_Pandas:", self._testMethodName)
 		self.model = models.resnet18()
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 

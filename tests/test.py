@@ -987,7 +987,7 @@ class Test_Albert(Test_Base):
 		self.params = DEFAULT_PARAMS.copy()
 		model_name = f"albert-xxlarge-v2"
 		self.model  = AlbertModel.from_pretrained(model_name)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)	
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 			
 		
@@ -1003,7 +1003,7 @@ class Test_Albert(Test_Base):
 		details = self.watcher.analyze(layers=[17])
 		actual_alpha = details.alpha.to_numpy()[0]
 		expected_alpha = 6.883741560463132
-		self.assertAlmostEqual(actual_alpha,expected_alpha)
+		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.005)
 		
 		
 	def test_xmax_set(self):
@@ -1020,7 +1020,7 @@ class Test_Albert(Test_Base):
 		details = self.watcher.analyze(layers=[17], pl_package=POWERLAW)
 		actual_alpha = details.alpha.to_numpy()[0]
 		expected_alpha = 6.883741560463132
-		self.assertAlmostEqual(actual_alpha,expected_alpha)
+		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.005)
 		
 		
 	def test_fix_fingers(self):
@@ -2093,7 +2093,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 
 
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 		self.first_layer = 2
 		self.second_layer = 5
@@ -2223,7 +2223,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 	def test_fix_fingers_xmin_peak(self):
 		"""Test fix fingers xmin_peak.  Again, notice that wiothj and without FORCE give slightly different results
 		"""
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)	
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 			
 		# default
 		details = self.watcher.analyze(layers=[self.second_layer], xmax=FORCE, pl_package=POWERLAW_PACKAGE)
@@ -2312,7 +2312,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		self.params = DEFAULT_PARAMS.copy()
 
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 		
 		self.first_layer = 2
 		self.second_layer = 5

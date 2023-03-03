@@ -132,19 +132,22 @@ def marchenko_pastur_pdf(x_min, x_max, Q, sigma=1.0, grid_size=0.001):
     """Return a discrete set of (x,y) values representing the Marchenko-Pastur distrbution from RMT.
     Computing on a grid of size 0.001 by default"""
     y = 1 / Q
-    x = np.arange(x_min+10**-9, x_max, grid_size)
 
     b = np.power(sigma * (1 + np.sqrt(1 / Q)), 2)  # Largest eigenvalue
-    a = np.power(sigma * (1 - np.sqrt(1 / Q)), 2)  # Smallest eigenvalu
-    
-    return x, (1 / (2 * np.pi * sigma * sigma * x * y)) * np.sqrt((b - x) * (x - a)+10**-9)
+    a = np.power(sigma * (1 - np.sqrt(1 / Q)), 2)  # Smallest eigenvalue
+
+    x_min = max(x_min, a)
+    x_max = min(x_max, b)
+    x = np.arange(x_min, x_max, grid_size)
+
+    return x, (1 / (2 * np.pi * sigma * sigma * x * y)) * np.sqrt((b - x) * (x - a))
 
 
 def quarter_circle_pdf(x_min, x_max, sigma=1.0, grid_size=0.001):
     """Return a discrete set of (x,y) values representing the Quarter-Circle distribution from RMT.
     Computing on a grid of size 0.001 by default"""
-    x = np.arange(x_min+10**-9, x_max, grid_size)
-    
+    x = np.arange(x_min, min(x_max, 2), grid_size)
+
     # When Q = 1, we look at the singular values instaed of eigenvalues
     return x, (1 / (np.pi * sigma * sigma)) * np.sqrt((4 - x ** 2)+10**-9)
 

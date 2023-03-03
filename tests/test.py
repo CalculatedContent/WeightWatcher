@@ -991,7 +991,7 @@ class Test_Albert(Test_Base):
 		
 			
 		
-	def test_albert_availbla(self):
+	def test_albert_availble(self):
 		
 		details = self.watcher.describe(layers=[17])
 		print(details)

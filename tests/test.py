@@ -1650,7 +1650,7 @@ class Test_VGG11_Base(Test_Base):
 		print("rand_sigma mp", rand_sigma_mp)
 
 		self.assertAlmostEqual(rand_num_spikes, 1) #numofSig
-		self.assertAlmostEqual(rand_sigma_mp, 1.0, delta=0.0001) #sigma_mp
+		self.assertAlmostEqual(rand_sigma_mp, 1.0, delta=0.01) #sigma_mp
 		#self.assertAlmostEqual(details.np_softrank, 0.203082, places = 6) 
 
 

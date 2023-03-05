@@ -83,9 +83,25 @@ class WWFit(object):
         if item in self.dists: return self.dists[item]
         raise AttributeError(item)
 
-    def plot_pdf(self, *args, **kwargs):
+    def plot_pdf(self, **kwargs):
         """ Needed for replicating the behavior of the powerlaw.Fit class"""
-        powerlaw.plot_pdf(data=self.data, *args, **kwargs)
+        data = self.data[self.data >= self.xmin]
+        return powerlaw.plot_pdf(data=data, linear_bins=False, **kwargs)
+
+    def plot_power_law_pdf(self, ax, **kwargs):
+        """ Needed for replicating the behavior of the powerlaw.Power_Law class"""
+        assert ax is not None
+
+        # Formula taken directly from the powerlaw package.
+        data = self.data[self.data >= self.xmin]
+        bins = np.unique(data)
+        PDF = (data ** -self.alpha) * (self.alpha-1) * (self.xmin**(self.alpha-1))
+
+        assert np.min(PDF) > 0
+
+        ax.plot(bins, PDF, **kwargs)
+        ax.set_xscale("log")
+        ax.set_yscale("log")
 
     def distribution_compare(self, _dist1, _dist2, **kwargs):
         """

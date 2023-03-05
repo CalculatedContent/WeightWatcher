@@ -3274,7 +3274,10 @@ class WeightWatcher:
                 fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
                 fig2 = fit.plot_pdf(color='r', linewidth=2)
                 if fit_type==POWER_LAW:
-                    fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+                    if pl_package == WW_POWERLAW_PACKAGE:
+                        fit.plot_power_law_pdf(color='r', linestyle='--', ax=fig2)
+                    else:
+                        fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
                 
                 else:
                     fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)

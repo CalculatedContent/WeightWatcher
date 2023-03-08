@@ -643,7 +643,7 @@ class WWLayer:
         self.conv2d_count = 1  # reset by slice iterator for back compatability with ww2x
         self.w_norm = 1 # reset if normalize, conv2D_norm, or glorot_fix used
 
-        # to be used for kernel_fft approach
+        # to be used for conv2d_fft approach
         self.inputs_shape = []
         self.outputs_shape = []
         
@@ -657,7 +657,7 @@ class WWLayer:
         # details, set by metaprogramming in apply_xxx() methods
         self.columns = []
         
-        # kernel_fft
+        # conv2d_fft
         # only applies to Conv2D layers
         # layer, this would be some kind of layer weight options
         self.params = params
@@ -745,11 +745,11 @@ class WWLayer:
 
   
 
-    def set_weight_matrices(self, weights, combine_weights_and_biases=False):#, kernel_fft=False, conv2d_norm=True):
+    def set_weight_matrices(self, weights, combine_weights_and_biases=False):#, conv2d_fft=False, conv2d_norm=True):
         """extract the weight matrices from the framework layer weights (tensors)
         sets the weights and detailed properties on the ww (wrapper) layer 
     
-        kernel_fft not supported yet
+        conv2d_fft not supported yet
         
         
         TODO: support W+b """
@@ -759,7 +759,7 @@ class WWLayer:
             return 
         
         the_type = self.the_type
-        kernel_fft = self.params[KERNEL_FFT]
+        conv2d_fft = self.params[CONV2D_FFT]
         
         N, M, n_comp, rf = 0, 0, 0, None
         Wmats = []
@@ -773,11 +773,11 @@ class WWLayer:
             
         # this is very slow with describe 
         elif the_type == LAYER_TYPE.CONV2D:
-            if not kernel_fft:
+            if not conv2d_fft:
                 Wmats, N, M, rf = self.conv2D_Wmats(weights, self.channels)
                 n_comp = M*rf # TODO: bug fixed, check valid
             else:
-                Wmats, N, M, n_comp = self.get_kernel_fft(weights)
+                Wmats, N, M, n_comp = self.get_conv2d_fft(weights)
             
         elif the_type == LAYER_TYPE.NORM:
             #logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
@@ -798,10 +798,10 @@ class WWLayer:
         return 
         
         
-    def get_kernel_fft(self, W, n=32):
+    def get_conv2d_fft(self, W, n=32):
         """Compute FFT of Conv2D CHANNELS, to apply SVD later"""
         
-        logger.info("get_kernel_fft on W {}".format(W.shape))
+        logger.info("get_conv2d_fft on W {}".format(W.shape))
 
         # is pytorch or tensor style 
         s = W.shape
@@ -1213,16 +1213,13 @@ class WWLayerIterator(ModelIterator):
         max_evals = self.params.get('max_evals')
 
         pool = self.params.get(POOL)
-        conv2d_fft = self.params.get(CONV2D_FFT)
-        if conv2d_fft:
+        # experimental
+        if self.params.get(FFT):
             rf = 1.0
             
         # deprecated
         # ww2x = self.params.get(WW2X)
-        kernel_fft = self.params.get(KERNEL_FFT)
-        if kernel_fft:
-            rf = 1.0
-            logger.fatal("kernel_fft not supported, stopping")
+        conv2d_fft = self.params.get(CONV2D_FFT)
         
         logger.debug("layer_supported  N {} max evals {}".format(N, max_evals))
         
@@ -1250,11 +1247,11 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N, max_evals))
             return False
 
-        elif (pool) and (not kernel_fft) and min_evals and M * rf < min_evals:
+        elif (pool) and (not conv2d_fft) and min_evals and M * rf < min_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} <  min_evals {}".format(layer_id, name, M * rf, min_evals))
             return False
                   
-        elif (pool)  and (not kernel_fft) and max_evals and M * rf > max_evals:
+        elif (pool)  and (not conv2d_fft) and max_evals and M * rf > max_evals:
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
             return False
         
@@ -1750,7 +1747,7 @@ class WeightWatcher:
         
         params = DEFAULT_PARAMS.copy()
         # not implemented here : 
-        #params[kernel_fft] = kernel_fft
+        #params[CONV2D_FFT] = conv2d_fft
         params[POOL] = pool  
         params[CHANNELS_STR] = channels
         params[LAYERS] = layers
@@ -1962,15 +1959,14 @@ class WeightWatcher:
                 
         
         
-    def apply_conv2d_fft(self, ww_layer, params=None):
-        """compute the 2D fft of the layer weights, take real space part"""
+    def apply_FFT(self, ww_layer, params=None):
+        """compute the 2D fft of the layer weights, take real space part (probably not so useful)"""
                 
         layer_id = ww_layer.layer_id
         name = ww_layer.name
-        the_type = ww_layer.the_type
        
-        if the_type==LAYER_TYPE.CONV2D:
-            logger.info("applying 2D FFT on Conv2D Layer {} {} ".format(layer_id, name))
+        if not ww_layer.skippe:
+            logger.info("applying 2D FFT on to {} {} ".format(layer_id, name))
             
             Wmats = ww_layer.Wmats
             for iw, W in enumerate(Wmats):
@@ -2383,7 +2379,7 @@ class WeightWatcher:
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_norm=True,  
                 ww2x=DEFAULT_WW2X, pool=DEFAULT_POOL,
-                kernel_fft=False, conv2d_fft=False, 
+                conv2d_fft=False, FFT=False, 
                 deltas=False, intra=False, vectors=False, channels=None, 
                 stacked=False,
                 fix_fingers=False, xmin_max = None,  max_N=10,
@@ -2435,17 +2431,17 @@ class WeightWatcher:
             Use weightwatcher version 0.2x style iterator, which slices up Conv2D layers in N=rf matrices
             This option is deprecated, please use pool = not ww2x
             
-        kernel_fft:  (deprecated)
+        conv2d_fft:  (deprecated)
             For Conv2D layers, apply FFT to the kernels.  O
-            Not supported anymore
             
             
         pool: bool, default: True
             For layers with multiple matrices (like COnv2D layers), pools the eigenvalues beforer running the  analysis
             
-        conv2d_fft:  (experimental)
+        FFT:  (experimental)
             For Conv2D layers, apply the FFT method to the inpuyt/output maps (weight matrices) 
             Can be used with or without pooling
+            
             
             
         savefig:  string,  default: 
@@ -2553,10 +2549,10 @@ class WeightWatcher:
         params[POOL] = pool  
         #deprecated
         params[WW2X] = ww2x   
-        params[kernel_fft] = kernel_fft
+        params[CONV2D_FFT] = conv2d_fft
 
         #experimental
-        params[CONV2D_FFT] = conv2d_fft
+        params[FFT] = FFT
 
         params[DELTA_ES] = deltas 
         params[INTRA] = intra 
@@ -2603,8 +2599,8 @@ class WeightWatcher:
                 
                 # TODO: dd apply_fft
                
-                if params[CONV2D_FFT]:
-                     self.apply_conv2d_fft(ww_layer, params)
+                if params[FFT]:
+                     self.apply_FFT(ww_layer, params)
                     
                 self.apply_esd(ww_layer, params)
                 
@@ -2698,7 +2694,7 @@ class WeightWatcher:
                 min_size=None, max_size=None, 
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR, ww2x=False, pool=True,
-                kernel_fft=False,  conv2d_fft=False, conv2d_norm=True, 
+                conv2d_fft=False,  FFT=False, conv2d_norm=True, 
                 intra=False, channels=None, stacked=False,  start_ids=0):
         """
         Same as analyze() , but does not run the ESD or Power law fits
@@ -2728,12 +2724,11 @@ class WeightWatcher:
         params[GLOROT_FIT] = glorot_fix
         params[CONV2D_NORM] = conv2d_norm
         
-        #deprecated
-        params[KERNEL_FFT] = kernel_fft
-        params[WW2X] = ww2x   
-        
         params[CONV2D_FFT] = conv2d_fft
+        params[WW2X] = ww2x   
         params[POOL] = pool   
+
+        params[FFT] = FFT
         
         params[INTRA] = intra 
         params[CHANNELS_STR] = channels
@@ -2762,7 +2757,7 @@ class WeightWatcher:
                 logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
                 if not pool:
                     num_evals = ww_layer.M
-                elif kernel_fft:
+                elif conv2d_fft:
                     num_evals = ww_layer.num_components
                 else:
                     num_evals = ww_layer.M * ww_layer.rf
@@ -2809,22 +2804,18 @@ class WeightWatcher:
         if params.get(WW2X):
             logger.warning("ww2x option deprecated, please use pool=false")
             valid = False
+
             
-            
-        if params.get(KERNEL_FFT):
-            logger.warning("KERNEL_FFT option not currently supported, may be deprecated")
+        # can not specify ww2x and conv2d_fft at same time
+        # NOT SURE ABOUT THIS
+        if not params.get(POOL) and params.get('conv2d_fft'):
+            logger.warning("can not specify conv2d_fft without pool=True")
             valid = False
             
             
-            # can not specify ww2x and kernel_fft at same time
-        if not params.get(POOL) and params.get('kernel_fft'):
-            logger.warning("can not specify kernel_fft without pooll=True")
-            valid = False
-            
-            
-        # can not specify intra and kernel_fft at same time
-        if params.get(INTRA) and params.get('kernel_fft'):
-            logger.warning("can not specify intra and kernel_fft")
+        # can not specify intra and conv2d_fft at same time
+        if params.get(INTRA) and params.get('conv2d_fft'):
+            logger.warning("can not specify intra and conv2d_fft")
             valid = False
         
         # channels must be None, 'first', or 'last'
@@ -4286,11 +4277,11 @@ class WeightWatcher:
         
         Parameters:
         
-             weights_dir :  temp dir with the wextracted weights and biases files
+             weights_dir :  ww temp dir with the extracted weights and biases files
              
-             model_name: prefix fo the weights files
+             model_name: prefix to  the weights files
              
-             state_dict_filename: nam of the pytorch_model.bin file
+             state_dict_filename: name of the pytorch_model.bin file
              
              start_id: int to start layer id counter
          
@@ -4299,8 +4290,7 @@ class WeightWatcher:
             config[layer_id]={name, longname, weightfile, biasfile}
         
         
-        
-        Note:  Currently only process dense layers, and
+        Note:  Currently only process dense layers (i.e. transformers), and
                We may not want every layer in the state_dict
         
         """
@@ -4309,11 +4299,15 @@ class WeightWatcher:
         config = {}
         
         if os.path.exists(state_dict_filename):
-            state_dict = torch_load_sd(state_dict_filename)
+            state_dict = torch.load_state_dict(state_dict_filename, map_location=torch.device('cpu'))
             logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
         else:
             logger.fatal(f"PyTorch state_dict {state_dict_filename} not found")
-    
+            
+        # we only want the modell but sometimes the state dict has more info
+        if 'model' in [str(x) in state_dict.keys()]:
+            state_dict = state_dict['model']
+            
         weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
         
         for layer_id, weight_key in enumerate(weight_keys):
@@ -4325,14 +4319,14 @@ class WeightWatcher:
             
             shape = len(T.shape)  
             #if shape==2:
-            W = T.cpu().detach().numpy()
+            W = T.cpu().detach().numpy() # do we need  ?
             weightfile = f"{name}.weight.npy"
     
             biasfile = None
             bias_key = re.sub('weight$', 'bias', weight_key)
             if bias_key in state_dict:
                 T = state_dict[bias_key]
-                b = T.cpu().detach().numpy()
+                b = T.cpu().detach().numpy() # do we need  ?
                 biasfile = f"{model_name}.{layer_id}.basis.npy"
     
     
@@ -4358,19 +4352,21 @@ class WeightWatcher:
     
     
     @staticmethod 
-    def process_pytorch_bins(model_dir=None, tmp_dir="/tmp"):
+    def process_pytorch_bins(model_dir=None, model_name=None, tmp_dir="/tmp"):
         """Read the pytorch config and state_dict files, and create tmp direct, and write W and b .npy files
         
         Used currently to evaluate very large models downloaded from HuggingFace 
         
-        Notice: the .bin files are parts of oystatedict files, but not contain the ['model'[ key
+        Notice: the .bin files are parts of oystatedict files, but may or may not contain the ['model'] key
          
         
         Parameters:  
         
             model_dir:  string, directory of the config file and  pytorch_model.bin file(s)
             
-            tmp_dir:  root directory for the weights_dir crear
+            model_name:  name of model; if None, method attempts to read config.json in the model_dir
+            
+            tmp_dir:  root directory for the ww tmp weights_dir  that will contain the flat files
             
         Returns:   a config which has a name, and layer_configs
         
@@ -4381,11 +4377,14 @@ class WeightWatcher:
                 layers = {0: layer_config, 1: layer_config, 2:layer_config, ...}
             }
             
+        Note: we don't support tf_model.h5 files yet, but this could possible be done in the same way
+        The only tf_model.h5 I am currently aware of is for BERT
+            
             
         """
         
-        weights_dir = tempfile.mkdtemp(dir=tmp_dir, prefix="weightwatcher-")
-        logger.debug(f"using weights_dir {weights_dir}")
+        weights_dir = tempfile.mkdtemp(dir=tmp_dir, prefix="ww")
+        logger.info(f"process_pytorch_bin files in {model_dir} and placing them in {weights_dir}")
         
         config = {}
         config['weights_dir']=weights_dir
@@ -4393,18 +4392,19 @@ class WeightWatcher:
         if os.path.exists(model_dir) and os.path.isdir(model_dir):
             
             try:
-                
-                # read config
-                config_filename = os.path.join(model_dir, "config.json")
-                with open(config_filename, "r") as f:
-                    model_config = json.loads(f.read())
-    
-                model_name = model_config['model_type']
+                         
+                # read config, optional
                 if model_name is None:
-                    model_name = "UNK"
+                    config_filename = os.path.join(model_dir, "config.json")
+                    with open(config_filename, "r") as f:
+                        model_config = json.loads(f.read())
+        
+                    model_name = model_config['model_type']
+                    if model_name is None:
+                        model_name = "UNK"
                     
                 config['model_name'] = model_name
-                logger.info(f"Processing model: {model_name}")
+                logger.info(f"Processing model named: {model_name}")
                 
                 config['layers'] = {}
                 

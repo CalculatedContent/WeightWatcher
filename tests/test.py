@@ -14,6 +14,9 @@ from weightwatcher import RMT_Util
 from weightwatcher import WW_powerlaw
 from weightwatcher.constants import  *
 
+import errno
+import shutil
+import tempfile
 
 import numpy as np
 import pandas as pd
@@ -25,6 +28,7 @@ warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 import matplotlib
 matplotlib.use('Agg')
+
 
 class Test_Base(unittest.TestCase):
 	@classmethod
@@ -481,9 +485,47 @@ class Test_PyTorchLayers(Test_Base):
 		self.assertEqual(replaced_new_W_min, expected_old_W_min)
 		self.assertEqual(replaced_new_B_min, expected_old_B_min)
 		
-	
+class Test_PyStateDictFileLayers(Test_Base):
+
+	def setUp(self):
+
+		"""I run before every test in this class
 		
-	
+			Creats a VGG16 model and gets the last layer,
+			
+		"""
+		#import inspect
+
+		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
+		ww.weightwatcher.torch = torch
+		self.model = models.resnet18().state_dict()
+
+                
+		for key in self.model.keys():
+			if key.endswith('.weight'):
+				layer_name = key[:-len('.weight')]
+				self.last_layer_name = layer_name	
+				
+
+		return
+				
+	def test_extract_pytorch_statedict(self):
+		
+		# save model to local filesysten, read, then delete
+		
+		try:
+			model_dir = tempfile.mkdtemp(dir="/tmp", prefix="ww") 
+			print(model_dir)
+		finally:
+			try:
+				shutil.rmtree(model_dir)  # delete directory
+			except OSError as exc:
+				if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
+						self.assertTrue(False)
+						
+		
+		return
+       
 
 class Test_PyStateDictLayers(Test_Base):
 	
@@ -506,6 +548,8 @@ class Test_PyStateDictLayers(Test_Base):
 			if key.endswith('.weight'):
 				layer_name = key[:-len('.weight')]
 				self.last_layer_name = layer_name	
+				
+	
 			
 			
 	def test_pytorch_layer_constructor(self):
@@ -1235,21 +1279,21 @@ class Test_VGG11_Base(Test_Base):
 		with self.assertRaises(Exception) as context:
 			self.watcher.describe(layers=[-1,1])	
 					
-		#  deprecated: ww2x and kernel_fft 
-		with self.assertRaises(Exception) as context:
-			self.watcher.describe(kernel_fft=True)	
+		#  still active but not working yet ww2x and conv2d_fft 
+		#with self.assertRaises(Exception) as context:
+		#	self.watcher.describe(conv2d_fft=True)	
 			
-		#  deprecated: ww2x and kernel_fft , but not implemented as an error yet
+		#  deprecated: ww2x and conv2d_fft , but not implemented as an error yet
 		#with self.assertRaises(Exception) as context:
 		#	self.watcher.describe(ww2x=True)	
 						
-		#  deprecated: ww2x and kernel_fft 
+		#  deprecated: ww2x and conv2d_fft 
 		with self.assertRaises(Exception) as context:
-			self.watcher.describe(pool=False, kernel_fft=True)	
+			self.watcher.describe(pool=False, conv2d_fft=True)	
 
-		# intra and kernel_fft
+		# intra and conv2d_fft
 		with self.assertRaises(Exception) as context:
-			self.watcher.describe(intra=True, kernel_fft=True)	
+			self.watcher.describe(intra=True, conv2d_fft=True)	
 				
 				
 		# min_evals > max_evals
@@ -2381,13 +2425,13 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		num_fingers = details.num_fingers.to_numpy()[0]
 		self.assertEqual(num_fingers,0)
 		
-	def test_kernel_fft(self):
+	def test_conv2d_fft(self):
 		"""Test the FFT method"; why does this fail ? """
 		
-		details = self.watcher.describe(layers=[self.first_layer], kernel_fft=True)
+		details = self.watcher.describe(layers=[self.first_layer], conv2d_fft=True)
 		print(details)
 		
-		details = self.watcher.analyze(layers=[self.first_layer], kernel_fft=True)
+		details = self.watcher.analyze(layers=[self.first_layer], conv2d_fft=True)
 		actual = details.alpha.to_numpy()[0]
 		expected = 2.144
 		self.assertAlmostEqual(actual,expected, places=4)

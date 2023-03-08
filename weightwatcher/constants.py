@@ -97,9 +97,9 @@ SAVEDIR = 'savedir'
 
 DELTA_ES = 'deltaEs'
 INTRA = 'intra'
-CONV2D_FFT = 'conv2d_fft'
+FFT = 'fft'
 CONV2D_NORM = 'conv2d_norm'
-KERNEL_FFT = 'kernel_fft'
+CONV2D_FFT = 'conv2d_fft'
 
 
 GLOROT_FIT = 'glorot_fit'
@@ -146,7 +146,7 @@ DEFAULT_START_ID = 0
 # These are NOT the defaults...see analyze() for actual defaults
 DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZE: True, 
                   SAVEDIR:DEF_SAVE_DIR, SAVEFIG:True, RESCALE:True, PLOT:False,
-                  DELTA_ES:False, INTRA:False, CHANNELS_STR:None, CONV2D_FFT:False,  KERNEL_FFT:False, 
+                  DELTA_ES:False, INTRA:False, CHANNELS_STR:None, FFT:False,  CONV2D_FFT:False, 
                   WW2X:DEFAULT_WW2X, POOL:DEFAULT_POOL, VECTORS:True, SMOOTH:None, STACKED:False, 
                   SVD_METHOD:ACCURATE_SVD,  FIX_FINGERS:None, FIT:POWER_LAW,
                   SPARSIFY: True, DETX: True,  MP_FIT:False,

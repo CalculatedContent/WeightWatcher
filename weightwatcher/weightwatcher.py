@@ -4299,13 +4299,13 @@ class WeightWatcher:
         config = {}
         
         if os.path.exists(state_dict_filename):
-            state_dict = torch.load_state_dict(state_dict_filename, map_location=torch.device('cpu'))
+            state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
             logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
         else:
             logger.fatal(f"PyTorch state_dict {state_dict_filename} not found")
             
         # we only want the modell but sometimes the state dict has more info
-        if 'model' in [str(x) in state_dict.keys()]:
+        if 'model' in [str(x) for x in state_dict.keys()]:
             state_dict = state_dict['model']
             
         weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
@@ -4327,7 +4327,7 @@ class WeightWatcher:
             if bias_key in state_dict:
                 T = state_dict[bias_key]
                 b = T.cpu().detach().numpy() # do we need  ?
-                biasfile = f"{model_name}.{layer_id}.basis.npy"
+                biasfile = f"{model_name}.{layer_id}.bias.npy"
     
     
             filename = os.path.join(weights_dir,weightfile)
@@ -4383,7 +4383,7 @@ class WeightWatcher:
             
         """
         
-        weights_dir = tempfile.mkdtemp(dir=tmp_dir, prefix="ww")
+        weights_dir = tempfile.mkdtemp(dir=tmp_dir, prefix="ww_")
         logger.info(f"process_pytorch_bin files in {model_dir} and placing them in {weights_dir}")
         
         config = {}

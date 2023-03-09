@@ -14,10 +14,12 @@ from weightwatcher import RMT_Util
 from weightwatcher import WW_powerlaw
 from weightwatcher.constants import  *
 
-import errno
-import shutil
 import tempfile
-
+from tempfile import TemporaryDirectory
+import os, errno
+from os import listdir
+from os.path import isfile, join
+		
 import numpy as np
 import pandas as pd
 import torchvision.models as models
@@ -498,34 +500,176 @@ class Test_PyStateDictFileLayers(Test_Base):
 
 		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
 		ww.weightwatcher.torch = torch
-		self.model = models.resnet18().state_dict()
+		self.model = models.resnet18()
+		self.model_name = "resnet18"
+		
 
                 
-		for key in self.model.keys():
+		for key in self.model.state_dict().keys():
 			if key.endswith('.weight'):
 				layer_name = key[:-len('.weight')]
 				self.last_layer_name = layer_name	
 				
+		return
+	
+	
+	def closeDown(self):
+		"""Show watning all tmp/ww_ dirs  from /tmp
+		
+		I did nto remnove to avoid some horrible =error that deletes the files system"""
+		
+		ww_tmpdirs = glob.glob("/tmp/ww_*")
+		for tmpdir in ww_tmpdirs:
+			print(f"warning: {tmpdir} not deleted")
+		return
+		
+		
+	def test_tmpdir(self):
+		
+
+		with TemporaryDirectory(prefix="ww_") as temp_dir:
+			print(temp_dir)
+			self.assertTrue(temp_dir.startswith("/var"))
+		self.assertFalse(os.path.isdir(temp_dir))
+		
+		with TemporaryDirectory(prefix="ww_", dir="/tmp") as temp_dir:
+			print(temp_dir),
+			self.assertTrue(temp_dir.startswith("/tmp"))
+		self.assertFalse(os.path.isdir(temp_dir))
+
 
 		return
+	
 				
 	def test_extract_pytorch_statedict(self):
+		"""Check that we can extract the weight and bias files; not that we include  batchnorm layers
 		
-		# save model to local filesysten, read, then delete
+		does not check larger HF models with ['model'] key present
 		
-		try:
-			model_dir = tempfile.mkdtemp(dir="/tmp", prefix="ww") 
-			print(model_dir)
-		finally:
-			try:
-				shutil.rmtree(model_dir)  # delete directory
-			except OSError as exc:
-				if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
-						self.assertTrue(False)
+		
+		Also, does not check that the specific klayer weights are correct because 
+			it is a bit tricky to associate the layer to the filename without the config 
+		"""
+		
+		layer_names = self.model.state_dict().keys()
+		expected_layer_names = [name for name in layer_names if 'weight' in name or 'bias' in name]
+		expected_num_files = len(expected_layer_names)	
+		
+		# there are 18 real layers with weights
+		layer_weightfiles = [name for name in layer_names if 'weight' in name  and 'bn' not in name and 'downsample' not in name ]	
+		expected_num_weightfiles = 18
+		actual_num_weightfiles = (len(layer_weightfiles))
+		self.assertEqual(expected_num_weightfiles,actual_num_weightfiles)
+
+
+		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+			print(f"using {model_dir} as model_dir")
+			self.assertTrue(model_dir.startswith("/tmp"))
+			
+			with TemporaryDirectory(dir="/tmp", prefix="ww_") as weights_dir:
+				print(f"using {weights_dir} as weights_dir")
+				self.assertTrue(weights_dir.startswith("/tmp"))
+			
+				state_dict_filename = os.path.join(model_dir, "pys.bin")
+				torch.save(self.model.state_dict(), state_dict_filename)
+				
+				ww.WeightWatcher.extract_pytorch_statedict(weights_dir, self.model_name, state_dict_filename)
+			
+				weightfiles = [f for f in listdir(weights_dir) if isfile(join(weights_dir, f))]	
+				actual_num_files = len(weightfiles)
+				self.assertEqual(expected_num_files,actual_num_files)
+				
+				
+				# test that we can read the files ?	
+				for filename in  weightfiles:
+					W = np.load(os.path.join(weights_dir,filename))
+					self.assertIsNotNone(W)
+			
 						
+		self.assertFalse(os.path.isdir(model_dir))
+		self.assertFalse(os.path.isdir(weights_dir))
 		
 		return
        
+       
+	def test_process_pytorch_bins_on_resnet18(self):
+		""" This method should be able to read 1 or more state_dict files from the huggingface cache 
+    	
+    	Here we just test it on 1 file from resnet18, which is ok also
+    	
+    	Note: name of pytorch state_dict files must match the pattern: pytorch_model*bin
+    	
+    	BE CAREFUL only to delete directories in /tmp 
+    	"""
+    	
+		layer_names = self.model.state_dict().keys()
+		expected_weightfiles = [name for name in layer_names if ('weight' in name)]
+		expected_num_weightfiles = len(expected_weightfiles)	
+		
+		
+		expected_biasfiles = [name for name in layer_names if ('bias' in name)]
+		expected_num_biasfiles = len(expected_biasfiles)	
+		
+		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+			print(f"using {model_dir} as model_dir")
+			self.assertTrue(model_dir.startswith("/tmp"))
+		
+			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
+			torch.save(self.model.state_dict(), state_dict_filename)
+			
+			
+			config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=self.model_name)
+			self.assertIsNotNone(config)
+			self.assertIsNotNone(config['model_name'])
+			self.assertIsNotNone(config['weights_dir'])
+			self.assertIsNotNone(config['layers'])
+				
+			weights_dir = config['weights_dir']
+			self.assertTrue(os.path.isdir(model_dir))
+			print(f"using {weights_dir} as weights_dir")
+			self.assertTrue(weights_dir.startswith("/tmp"))
+			
+			self.assertEqual(config['model_name'],self.model_name)
+	
+			expected_num_layers	= expected_num_weightfiles
+			actual_num_layers = len(config['layers'])
+			self.assertEqual(actual_num_layers, expected_num_layers)
+			
+			actual_num_biasfiles = 0
+			for layer_id, layer in config['layers'].items():
+				self.assertIsNotNone(layer['name'])
+				self.assertIsNotNone(layer['longname'])
+				self.assertIsNotNone(layer['weightfile'])
+	
+				self.assertTrue(layer['name'].startswith(self.model_name))
+				self.assertTrue(layer['weightfile'].startswith(self.model_name))
+				
+				if layer['biasfile'] is not None:
+					self.assertTrue(layer['biasfile'].startswith(self.model_name))
+					actual_num_biasfiles += 1
+					
+				filename = layer['weightfile']
+				W = np.load(os.path.join(weights_dir,filename))
+				self.assertIsNotNone(W)
+			
+				
+		self.assertEqual(actual_num_biasfiles, expected_num_biasfiles)
+		
+		
+		try:
+			import shutil
+
+			# check 1  more time that weights dir being removed is in /tmp
+			self.assertTrue(weights_dir.startswith("/tmp"))
+			shutil.rmtree(weights_dir)  # delete directory
+
+		except OSError as exc:
+			if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
+					self.assertTrue(False)
+						
+		self.assertFalse(os.path.isdir(weights_dir))
+    	
+    	
 
 class Test_PyStateDictLayers(Test_Base):
 	
@@ -578,7 +722,6 @@ class Test_PyStateDictLayers(Test_Base):
 		expected_type = "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
 		actual_type = str(type(actual_layer))
 		self.assertEqual(expected_type, actual_type)
-	
 	
 	
 	

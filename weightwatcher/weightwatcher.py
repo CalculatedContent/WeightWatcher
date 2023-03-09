@@ -1613,7 +1613,7 @@ class WeightWatcher:
             except ImportError:
                 logger.fatal("Can not load tensorflow or keras, stopping")
             
-        elif framework==FRAMEWORK.PYTORCH or framework==FRAMEWORK.PYSTATEDICT:
+        elif framework in [FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.PYSTATEDICT] :
             
             global torch, nn
             try:

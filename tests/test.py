@@ -2586,7 +2586,7 @@ class Test_VGG11_PyStateDictFile(Test_VGG11_Base):
 		
 		
 	def test_svd_smoothing_with_model(self):
-		pss
+		pass
 
 
 	def test_svd_smoothing_alt(self):
@@ -2600,6 +2600,9 @@ class Test_VGG11_PyStateDictFile(Test_VGG11_Base):
 		pass	
 		
 	def test_svd_sharpness_with_model(self):
+		pass
+	
+	def test_svd_sharpness2(self):
 		pass
 	
 	

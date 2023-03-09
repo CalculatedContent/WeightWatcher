@@ -2579,7 +2579,28 @@ class Test_VGG11_PyStateDictFile(Test_VGG11_Base):
 		self.assertTrue(os.path.isdir(self.weights_dir))
 		return
 		
+	
+	
+	def test_svd_smoothing(self):
+		pass
 		
+		
+	def test_svd_smoothing_with_model(self):
+		pss
+
+
+	def test_svd_smoothing_alt(self):
+		pass
+		
+	def test_svd_smoothing_alt2(self):
+		pass
+		
+		
+	def test_svd_sharpness(self):
+		pass	
+		
+	def test_svd_sharpness_with_model(self):
+		pass
 	
 	
 

@@ -528,12 +528,13 @@ class PyStateDictFileLayer(FrameworkLayer):
 
 
     @staticmethod
-    def get_layer_iterator(config):
+    def get_layer_iterator(config, start_id=0):
         def layer_iter_():
             weights_dir =  config['weights_dir']
             logger.debug(f"iterating over layers in {weights_dir}")
             for layer_id, layer_config in config['layers'].items():
-                py_layer = PyStateDictFileLayer(int(layer_id), config, layer_config)
+                layer_id = int(layer_id)+start_id
+                py_layer = PyStateDictFileLayer(layer_id, config, layer_config)
                 yield py_layer            
         return layer_iter_()   
     
@@ -1069,7 +1070,7 @@ class ModelIterator:
             
         elif self.framework == FRAMEWORK.PYSTATEDICTFILE:
             config = WeightWatcher.read_pystatedict_config(model)
-            layer_iter = PyStateDictFileLayer.get_layer_iterator(config) 
+            layer_iter = PyStateDictFileLayer.get_layer_iterator(config, start_id=start_id) 
             
         else:
             layer_iter = None

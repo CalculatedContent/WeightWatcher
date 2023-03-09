@@ -809,7 +809,7 @@ class Test_PyStateDictFileLayers(Test_Base):
 		actual_type = str(type(ww_layer))
 		self.assertEqual(expected_type, actual_type)
 		
-		expected_name = 'fc'
+		expected_name = 'resnet18.40'
 		actual_name = ww_layer.name
 		self.assertEqual(expected_name, actual_name)
 		
@@ -2414,15 +2414,27 @@ class Test_VGG11_StateDictFile(Test_VGG11_Base):
 			torch.save(self.state_dict, state_dict_filename)
 			
 			self.config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=self.model_name)
-			self.weights_dir = config['weights_dir']
+			self.weights_dir = self.config['weights_dir']
 			
-			self.model = self.weights_dir
 			
-			expected_framework = ww.WeightWatcher.infer_framework(self.model)
-			self.assertEqual(expected_framework, FRAMEWORK.PYSTATEDICTFILE)		
-	
-				
+		self.model = self.weights_dir	
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+		# vgg layers in statedictfile start at 0, not 1, unless specified
+		self.first_layer =  1 -1
+		self.second_layer = 2 -1
+		self.third_layer = 8 -1 
+		self.fc1_layer = 9 -1
+		self.fc2_layer = 10 -1 
+		self.fc3_layer = 11 -1
+		
+		
+		
+		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
+		self.min_layer_id = self.first_layer
+		
 		return
+
 	
 	
 	def closeDown(self):
@@ -2431,7 +2443,7 @@ class Test_VGG11_StateDictFile(Test_VGG11_Base):
 		
 		try:
 			self.assertIsNotNone(self.weights_dir)
-			self.assertTrue(self.weights_dir.startswith("/tmp"))
+			self.assertTrue(self.weights_dir.startswith("/tmp/ww_"))
 			shutil.rmtree(self.weights_dir)  # delete directory
 
 		except OSError as exc:
@@ -2441,6 +2453,17 @@ class Test_VGG11_StateDictFile(Test_VGG11_Base):
 		self.assertFalse(os.path.isdir(self.weights_dir))
 
 
+	def test_setup(self):
+		"""test that the tmp model is built and then rown down"""
+		
+		print(f"using self.weights_dir as model -= {self.weights_dir}")
+		self.assertEqual(self.weights_dir, self.model)
+		self.assertTrue(os.path.isdir(self.weights_dir))
+		return
+		
+		
+	
+	
 
 class Test_VGG11_StateDict(Test_VGG11_Base):
 	"""All the same tests as for VGG11, but using the statedict option"""
@@ -2819,7 +2842,7 @@ class Test_VGG11_StateDict_Alpha_w_WWFit(Test_VGG11_Alpha_w_WWFit):
 		
 		self.params = DEFAULT_PARAMS.copy()
 		# use older power lae
-		self.params[PL_PACKAGE]=POWERLAW
+		self.params[PL_PACKAGE]=WW_POWERLAW
 		self.params[XMAX]=XMAX_FORCE
 		
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()

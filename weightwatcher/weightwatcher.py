@@ -502,7 +502,7 @@ class PyStateDictFileLayer(FrameworkLayer):
             self.has_bias = True
         
         the_type = self.layer_type(self.weights)
-        FrameworkLayer.__init__(self, layer_config, layer_id, name, longname=longname, weights=self.weights, bias=self.bias, the_type=the_type, 
+        FrameworkLayer.__init__(self, layer_config, int(layer_id), name, longname=longname, weights=self.weights, bias=self.bias, the_type=the_type, 
                                 framework=FRAMEWORK.PYSTATEDICTFILE, channels=CHANNELS.LAST, has_bias=self.has_bias)
     
     
@@ -533,7 +533,7 @@ class PyStateDictFileLayer(FrameworkLayer):
             weights_dir =  config['weights_dir']
             logger.debug(f"iterating over layers in {weights_dir}")
             for layer_id, layer_config in config['layers'].items():
-                py_layer = PyStateDictFileLayer(layer_id, config, layer_config)
+                py_layer = PyStateDictFileLayer(int(layer_id), config, layer_config)
                 yield py_layer            
         return layer_iter_()   
     

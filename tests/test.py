@@ -16,7 +16,7 @@ from weightwatcher.constants import  *
 
 import tempfile
 from tempfile import TemporaryDirectory
-import os, errno, shutil
+import os, errno, shutil, glob
 import json
 from os import listdir
 from os.path import isfile, join
@@ -494,6 +494,8 @@ class Test_PyStateDictFileLayers(Test_Base):
 	
 	"""Note:  This class may create temporary directories in /tmp/ww_ that don't get properly removed
 	
+	Assumes tmp dir is /tmp
+	
 	"""
 
 	def setUp(self):
@@ -512,16 +514,54 @@ class Test_PyStateDictFileLayers(Test_Base):
 		
 		ww.weightwatcher.torch = torch
 		self.model_name = 'resnet18'
-		self.weights_dir = self._get_tmp_weights_dir()
+		self.weights_dir = self._extract_tmp_weights_dir()
 		self.model = self.weights_dir
 		
+		# incease some tests fail, clean up the tmp dir
+		self.tmp_dirs = []
 		return
 	
 	
 	def tearDown(self):
 
-		self._remove_tmp_weights_dir(self.weights_dir)
-		pass
+		self._remove_tmp_dir(self.weights_dir)
+		
+		for tmp_dir in self.tmp_dirs:
+			print(tmp_dir)
+			if not tmp_dir.startswith("/tmp"):
+				tmp_dir = os.path.join("/tmp",tmp_dir)
+			
+			if tmp_dir.startswith("/tmp/ww_") and os.path.isdir(tmp_dir) and os.path.commonprefix([tmp_dir, '/tmp']) == '/tmp':
+				self._remove_tmp_dir(tmp_dir)
+			elif os.path.isdir(tmp_dir):
+				print(f"BAD TMPDIR tmpdir found, {tmp_dir}, not removing!")
+				
+
+		super().tearDown()
+		return
+	
+	
+	@classmethod
+	def tearDownClass(cls):
+		
+		# clean up any temp files left overr
+		for tmp_dir in  glob.glob("/tmp/ww_*"):
+			if os.path.isdir(tmp_dir) and os.path.commonprefix([tmp_dir, '/tmp']) == '/tmp':
+
+				try:
+					print(f"leftover tmpdir found, {tmp_dir}")
+					shutil.rmtree(tmp_dir)  # delete directory
+	
+				except OSError as exc:
+					if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
+						print(f"could not remove {tmp_dir}")
+		
+		# clean up memory
+		gc.collect()
+		tf.keras.backend.clear_session()
+		torch.cuda.empty_cache()
+		
+		return
 	
 		
 	def test_setup(self):
@@ -536,21 +576,23 @@ class Test_PyStateDictFileLayers(Test_Base):
 	def test_tmpdir(self):
 		"""Shows how the TemporaryDirectory works in python"""
 
-		with TemporaryDirectory(prefix="ww_") as temp_dir:
-			print(temp_dir)
-			self.assertTrue(temp_dir.startswith("/var"))
-		self.assertFalse(os.path.isdir(temp_dir))
+		with TemporaryDirectory(prefix="ww_") as tmp_dir:
+			print(tmp_dir)
+			self.assertTrue(tmp_dir.startswith("/var"))
+		self.assertFalse(os.path.isdir(tmp_dir))
 		
-		with TemporaryDirectory(prefix="ww_", dir="/tmp") as temp_dir:
-			print(temp_dir),
-			self.assertTrue(temp_dir.startswith("/tmp"))
-		self.assertFalse(os.path.isdir(temp_dir))
+		with TemporaryDirectory(prefix="ww_", dir="/tmp") as tmp_dir:
+			print(tmp_dir),
+			self.assertTrue(tmp_dir.startswith("/tmp"))
+			self.assertEqual( os.path.commonprefix([tmp_dir, '/tmp']),'/tmp') 
+
+		self.assertFalse(os.path.isdir(tmp_dir))
 
 
 		return
 	
 	
-	def _get_tmp_weights_dir(self):
+	def _extract_tmp_weights_dir(self):
 		"""assumes that the process_pytorch_bins works correctly, uses it to create a tmp weights director"""
 		
 		state_dict = models.resnet18().state_dict()
@@ -571,28 +613,32 @@ class Test_PyStateDictFileLayers(Test_Base):
 		return weights_dir
 	
 	
-	def _remove_tmp_weights_dir(self, weights_dir):
-		"""reove the weights dir created by _get_tmp_weights_dir"""
+	def _remove_tmp_dir(self, tmp_dir):
+		"""remove the weights dir created by _extract_tmp_dir or process_... """
 		
 		try:
 			# check 1  more time that weights dir being removed is in /tmp
-			self.assertIsNotNone(weights_dir)
-			self.assertTrue(weights_dir.startswith("/tmp/ww_"))
-			shutil.rmtree(weights_dir)  # delete directory
+			self.assertIsNotNone(tmp_dir)
+			self.assertTrue(tmp_dir.startswith("/tmp/ww_"))
+			self.assertEqual( os.path.commonprefix([tmp_dir, '/tmp']),'/tmp') 
+			print(f"removing {tmp_dir}")
+			shutil.rmtree(tmp_dir)  # delete directory
 
 		except OSError as exc:
 			if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
 				self.assertTrue(False)
 						
-		self.assertFalse(os.path.isdir(weights_dir))
+		self.assertFalse(os.path.isdir(tmp_dir))
+		
+		return
 		
 		
-	def test_get_and_remove_tmp_weights_dir(self):
+	def test_extract_and_remove_tmp_dir(self):
 			
-		weights_dir = self._get_tmp_weights_dir()
+		weights_dir = self._extract_tmp_weights_dir()
 		self.assertTrue(os.path.isdir(weights_dir))
 		
-		self._remove_tmp_weights_dir(weights_dir)
+		self._remove_tmp_dir(weights_dir)
 		self.assertFalse(os.path.isdir(weights_dir))
 		return 
 	
@@ -626,10 +672,12 @@ class Test_PyStateDictFileLayers(Test_Base):
 
 
 		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+			self.tmp_dirs.append(model_dir)
 			print(f"using {model_dir} as model_dir")
 			self.assertTrue(model_dir.startswith("/tmp"))
 			
 			with TemporaryDirectory(dir="/tmp", prefix="ww_") as weights_dir:
+				self.tmp_dirs.append(weights_dir)
 				print(f"using {weights_dir} as weights_dir")
 				self.assertTrue(weights_dir.startswith("/tmp"))
 			
@@ -680,6 +728,7 @@ class Test_PyStateDictFileLayers(Test_Base):
 		expected_num_biasfiles = len(expected_biasfiles)	
 		
 		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+			self.tmp_dirs.append(model_dir)
 			print(f"using {model_dir} as model_dir")
 			self.assertTrue(model_dir.startswith("/tmp"))
 		
@@ -688,17 +737,19 @@ class Test_PyStateDictFileLayers(Test_Base):
 			
 			
 			config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=model_name)
+			self.assertIsNotNone(config['weights_dir'])
+			weights_dir = config['weights_dir']
+			self.assertTrue(os.path.isdir(weights_dir))
+			self.tmp_dirs.append(weights_dir)
+			
 			self.assertIsNotNone(config)
 			self.assertIsNotNone(config['framework'])
-
 			self.assertIsNotNone(config['model_name'])
-			self.assertIsNotNone(config['weights_dir'])
 			self.assertIsNotNone(config['layers'])
 			
 			self.assertEqual(config['framework'], PYTORCH)
 
 				
-			weights_dir = config['weights_dir']
 			self.assertTrue(os.path.isdir(model_dir))
 			print(f"using {weights_dir} as weights_dir")
 			self.assertTrue(weights_dir.startswith("/tmp"))
@@ -734,17 +785,10 @@ class Test_PyStateDictFileLayers(Test_Base):
 			
 				
 		self.assertEqual(actual_num_biasfiles, expected_num_biasfiles)
+		self.assertIsNotNone(weights_dir)
+		self.assertTrue(weights_dir.startswith("/tmp"))
 		
-		try:
-			import shutil		
-			# check 1  more time that weights dir being removed is in /tmp
-			self.assertIsNotNone(weights_dir)
-			self.assertTrue(weights_dir.startswith("/tmp"))
-			shutil.rmtree(weights_dir)  # delete directory
-
-		except OSError as exc:
-			if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
-					self.assertTrue(False)
+		self._remove_tmp_dir(weights_dir)
 						
 		self.assertFalse(os.path.isdir(weights_dir))
 		
@@ -1427,7 +1471,7 @@ class Test_VGG11_Base(Test_Base):
 
 
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)		
 		
 		self.first_layer = 2
 		self.second_layer = 5
@@ -2415,9 +2459,9 @@ class Test_VGG11_StateDictFile(Test_VGG11_Base):
 			
 			self.config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=self.model_name)
 			self.weights_dir = self.config['weights_dir']
+			self.assertTrue(os.path.isdir(self.weights_dir))
 			
-			
-		self.model = self.weights_dir	
+		self.model = self.weights_dir
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
 		# vgg layers in statedictfile start at 0, not 1, unless specified
@@ -2428,29 +2472,52 @@ class Test_VGG11_StateDictFile(Test_VGG11_Base):
 		self.fc2_layer = 10 -1 
 		self.fc3_layer = 11 -1
 		
-		
-		
 		self.fc_layers = [self.fc1_layer, self.fc2_layer, self.fc3_layer]
 		self.min_layer_id = self.first_layer
 		
 		return
 
 	
-	
-	def closeDown(self):
-		"""Show watning all tmp/ww_ dirs  from /tmp
-		"""
+	def _remove_tmp_dir(self, tmp_dir):
+		"""remove the weights dir created by _extract_tmp_dir or process_... """
 		
 		try:
-			self.assertIsNotNone(self.weights_dir)
-			self.assertTrue(self.weights_dir.startswith("/tmp/ww_"))
-			shutil.rmtree(self.weights_dir)  # delete directory
+			# check 1  more time that weights dir being removed is in /tmp
+			self.assertIsNotNone(tmp_dir)
+			self.assertTrue(tmp_dir.startswith("/tmp/ww_"))
+			self.assertEqual( os.path.commonprefix([tmp_dir, '/tmp']),'/tmp') 
+			print(f"removing {tmp_dir}")
+			shutil.rmtree(tmp_dir)  # delete directory
 
 		except OSError as exc:
 			if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
 				self.assertTrue(False)
 						
+		self.assertFalse(os.path.isdir(tmp_dir))
+		
+		return
+	
+	def tearDown(self):
+		"""remove any temporary files"""
+
+		self._remove_tmp_dir(self.weights_dir)
 		self.assertFalse(os.path.isdir(self.weights_dir))
+
+		for tmp_dir in glob.glob("/tmp/ww_*"):
+			print(tmp_dir)
+			
+			if os.path.isdir(tmp_dir) and os.path.commonprefix([tmp_dir, '/tmp']) == '/tmp':
+				self._remove_tmp_dir(tmp_dir)
+			elif os.path.isdir(tmp_dir):
+				print(f"BAD TMPDIR tmpdir found, {tmp_dir}, not removing!")
+
+
+		super().tearDown()
+		return
+	
+	
+	
+						
 
 
 	def test_setup(self):

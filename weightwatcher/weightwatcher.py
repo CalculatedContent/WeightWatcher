@@ -1613,7 +1613,7 @@ class WeightWatcher:
             except ImportError:
                 logger.fatal("Can not load tensorflow or keras, stopping")
             
-        elif framework in [FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.PYSTATEDICT] :
+        elif framework in [FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.PYSTATEDICTFILE] :
             
             global torch, nn
             try:
@@ -1751,11 +1751,14 @@ class WeightWatcher:
            
         models should be the same size and from the same framework
            
+           
+        Note: conv2d_ftt is not supported
         """
         
         params = DEFAULT_PARAMS.copy()
         # not implemented here : 
         #params[CONV2D_FFT] = conv2d_fft
+        
         params[POOL] = pool  
         params[CHANNELS_STR] = channels
         params[LAYERS] = layers
@@ -2387,7 +2390,7 @@ class WeightWatcher:
                 savefig=DEF_SAVE_DIR,
                 mp_fit=False, conv2d_norm=True,  
                 ww2x=DEFAULT_WW2X, pool=DEFAULT_POOL,
-                conv2d_fft=False, FFT=False, 
+                conv2d_fft=False, fft=False, 
                 deltas=False, intra=False, vectors=False, channels=None, 
                 stacked=False,
                 fix_fingers=False, xmin_max = None,  max_N=10,
@@ -2446,11 +2449,10 @@ class WeightWatcher:
         pool: bool, default: True
             For layers with multiple matrices (like COnv2D layers), pools the eigenvalues beforer running the  analysis
             
-        FFT:  (experimental)
+        fft:  (experimental)
             For Conv2D layers, apply the FFT method to the inpuyt/output maps (weight matrices) 
             Can be used with or without pooling
-            
-            
+                
             
         savefig:  string,  default: 
             Save the figures generated in png files.  Default: save to ww-img
@@ -2560,7 +2562,7 @@ class WeightWatcher:
         params[CONV2D_FFT] = conv2d_fft
 
         #experimental
-        params[FFT] = FFT
+        params[FFT] = fft
 
         params[DELTA_ES] = deltas 
         params[INTRA] = intra 
@@ -2702,7 +2704,7 @@ class WeightWatcher:
                 min_size=None, max_size=None, 
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR, ww2x=False, pool=True,
-                conv2d_fft=False,  FFT=False, conv2d_norm=True, 
+                conv2d_fft=False,  fft=False, conv2d_norm=True, 
                 intra=False, channels=None, stacked=False,  start_ids=0):
         """
         Same as analyze() , but does not run the ESD or Power law fits
@@ -2736,7 +2738,7 @@ class WeightWatcher:
         params[WW2X] = ww2x   
         params[POOL] = pool   
 
-        params[FFT] = FFT
+        params[FFT] = fft
         
         params[INTRA] = intra 
         params[CHANNELS_STR] = channels

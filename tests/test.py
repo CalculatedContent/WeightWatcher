@@ -492,6 +492,10 @@ class Test_PyTorchLayers(Test_Base):
 		
 class Test_PyStateDictFileLayers(Test_Base):
 	
+	"""BE VERY CAREFUL RUNNIG THIS BECAUSE THIS TESTS CREATES FILES IN /TMP THAT NEED TO BE REMOVED"""
+
+
+	
 	"""Note:  This class may create temporary directories in /tmp/ww_ that don't get properly removed
 	
 	Assumes tmp dir is /tmp
@@ -2427,6 +2431,8 @@ class Test_VGG11_Base(Test_Base):
 
 
 class Test_VGG11_StateDictFile(Test_VGG11_Base):
+	
+	"""BE VERY CAREFUL RUNNIG THIS BECAUSE THIS TESTS CREATES FILES IN /TMP THAT NEED TO BE REMOVED"""
 
 	def setUp(self):
 
@@ -2439,7 +2445,7 @@ class Test_VGG11_StateDictFile(Test_VGG11_Base):
 			
 		"""
 
-		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_VGG11_StateDictFile:", self._testMethodName)
 		
 		
 		ww.weightwatcher.torch = torch

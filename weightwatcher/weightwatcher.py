@@ -472,13 +472,13 @@ class PyStateDictFileLayer(FrameworkLayer):
                 
     """
     
-    def __init__(self, config, layer_config):
+    def __init__(self, layer_id, config, layer_config):
         
         self.config = config
         weights_dir =  config['weights_dir']
         
         self.layer_config = layer_config
-        layer_id = layer_config['layer_id']
+        self.layer_id = int(layer_id)
         
         # read weights and biases
         name = layer_config['name']
@@ -487,20 +487,23 @@ class PyStateDictFileLayer(FrameworkLayer):
                 
         weightfile = layer_config['weightfile']
         weightfile = os.path.join(weights_dir, weightfile)
-        weights = np.load(weightfile)
+        self.has_weights = True
+        self.weights = np.load(weightfile)
         self.weightfile = weightfile
 
-        has_bias = False
+        self.bias = None
+        self.biasfile = None
+        self.has_bias = False
         if layer_config['biasfile']:
             biasfile = layer_config['biasfile']
             biasfile = os.path.join(weights_dir, biasfile)
-            bias = np.load(biasfile) 
-            biasfile = biasfile
-            has_bias = True
+            self.bias = np.load(biasfile) 
+            self.biasfile = biasfile
+            self.has_bias = True
         
-        the_type = self.layer_type(weights)
-        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, weights=weights, bias=bias, the_type=the_type, 
-                                framework=FRAMEWORK.PYSTATEDICT, channles=CHANNELS.LAST, has_bias=has_bias)
+        the_type = self.layer_type(self.weights)
+        FrameworkLayer.__init__(self, layer_config, layer_id, name, longname=longname, weights=self.weights, bias=self.bias, the_type=the_type, 
+                                framework=FRAMEWORK.PYSTATEDICTFILE, channels=CHANNELS.LAST, has_bias=self.has_bias)
     
     
     
@@ -517,6 +520,11 @@ class PyStateDictFileLayer(FrameworkLayer):
             the_type = LAYER_TYPE.CONV2D
         
         return the_type
+    
+    
+    def get_weights_and_biases(self):
+        """   return has_weights, weights, has_biases, biases  """
+        return self.has_weights, self.weights, self.has_bias, self.bias
 
 
     @staticmethod
@@ -524,10 +532,8 @@ class PyStateDictFileLayer(FrameworkLayer):
         def layer_iter_():
             weights_dir =  config['weights_dir']
             logger.debug(f"iterating over layers in {weights_dir}")
-            
             for layer_id, layer_config in config['layers'].items():
-                py_layer = PyStateDictLayer(config, layer_config)
-                py_layer.layer_id = layer_id
+                py_layer = PyStateDictFileLayer(layer_id, config, layer_config)
                 yield py_layer            
         return layer_iter_()   
     
@@ -1062,7 +1068,8 @@ class ModelIterator:
             layer_iter = PyStateDictLayer.get_layer_iterator(model) 
             
         elif self.framework == FRAMEWORK.PYSTATEDICTFILE:
-            layer_iter = PyStateDictLayer.get_layer_iterator(model) 
+            config = WeightWatcher.read_pystatedict_config(model)
+            layer_iter = PyStateDictFileLayer.get_layer_iterator(config) 
             
         else:
             layer_iter = None
@@ -1574,8 +1581,9 @@ class WeightWatcher:
                 # we could dig inside the model and find the weight types, 
                 return FRAMEWORK.PYSTATEDICT
             
-            # elif model is a directory with valid confg inside
-            #    return FRAMEWORK.PYSTATEDICTFILE
+            elif os.path.isdir(model):
+                # TODOL check config file, see if dir is for torch or tensorflow
+                return FRAMEWORK.PYSTATEDICTFILE
             #
             # elif model is a json fole
             #    return FRAMEWORK.KERASJSONFILE
@@ -4380,13 +4388,14 @@ class WeightWatcher:
         Note: we don't support tf_model.h5 files yet, but this could possible be done in the same way
         The only tf_model.h5 I am currently aware of is for BERT
             
-            
+        BE CAREFUL using tmp_dir
         """
         
         weights_dir = tempfile.mkdtemp(dir=tmp_dir, prefix="ww_")
         logger.info(f"process_pytorch_bin files in {model_dir} and placing them in {weights_dir}")
         
         config = {}
+        config['framework'] = PYTORCH
         config['weights_dir']=weights_dir
     
         if os.path.exists(model_dir) and os.path.isdir(model_dir):
@@ -4422,12 +4431,20 @@ class WeightWatcher:
                     start_id = np.max(layer_ids)+1
                     logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
                 
+                #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
+                config_filename   = os.path.join(weights_dir,WW_CONFIG_FILENAME)
+                with open(config_filename, 'w', encoding='utf-8') as f:
+                    json.dump(config, f, ensure_ascii=False, indent=4)
+                        
+                
             except Exception as e:
                 logger.error(traceback.format_exc())
                 logger.fatal(f"Unknown problem, stopping")
             
         else:
             logger.fatal(f"Unknown model_dir {model_dir}, stopping")
+            
+            
     
     
         return config
@@ -4451,7 +4468,7 @@ class WeightWatcher:
         """
         
         # check file is present ?
-        filename = os.path.join(model_dir,"ww.config")
+        filename = os.path.join(model_dir,WW_CONFIG_FILENAME)
         with open(filename, "r") as f:
             config = json.load(f)
             

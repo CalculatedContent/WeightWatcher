@@ -16,7 +16,8 @@ from weightwatcher.constants import  *
 
 import tempfile
 from tempfile import TemporaryDirectory
-import os, errno
+import os, errno, shutil
+import json
 from os import listdir
 from os.path import isfile, join
 		
@@ -487,45 +488,53 @@ class Test_PyTorchLayers(Test_Base):
 		self.assertEqual(replaced_new_W_min, expected_old_W_min)
 		self.assertEqual(replaced_new_B_min, expected_old_B_min)
 		
+		
+		
 class Test_PyStateDictFileLayers(Test_Base):
+	
+	"""Note:  This class may create temporary directories in /tmp/ww_ that don't get properly removed
+	
+	"""
 
 	def setUp(self):
 
 		"""I run before every test in this class
 		
-			Creats a VGG16 model and gets the last layer,
+			Creates a /tmp.ww_weights_dir with the resnet weights extracted
+			Removes the tmp dir when done
+			
+			Assumes that process_pytorch_bins works properly
 			
 		"""
 		#import inspect
 
 		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
+		
 		ww.weightwatcher.torch = torch
-		self.model = models.resnet18()
-		self.model_name = "resnet18"
+		self.model_name = 'resnet18'
+		self.weights_dir = self._get_tmp_weights_dir()
+		self.model = self.weights_dir
 		
+		return
+	
+	
+	def tearDown(self):
 
-                
-		for key in self.model.state_dict().keys():
-			if key.endswith('.weight'):
-				layer_name = key[:-len('.weight')]
-				self.last_layer_name = layer_name	
-				
+		self._remove_tmp_weights_dir(self.weights_dir)
+		pass
+	
+		
+	def test_setup(self):
+		"""test that the tmp model is built and then rown down"""
+		
+		print(f"using self.weights_dir as model -= {self.weights_dir}")
+		self.assertEqual(self.weights_dir, self.model)
+		self.assertTrue(os.path.isdir(self.weights_dir))
 		return
 	
-	
-	def closeDown(self):
-		"""Show watning all tmp/ww_ dirs  from /tmp
-		
-		I did nto remnove to avoid some horrible =error that deletes the files system"""
-		
-		ww_tmpdirs = glob.glob("/tmp/ww_*")
-		for tmpdir in ww_tmpdirs:
-			print(f"warning: {tmpdir} not deleted")
-		return
-		
 		
 	def test_tmpdir(self):
-		
+		"""Shows how the TemporaryDirectory works in python"""
 
 		with TemporaryDirectory(prefix="ww_") as temp_dir:
 			print(temp_dir)
@@ -540,6 +549,54 @@ class Test_PyStateDictFileLayers(Test_Base):
 
 		return
 	
+	
+	def _get_tmp_weights_dir(self):
+		"""assumes that the process_pytorch_bins works correctly, uses it to create a tmp weights director"""
+		
+		state_dict = models.resnet18().state_dict()
+		
+		model_name = 'resnet18'
+		weights_dir = None
+		
+		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+			print(f"using {model_dir} as model_dir")
+			self.assertTrue(model_dir.startswith("/tmp"))
+		
+			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
+			torch.save(state_dict, state_dict_filename)
+			
+			config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=model_name)
+			weights_dir = config['weights_dir']
+		
+		return weights_dir
+	
+	
+	def _remove_tmp_weights_dir(self, weights_dir):
+		"""reove the weights dir created by _get_tmp_weights_dir"""
+		
+		try:
+			# check 1  more time that weights dir being removed is in /tmp
+			self.assertIsNotNone(weights_dir)
+			self.assertTrue(weights_dir.startswith("/tmp/ww_"))
+			shutil.rmtree(weights_dir)  # delete directory
+
+		except OSError as exc:
+			if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
+				self.assertTrue(False)
+						
+		self.assertFalse(os.path.isdir(weights_dir))
+		
+		
+	def test_get_and_remove_tmp_weights_dir(self):
+			
+		weights_dir = self._get_tmp_weights_dir()
+		self.assertTrue(os.path.isdir(weights_dir))
+		
+		self._remove_tmp_weights_dir(weights_dir)
+		self.assertFalse(os.path.isdir(weights_dir))
+		return 
+	
+	
 				
 	def test_extract_pytorch_statedict(self):
 		"""Check that we can extract the weight and bias files; not that we include  batchnorm layers
@@ -549,9 +606,15 @@ class Test_PyStateDictFileLayers(Test_Base):
 		
 		Also, does not check that the specific klayer weights are correct because 
 			it is a bit tricky to associate the layer to the filename without the config 
+			
+		Currently, if this method fails, a /tmp/ww_ file wil be created
 		"""
 		
-		layer_names = self.model.state_dict().keys()
+		
+		model = models.resnet18().state_dict()
+		model_name = "resnet18"
+  
+		layer_names = model.keys()
 		expected_layer_names = [name for name in layer_names if 'weight' in name or 'bias' in name]
 		expected_num_files = len(expected_layer_names)	
 		
@@ -571,9 +634,9 @@ class Test_PyStateDictFileLayers(Test_Base):
 				self.assertTrue(weights_dir.startswith("/tmp"))
 			
 				state_dict_filename = os.path.join(model_dir, "pys.bin")
-				torch.save(self.model.state_dict(), state_dict_filename)
+				torch.save(model, state_dict_filename)
 				
-				ww.WeightWatcher.extract_pytorch_statedict(weights_dir, self.model_name, state_dict_filename)
+				ww.WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename)
 			
 				weightfiles = [f for f in listdir(weights_dir) if isfile(join(weights_dir, f))]	
 				actual_num_files = len(weightfiles)
@@ -600,9 +663,15 @@ class Test_PyStateDictFileLayers(Test_Base):
     	Note: name of pytorch state_dict files must match the pattern: pytorch_model*bin
     	
     	BE CAREFUL only to delete directories in /tmp 
-    	"""
     	
-		layer_names = self.model.state_dict().keys()
+    	Currently, if this method fails, a /tmp/ww_ file wil be created
+
+    	"""
+		
+		model = models.resnet18().state_dict()
+		model_name = "resnet18"
+  
+		layer_names = model.keys()
 		expected_weightfiles = [name for name in layer_names if ('weight' in name)]
 		expected_num_weightfiles = len(expected_weightfiles)	
 		
@@ -615,21 +684,26 @@ class Test_PyStateDictFileLayers(Test_Base):
 			self.assertTrue(model_dir.startswith("/tmp"))
 		
 			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
-			torch.save(self.model.state_dict(), state_dict_filename)
+			torch.save(model, state_dict_filename)
 			
 			
-			config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=self.model_name)
+			config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=model_name)
 			self.assertIsNotNone(config)
+			self.assertIsNotNone(config['framework'])
+
 			self.assertIsNotNone(config['model_name'])
 			self.assertIsNotNone(config['weights_dir'])
 			self.assertIsNotNone(config['layers'])
+			
+			self.assertEqual(config['framework'], PYTORCH)
+
 				
 			weights_dir = config['weights_dir']
 			self.assertTrue(os.path.isdir(model_dir))
 			print(f"using {weights_dir} as weights_dir")
 			self.assertTrue(weights_dir.startswith("/tmp"))
 			
-			self.assertEqual(config['model_name'],self.model_name)
+			self.assertEqual(config['model_name'],model_name)
 	
 			expected_num_layers	= expected_num_weightfiles
 			actual_num_layers = len(config['layers'])
@@ -641,25 +715,30 @@ class Test_PyStateDictFileLayers(Test_Base):
 				self.assertIsNotNone(layer['longname'])
 				self.assertIsNotNone(layer['weightfile'])
 	
-				self.assertTrue(layer['name'].startswith(self.model_name))
-				self.assertTrue(layer['weightfile'].startswith(self.model_name))
+				self.assertTrue(layer['name'].startswith(model_name))
+				self.assertTrue(layer['weightfile'].startswith(model_name))
 				
 				if layer['biasfile'] is not None:
-					self.assertTrue(layer['biasfile'].startswith(self.model_name))
+					self.assertTrue(layer['biasfile'].startswith(model_name))
 					actual_num_biasfiles += 1
 					
 				filename = layer['weightfile']
 				W = np.load(os.path.join(weights_dir,filename))
 				self.assertIsNotNone(W)
+	
+			config_filename = os.path.join(weights_dir,WW_CONFIG_FILENAME)
+			with open(config_filename) as f:
+				config_loaded = json.load(f)
+				
+				self.assertEqual(config, config_loaded)
 			
 				
 		self.assertEqual(actual_num_biasfiles, expected_num_biasfiles)
 		
-		
 		try:
-			import shutil
-
+			import shutil		
 			# check 1  more time that weights dir being removed is in /tmp
+			self.assertIsNotNone(weights_dir)
 			self.assertTrue(weights_dir.startswith("/tmp"))
 			shutil.rmtree(weights_dir)  # delete directory
 
@@ -668,7 +747,98 @@ class Test_PyStateDictFileLayers(Test_Base):
 					self.assertTrue(False)
 						
 		self.assertFalse(os.path.isdir(weights_dir))
+		
+		return
+	
+	
+	def test_ww_layer_iterator(self):
+		"""Test that the layer iterators iterates over al layers as expected"""
+		
+		expected_num_layers = 21 # I think 16 is the flattened layer
+
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		
+		self.assertTrue(layer_iterator is not None)
+		num_layers = 0
+		for ww_layer in layer_iterator:
+			num_layers += 1
+		self.assertEqual(expected_num_layers, num_layers)
+		print(num_layers)
+		
+		
+		expected_type = "<class 'weightwatcher.weightwatcher.WWLayer'>"
+		actual_type = str(type(ww_layer))
+		self.assertEqual(expected_type, actual_type)
+
+		
+		return
     	
+    	
+
+
+		
+	def _get_last_ww_layer(self):
+		"""Get the last layer off the diskl"""
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		num_layers = 0
+		for ww_layer in layer_iterator:
+			num_layers += 1	
+		last_ww_layer = ww_layer
+		
+		return last_ww_layer
+	
+	
+	def test_infer_framework(self):
+		"""Test that we can infer the framework from the directory correctly"""
+		
+		expected_framework = ww.WeightWatcher.infer_framework(self.model)
+		self.assertEqual(expected_framework, FRAMEWORK.PYSTATEDICTFILE)		
+		
+		return
+		
+
+		
+	def test_ww_layer_attributes(self):
+		"""Test that the layer is a PYSTATEDICTFILE layer
+		
+		not working:  infer framework not correct"""
+		
+		ww_layer = self._get_last_ww_layer()
+					
+		expected_type = "<class 'weightwatcher.weightwatcher.WWLayer'>"
+		actual_type = str(type(ww_layer))
+		self.assertEqual(expected_type, actual_type)
+		
+		expected_name = 'fc'
+		actual_name = ww_layer.name
+		self.assertEqual(expected_name, actual_name)
+		
+		framework_layer = ww_layer.framework_layer
+		self.assertTrue(framework_layer is not None)
+		
+		expected_type = "<class 'weightwatcher.weightwatcher.PyStateDictFileLayer'>"
+		actual_type = str(type(framework_layer))
+		self.assertEqual(expected_type, actual_type)
+	
+		self.assertEqual(ww_layer.name, framework_layer.name)
+		
+		
+		has_weights, weights, has_biases, biases  = ww_layer.get_weights_and_biases()
+		self.assertTrue(has_weights)
+		self.assertTrue(has_biases)
+		self.assertTrue(weights is not None)
+		self.assertTrue(biases is not None)
+		
+		expected_W_shape = (1000, 512)
+		expected_B_shape = (1000,)
+		actual_W_shape = weights.shape
+		actual_B_shape = biases.shape
+		
+		self.assertEqual(expected_W_shape, actual_W_shape)
+		self.assertEqual(expected_B_shape, actual_B_shape)
+		
+		return
+	
     	
 
 class Test_PyStateDictLayers(Test_Base):
@@ -2212,6 +2382,65 @@ class Test_VGG11_Base(Test_Base):
 
 
 
+class Test_VGG11_StateDictFile(Test_VGG11_Base):
+
+	def setUp(self):
+
+		"""I run before every test in this class
+		
+			Creates a /tmp.ww_weights_dir with the VGG weights extracted
+			Removes the tmp dir when done
+			
+			Assumes that process_pytorch_bins works properly
+			
+		"""
+
+		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
+		
+		
+		ww.weightwatcher.torch = torch
+		self.state_dict = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
+		self.model = None
+		self.model_name = 'vgg11'
+		self.weights_dir = None
+		
+		# create the weights_dir
+
+		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+			print(f"using {model_dir} as model_dir")
+			self.assertTrue(model_dir.startswith("/tmp"))
+		
+			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
+			torch.save(self.state_dict, state_dict_filename)
+			
+			self.config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=self.model_name)
+			self.weights_dir = config['weights_dir']
+			
+			self.model = self.weights_dir
+			
+			expected_framework = ww.WeightWatcher.infer_framework(self.model)
+			self.assertEqual(expected_framework, FRAMEWORK.PYSTATEDICTFILE)		
+	
+				
+		return
+	
+	
+	def closeDown(self):
+		"""Show watning all tmp/ww_ dirs  from /tmp
+		"""
+		
+		try:
+			self.assertIsNotNone(self.weights_dir)
+			self.assertTrue(self.weights_dir.startswith("/tmp"))
+			shutil.rmtree(self.weights_dir)  # delete directory
+
+		except OSError as exc:
+			if exc.errno != errno.ENOENT:  # ENOENT - no such file or directory
+				self.assertTrue(False)
+						
+		self.assertFalse(os.path.isdir(self.weights_dir))
+
+
 
 class Test_VGG11_StateDict(Test_VGG11_Base):
 	"""All the same tests as for VGG11, but using the statedict option"""
@@ -2735,6 +2964,7 @@ class Test_ResNet(Test_Base):
 		details = self.watcher.describe()		
 		self.assertTrue((details.M * details.rf == details.num_evals).all())
 		
+
 
 
 

@@ -56,6 +56,12 @@ POWERLAW_PACKAGE = 'powerlaw'
 WW_POWERLAW_PACKAGE = 'ww'
 DEFAULT_POWERLAW_PACKAGE = WW_POWERLAW_PACKAGE
 
+
+WW_CONFIG_FILENAME = "ww_config.json"
+PYTORCH = 'pytorch'
+TENSORFLOW = 'tensorflow'
+
+
 # forcing xmax only available for older powerlaw package 
 
 XMAX = 'xmax'

@@ -116,19 +116,19 @@ class Test_ValidParams(Test_Base):
 		self.assertTrue(valid)
 		
 		params = DEFAULT_PARAMS.copy()		
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[PL_PACKAGE]=WW_POWERLAW
 		params[FIX_FINGERS]=CLIP_XMAX
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertTrue(valid)
 		
 		params = DEFAULT_PARAMS.copy()
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[PL_PACKAGE]=WW_POWERLAW
 		params[XMAX]= -1
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertTrue(valid)
 		
 		params = DEFAULT_PARAMS.copy()
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[PL_PACKAGE]=WW_POWERLAW
 		params[XMAX] = 1
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertTrue(valid)
@@ -142,25 +142,25 @@ class Test_ValidParams(Test_Base):
 		
 	def test_invalid_PL_package_settings(self):
 		params = DEFAULT_PARAMS.copy()
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[PL_PACKAGE]=WW_POWERLAW
 		params[XMAX]='force'
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 		
 		params = DEFAULT_PARAMS.copy()
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[PL_PACKAGE]=WW_POWERLAW
 		params[FIT]=TPL
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 		
 		params = DEFAULT_PARAMS.copy()
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[PL_PACKAGE]=WW_POWERLAW
 		params[FIT]=E_TPL
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 		
 		params = DEFAULT_PARAMS.copy()
-		params[PL_PACKAGE]=WW_POWERLAW_PACKAGE
+		params[PL_PACKAGE]=WW_POWERLAW
 		params[FIT]=TRUNCATED_POWER_LAW
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
@@ -808,11 +808,6 @@ class Test_PyStateDictFileLayers(Test_Base):
 	def test_tmpdir(self):
 		"""Shows how the TemporaryDirectory works in python; see also Test_PyStateDictFileExtractor """
 
-		with TemporaryDirectory(prefix="ww_") as tmp_dir:
-			print(tmp_dir)
-			self.assertTrue(tmp_dir.startswith("/var"))
-		self.assertFalse(os.path.isdir(tmp_dir))
-		
 		with TemporaryDirectory(prefix="ww_", dir="/tmp") as tmp_dir:
 			print(tmp_dir),
 			self.assertTrue(tmp_dir.startswith("/tmp"))
@@ -2920,7 +2915,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 	def test_compute_alphas(self):
 		"""Test that alphas are computed and values are within thresholds using the XMax=None option
 		"""
-		details = self.watcher.analyze(layers=[self.second_layer], pool=False, randomize=False, plot=False, mp_fit=False, pl_package=WW_POWERLAW_PACKAGE)
+		details = self.watcher.analyze(layers=[self.second_layer], pool=False, randomize=False, plot=False, mp_fit=False, pl_package=WW_POWERLAW)
 		#d = self.watcher.get_details(results=results)
 		a = details.alpha.to_numpy()
 		self.assertAlmostEqual(a[0],1.74859, places=4)
@@ -2955,7 +2950,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		"""
 		
 		# CLIP_XMAX
-		details = self.watcher.analyze(layers=[self.second_layer],  fix_fingers='clip_xmax', pl_package=WW_POWERLAW_PACKAGE)
+		details = self.watcher.analyze(layers=[self.second_layer],  fix_fingers='clip_xmax', pl_package=WW_POWERLAW)
 		actual = details.alpha.to_numpy()[0]
 		expected = 1.72
 		self.assertAlmostEqual(actual,expected, places=2)
@@ -3555,7 +3550,7 @@ class Test_PowerLaw(Test_Base):
 			expected_alpha = result.alpha
 			self.assertAlmostEqual(expected_alpha, 2.5, delta=0.1)
 	
-			result = WW_powerlaw.pl_fit(data, xmax=np.max(data), pl_package=WW_POWERLAW_PACKAGE)
+			result = WW_powerlaw.pl_fit(data, xmax=np.max(data), pl_package=WW_POWERLAW)
 			actual_alpha = result.alpha	
 			self.assertAlmostEqual(expected_alpha, actual_alpha, delta=0.1)
 		

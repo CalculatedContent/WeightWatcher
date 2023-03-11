@@ -1874,6 +1874,7 @@ class Test_VGG11_Base(Test_Base):
 		Note:  ww2x=True has been replaced with pool=False
 		"""
 		details = self.watcher.describe(pool=False)
+		print(details)
 		self.assertEqual(len(details), 75)
 		
 		
@@ -2724,6 +2725,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		self.assertAlmostEqual(a2[1],1.66595, places=4)
 		self.assertAlmostEqual(a2[3],1.43459, places=4)
  	
+ 
  	
 		
 	def test_intra_power_law_fit(self):
@@ -2921,6 +2923,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		self.assertAlmostEqual(a[0],1.74859, places=4)
 		self.assertAlmostEqual(a[1],1.66595, places=4)
 		self.assertAlmostEqual(a[3],1.43459, places=4)
+
 		
 		
 	#

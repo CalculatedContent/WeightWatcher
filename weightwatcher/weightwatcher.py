@@ -312,10 +312,16 @@ class PyTorchLayer(FrameworkLayer):
                 has_weights = True
             elif self.the_type==LAYER_TYPE.DENSE:
                 weights = w[0]
-                biases = self.layer.bias.data.clone().cpu()
-                biases = biases.detach().numpy()
                 has_weights = True
-                has_biases = True
+                
+                biases = None
+                has_biases = False
+                if self.layer.bias is not None and self.layer.bias.data is not None:
+                    biases = self.layer.bias.data.clone().cpu()
+                    biases = biases.detach().numpy()
+                    has_biases = True
+
+                
             elif self.the_type not in [LAYER_TYPE.NORM]: 
                 logger.info("pytorch layer: {}  type {} not found ".format(str(self.layer),str(self.the_type)))
             else:
@@ -2919,9 +2925,9 @@ class WeightWatcher:
                 logger.fatal(f"{PL_PACKAGE} only supports PowerLaw fits, but {FIT}={fit_type}")
                 valid = False
                 
-        if ((xmax is None) or (xmax is False) or (xmax!=FORCE) or (isinstance(xmax, int))) and fix_fingers in [XMIN_PEAK, CLIP_XMAX]:
-            logger.warning(f"{FIX_FINGERS} ignores xmax = {xmax}" )
-            valid = True
+        #if ((xmax is None) or (xmax is False) or (xmax!=FORCE) or (isinstance(xmax, int))) and fix_fingers in [XMIN_PEAK, CLIP_XMAX]:
+        #    logger.warning(f"{FIX_FINGERS} ignores xmax = {xmax}" )
+        #    valid = True
             
                 
         return valid

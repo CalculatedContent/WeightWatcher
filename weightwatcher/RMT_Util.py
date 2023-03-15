@@ -16,8 +16,8 @@ import numpy as np
 import scipy as sp
 import scipy.stats as stats
 
-from weightwatcher.constants import *
-from weightwatcher.WW_powerlaw import *
+from .constants import *
+from .WW_powerlaw import *
 
 
 logger = logging.getLogger(WW_NAME)

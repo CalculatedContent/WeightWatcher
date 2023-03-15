@@ -2970,7 +2970,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		details = self.watcher.analyze(layers=[self.first_layer], conv2d_fft=True)
 		actual = details.alpha.to_numpy()[0]
 		expected = 2.144
-		self.assertAlmostEqual(actual,expected, places=4)
+		self.assertAlmostEqual(actual,expected, places=3)
 		
 		
 class Test_VGG11_StateDict_Alpha_w_WWFit(Test_VGG11_Alpha_w_WWFit):	
@@ -3174,6 +3174,30 @@ class Test_RMT_Util(Test_Base):
 		"""
 		print("\n-------------------------------------\nIn Test_RMT_Util:", self._testMethodName)
 		
+		
+	def test_has_mac_accelerate(self):
+		"""Only useful if on a mac M1/M2
+		
+		Note: this test uses a deprecated method that needs to eventually be replaced
+		"""
+		
+		expected_has_accelerate = False
+		
+		import platform
+		import numpy.distutils.system_info as sysinfo
+
+		mac_arch = platform.machine()
+		if mac_arch == 'arm64':
+			info = sysinfo.get_info('accelerate')
+			if info is not None and len(info)>0:
+			    for x in info['extra_link_args']:
+			        if 'Accelerate' in x:
+			            expected_has_accelerate = True
+			            
+		actual_has_accelerate = RMT_Util.has_mac_accelerate()
+		self.assertEqual(expected_has_accelerate, actual_has_accelerate)
+		return
+		
 			
 	def test_vector_entropy(self):
 		u = np.array([1,1,1,1])
@@ -3363,6 +3387,8 @@ class Test_Distances(Test_Base):
 class Test_PyTorchSVD(Test_Base):
 	"""
 	Tests for discrepancies between the scipy and torch implementations of SVD.
+	
+	This has to be modified to support MPS also
 	"""
 
 	def setUp(self):
@@ -3378,7 +3404,7 @@ class Test_PyTorchSVD(Test_Base):
 
 	def test_torch_svd(self):
 		if RMT_Util._svd_full_fast is RMT_Util._svd_full_accurate:
-			print("Warning: Unable to test PyTorch SVD method because torch / CUDA not available")
+			print("Warning: Unable to test PyTorch SVD method because torch / CUDA or MPS not available")
 			return
 
 		model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
@@ -3411,21 +3437,38 @@ class Test_PyTorchSVD(Test_Base):
 		with self.assertRaises(AssertionError, msg="svd_vals accepted a bad method"):
 			RMT_Util.svd_vals(W, "BAD_METHOD")
 
+
 	def torch_available(self):
+		available = False
 		try:
 			from torch.cuda import is_available
-			return is_available()
+			print(f"torch cuda available ? {is_available()}")
+			if is_available():
+				return True
 		except ImportError:
-			return False
+			available = False
+  #
+  # Torch is available, but CUDA is NOT
+  # MPS (MAc M1/2) does not yet support SVD or EIG
+  # try:
+  # 	from torch.backends.mps import is_built
+  # 	print(f"torch mps built ? {is_built()}")
+  # 	if is_built():
+  # 		return True
+  # except ImportError:
+  # 	pass
+	
+		return available
+		
 
 	def test_torch_availability(self):
 		if self.torch_available():
-			print("torch is available and cuda is available")
+			print("torch is available and cuda or mps is available")
 			self.assertFalse(RMT_Util._eig_full_accurate is RMT_Util._eig_full_fast)
 			self.assertFalse(RMT_Util._svd_full_accurate is RMT_Util._svd_full_fast)
 			self.assertFalse(RMT_Util._svd_vals_accurate is RMT_Util._svd_vals_fast)
 		else:
-			print("torch is not available or cuda is not available")
+			print("torch is not available or cuda or mps is not available")
 			self.assertTrue(RMT_Util._eig_full_accurate is RMT_Util._eig_full_fast)
 			self.assertTrue(RMT_Util._svd_full_accurate is RMT_Util._svd_full_fast)
 			self.assertTrue(RMT_Util._svd_vals_accurate is RMT_Util._svd_vals_fast)
@@ -3666,7 +3709,6 @@ class Test_Pandas(Test_Base):
 
 
 
-		
 		
 		
 if __name__ == '__main__':

@@ -1,0 +1,146 @@
+# Macbook Pro M2
+#
+
+
+# Make sure conda has the channels
+#  channels:
+#  - apple
+#  - conda-forge
+#
+conda config --add channels apple
+conda config --add channels conda-forge
+#
+# check the channels
+# (I think apple needs to be first..not sure yet)
+#
+conda config --get
+
+#
+# install a python ARM version
+#
+CONDA_SUBDIR=osx-arm64 conda create -n ww0.7 python=3.10
+
+#
+# check the platform: 'macOS-13.2.1-arm64-arm-64bit'
+#
+pip3 install ipython
+ipython
+import platform
+platform.platform()
+
+#
+# Veclib Perform floating-point arithmetic, transcendental, and trigonometric functions on 128-bit vectors.
+# I guess I need this ? not sure
+#
+brew install veclibfort
+
+
+#
+# install numpy from the apple channel
+#  this uses libblas, etc
+#
+# https://developer.apple.com/forums/thread/695963
+#
+conda install cython pybind11
+pip3 install --no-binary :all: --no-use-pep517 numpy
+
+
+#
+# If NumPy is using the Accelerate framework, you should see a line in the output that says accelerate_info: {'libraries': ['System', 'Accelerate'], 'library_dirs': ['/usr/lib']}.
+#
+import numpy as np
+np.__config__.show()
+#
+# you should see
+#
+# lapack_opt_info:
+#    extra_compile_args = ['-I/System/Library/Frameworks/vecLib.framework/Headers']
+#    extra_link_args = ['-Wl,-framework', '-Wl,Accelerate']
+#    define_macros = [('NO_ATLAS_INFO', 3), ('HAVE_CBLAS', None)]
+# Supported SIMD extensions in this NumPy install:
+#    baseline = NEON,NEON_FP16,NEON_VFPV4,ASIMD
+#    found = ASIMDHP,ASIMDDP
+#    not found = ASIMDFHM
+#
+
+#
+# test the performance of the SVD
+#  average speed should be
+# 
+# mean of 10 runs: 0.08435s
+#
+python checks/check_svd_perf.py
+
+# install the tensorflow dependencies
+# note: numpy must match
+#
+# this will not work
+#conda install -c apple tensorflow-deps
+#pip3 install tensorflow-macos
+#pip3 install tensorflow-metal
+
+# instead,use
+SYSTEM_VERSION_COMPAT=0 pip3 install tensorflow-macos tensorflow-metal
+
+#
+# test that tensorflow can be imported and the GPU and CPU are present
+#
+# [PhysicalDevice(name='/physical_device:CPU:0', device_type='CPU'),
+# PhysicalDevice(name='/physical_device:GPU:0', device_type='GPU')]
+#
+ipython
+import tensorflow as tf
+tf.__version__ (currently '2.11.0')
+tf.config.list_physical_devices()
+
+#
+# install pytorch
+# https://towardsdatascience.com/installing-pytorch-on-apple-m1-chip-with-gpu-acceleration-3351dc44d67c
+#
+pip3 install torch torchvision torchaudio
+
+# check that the MPS beckend is available and built
+ipython
+
+import torch
+torch.backends.mps.is_available()
+torch.backends.mps.is_built()
+
+
+#
+# install scipy (can not be accelerated)
+#
+# scipy needs OPENBLAS, it can not use the Accelerate library
+# Note: we can not both install pythran and tensorflow, so we can not build scipy from scratch
+
+brew install openblas gfortran
+OPENBLAS="$(brew --prefix openblas)" pip3 install scipy
+
+#
+# test the performance of the scipy SVD
+#
+python checks/check_scipy_svd.py
+#
+# currently I find that np.linalg.svd is faster:
+#
+#  python checks/checkscipy_svd.py 
+#  np.linalg.svd took 0.05757 seconds
+#  scipy.linalg.svd took 0.18015 seconds
+#  numpy.linalg.svd is faster
+#
+
+# confirm the linalg is found so the code can switch on this
+python checks/check_mac_M12.py
+
+#
+# install remaining packages
+#
+export OPENBLAS=$(/opt/homebrew/bin/brew --prefix openblas)
+export CFLAGS="-falign-functions=8 ${CFLAGS}"
+pip3 install scikit-learn pandas powerlaw
+
+# for testing and notebooks
+pip3 install matplotlib matplotlib-inline tqdm transformers
+#
+
+

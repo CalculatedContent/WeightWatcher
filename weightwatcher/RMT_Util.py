@@ -16,35 +16,71 @@ import numpy as np
 import scipy as sp
 import scipy.stats as stats
 
-from .constants import *
-from .WW_powerlaw import *
+from weightwatcher.constants import *
+from weightwatcher.WW_powerlaw import *
 
 
 logger = logging.getLogger(WW_NAME)
+
+
+def has_mac_accelerate():
+    """Check if the platform is the MAC M1/M2 and numpy is using the accelerate library.
+    If so, numpy SVD will be faster than linalg SVD, and we auto-switch to that upon import
+    
+    Note: """
+    
+    import platform
+    import warnings
+    
+    use_linalg = False
+    mac_arch = platform.machine()
+    if mac_arch == 'arm64':
+    
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",category=DeprecationWarning)
+            import numpy.distutils.system_info as sysinfo
+            info = sysinfo.get_info('accelerate')
+            if info is not None and len(info)>0:
+                for x in info['extra_link_args']:
+                    if 'Accelerate' in x:
+                        use_linalg = True
+                        
+    return use_linalg
+    
 
 
 # PyTorch has 2 separate SVD methods, one for the vals, and one for the factorization
 # https://pytorch.org/docs/stable/generated/torch.linalg.eig.html
 # https://pytorch.org/docs/stable/generated/torch.linalg.svd.html
 # https://pytorch.org/docs/stable/generated/torch.linalg.svdvals.html
-_eig_full_accurate = lambda W: sp.linalg.eig(W)
-_svd_full_accurate = lambda W: sp.linalg.svd(W, compute_uv=True)
-_svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
 
+# TODO: change this based on ENV var and/or auto-detect
+# see: issue #220
+if has_mac_accelerate():
+    logger.info("Using Numoy with MAC M1/2 Accelerate for SVD")
+    _eig_full_accurate = lambda W: np.linalg.eig(W)
+    _svd_full_accurate = lambda W: np.linalg.svd(W, compute_uv=True)
+    _svd_vals_accurate = lambda W: np.linalg.svd(W, compute_uv=False)
+else:
+    logger.info("Using Scipy for SVD")
+    _eig_full_accurate = lambda W: sp.linalg.eig(W)
+    _svd_full_accurate = lambda W: sp.linalg.svd(W, compute_uv=True)
+    _svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
+    
+    
 # 
 try:
     import torch
 
-    if torch.cuda.is_available():
-        to_np = lambda t: t.to("cpu").numpy()
-
+    if torch.cuda.is_available() :
         def torch_wrapper(M, f):
             torch.cuda.empty_cache()
             with torch.no_grad():
                 M_cuda = torch.Tensor(M).to("cuda")
                 rvals = f(M_cuda)
             del M_cuda
-            return rvals
+            return rvals          
+            
 
         def _eig_full_fast(M):
             L, V = torch_wrapper(M, lambda M: torch.linalg.eig(M))
@@ -56,7 +92,11 @@ try:
             S = torch_wrapper(M, lambda M: torch.linalg.svdvals(M))
             return to_np(S)
     else:
-        logger.warning("PyTorch is available but CUDA is not. Defaulting to scipy for SVD")
+        msg_svd = "SciPy"
+        if has_mac_accelerate():
+            msg_svd = "NumPy"
+
+        logger.warning(f"PyTorch is available but CUDA is not. Defaulting to {msg_svd} for SVD")
         raise ImportError()
     
 except ImportError:

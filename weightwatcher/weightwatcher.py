@@ -4343,7 +4343,7 @@ class WeightWatcher:
             bias_key = re.sub('weight$', 'bias', weight_key)
             if bias_key in state_dict:
                 T = state_dict[bias_key]
-                b = T.cpu().detach().numpy() # do we need  ?
+                b = T.cpu().detach().float().numpy() # do we need  ?
                 biasfile = f"{model_name}.{layer_id}.bias.npy"
     
     

@@ -413,9 +413,9 @@ class PyStateDictLayer(FrameworkLayer):
                     biases = None
         
                 if type(weights)==torch.Tensor:
-                    weights = weights.data.cpu().detach().numpy()
+                    weights = weights.data.cpu().detach().float().numpy()
                     if biases is not None:
-                        biases = biases.data.cpu().detach().numpy()
+                        biases = biases.data.cpu().detach().float().numpy()
                     
                 # we may need to change this, set valid later
                 # because we want al the layers for describe
@@ -440,9 +440,9 @@ class PyStateDictLayer(FrameworkLayer):
             biases = model_state_dict[bias_key]
 
         if type(weights)==torch.Tensor:
-            weights = weights.data.cpu().detach().numpy()
+            weights = weights.data.cpu().detach().float().numpy()
             if self.has_biases():
-                biases = biases.data.cpu().detach().numpy()
+                biases = biases.data.cpu().detach().float().numpy()
                     
         return True, weights, self.has_biases(), biases
     

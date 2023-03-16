@@ -4328,8 +4328,8 @@ class WeightWatcher:
         
         for layer_id, weight_key in enumerate(weight_keys):
             
-            layer_id_plus_start_id = layer_id+start_id  
-            name = f"{model_name}.{layer_id_plus_start_id}"
+            layer_id_updated = layer_id+start_id  
+            name = f"{model_name}.{layer_id_updated}"
             longname = re.sub('.weight$', '', weight_key)
                     
             T = state_dict[weight_key]
@@ -4344,7 +4344,7 @@ class WeightWatcher:
             if bias_key in state_dict:
                 T = state_dict[bias_key]
                 b = T.cpu().detach().float().numpy() # do we need  ?
-                biasfile = f"{model_name}.{layer_id_plus_start_id}.bias.npy"
+                biasfile = f"{model_name}.{layer_id_updated}.bias.npy"
     
     
             filename = os.path.join(weights_dir,weightfile)
@@ -4437,7 +4437,7 @@ class WeightWatcher:
                     layer_configs = WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id) 
                     config['layers'].update(layer_configs) 
                     layer_ids = [x for x in config['layers'].keys()]
-                    start_id = np.max(layer_ids)+1
+                    start_id = start_id + np.max(layer_ids)+1
                     logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
                 
                 #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file

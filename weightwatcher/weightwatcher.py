@@ -4336,7 +4336,7 @@ class WeightWatcher:
             
             shape = len(T.shape)  
             #if shape==2:
-            W = T.cpu().detach().numpy() # do we need  ?
+            W = T.cpu().detach().float().numpy() # do we need  ?
             weightfile = f"{name}.weight.npy"
     
             biasfile = None

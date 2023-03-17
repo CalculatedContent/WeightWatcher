@@ -2242,7 +2242,7 @@ class WeightWatcher:
 
         ff =  params[FIX_FINGERS]
         xmin_max = params[XMIN_MAX]
-        max_N =  params[MAX_N]
+        max_fingers =  params[MAX_FINGERS]
         
         layer_name = "Layer {}".format(plot_id)
         
@@ -2252,7 +2252,7 @@ class WeightWatcher:
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
-                              fix_fingers=ff, xmin_max=xmin_max, max_N=max_N, fit_type=fit_type, pl_package=pl_package)
+                              fix_fingers=ff, xmin_max=xmin_max, max_fingers=MAX_FINGERS, fit_type=fit_type, pl_package=pl_package)
 
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -2402,7 +2402,7 @@ class WeightWatcher:
                 conv2d_fft=False, fft=False, 
                 deltas=False, intra=False, vectors=False, channels=None, 
                 stacked=False,
-                fix_fingers=False, xmin_max = None,  max_N=10,
+                fix_fingers=False, xmin_max = None,  max_fingers=DEFAULT_MAX_FINGERS,
                 fit=PL, sparsify=True, 
                 detX=False,
                 svd_method=FAST_SVD,
@@ -2496,7 +2496,7 @@ class WeightWatcher:
         xmin_max = None | max eignalvaue in the xmin range
             Only makes sense to use with fix_fingers= 'xmin_fit'
             
-        max_N: 10 by default, 
+        max_fingers: 10 by default, 
             Only makes sense to use with fix_fingers= 'clip_xmax'
             Max Number of eigenvalues to clip to find a much smaller alpha
             
@@ -2581,7 +2581,7 @@ class WeightWatcher:
         params[STACKED] = stacked
         params[FIX_FINGERS] = fix_fingers
         params[XMIN_MAX] = xmin_max
-        params[MAX_N] = max_N
+        params[MAX_FINGERS] = max_fingers
 
         params[FIT] = fit
         params[SPARSIFY] = sparsify
@@ -3101,7 +3101,7 @@ class WeightWatcher:
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
                      thresh=EVALS_THRESH,
-                     fix_fingers=False, xmin_max = None, max_N = DEFAULT_MAX_N, 
+                     fix_fingers=False, xmin_max = None, max_fingers = DEFAULT_MAX_FINGERS, 
                      fit_type=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
         """Fit eigenvalues to powerlaw or truncated_power_law
         
@@ -3203,11 +3203,11 @@ class WeightWatcher:
             logger.info(f"fix the fingers by fitting a clipped power law using pl_package = {pl_package}, xmax={xmax}")
             try:
                 nz_evals = evals[evals > thresh]
-                if max_N is None or max_N < 0 or max_N < (1/2)*len(evals):
-                    max_N = DEFAULT_MAX_N
-                logger.debug(f"max N = {max_N}")
+                if max_fingers is None or max_fingers < 0 or max_fingers < (1/2)*len(evals):
+                    max_fingers = DEFAULT_MAX_FINGERS
+                logger.debug(f"max_fingers = {MAX_FINGERS}")
                     
-                fit, num_fingers = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_N=max_N, logger=logger, plot=plot,  pl_package=pl_package)  
+                fit, num_fingers = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_fingers=MAX_FINGERS, logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED

@@ -760,7 +760,7 @@ def fit_xxx_powerlaw(evals, xmin=None):
     
 # check alpha is decreasing
 # DO WE NEED XMAX='force'?
-def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAULT_MAX_N, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False, pl_package=WW_POWERLAW_PACKAGE):
+def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers=DEFAULT_MAX_FINGERS, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False, pl_package=WW_POWERLAW_PACKAGE):
     """Fits a powerlaw only, not a truncated power law
        clips off the max evals until a powerlaw is found, or stops half-way into the ESD
        
@@ -770,7 +770,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
        
        Parameters:
        
-         max_N:  max number of eigenvakues to clip
+         MAX_FINGERS:  max number of eigenvakues to clip
        
          min_alpha:  stops if alpha drops below min_alpha
          
@@ -785,7 +785,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
         logger = logging.getLogger("RMT_Util")
         logger.setLevel(logging.INFO)
                 
-    logger.info(f"fit_clipped_powerlaw: max_N={max_N} xmax={xmax}")
+    logger.info(f"fit_clipped_powerlaw: max_fingers={MAX_FINGERS} xmax={xmax}")
     fit = None
     #with warnings.catch_warnings():
         #warnings.simplefilter(action='ignore', category=RuntimeWarning) 
@@ -815,7 +815,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
 
     num_fingers = 0
     
-    for idx in range(2,max_N):
+    for idx in range(2,max_fingers):
         if xmax is not None and xmax is not False:
             xmax = np.max(evals[-idx])
         
@@ -853,7 +853,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_N=DEFAU
         #prev_R = R
 
             
-    if idx == max_N:
+    if idx == max_fingers:
         logger.info("Unable to find smaller alpha, stopping")
         fit = first_fit
     else:

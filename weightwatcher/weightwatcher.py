@@ -297,7 +297,8 @@ class PyTorchLayer(FrameworkLayer):
         # DO WE NEED TO LONE THE DATA or cane we just detach it ?
 
         if hasattr(self.layer, 'weight'): 
-            w = [np.array(self.layer.weight.data.clone().cpu())]
+            #w = [np.array(self.layer.weight.data.clone().cpu())]
+            w = [np.array(self.layer.weight.data.to('cpu').half().detach())]
             if self.the_type==LAYER_TYPE.CONV2D:
                 weights = w[0]
                 biases = None
@@ -317,8 +318,9 @@ class PyTorchLayer(FrameworkLayer):
                 biases = None
                 has_biases = False
                 if self.layer.bias is not None and self.layer.bias.data is not None:
-                    biases = self.layer.bias.data.clone().cpu()
-                    biases = biases.detach().numpy()
+                    #biases = self.layer.bias.data.clone().cpu()
+                    #biases = biases.detach().numpy()
+                    biases = self.layer.bias.data.to('cpu').half().detach().numpy()
                     has_biases = True
 
                 

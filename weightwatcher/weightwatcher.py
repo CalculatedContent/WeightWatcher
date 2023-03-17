@@ -4371,11 +4371,11 @@ class WeightWatcher:
     
     @staticmethod 
     def describe_pytorch_bins(model_dir=None,  **kwargs):
-        return WeightWatcher.apply_watcher_to_pytorch_bins(method=METHODS.DESCRIBE, model_dir=None, *args, **kwargs)
+        return WeightWatcher.apply_watcher_to_pytorch_bins(method=METHODS.DESCRIBE, model_dir=None, **kwargs)
     
     @staticmethod 
     def analyze_pytorch_bins(model_dir=None,  **kwargs):
-        return WeightWatcher.apply_watcher_to_pytorch_bins(method=METHODS.ANALYZE, model_dir=None, *args, **kwargs)
+        return WeightWatcher.apply_watcher_to_pytorch_bins(method=METHODS.ANALYZE, model_dir=None,  **kwargs)
     
     
     @staticmethod 

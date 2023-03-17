@@ -4390,6 +4390,8 @@ class WeightWatcher:
         Returns:
         
           aggregated details dataframe
+          
+          TODO: maybe intgerate EXTRACT into this
         """
         
         total_details = None
@@ -4439,7 +4441,7 @@ class WeightWatcher:
                               
                     start_id = total_details.layer_id.max()
 
-                    logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
+                    logger.debug(f"num layer_ids {len(details)} last layer_id {start_id-1}")
                 
                 #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
                

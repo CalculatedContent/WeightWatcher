@@ -73,6 +73,9 @@ try:
     import torch
 
     if torch.cuda.is_available() :
+        
+        to_np = lambda t: t.to("cpu").numpy()
+         
         def torch_wrapper(M, f):
             torch.cuda.empty_cache()
             with torch.no_grad():

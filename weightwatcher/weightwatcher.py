@@ -413,9 +413,9 @@ class PyStateDictLayer(FrameworkLayer):
                     biases = None
         
                 if type(weights)==torch.Tensor:
-                    weights = weights.data.cpu().detach().float().numpy()
+                    weights = weights.data.cpu().detach().float().numpy().astype(np.float16)
                     if biases is not None:
-                        biases = biases.data.cpu().detach().float().numpy()
+                        biases = biases.data.cpu().detach().float().numpy().astype(np.float16)
                     
                 # we may need to change this, set valid later
                 # because we want al the layers for describe
@@ -440,9 +440,9 @@ class PyStateDictLayer(FrameworkLayer):
             biases = model_state_dict[bias_key]
 
         if type(weights)==torch.Tensor:
-            weights = weights.data.cpu().detach().float().numpy()
+            weights = weights.data.cpu().detach().float().numpy().astype(np.float16)
             if self.has_biases():
-                biases = biases.data.cpu().detach().float().numpy()
+                biases = biases.data.cpu().detach().float().numpy().astype(np.float16)
                     
         return True, weights, self.has_biases(), biases
     
@@ -4337,14 +4337,14 @@ class WeightWatcher:
             
             shape = len(T.shape)  
             #if shape==2:
-            W = T.cpu().detach().float().numpy() # do we need  ?
+            W = T.cpu().detach().float().numpy().astype(np.float16) # do we need  ?
             weightfile = f"{name}.weight.npy"
     
             biasfile = None
             bias_key = re.sub('weight$', 'bias', weight_key)
             if bias_key in state_dict:
                 T = state_dict[bias_key]
-                b = T.cpu().detach().float().numpy() # do we need  ?
+                b = T.cpu().detach().float().numpy().astype(np.float16) # do we need  ?
                 biasfile = f"{model_name}.{layer_id_updated}.bias.npy"
     
     
@@ -4367,6 +4367,96 @@ class WeightWatcher:
             config[int(layer_id)]=layer_config
                 
         return config
+    
+    
+    @staticmethod 
+    def describe_pytorch_bins(model_dir=None,  **kwargs):
+        return apply_watcher_to_pytorch_bins(method=METHODS.DESCRIBE, model_dir=None, *args, **kwargs)
+    
+    @staticmethod 
+    def analyze_pytorch_bins(model_dir=None,  **kwargs):
+        return apply_watcher_to_pytorch_bins(method=METHODS.ANALYZE, model_dir=None, *args, **kwargs)
+    
+    
+    @staticmethod 
+    def apply_watcher_to_pytorch_bins(method=describe, model_dir=None, **kwargs):
+        """Read the pytorch config and state_dict files, and describe or analyze)
+        Notice: the .bin files are parts of oystatedict files, but may or may not contain the ['model'] key
+         
+        Parameters:  
+        
+          model_dir:  string, directory of the config file and  pytorch_model.bin file(s)
+          
+        Returns:
+        
+          aggregated details dataframe
+        """
+        
+        total_details = None
+
+        logger.info(f"analyzing_pytorch_bin files in {model_dir}, returning combined details")    
+        if os.path.exists(model_dir) and os.path.isdir(model_dir):
+            
+            try:                  
+                # read config, optional
+                if model_name is None:
+                    config_filename = os.path.join(model_dir, "config.json")
+                    with open(config_filename, "r") as f:
+                        model_config = json.loads(f.read())
+        
+                    model_name = model_config['model_type']
+                    if model_name is None:
+                        model_name = "UNK"
+                    
+                config['model_name'] = model_name
+                logger.info(f"Processing model named: {model_name}")
+                
+                details = None
+                
+                # read all pytorch bin files, extract all files, and process
+                # note: this is not as smart as it could be but better than using all that memory
+                # maybe: need to input the glob, or user has to rename them
+                # this has never been tested with more than 1 bin file; maybe not necessary
+                start_id = 0
+                for state_dict_filename in glob.glob(f"{model_dir}/pytorch_model*bin"):
+                    logger.info(f"loading {state_dict_filename}")
+                    model = torch.load(state_dict_filename)
+                    watcher = WeightWatcher.watcher(model=model)
+                    
+                    if method == METHODS.DESCRIBE:
+                        details = watcher.describe(**kwargs)
+                    elif method == METHODS.ANALYZE:
+                        details = watcher.analyze(**kwargs)           
+                                 
+                    if len(details) > 0:
+                        details['model_name'] = model_name
+                       
+                        if total_details is None:
+                            total_details = details
+                        else:
+                            details.layer_id  = details.layer_id + start_id
+                            total_details = pd.concat([total_details,details], ignore_index=True)      
+                              
+                    start_id = total_details.layer_id.max()
+
+                    logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
+                
+                #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
+               
+                        
+                
+            except Exception as e:
+                logger.error(traceback.format_exc())
+                logger.fatal(f"Unknown problem, stopping")
+            
+        else:
+            logger.fatal(f"Unknown model_dir {model_dir}, stopping")
+            
+            
+            
+        return total_details
+    
+    
     
     
     @staticmethod 

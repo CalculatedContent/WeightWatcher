@@ -198,6 +198,9 @@ class CHANNELS(IntFlag):
     FIRST = auto()
     LAST = auto()   
             
+class METHODS(IntFlag):
+    DESCRIBE = auto()
+    ANALYZE = auto()
             
 # TODO either complete or remove thi 
 class METRICS():

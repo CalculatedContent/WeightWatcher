@@ -74,6 +74,8 @@ try:
 
     if torch.cuda.is_available() :
         
+        logger.info("Torch CUDA available, using torch_wrapper")
+
         to_np = lambda t: t.to("cpu").numpy()
          
         def torch_wrapper(M, f):

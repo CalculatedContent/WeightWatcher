@@ -4408,7 +4408,6 @@ class WeightWatcher:
                     if model_name is None:
                         model_name = "UNK"
                     
-                config['model_name'] = model_name
                 logger.info(f"Processing model named: {model_name}")
                 
                 details = None
@@ -4429,7 +4428,8 @@ class WeightWatcher:
                         details = watcher.analyze(**kwargs)           
                                  
                     if len(details) > 0:
-                        details['model_name'] = model_name
+                        details['model_name'] = state_dict_filename
+                        details['model_filename'] = state_dict_filename
                        
                         if total_details is None:
                             total_details = details

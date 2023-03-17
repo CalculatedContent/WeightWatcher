@@ -2611,11 +2611,6 @@ class WeightWatcher:
             if not ww_layer.skipped and ww_layer.has_weights:
                 logger.debug("LAYER: {} {}  : {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
                 
-                # issue 137 (moved code here)
-                # details = details.append(ww_layer.get_row(), ignore_index=True)
-                logger.debug(f"c {str(ww_layer.get_row())}")
-                data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
-                
                 # maybe not necessary
                 self.apply_normalize_Wmats(ww_layer, params)
                 
@@ -2660,14 +2655,16 @@ class WeightWatcher:
                     #all_evals.extend(ww_layer.evals)
                     
                 # TODO: add find correlation traps here
-
- 
-                
+                                
+                # issue 137 (moved code here)
+                # details = details.append(ww_layer.get_row(), ignore_index=True)
+                data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
                 details = pd.concat([details,data], ignore_index=True)
 
         # Reorder the columns so that layer_id and name come first.
-        lead_cols = ["layer_id", "name"]
-        details = details[lead_cols + [c for c in details.columns if not c in lead_cols]]
+        if len(details) > 0:
+            lead_cols = ["layer_id", "name"]
+            details = details[lead_cols + [c for c in details.columns if not c in lead_cols]]
 
         self.details = details
         return details

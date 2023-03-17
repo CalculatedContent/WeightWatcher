@@ -2658,7 +2658,7 @@ class WeightWatcher:
 
                 # issue 137
                 # details = details.append(ww_layer.get_row(), ignore_index=True)
-                print(ww_layer.get_row())
+                logger.debug(f"the layer is {str(ww_layer.get_row())}")
                 data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
                 details = pd.concat([details,data], ignore_index=True)
 

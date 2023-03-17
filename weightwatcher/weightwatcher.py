@@ -4375,11 +4375,11 @@ class WeightWatcher:
     
     @staticmethod 
     def analyze_pytorch_bins(model_dir=None,  **kwargs):
-        return WeightWatcher.apply_watcher_to_pytorch_bins(method=METHODS.ANALYZE, model_dir=model_dir,  **kwargs)
+        return WeightWatcher.apply_watcher_to_pytorch_bins(method=METHODS.ANALYZE, model_dir=model_dir, **kwargs)
     
     
     @staticmethod 
-    def apply_watcher_to_pytorch_bins(method=describe, model_dir=None, **kwargs):
+    def apply_watcher_to_pytorch_bins(method=describe, model_dir=None, model_name=None, **kwargs):
         """Read the pytorch config and state_dict files, and describe or analyze)
         Notice: the .bin files are parts of oystatedict files, but may or may not contain the ['model'] key
          

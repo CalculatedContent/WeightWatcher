@@ -298,7 +298,8 @@ class PyTorchLayer(FrameworkLayer):
 
         if hasattr(self.layer, 'weight'): 
             #w = [np.array(self.layer.weight.data.clone().cpu())]
-            w = [np.array(self.layer.weight.data.to('cpu').half().detach())]
+            w = [np.array(self.layer.weight.data.cpu().half())]
+                 
             if self.the_type==LAYER_TYPE.CONV2D:
                 weights = w[0]
                 biases = None
@@ -320,7 +321,8 @@ class PyTorchLayer(FrameworkLayer):
                 if self.layer.bias is not None and self.layer.bias.data is not None:
                     #biases = self.layer.bias.data.clone().cpu()
                     #biases = biases.detach().numpy()
-                    biases = self.layer.bias.data.to('cpu').half().detach().numpy()
+                    biases = self.layer.bias.data.cpu().half().numpy()
+                        
                     has_biases = True
 
                 
@@ -415,9 +417,11 @@ class PyStateDictLayer(FrameworkLayer):
                     biases = None
         
                 if type(weights)==torch.Tensor:
-                    weights = weights.data.cpu().detach().float().numpy().astype(np.float16)
+                    """We want to store data in float16, not 32"""
+                    weights = weights.data.cpu().half().numpy()
                     if biases is not None:
-                        biases = biases.data.cpu().detach().float().numpy().astype(np.float16)
+                        biases = biases.data.cpu().half().numpy()
+        
                     
                 # we may need to change this, set valid later
                 # because we want al the layers for describe
@@ -442,9 +446,10 @@ class PyStateDictLayer(FrameworkLayer):
             biases = model_state_dict[bias_key]
 
         if type(weights)==torch.Tensor:
-            weights = weights.data.cpu().detach().float().numpy().astype(np.float16)
+            weights = weights.data.cpu().half().numpy()
             if self.has_biases():
-                biases = biases.data.cpu().detach().float().numpy().astype(np.float16)
+                biases = biases.data.cpu().half().numpy()
+                
                     
         return True, weights, self.has_biases(), biases
     
@@ -2252,7 +2257,7 @@ class WeightWatcher:
         alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
-                              fix_fingers=ff, xmin_max=xmin_max, max_fingers=MAX_FINGERS, fit_type=fit_type, pl_package=pl_package)
+                              fix_fingers=ff, xmin_max=xmin_max, max_fingers=max_fingers, fit_type=fit_type, pl_package=pl_package)
 
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -2874,6 +2879,7 @@ class WeightWatcher:
             
             
         fix_fingers =  params[FIX_FINGERS]
+        max_fingers =  params[MAX_FINGERS]
         xmax = params[XMAX]
         if fix_fingers:
             if fix_fingers not in [XMIN_PEAK, CLIP_XMAX]:
@@ -2884,6 +2890,10 @@ class WeightWatcher:
                 valid=False
             else:
                 logger.info("Fixing fingers using  {}".format(fix_fingers))
+                
+            if max_fingers is not None and max_fingers < 1:
+                logger.warning(f"Can not set max fingers < 1, max_fingers={max_fingers}")
+                valid=False
                 
             
         fit_type = params[FIT]
@@ -3101,7 +3111,7 @@ class WeightWatcher:
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
                      thresh=EVALS_THRESH,
-                     fix_fingers=False, xmin_max = None, max_fingers = DEFAULT_MAX_FINGERS, 
+                     fix_fingers=False, xmin_max=None, max_fingers=DEFAULT_MAX_FINGERS, 
                      fit_type=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
         """Fit eigenvalues to powerlaw or truncated_power_law
         
@@ -3207,7 +3217,7 @@ class WeightWatcher:
                     max_fingers = DEFAULT_MAX_FINGERS
                 logger.debug(f"max_fingers = {MAX_FINGERS}")
                     
-                fit, num_fingers = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_fingers=MAX_FINGERS, logger=logger, plot=plot,  pl_package=pl_package)  
+                fit, num_fingers = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_fingers=max_fingers, logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -4339,14 +4349,15 @@ class WeightWatcher:
             
             shape = len(T.shape)  
             #if shape==2:
-            W = T.cpu().detach().float().numpy().astype(np.float16) # do we need  ?
+            W = T.cpu().half().numpy()
+                
             weightfile = f"{name}.weight.npy"
     
             biasfile = None
             bias_key = re.sub('weight$', 'bias', weight_key)
             if bias_key in state_dict:
                 T = state_dict[bias_key]
-                b = T.cpu().detach().float().numpy().astype(np.float16) # do we need  ?
+                b = T.cpu().half().numpy()                  
                 biasfile = f"{model_name}.{layer_id_updated}.bias.npy"
     
     

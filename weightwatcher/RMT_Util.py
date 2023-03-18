@@ -68,15 +68,24 @@ else:
     _svd_vals_accurate = lambda W: sp.linalg.svd(W, compute_uv=False)
     
     
+    
+def has_cuda():
+    try:
+        import torch
+        return torch.cuda.is_available()
+    except ImportError:
+        pass
+    return False
+
+
 # 
 try:
     import torch
-
     if torch.cuda.is_available() :
-        
         logger.info("Torch CUDA available, using torch_wrapper")
 
-        to_np = lambda t: t.to("cpu").numpy()
+        # float changed to half to save memory
+        to_np = lambda T: T.to("cpu").half().numpy()
          
         def torch_wrapper(M, f):
             torch.cuda.empty_cache()
@@ -109,6 +118,7 @@ except ImportError:
     _eig_full_fast = _eig_full_accurate
     _svd_full_fast = _svd_full_accurate
     _svd_vals_fast = _svd_vals_accurate
+    
 
 def eig_full(W, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD?
@@ -770,7 +780,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers
        
        Parameters:
        
-         MAX_FINGERS:  max number of eigenvakues to clip
+         max_fingers:  max number of eigenvalues to clip
        
          min_alpha:  stops if alpha drops below min_alpha
          

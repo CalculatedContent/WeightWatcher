@@ -1244,6 +1244,7 @@ class WWLayerIterator(ModelIterator):
         
         if ww_layer.skipped:
             logger.debug("Layer {} {} is skipped".format(layer_id, name))
+            return False
             
         elif not ww_layer.has_weights:
             logger.debug("layer not supported: Layer {} {} has no weights".format(layer_id, name))
@@ -1274,13 +1275,14 @@ class WWLayerIterator(ModelIterator):
             logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name,  M * rf, max_evals))
             return False
         
-        elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D, LAYER_TYPE.EMBEDDING]:
-            supported = True
-            
         elif N > max_N:
             logger.debug("layer not supported: Layer {} {}: N*rf {} > max_evals {}".format(layer_id, name, N , max_N))
             return False
-                        
+        
+        elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D, LAYER_TYPE.EMBEDDING]:
+            supported = True
+            
+               
         return supported
     
 

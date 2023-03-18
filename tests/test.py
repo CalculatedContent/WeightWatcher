@@ -2282,11 +2282,24 @@ class Test_VGG11_Base(Test_Base):
 	def test_max_N_too_small(self):
 		"""Test that details is empty is max_N is too small
 		"""
+		
+		
+		params = DEFAULT_PARAMS.copy()
+		params[MAX_N] = DEFAULT_MAX_EVALS+1
+		
+		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
+		for ww_layer in iterator:
+			if ww_layer.N > params[MAX_N]:
+				self.assertTrue(ww_layer.skipped)
+		
 		details = self.watcher.describe(max_N=DEFAULT_MAX_EVALS+1)
 		print(details[['N','M']])
-		self.assertEqual(11,len(details))
-		details = self.watcher.analyze(max_N=DEFAULT_MAX_EVALS+1)
 		self.assertEqual(10,len(details))
+
+		return
+	
+		
+	def test_max_evals_too_small(self):
 		
 		details = self.watcher.analyze(max_evals=128)
 		self.assertEqual(1,len(details))

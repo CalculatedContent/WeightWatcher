@@ -139,6 +139,14 @@ class Test_ValidParams(Test_Base):
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertTrue(valid)
 		
+		# max N > max_evals
+		params = DEFAULT_PARAMS.copy()
+		params[MAX_N] = 10
+		params[MAX_EVALS] = 100
+		valid = ww.WeightWatcher.valid_params(params)
+		self.assertFalse(valid)
+		
+		
 		
 	def test_invalid_PL_package_settings(self):
 		params = DEFAULT_PARAMS.copy()
@@ -414,10 +422,6 @@ class Test_PyTorchLayers(Test_Base):
 	
 	def test_ww_layer_iterator(self):
 		"""Test that the layer iterators iterates over al layers as expected"""
-		
-		
-		logger = logging.getLogger(ww.__name__) 
-		logger.setLevel(logging.DEBUG)
 
 		expected_num_layers = 21 # I think 16 is the flattened layer
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
@@ -1538,7 +1542,7 @@ class Test_VGG11_Base(Test_Base):
 
 
 		self.model = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1')
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.DEBUG)		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)		
 		
 		self.first_layer = 2
 		self.second_layer = 5
@@ -1688,6 +1692,7 @@ class Test_VGG11_Base(Test_Base):
 		
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
+		
 		
 		
 	#TODO: implement
@@ -2272,6 +2277,24 @@ class Test_VGG11_Base(Test_Base):
 		"""
 		print("test runtime warning: sqrt(-1)=", np.sqrt(-1.0))
 		assert(True)
+		
+		
+	def test_max_N_too_small(self):
+		"""Test that details is empty is max_N is too small
+		"""
+		details = self.watcher.describe(max_N=DEFAULT_MAX_EVALS+1)
+		print(details[['N','M']])
+		self.assertEqual(11,len(details))
+		details = self.watcher.analyze(max_N=DEFAULT_MAX_EVALS+1)
+		self.assertEqual(10,len(details))
+		
+		details = self.watcher.analyze(max_evals=128)
+		self.assertEqual(1,len(details))
+		
+		details = self.watcher.analyze(max_evals=128, max_N=129)
+		self.assertEqual(1,len(details))
+		return
+	
 		
 	def test_N_ge_M(self):
 		"""Test that the Keras on VGG11 M,N set properly on Conv2D layers

@@ -1227,8 +1227,9 @@ class WWLayerIterator(ModelIterator):
         M = ww_layer.M
         N = ww_layer.N
         
-        min_evals = self.params.get('min_evals')
-        max_evals = self.params.get('max_evals')
+        min_evals = self.params.get(MIN_EVALS)
+        max_evals = self.params.get(MAX_EVALS)
+        max_N = self.params.get(MAX_N)
 
         pool = self.params.get(POOL)
         # experimental
@@ -1270,11 +1271,15 @@ class WWLayerIterator(ModelIterator):
             return False
                   
         elif (pool)  and (not conv2d_fft) and max_evals and M * rf > max_evals:
-            logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name, N * rf, max_evals))
+            logger.debug("layer not supported: Layer {} {}: num_evals {} > max_evals {}".format(layer_id, name,  M * rf, max_evals))
             return False
         
         elif the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.CONV2D, LAYER_TYPE.EMBEDDING]:
             supported = True
+            
+        elif N > max_N:
+            logger.debug("layer not supported: Layer {} {}: N*rf {} > max_evals {}".format(layer_id, name, N , max_N))
+            return False
                         
         return supported
     
@@ -2395,7 +2400,7 @@ class WeightWatcher:
 
     def analyze(self, model=None, layers=[], 
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
-                min_size=None, max_size=None, 
+                min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
                 glorot_fix=False,
                 plot=False, randomize=False,  
                 savefig=DEF_SAVE_DIR,
@@ -2427,8 +2432,11 @@ class WeightWatcher:
         min_evals:  int, default=50, NOT 0
             Minimum number of evals (M*rf) 
             
-        max_evals:  int, default=10000
+        max_evals:  int, default=15000
             Maximum number of evals (N*rf) (0 = no limit)
+            
+        max_Ns:  int, default=50000
+            Maximum N, largest size of matrix
             
         #removed
         normalize:  bool, default: True
@@ -2560,6 +2568,8 @@ class WeightWatcher:
         
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
+        params[MAX_N] = max_N
+        
         params[PLOT] = plot
         params[RANDOMIZE] = randomize
         params[MP_FIT] = mp_fit
@@ -2712,8 +2722,8 @@ class WeightWatcher:
         return 
                 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
-    def describe(self, model=None, layers=[], min_evals=0, max_evals=None,
-                min_size=None, max_size=None, 
+    def describe(self, model=None, layers=[], min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
+                min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR, ww2x=False, pool=True,
                 conv2d_fft=False,  fft=False, conv2d_norm=True, 
@@ -2741,6 +2751,7 @@ class WeightWatcher:
 
         params[MIN_EVALS] = min_evals 
         params[MAX_EVALS] = max_evals
+        params[MAX_N] = max_N
       
         # params[NORMALIZE] = normalize  #removed 0.6.5 
         params[GLOROT_FIT] = glorot_fix
@@ -2761,7 +2772,8 @@ class WeightWatcher:
         #params[SAVEDIR] = savedir
         params[START_IDS] = start_ids
 
-
+        
+        print("describe params {}".format(params))
         logger.info("params {}".format(params))
         if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
@@ -2807,14 +2819,27 @@ class WeightWatcher:
         if xmin and xmin not in [XMIN.UNKNOWN, XMIN.AUTO, XMIN.PEAK]:
             logger.warning("param xmin unknown, ignoring {}".format(xmin))
             valid = False
+            
+        print(f"params = {params}")
         
-        min_evals = params.get('min_evals') 
-        max_evals = params.get('max_evals')
+        min_evals = params.get(MIN_EVALS) 
+        max_evals = params.get(MAX_EVALS)
+        max_N = params.get(MAX_N)
+        
         if min_evals and max_evals and min_evals >= max_evals:
             logger.warning("min_evals {} > max_evals {}".format(min_evals, max_evals))
             valid = False
         elif max_evals and max_evals < -1:
             logger.warning(" max_evals {} < -1 ".format(max_evals))
+            valid = False
+        
+        print(f"max_N={max_N}  max_evals {max_evals}")
+        if  max_N < max_evals:
+            logger.warning(f" max_N {max_N} < max_evals {max_evals}")
+            valid = False
+            
+        if max_N < min_evals:
+            logger.warning(f" max_N {max_N} < min_evals {max_evals}")
             valid = False
 
         svd_method = params.get(SVD_METHOD)
@@ -4089,7 +4114,7 @@ class WeightWatcher:
         return
 
 
-    def analyze_vectors(self, model=None, layers=[], min_evals=0, max_evals=None,
+    def analyze_vectors(self, model=None, layers=[], min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
         """Seperate method to analyze the eigenvectors of each layer"""
         

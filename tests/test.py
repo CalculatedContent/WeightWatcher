@@ -2777,13 +2777,13 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		print(type(self.fc_layers[0:2]), self.fc_layers[0:2])
 		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, randomize=False, vectors=False, pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
 		actual_alpha = details.alpha[0]
-		actual_best_fit = details.best_fit[0]
-		print(actual_alpha,actual_best_fit)
+		#actual_best_fit = details.best_fit[0]
+		#print(actual_alpha,actual_best_fit)
 
 		expected_alpha =  2.654 # not very accurate because of the sparisify transform
-		expected_best_fit = LOG_NORMAL
+		#expected_best_fit = LOG_NORMAL
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
-		self.assertEqual(actual_best_fit, expected_best_fit)
+		#self.assertEqual(actual_best_fit, expected_best_fit)
 		
 		
 	def test_intra_power_law_fit2(self):
@@ -2792,14 +2792,14 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		print(type(self.fc_layers[0:2]), self.fc_layers[0:2])
 		details= self.watcher.analyze(layers=self.fc_layers[0:2], intra=True, sparsify=False, pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
 		actual_alpha = details.alpha[0]
-		actual_best_fit = details.best_fit[0]
-		print(actual_alpha,actual_best_fit)
+		#actual_best_fit = details.best_fit[0]
+		#print(actual_alpha,actual_best_fit)
 
 
 		expected_alpha =  2.719 # close to exact ?
-		expected_best_fit = LOG_NORMAL
+		#expected_best_fit = LOG_NORMAL
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
-		self.assertEqual(actual_best_fit, expected_best_fit)
+		#self.assertEqual(actual_best_fit, expected_best_fit)
 
 	def test_truncated_power_law_fit(self):
 		"""Test TPL fits:  note that the new toprch method reduces the accureacy of the test
@@ -3682,7 +3682,7 @@ class Test_Pandas(Test_Base):
 
 	def test_column_names_analyze(self):
 		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
-							'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+							'alpha_weighted',  'entropy', 'fit_entropy', 'has_esd',
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 							'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
@@ -3696,7 +3696,7 @@ class Test_Pandas(Test_Base):
 
 	def test_column_names_analyze_detX(self):
 		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
-							'alpha_weighted', 'best_fit', 'detX_num', 'detX_val',
+							'alpha_weighted',  'detX_num', 'detX_val',
 							'detX_val_unrescaled', 'entropy', 'fit_entropy', 'has_esd',
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
@@ -3711,7 +3711,7 @@ class Test_Pandas(Test_Base):
 
 	def test_column_names_analyze_randomize(self):
 		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
- 					        'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+ 					        'alpha_weighted',  'entropy', 'fit_entropy', 'has_esd',
 					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 					        'log_spectral_norm', 'longname', 'matrix_rank', 'max_rand_eval', 'norm',
 					        'num_evals', 'num_fingers', 'num_pl_spikes', 'rand_W_scale',
@@ -3727,7 +3727,7 @@ class Test_Pandas(Test_Base):
 
 	def test_column_names_analyze_intra(self):
 		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'Xflag', 'alpha',
-					        'alpha_weighted', 'best_fit', 'entropy', 'fit_entropy', 'has_esd',
+					        'alpha_weighted',  'entropy', 'fit_entropy', 'has_esd',
 					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 					        'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 					        'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
@@ -3741,7 +3741,7 @@ class Test_Pandas(Test_Base):
 
 	def test_column_names_analyze_mp_fit(self):
 		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'W_scale', 'alpha',
-							'alpha_weighted', 'best_fit', 'bulk_max', 'bulk_min', 'entropy',
+							'alpha_weighted',  'bulk_max', 'bulk_min', 'entropy',
 							'fit_entropy', 'has_esd', 'lambda_max', 'layer_type', 'log_alpha_norm',
 							'log_norm', 'log_spectral_norm', 'longname', 'matrix_rank',
 							'mp_softrank', 'norm', 'num_evals', 'num_fingers', 'num_pl_spikes',

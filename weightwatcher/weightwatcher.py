@@ -2269,7 +2269,7 @@ class WeightWatcher:
         ww_layer.add_column('D', D)
         ww_layer.add_column('sigma', sigma)
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
-        ww_layer.add_column('best_fit', best_fit) 
+        #ww_layer.add_column('best_fit', best_fit) 
         ww_layer.add_column('num_fingers', num_fingers) #-1 for PL, 
         ww_layer.add_column('fit_entropy', fit_entropy) #-1 for PL, 
 
@@ -2775,7 +2775,6 @@ class WeightWatcher:
         params[START_IDS] = start_ids
 
         
-        print("describe params {}".format(params))
         logger.info("params {}".format(params))
         if not WeightWatcher.valid_params(params):
             msg = "Error, params not valid: \n {}".format(params)
@@ -2822,8 +2821,6 @@ class WeightWatcher:
             logger.warning("param xmin unknown, ignoring {}".format(xmin))
             valid = False
             
-        print(f"params = {params}")
-        
         min_evals = params.get(MIN_EVALS) 
         max_evals = params.get(MAX_EVALS)
         max_N = params.get(MAX_N)
@@ -2835,7 +2832,6 @@ class WeightWatcher:
             logger.warning(" max_evals {} < -1 ".format(max_evals))
             valid = False
         
-        print(f"max_N={max_N}  max_evals {max_evals}")
         if  max_N < max_evals:
             logger.warning(f" max_N {max_N} < max_evals {max_evals}")
             valid = False
@@ -3289,20 +3285,19 @@ class WeightWatcher:
                 
             logger.debug("finding best distribution for fit, TPL or other ?")
             # we stil check againsgt TPL, even if using PL fit
-            all_dists = [TRUNCATED_POWER_LAW, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
-            Rs = [0.0]
-            dists = [POWER_LAW]
-            for dist in all_dists[1:]:
-                R, p = pl_compare(fit, dist)
-                if R > 0.1 and p > 0.05:
-                    dists.append(dist)
-                    Rs.append(R)
-                    logger.debug("compare dist={} R={:0.3f} p={:0.3f}".format(dist, R, p))
-            best_fit = dists[np.argmax(Rs)]
+            # all_dists = [TRUNCATED_POWER_LAW, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
+            # Rs = [0.0]
+            # dists = [POWER_LAW]
+            # for dist in all_dists[1:]:
+            #     R, p = pl_compare(fit, dist)
+            #     if R > 0.1 and p > 0.05:
+            #         dists.append(dist)
+            #         Rs.append(R)
+            #         logger.debug("compare dist={} R={:0.3f} p={:0.3f}".format(dist, R, p))
+            # best_fit = dists[np.argmax(Rs)]
             
             fit_entropy = line_entropy(fit.Ds)
- 
-            
+
             # check status for over-trained, under-trained    
             # maybe should remove this
             if alpha < 2.0:

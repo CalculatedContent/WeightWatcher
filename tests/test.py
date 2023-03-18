@@ -1743,7 +1743,7 @@ class Test_VGG11_Base(Test_Base):
 			Note:  for 0.7 release, ww2x=True has been changed to pool=False
 		"""
  
-		details = self.watcher.describe(pool=False)
+		details = self.watcher.describe(pool=False, min_evals=1)
 		
 		denseLayers = details[details.layer_type==str(LAYER_TYPE.DENSE)]
 		denseCount = len(denseLayers)
@@ -1884,7 +1884,7 @@ class Test_VGG11_Base(Test_Base):
 		
 		Note:  ww2x=True has been replaced with pool=False
 		"""
-		details = self.watcher.describe(pool=False)
+		details = self.watcher.describe(pool=False, min_evals=1)
 		print(details)
 		self.assertEqual(len(details), 75)
 		

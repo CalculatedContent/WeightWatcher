@@ -415,6 +415,10 @@ class Test_PyTorchLayers(Test_Base):
 	def test_ww_layer_iterator(self):
 		"""Test that the layer iterators iterates over al layers as expected"""
 		
+		
+		logger = logging.getLogger(ww.__name__) 
+		logger.setLevel(logging.DEBUG)
+
 		expected_num_layers = 21 # I think 16 is the flattened layer
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
 		self.assertTrue(layer_iterator is not None)
@@ -2788,6 +2792,8 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 	def test_extended_truncated_power_law_fit(self):
 		"""Test E-TPL fits.  Runs TPL with fix_fingets = XMIN_PEAK
 		"""
+		
+		#TODO: fix this; low priority
 		details= self.watcher.analyze(layers=[self.fc1_layer], fit=E_TPL, pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
 		actual_alpha = details.alpha[0]
 		actual_Lambda = details.Lambda[0]
@@ -2971,7 +2977,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
 		details = self.watcher.analyze(layers=[self.first_layer], conv2d_fft=True)
 		actual = details.alpha.to_numpy()[0]
 		expected = 2.144
-		self.assertAlmostEqual(actual,expected, places=3)
+		self.assertAlmostEqual(actual,expected, delta=0.01)
 		
 		
 class Test_VGG11_StateDict_Alpha_w_WWFit(Test_VGG11_Alpha_w_WWFit):	

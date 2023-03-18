@@ -78,6 +78,9 @@ def has_cuda():
     return False
 
 
+"""This method is over-written in tourch cuda is available"""
+torch_T_to_np = lambda T: T.to("cpu").float().numpy()
+
 # 
 try:
     import torch
@@ -85,7 +88,7 @@ try:
         logger.info("Torch CUDA available, using torch_wrapper")
 
         # float changed to half to save memory
-        to_np = lambda T: T.to("cpu").half().numpy()
+        torch_T_to_np = lambda T: T.to("cpu").half().numpy()
          
         def torch_wrapper(M, f):
             torch.cuda.empty_cache()
@@ -98,13 +101,13 @@ try:
 
         def _eig_full_fast(M):
             L, V = torch_wrapper(M, lambda M: torch.linalg.eig(M))
-            return to_np(L), to_np(V)
+            return torch_T_to_np(L), torch_T_to_np(V)
         def _svd_full_fast(M):
             U, S, Vh = torch_wrapper(M, lambda M: torch.linalg.svd(M))
-            return to_np(U), to_np(S), to_np(Vh)
+            return torch_T_to_np(U), torch_T_to_np(S), torch_T_to_np(Vh)
         def _svd_vals_fast(M):
             S = torch_wrapper(M, lambda M: torch.linalg.svdvals(M))
-            return to_np(S)
+            return torch_T_to_np(S)
     else:
         msg_svd = "SciPy"
         if has_mac_accelerate():
@@ -118,6 +121,9 @@ except ImportError:
     _eig_full_fast = _eig_full_accurate
     _svd_full_fast = _svd_full_accurate
     _svd_vals_fast = _svd_vals_accurate
+    
+    torch_T_to_np = lambda T: T.to("cpu").float().numpy()
+
     
 
 def eig_full(W, method=ACCURATE_SVD):

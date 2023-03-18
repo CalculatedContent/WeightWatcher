@@ -294,12 +294,10 @@ class PyTorchLayer(FrameworkLayer):
         has_weights, has_biases = False, False
         weights, biases = None, None
         
-        # DO WE NEED TO LONE THE DATA or cane we just detach it ?
-
         if hasattr(self.layer, 'weight'): 
             #w = [np.array(self.layer.weight.data.clone().cpu())]
-            w = [np.array(self.layer.weight.data.cpu().half())]
-                 
+            w = [torch_T_to_np(self.layer.weight.data)]
+            
             if self.the_type==LAYER_TYPE.CONV2D:
                 weights = w[0]
                 biases = None
@@ -321,8 +319,7 @@ class PyTorchLayer(FrameworkLayer):
                 if self.layer.bias is not None and self.layer.bias.data is not None:
                     #biases = self.layer.bias.data.clone().cpu()
                     #biases = biases.detach().numpy()
-                    biases = self.layer.bias.data.cpu().half().numpy()
-                        
+                    biases = torch_T_to_np(self.layer.bias.data)            
                     has_biases = True
 
                 
@@ -418,9 +415,9 @@ class PyStateDictLayer(FrameworkLayer):
         
                 if type(weights)==torch.Tensor:
                     """We want to store data in float16, not 32"""
-                    weights = weights.data.cpu().half().numpy()
+                    weights = torch_T_to_np(weights.data)
                     if biases is not None:
-                        biases = biases.data.cpu().half().numpy()
+                        biases = torch_T_to_np(biases.data)
         
                     
                 # we may need to change this, set valid later
@@ -446,9 +443,9 @@ class PyStateDictLayer(FrameworkLayer):
             biases = model_state_dict[bias_key]
 
         if type(weights)==torch.Tensor:
-            weights = weights.data.cpu().half().numpy()
+            weights = torch_T_to_np(weights.data)
             if self.has_biases():
-                biases = biases.data.cpu().half().numpy()
+                biases = torch_T_to_np(biases.data)
                 
                     
         return True, weights, self.has_biases(), biases
@@ -4349,7 +4346,7 @@ class WeightWatcher:
             
             shape = len(T.shape)  
             #if shape==2:
-            W = T.cpu().half().numpy()
+            W = torch_T_to_np(T)
                 
             weightfile = f"{name}.weight.npy"
     
@@ -4357,7 +4354,7 @@ class WeightWatcher:
             bias_key = re.sub('weight$', 'bias', weight_key)
             if bias_key in state_dict:
                 T = state_dict[bias_key]
-                b = T.cpu().half().numpy()                  
+                b = torch_T_to_np(T)                  
                 biasfile = f"{model_name}.{layer_id_updated}.bias.npy"
     
     

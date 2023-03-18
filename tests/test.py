@@ -246,12 +246,13 @@ class Test_KerasLayers(Test_Base):
 	def test_ww_layer_iterator(self):
 		"""Test that the layer iterators iterates over al layers as expected"""
 		
-		expected_num_layers = 15 # I think 16 is the flattened layer
+		expected_num_layers = 16
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
 		self.assertTrue(layer_iterator is not None)
 		num_layers = 0
 		for ww_layer in layer_iterator:
 			num_layers += 1
+			print(ww_layer)
 		self.assertEqual(expected_num_layers, num_layers)
 		
 		
@@ -3143,9 +3144,12 @@ class Test_Keras(Test_Base):
 		
 		details = watcher.analyze()
 		print(details)
+		self.assertTrue(len(details)==2)
+		
+				
+		details = watcher.analyze(min_evals=20)
+		print(details)
 		self.assertTrue(len(details)==1)
-		
-		
 		
         
 class Test_ResNet(Test_Base):

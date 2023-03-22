@@ -2929,8 +2929,8 @@ class WeightWatcher:
             logger.warning("Unknown fit type {}".format(fit_type))
             valid = False
             
-        if fit_type==E_TPL and fix_fingers is not None:
-            logger.warning("E-TPL and fix_fingers can not both be set")
+        if fit_type==E_TPL and fix_fingers==CLIP_XMAX:
+            logger.warning(f"E-TPL and fix_fingers ={CLIP_XMAX} can not both be explicitly set")
             valid = False
 
 
@@ -2985,6 +2985,7 @@ class WeightWatcher:
         elif fit_type==E_TPL:
             params[FIT]=TRUNCATED_POWER_LAW
             params[FIX_FINGERS]=XMIN_PEAK
+
             
         # this may not work
         if params[CHANNELS_STR] and params[CHANNELS_STR] == FIRST:

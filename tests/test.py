@@ -2831,7 +2831,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		"""
 		
 		#TODO: fix this; low priority
-		details= self.watcher.analyze(layers=[self.fc1_layer], fit=E_TPL, pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
+		details= self.watcher.analyze(layers=[self.fc1_layer], pl_package=POWERLAW_PACKAGE, fit=E_TPL)
 		actual_alpha = details.alpha[0]
 		actual_Lambda = details.Lambda[0]
 

@@ -2265,6 +2265,8 @@ class WeightWatcher:
                               fix_fingers=fix_fingers, xmin_max=xmin_max, max_fingers=max_fingers, finger_thresh=finger_thresh, \
                               fit_type=fit_type, pl_package=pl_package)
 
+  
+        
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
         ww_layer.add_column('xmax', xmax)
@@ -2274,7 +2276,8 @@ class WeightWatcher:
         #ww_layer.add_column('best_fit', best_fit) 
         #ww_layer.add_column('fit_entropy', fit_entropy) #-1 for PL, 
 
-        if fit_type in [TPL,E_TPL]:
+        if fit_type==TPL or fit_type==TRUNCATED_POWER_LAW or fit_type==E_TPL:
+            print('dp I get here?')
             ww_layer.add_column('Lambda', Lambda)  
 
         if fix_fingers==CLIP_XMAX:

@@ -2249,19 +2249,21 @@ class WeightWatcher:
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
-        ff =  params[FIX_FINGERS]
+        fix_fingers =  params[FIX_FINGERS]
         xmin_max = params[XMIN_MAX]
         max_fingers =  params[MAX_FINGERS]
+        finger_thresh = params[FINGER_THRESH]
         
         layer_name = "Layer {}".format(plot_id)
         
         fit_type =  params[FIT]
         pl_package = params[PL_PACKAGE]
 
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status = \
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, num_fingers, raw_alpha, status = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
-                              fix_fingers=ff, xmin_max=xmin_max, max_fingers=max_fingers, fit_type=fit_type, pl_package=pl_package)
+                              fix_fingers=fix_fingers, xmin_max=xmin_max, max_fingers=max_fingers, finger_thresh=finger_thresh, \
+                              fit_type=fit_type, pl_package=pl_package)
 
         ww_layer.add_column('alpha', alpha)
         ww_layer.add_column('xmin', xmin)
@@ -2270,10 +2272,15 @@ class WeightWatcher:
         ww_layer.add_column('sigma', sigma)
         ww_layer.add_column('num_pl_spikes', num_pl_spikes)
         #ww_layer.add_column('best_fit', best_fit) 
-        ww_layer.add_column('num_fingers', num_fingers) #-1 for PL, 
-        ww_layer.add_column('fit_entropy', fit_entropy) #-1 for PL, 
+        #ww_layer.add_column('fit_entropy', fit_entropy) #-1 for PL, 
 
-        ww_layer.add_column('Lambda', Lambda) #-1 for PL, 
+        if fit_type in [TPL,E_TPL]:
+            ww_layer.add_column('Lambda', Lambda)  
+
+        if fix_fingers==CLIP_XMAX:
+            ww_layer.add_column('num_fingers', num_fingers) 
+            ww_layer.add_column('raw_alpha', raw_alpha) 
+
    
         ww_layer.add_column('warning', status)
 
@@ -2411,7 +2418,7 @@ class WeightWatcher:
                 conv2d_fft=False, fft=False, 
                 deltas=False, intra=False, vectors=False, channels=None, 
                 stacked=False,
-                fix_fingers=False, xmin_max = None,  max_fingers=DEFAULT_MAX_FINGERS,
+                fix_fingers=False, xmin_max = None,  max_fingers=DEFAULT_MAX_FINGERS, finger_thresh=DEFAULT_FINGER_THRESH,
                 fit=PL, sparsify=True, 
                 detX=False,
                 svd_method=FAST_SVD,
@@ -2596,6 +2603,7 @@ class WeightWatcher:
         params[FIX_FINGERS] = fix_fingers
         params[XMIN_MAX] = xmin_max
         params[MAX_FINGERS] = max_fingers
+        params[FINGER_THRESH] = finger_thresh
 
         params[FIT] = fit
         params[SPARSIFY] = sparsify
@@ -3130,8 +3138,8 @@ class WeightWatcher:
 
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
-                     thresh=EVALS_THRESH,
-                     fix_fingers=False, xmin_max=None, max_fingers=DEFAULT_MAX_FINGERS, 
+                     thresh=EVALS_THRESH,\
+                     fix_fingers=False, finger_thresh=DEFAULT_FINGER_THRESH, xmin_max=None, max_fingers=DEFAULT_MAX_FINGERS, \
                      fit_type=POWER_LAW, pl_package=WW_POWERLAW_PACKAGE):
         """Fit eigenvalues to powerlaw or truncated_power_law
         
@@ -3159,6 +3167,8 @@ class WeightWatcher:
         best_fit = UNKNOWN
         fit = None
         num_fingers = 0
+        
+        raw_fit = None # only for fix fingers
         
         fit_entropy = -1
         
@@ -3237,7 +3247,8 @@ class WeightWatcher:
                     max_fingers = DEFAULT_MAX_FINGERS
                 logger.debug(f"max_fingers = {MAX_FINGERS}")
                     
-                fit, num_fingers = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_fingers=max_fingers, logger=logger, plot=plot,  pl_package=pl_package)  
+                fit, num_fingers, raw_fit = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_fingers=max_fingers, finger_thresh=finger_thresh, \
+                                                        logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
                 status = FAILED
@@ -3401,12 +3412,16 @@ class WeightWatcher:
             plt.legend()
             if savefig:
                 save_fig(plt, "esd5", plot_id, savedir)
-                plt.savefig("ww.layer{}.esd5.png".format(layer_id))
+                #plt.savefig("ww.layer{}.esd5.png".format(layer_id))
                 
                                 
             plt.show(); plt.clf() 
 
-        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, num_fingers, fit_entropy, status
+        raw_alpha = -1
+        if raw_fit is not None:
+            raw_alpha = raw_fit.alpha
+            
+        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, num_fingers, raw_alpha, status
     
     def get_ESD(self, model=None, layer=None, random=False, params=None):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""

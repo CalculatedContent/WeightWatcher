@@ -776,7 +776,8 @@ def fit_xxx_powerlaw(evals, xmin=None):
     
 # check alpha is decreasing
 # DO WE NEED XMAX='force'?
-def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers=DEFAULT_MAX_FINGERS, min_alpha=2.0, alpha_thresh=1.0, logger=None, plot=False, pl_package=WW_POWERLAW_PACKAGE):
+def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers=DEFAULT_MAX_FINGERS, min_alpha=2.0, 
+                         finger_thresh=DEFAULT_FINGER_THRESH, logger=None, plot=False, pl_package=WW_POWERLAW_PACKAGE):
     """Fits a powerlaw only, not a truncated power law
        clips off the max evals until a powerlaw is found, or stops half-way into the ESD
        
@@ -790,7 +791,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers
        
          min_alpha:  stops if alpha drops below min_alpha
          
-         alpha_thresh=1.0   alpha has to drop this much to stop
+         finger_thresh=1.0   alpha has to drop this much to stop
         
         NOTE: currently this only works for the fit='power law'
        
@@ -851,7 +852,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers
         #if R > 0.0:
         #    break
    
-        if ((fit.alpha + alpha_thresh) < first_fit.alpha) : #and fit.sigma < prev_sigma:
+        if ((fit.alpha + finger_thresh) < first_fit.alpha) : #and fit.sigma < prev_sigma:
             logger.info(f"fix_fingers: best fit found stopping at {idx} {fit.alpha:.2f} << {prev_alpha:0.2f} ")  
             best_fit = fit
             num_fingers = idx - 1
@@ -890,12 +891,12 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers
             logger.info(f"checking fit {idy}  alpha {fit.alpha:0.2f} sigma {fit.sigma:0.2f}  xmax {xmax}")     
 
                 
-            if np.abs(check_fit.alpha - fit.alpha) > alpha_thresh/2.0 :
+            if np.abs(check_fit.alpha - fit.alpha) > finger_thresh :
                 logger.warning(f"clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
                 break
 
     
-    return best_fit, num_fingers
+    return best_fit, num_fingers, first_fit
              
         
 # https://medium.com/@sourcedexter/how-to-find-the-similarity-between-two-probability-distributions-using-python-a7546e90a08d

@@ -1193,7 +1193,7 @@ class Test_VGG11_noModel(Test_Base):
 		details = self.watcher.analyze(model=self.model, layers=[self.fc2_layer])
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss,fit_entropy".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -1662,7 +1662,7 @@ class Test_VGG11_Base(Test_Base):
 		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss,fit_entropy".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -2511,8 +2511,8 @@ class Test_VGG11_Base(Test_Base):
 			self.assertEqual(W2.shape,(N,M))
 			self.assertEqual(W[0,0],W2[0,0])
 			
-	#TODO: add test fit entropy
-	def test_fit_entropy_on_layer(self):
+	#TODO: this has been deprecated for now
+	def _test_fit_entropy_on_layer(self):
 		details = self.watcher.analyze(model=self.model, layers=[self.fc2_layer])
 		expected = details.fit_entropy.to_numpy()[0]
 		
@@ -2811,7 +2811,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 
 		self.watcher = ww.WeightWatcher(model=model, log_level=logging.WARNING)
 		
-		details= self.watcher.analyze(layers=[self.fc2_layer], fit='TPL', pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
+		details= self.watcher.analyze(layers=[self.fc2_layer], fit=TPL, pl_package=POWERLAW_PACKAGE, xmax=XMAX_FORCE)
 		actual_alpha = details.alpha[0]
 		actual_Lambda = details.Lambda[0]
 
@@ -3616,16 +3616,15 @@ class Test_PowerLaw(Test_Base):
 		self._check_fit_optimality(fit)
 
 	def test_fit_clipped_powerlaw(self):
-		fit, num_fingers = RMT_Util.fit_clipped_powerlaw(self.evals)
+		fit, num_fingers, raw_fit = RMT_Util.fit_clipped_powerlaw(self.evals)
 
 		self.assertEqual(num_fingers, 0, msg=f"num_fingers was {num_fingers}")
 
 		self._check_fit_attributes(fit)
-
 		self._check_fit_attribute_len(fit, self.evals)
-
 		self._check_fit_optimality(fit)
 
+		self.assertAlmostEqual(fit.alpha, raw_fit.alpha, "with no fingers, alphas should be the same")
 	
 	def test_ww_power_law_fit_directly(self):
 		"""We should have 1 or more tests that doesn't require ResNet evls incase these get corrupted
@@ -3681,11 +3680,11 @@ class Test_Pandas(Test_Base):
 		self.assertEqual(expected_columns, list(details.columns))
 
 	def test_column_names_analyze(self):
-		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
-							'alpha_weighted',  'entropy', 'fit_entropy', 'has_esd',
+		expected_columns = ['layer_id', 'name', 'D',  'M', 'N', 'Q', 'alpha',
+							'alpha_weighted',  'entropy', 'has_esd',
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
-							'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+							'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
 							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
@@ -3693,28 +3692,47 @@ class Test_Pandas(Test_Base):
 		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
-
-	def test_column_names_analyze_detX(self):
-		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
-							'alpha_weighted',  'detX_num', 'detX_val',
-							'detX_val_unrescaled', 'entropy', 'fit_entropy', 'has_esd',
+		
+	def test_column_names_analyze_fix_fingers(self):
+		expected_columns = ['layer_id', 'name', 'D', 'M', 'N', 'Q', 'alpha',
+							'alpha_weighted',  'entropy', 'has_esd',
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
-							'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+							'num_fingers', 'num_pl_spikes', 'rank_loss',  'raw_alpha','rf', 'sigma',
 							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
-		details = self.watcher.analyze(layers=[67], detX=True)
+		details = self.watcher.analyze(layers=[67], fix_fingers='clip_xmax')
+		print(details.columns)
+
+		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+		self.assertEqual(len(expected_columns), len(details.columns))
+		self.assertEqual(expected_columns, list(details.columns))
+		
+
+	def test_column_names_analyze_detX(self):
+		expected_columns = ['layer_id', 'name', 'D',  'M', 'N', 'Q', 'alpha',
+							'alpha_weighted',  'detX_num', 'detX_val',
+							'detX_val_unrescaled', 'entropy',  'has_esd',
+							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+							'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'xmax', 'xmin']
+
+
+
+		details = self.watcher.analyze(layers=[67], detX=True)	
 		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
 		self.assertEqual(len(expected_columns), len(details.columns))
 		self.assertEqual(expected_columns, list(details.columns))
 
 	def test_column_names_analyze_randomize(self):
-		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'alpha',
- 					        'alpha_weighted',  'entropy', 'fit_entropy', 'has_esd',
+		expected_columns = ['layer_id', 'name', 'D', 'M', 'N', 'Q', 'alpha',
+ 					        'alpha_weighted',  'entropy', 'has_esd',
 					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 					        'log_spectral_norm', 'longname', 'matrix_rank', 'max_rand_eval', 'norm',
-					        'num_evals', 'num_fingers', 'num_pl_spikes', 'rand_W_scale',
+					        'num_evals', 'num_pl_spikes', 'rand_W_scale',
 					        'rand_bulk_max', 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank',
 					        'rand_num_spikes', 'rand_sigma_mp', 'rank_loss', 'rf', 'sigma',
 					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
@@ -3726,11 +3744,11 @@ class Test_Pandas(Test_Base):
 		self.assertEqual(expected_columns, list(details.columns))
 
 	def test_column_names_analyze_intra(self):
-		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'Xflag', 'alpha',
-					        'alpha_weighted',  'entropy', 'fit_entropy', 'has_esd',
+		expected_columns = ['layer_id', 'name', 'D',  'M', 'N', 'Q', 'Xflag', 'alpha',
+					        'alpha_weighted',  'entropy',  'has_esd',
 					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 					        'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
-					        'num_fingers', 'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+					        'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
 					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
 					        'xmax', 'xmin']
 
@@ -3740,11 +3758,11 @@ class Test_Pandas(Test_Base):
 		self.assertEqual(expected_columns, list(details.columns))
 
 	def test_column_names_analyze_mp_fit(self):
-		expected_columns = ['layer_id', 'name', 'D', 'Lambda', 'M', 'N', 'Q', 'W_scale', 'alpha',
+		expected_columns = ['layer_id', 'name', 'D', 'M', 'N', 'Q', 'W_scale', 'alpha',
 							'alpha_weighted',  'bulk_max', 'bulk_min', 'entropy',
-							'fit_entropy', 'has_esd', 'lambda_max', 'layer_type', 'log_alpha_norm',
+							 'has_esd', 'lambda_max', 'layer_type', 'log_alpha_norm',
 							'log_norm', 'log_spectral_norm', 'longname', 'matrix_rank',
-							'mp_softrank', 'norm', 'num_evals', 'num_fingers', 'num_pl_spikes',
+							'mp_softrank', 'norm', 'num_evals', 'num_pl_spikes',
 							'num_spikes', 'rank_loss', 'rf', 'sigma', 'sigma_mp', 'spectral_norm',
 							'stable_rank', 'sv_max', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
 

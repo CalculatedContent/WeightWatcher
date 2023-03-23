@@ -93,6 +93,10 @@ FAILED = 'failed'
 OVER_TRAINED = 'over-trained'
 UNDER_TRAINED = 'under-trained'
 
+OVER_TRAINED_THRESH = 6.0
+UNDER_TRAINED_THRESH = 2.0
+            
+
 UNKNOWN = 'unknown'
 
 GLOROT_FIX = 'glorot_fix'

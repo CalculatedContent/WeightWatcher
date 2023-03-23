@@ -2259,7 +2259,7 @@ class WeightWatcher:
         fit_type =  params[FIT]
         pl_package = params[PL_PACKAGE]
 
-        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, num_fingers, raw_alpha, status = \
+        alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, num_fingers, raw_alpha, status, warning = \
             self.fit_powerlaw(evals, xmin=xmin, xmax=xmax, plot=plot, layer_name=layer_name, layer_id=layer_id, \
                               plot_id=plot_id, sample=sample, sample_size=sample_size, savedir=savedir, savefig=savefig,  \
                               fix_fingers=fix_fingers, xmin_max=xmin_max, max_fingers=max_fingers, finger_thresh=finger_thresh, \
@@ -2285,7 +2285,8 @@ class WeightWatcher:
             ww_layer.add_column('raw_alpha', raw_alpha) 
 
    
-        ww_layer.add_column('warning', status)
+        ww_layer.add_column('status', status)
+        ww_layer.add_column('warning', warning)
 
         return ww_layer
 
@@ -3239,8 +3240,10 @@ class WeightWatcher:
                 fit = pl_fit(data=nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution, pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
+                logger.warning(str(err))
                 status = FAILED
             except Exception:
+                logger.warning(str(err))
                 status = FAILED
                 
         elif fix_fingers==CLIP_XMAX:
@@ -3255,8 +3258,10 @@ class WeightWatcher:
                                                         logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
+                logger.warning(str(err))
                 status = FAILED
             except Exception:
+                logger.warning(str(err))
                 status = FAILED
              
         elif xmin is None or xmin == -1: 
@@ -3278,11 +3283,15 @@ class WeightWatcher:
                 fit = pl_fit(data=evals, xmin=xmin,  verbose=False, distribution=distribution, pl_package=pl_package)  
                 status = SUCCESS 
             except ValueError:
+                logger.warning(str(err))
                 status = FAILED
             except Exception:
+                logger.warning(str(err))
                 status = FAILED
                     
         if fit is None or fit.alpha is None or np.isnan(fit.alpha):
+            logger.warning(str(err))
+
             status = FAILED
             
         if status == FAILED:
@@ -3298,7 +3307,7 @@ class WeightWatcher:
                 alpha = fit.truncated_power_law.alpha
                 Lambda = fit.truncated_power_law.Lambda
                 
-            logger.debug("finding best distribution for fit, TPL or other ?")
+            #logger.debug("finding best distribution for fit, TPL or other ?")
             # we stil check againsgt TPL, even if using PL fit
             # all_dists = [TRUNCATED_POWER_LAW, POWER_LAW, LOG_NORMAL]#, EXPONENTIAL]
             # Rs = [0.0]
@@ -3311,14 +3320,9 @@ class WeightWatcher:
             #         logger.debug("compare dist={} R={:0.3f} p={:0.3f}".format(dist, R, p))
             # best_fit = dists[np.argmax(Rs)]
             
-            fit_entropy = line_entropy(fit.Ds)
+            #fit_entropy = line_entropy(fit.Ds)
 
-            # check status for over-trained, under-trained    
-            # maybe should remove this
-            if alpha < 2.0:
-                status = OVER_TRAINED
-            elif alpha > 6.0:
-                status = UNDER_TRAINED
+      
                
 
         if plot:
@@ -3424,8 +3428,14 @@ class WeightWatcher:
         raw_alpha = -1
         if raw_fit is not None:
             raw_alpha = raw_fit.alpha
+        
+        # warnings
+        if alpha < OVER_TRAINED_THRESH:
+            warning = OVER_TRAINED
+        elif alpha > UNDER_TRAINED_THRESH:
+            warning = UNDER_TRAINED
             
-        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, num_fingers, raw_alpha, status
+        return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, num_fingers, raw_alpha, status, warning
     
     def get_ESD(self, model=None, layer=None, random=False, params=None):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""

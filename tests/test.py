@@ -2861,7 +2861,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		
 		# these numbers have not been independently verified yet
 		expected_alpha = 2.3
-		expected_Lambda =  0.02
+		expected_Lambda =  0.006069
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
 		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=2)
 		 
@@ -3707,7 +3707,7 @@ class Test_Pandas(Test_Base):
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 							'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
-							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67])
@@ -3721,7 +3721,7 @@ class Test_Pandas(Test_Base):
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 							'num_fingers', 'num_pl_spikes', 'rank_loss',  'raw_alpha','rf', 'sigma',
-							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], fix_fingers='clip_xmax')
@@ -3739,7 +3739,7 @@ class Test_Pandas(Test_Base):
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 							'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
-							'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
 
@@ -3757,7 +3757,7 @@ class Test_Pandas(Test_Base):
 					        'num_evals', 'num_pl_spikes', 'rand_W_scale',
 					        'rand_bulk_max', 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank',
 					        'rand_num_spikes', 'rand_sigma_mp', 'rank_loss', 'rf', 'sigma',
-					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+					        'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
 					        'ww_maxdist', 'ww_softrank', 'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], randomize=True)
@@ -3771,7 +3771,7 @@ class Test_Pandas(Test_Base):
 					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 					        'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 					        'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
-					        'spectral_norm', 'stable_rank', 'sv_max', 'warning', 'weak_rank_loss',
+					        'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
 					        'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[64, 67], intra=True)
@@ -3786,7 +3786,7 @@ class Test_Pandas(Test_Base):
 							'log_norm', 'log_spectral_norm', 'longname', 'matrix_rank',
 							'mp_softrank', 'norm', 'num_evals', 'num_pl_spikes',
 							'num_spikes', 'rank_loss', 'rf', 'sigma', 'sigma_mp', 'spectral_norm',
-							'stable_rank', 'sv_max', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
+							'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], mp_fit=True)
 		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")

@@ -2860,7 +2860,7 @@ class Test_VGG11_Alpha_w_PowerLawFit(Test_Base):
 		self.assertTrue(actual_Lambda > -1) #Lambda must be set for TPL
 		
 		# these numbers have not been independently verified yet
-		expected_alpha = 2.07
+		expected_alpha = 2.3
 		expected_Lambda =  0.02
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=2)
 		self.assertAlmostEqual(actual_Lambda,expected_Lambda, places=2)

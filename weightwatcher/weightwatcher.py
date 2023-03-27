@@ -3429,7 +3429,7 @@ class WeightWatcher:
         if raw_fit is not None:
             raw_alpha = raw_fit.alpha
         
-        # warnings
+        
         if alpha < OVER_TRAINED_THRESH:
             warning = OVER_TRAINED
         elif alpha > UNDER_TRAINED_THRESH:
@@ -4585,12 +4585,12 @@ class WeightWatcher:
                 # maybe: need to input the glob, or user has to rename them
                 # this has never been tested with more than 1 bin file; maybe not necessary
                 start_id = 0
-                for state_dict_filename in glob.glob(f"{model_dir}/pytorch_model*bin"):
+                for state_dict_filename in sorted(glob.glob(f"{model_dir}/pytorch_model*bin")):
                     logger.info(f"reading and extracting {state_dict_filename}")
                     # TODO:  update layer ids
                     layer_configs = WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id) 
-                    config['layers'].update(layer_configs) 
                     layer_ids = [x for x in config['layers'].keys()]
+                    config['layers'].update(layer_configs) 
                     start_id = start_id + np.max(layer_ids)+1
                     logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
                 

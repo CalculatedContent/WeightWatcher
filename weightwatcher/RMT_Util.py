@@ -892,7 +892,7 @@ def fit_clipped_powerlaw(evals, xmin=None, xmax=None, verbose=False, max_fingers
 
                 
             if np.abs(check_fit.alpha - fit.alpha) > finger_thresh :
-                logger.warning(f"clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
+                logger.debug(f"clipped fit may be spurious, new alpha found: {check_fit.alpha:0.2f}")
                 break
 
     

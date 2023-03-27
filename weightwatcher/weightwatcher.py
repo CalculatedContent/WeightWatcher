@@ -4425,7 +4425,7 @@ class WeightWatcher:
             layer_config['weightfile']=weightfile
             layer_config['biasfile']=biasfile
     
-            config[int(layer_id)]=layer_config
+            config[int(layer_id_updated)]=layer_config
                 
         return config
     

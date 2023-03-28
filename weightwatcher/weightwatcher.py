@@ -4589,9 +4589,9 @@ class WeightWatcher:
                     logger.info(f"reading and extracting {state_dict_filename}")
                     # TODO:  update layer ids
                     layer_configs = WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id) 
-                    start_id = start_id + np.max(layer_configs)+1
+                    layer_ids = [x for x in layer_configs['layers'].keys()]
+                    start_id = start_id + np.max(layer_ids)+1
                     config['layers'].update(layer_configs) 
-                    layer_ids = [x for x in config['layers'].keys()]
                     logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
                 
                 #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file

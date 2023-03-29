@@ -4592,7 +4592,7 @@ class WeightWatcher:
                     last_id = np.max([int(x) for x in layer_configs.keys()])
                     start_id = start_id +last_id + 1
                     config['layers'].update(layer_configs) 
-                    logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
+                    logger.debug(f"next start_id = {start_id}")
                 
                 #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
                 config_filename   = os.path.join(weights_dir,WW_CONFIG_FILENAME)

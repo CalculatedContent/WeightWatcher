@@ -4589,8 +4589,8 @@ class WeightWatcher:
                     logger.info(f"reading and extracting {state_dict_filename}")
                     # TODO:  update layer ids
                     layer_configs = WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id) 
-                    layer_ids = [x for x in layer_configs.keys()]
-                    start_id = start_id + np.max(layer_ids)+1
+                    last_id = int(layer_configs.keys()[-1])
+                    start_id = start_id +last_id + 1
                     config['layers'].update(layer_configs) 
                     logger.debug(f"num layer_ids {len(layer_ids)} last layer_id {start_id-1}")
                 

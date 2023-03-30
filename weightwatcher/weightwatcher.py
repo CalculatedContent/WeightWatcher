@@ -1593,7 +1593,7 @@ class WeightWatcher:
                 return FRAMEWORK.KERAS 
             elif is_framework(name='onnx'):
                 return FRAMEWORK.ONNX
-            elif is_framework(name='OrderedDict'):
+            elif is_framework(name='OrderedDict') or is_framework(name='dict'):
                 # currently only pystatedict is supported
                 # but this could be changed
                 # we could dig inside the model and find the weight types, 
@@ -4483,8 +4483,6 @@ class WeightWatcher:
                 for state_dict_filename in sorted(glob.glob(f"{model_dir}/pytorch_model*bin")):
                     logger.info(f"loading {state_dict_filename}")
                     model = torch.load(state_dict_filename)
-                    logger.info(f"MODEL TYPE {type(model)}")
-
                     watcher = WeightWatcher(model=model)
                     
                     # set framework

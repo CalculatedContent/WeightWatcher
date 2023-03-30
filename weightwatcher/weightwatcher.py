@@ -4480,10 +4480,14 @@ class WeightWatcher:
                 # maybe: need to input the glob, or user has to rename them
                 # this has never been tested with more than 1 bin file; maybe not necessary
                 start_id = 0
-                for state_dict_filename in glob.glob(f"{model_dir}/pytorch_model*bin"):
+                for state_dict_filename in sort(glob.glob(f"{model_dir}/pytorch_model*bin")):
                     logger.info(f"loading {state_dict_filename}")
                     model = torch.load(state_dict_filename)
+                    logger.info(f"MODEL TYPE {type(model)}")
+
                     watcher = WeightWatcher(model=model)
+                    
+                    # set framework
                     
                     if method == METHODS.DESCRIBE:
                         details = watcher.describe(**kwargs)

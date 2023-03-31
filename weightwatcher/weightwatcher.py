@@ -2817,9 +2817,12 @@ class WeightWatcher:
                 data = pd.DataFrame.from_records(ww_layer.get_row() , index=[0])
                 details = pd.concat([details,data], ignore_index=True)
 
+        if len(details)>0:
         # Reorder the columns so that layer_id and name come first.
-        lead_cols = ["layer_id", "name"]
-        details = details[lead_cols + [c for c in details.columns if not c in lead_cols]]
+            lead_cols = ["layer_id", "name"]
+            details = details[lead_cols + [c for c in details.columns if not c in lead_cols]]
+        else:
+            logger.warning("No layers found")
         return details
 
     @staticmethod

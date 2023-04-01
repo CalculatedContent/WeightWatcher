@@ -58,6 +58,9 @@ class WWFit(object):
         self.sigma = self.sigmas[i]
         self.D = self.Ds[i]
 
+        # powerlaw package does this, so we replicate it here.
+        self.data = self.data[self.data >= self.xmin]
+
     def __str__(self):
         return f"WWFit({self.distribution} xmin: {self.xmin:0.04f}, alpha: {self.alpha:0.04f}, sigma: {self.sigma:0.04f}, data: {len(self.data)})"
 
@@ -85,17 +88,15 @@ class WWFit(object):
 
     def plot_pdf(self, **kwargs):
         """ Needed for replicating the behavior of the powerlaw.Fit class"""
-        data = self.data[self.data >= self.xmin]
-        return powerlaw.plot_pdf(data=data, linear_bins=False, **kwargs)
+        return powerlaw.plot_pdf(data=self.data, linear_bins=False, **kwargs)
 
     def plot_power_law_pdf(self, ax, **kwargs):
         """ Needed for replicating the behavior of the powerlaw.Power_Law class"""
         assert ax is not None
 
         # Formula taken directly from the powerlaw package.
-        data = self.data[self.data >= self.xmin]
-        bins = np.unique(data)
-        PDF = (data ** -self.alpha) * (self.alpha-1) * (self.xmin**(self.alpha-1))
+        bins = np.unique(self.data)
+        PDF = (bins ** -self.alpha) * (self.alpha-1) * (self.xmin**(self.alpha-1))
 
         assert np.min(PDF) > 0
 
@@ -107,20 +108,19 @@ class WWFit(object):
         """
         Mimics the interface of a powerlaw.Fit object by passing through to powerlaw's functional API.
         """
-        data = self.data[self.data >= self.xmin]
         def get_loglikelihoods(_dist):
             if _dist in ["power_law"]:
-                return np.log((data ** -self.alpha) * (self.alpha - 1) * self.xmin**(self.alpha-1))
+                return np.log((self.data ** -self.alpha) * (self.alpha - 1) * self.xmin**(self.alpha-1))
             else:
                 if _dist in self.dists: dist = self.dists[_dist]
                 else:
                     dist = supported_distributions[_dist](
-                        data = data, xmin=self.xmin, xmax=None, discrete=False, fit_method="Likelihood",
+                        data = self.data, xmin=self.xmin, xmax=None, discrete=False, fit_method="Likelihood",
                         parameter_range=None, parent_Fit=None
                     )
                     self.dists[_dist] = dist
 
-                return dist.loglikelihoods(data)
+                return dist.loglikelihoods(self.data)
 
         return powerlaw.loglikelihood_ratio(
             get_loglikelihoods(_dist1),

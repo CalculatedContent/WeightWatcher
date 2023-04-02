@@ -2178,7 +2178,8 @@ class WeightWatcher:
             plot_id =  ww_layer.plot_id
             plt.title(f"DetX constraint for {name}")
             plt.xlabel("log10 eigenvalues (norm scaled)")
-            plt.hist(np.log10(evals), bins=100)
+            nz_evals = evals[evals > EVALS_THRESH]
+            plt.hist(np.log10(nz_evals), bins=100)
             plt.axvline(np.log10(detX_val), color='purple', label=r"detX$=1$")
             
             if ww_layer.xmin:

@@ -91,6 +91,9 @@ try:
         torch_T_to_np = lambda T: T.to("cpu").half().numpy()
         EPSILON = HALF_EPSILON
         EVALS_THRESH = EVALS_HALF_THRESH
+        
+        logger.info(f"Using EPSILON = {EPSILON}")
+        logger.info(f"Using EVALS_THRESH = {EVALS_THRESH}")
 
          
         def torch_wrapper(M, f):

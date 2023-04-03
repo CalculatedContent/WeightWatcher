@@ -987,7 +987,7 @@ def combine_weights_and_biases(W,b):
     """concat the biases onto the weight matrix if not null or zero"""
     
     Wb = W
-    if b is not None and np.sum(b)>ALMOST_ZERO:
+    if b is not None and np.sum(b)>EPSILON:
         if W.shape[1]==b.shape[0]:
             Wb = np.vstack([W,b])
         else:

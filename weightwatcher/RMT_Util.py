@@ -186,10 +186,9 @@ def matrix_entropy(svals, N):
     rank = matrix_rank(svals, N) #np.linalg.matrix_rank(W)
 
     evals = svals*svals
-    p = evals / np.sum(evals)
-    if (rank == 1):
-        rank = 1 + EPSILON
-    entropy = -np.sum(p * np.log(p+EPSILON)) / np.log(rank) 
+    p = evals / np.sum(evals) + EPSILON
+    rank += EPSILON
+    entropy = -np.sum(p * np.log(p)) / np.log(rank) 
     return entropy
 
 # Wigner SemiCircle Plots

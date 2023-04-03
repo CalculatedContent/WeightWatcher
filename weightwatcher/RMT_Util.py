@@ -182,14 +182,26 @@ def calc_rank_loss(svals, N, tol=None):
 def matrix_entropy(svals, N):
     """Matrix entropy of real, computed using the singular values, and the dim N"""
 
-
-    rank = matrix_rank(svals, N) #np.linalg.matrix_rank(W)
-
-    evals = svals*svals
-    p = evals / np.sum(evals) + EPSILON
-    rank += EPSILON
-    entropy = -np.sum(p * np.log(p)) / np.log(rank) 
+    entropy = -1
+    
+    try:
+    
+        rank = matrix_rank(svals, N) #np.linalg.matrix_rank(W)
+    
+        evals = svals*svals
+        p = evals / np.sum(evals) + EPSILON
+        rank += EPSILON
+        entropy = -np.sum(p * np.log(p)) / np.log(rank) 
+        
+    except (ZeroDivisionError, ValueError) as e:
+        # Handle divide by zero and invalid value errors
+        logger.warning("Error:", e)
+    except Exception as e:
+        # Handle other fatal errors
+        logger.warning("Error:", e)
+    
     return entropy
+
 
 # Wigner SemiCircle Plots
 

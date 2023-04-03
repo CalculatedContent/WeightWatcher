@@ -173,8 +173,11 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
                   PL_PACKAGE:DEFAULT_POWERLAW_PACKAGE, XMAX:DEFAULT_XMAX}
 
 
-EVALS_THRESH = 0.00001
-ALMOST_ZERO = 1e-10
+EVALS_THRESH =1e-5
+EPSILON = 1e-10 # only in normal precision
+
+EVALS_HALF_THRESH = 1e-4
+HALF_EPSILON = 6.104e-05 # torch half float precision
 
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()

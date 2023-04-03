@@ -89,6 +89,9 @@ try:
 
         # float changed to half to save memory
         torch_T_to_np = lambda T: T.to("cpu").half().numpy()
+        EPSILON = HALF_EPSILON
+        EVALS_THRESH = EVALS_HALF_THRESH
+
          
         def torch_wrapper(M, f):
             torch.cuda.empty_cache()
@@ -182,8 +185,8 @@ def matrix_entropy(svals, N):
     evals = svals*svals
     p = evals / np.sum(evals)
     if (rank == 1):
-        rank = 1.000001
-    entropy = -np.sum(p * np.log(p)) / np.log(rank) 
+        rank = 1 + EPSILON
+    entropy = -np.sum(p * np.log(p+EPSILON)) / np.log(rank) 
     return entropy
 
 # Wigner SemiCircle Plots
@@ -453,13 +456,13 @@ def discrete_entropy(vec, num_bins=100):
     vec = np.absolute(vec)
     vec = vec - np.mean(vec)
     h = np.histogram(vec, density=True, bins=num_bins)[0];
-    p = np.array(h) + 0.0000000001
+    p = np.array(h) + EPSILON
     
     p = p / np.sqrt(2 * np.pi)
     p = p / np.sum(p)
 
     # p = p/(2*np.pi)
-    entropy = -np.sum(p * np.log(p))
+    entropy = -np.sum(p * np.log(o))
     entropy = entropy  # /(2*np.pi)#/float(num_bins)
     return entropy
 

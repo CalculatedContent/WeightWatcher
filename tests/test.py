@@ -1497,19 +1497,31 @@ class Test_Albert(Test_Base):
 		
 		
 	def test_fix_fingers(self):
-
-		details = self.watcher.analyze(layers=[17], fix_fingers='clip_xmax')
-		actual_alpha = details.alpha.to_numpy()[0]
-		actual_raw_alpha =  details.raw_alpha.to_numpy()[0]
-		actual_num_fingers =  details.num_fingers.to_numpy()[0]
-
-		expected_alpha = 3.0
-		expected_raw_alpha = 6.883742
-		expected_num_fingers = 1
-		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.1 )
-		self.assertAlmostEqual(actual_raw_alpha,expected_raw_alpha, delta=0.01 )
-		self.assertEqual(actual_num_fingers,expected_num_fingers)
 		
+		try:
+
+			details = self.watcher.analyze(layers=[17], fix_fingers='clip_xmax')
+			actual_alpha = details.alpha.to_numpy()[0]
+			actual_raw_alpha =  details.raw_alpha.to_numpy()[0]
+			actual_num_fingers =  details.num_fingers.to_numpy()[0]
+	
+			expected_alpha = 3.0
+			expected_raw_alpha = 6.883742
+			expected_num_fingers = 1
+			self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.1 )
+			self.assertAlmostEqual(actual_raw_alpha,expected_raw_alpha, delta=0.01 )
+			self.assertEqual(actual_num_fingers,expected_num_fingers)
+			
+		except (ZeroDivisionError, ValueError) as e:
+		    # Handle divide by zero and invalid value errors
+		    print("Error:", e)
+		    self.assertTrue(False, str(e))
+		except Exception as e:
+		    # Handle other fatal errors
+		    print("Error:", e)
+		    self.assertTrue(False, str(e))
+
+				
 			
 	def test_fix_fingers_w_thresh(self):
 		"""Just set the threshold crazy high so no finger is found"""

@@ -3,6 +3,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.7.0.9]
+Fixed critical bugs in the error handling
+
+
+## [0.7]
+Sorry, this is a bit out of date; will update shortly [chm]
+
 ## [0.6.6]
 could not deploy 0.6.5 to testpypi, upgraded to 0.6.6
 

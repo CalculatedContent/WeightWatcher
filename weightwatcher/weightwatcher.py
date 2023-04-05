@@ -3243,10 +3243,10 @@ class WeightWatcher:
                 logger.info(f"using new XMIN RANGE {xmin_range}")
                 fit = pl_fit(data=nz_evals, xmin=xmin_range, xmax=xmax, verbose=False, distribution=distribution, pl_package=pl_package)  
                 status = SUCCESS 
-            except ValueError:
+            except ValueError as err:
                 logger.warning(str(err))
                 status = FAILED
-            except Exception:
+            except Exception as err:
                 logger.warning(str(err))
                 status = FAILED
                 
@@ -3261,10 +3261,10 @@ class WeightWatcher:
                 fit, num_fingers, raw_fit = fit_clipped_powerlaw(nz_evals, xmax=xmax, max_fingers=max_fingers, finger_thresh=finger_thresh, \
                                                         logger=logger, plot=plot,  pl_package=pl_package)  
                 status = SUCCESS 
-            except ValueError:
+            except ValueError as err:
                 logger.warning(str(err))
                 status = FAILED
-            except Exception:
+            except Exception as err:
                 logger.warning(str(err))
                 status = FAILED
              
@@ -3286,15 +3286,15 @@ class WeightWatcher:
             try:
                 fit = pl_fit(data=evals, xmin=xmin,  verbose=False, distribution=distribution, pl_package=pl_package)  
                 status = SUCCESS 
-            except ValueError:
+            except ValueError as err:
                 logger.warning(str(err))
                 status = FAILED
-            except Exception:
+            except Exception as  err:
                 logger.warning(str(err))
                 status = FAILED
                     
         if fit is None or fit.alpha is None or np.isnan(fit.alpha):
-            logger.warning(str(err))
+            logger.warning("Power law fit failed")
 
             status = FAILED
             

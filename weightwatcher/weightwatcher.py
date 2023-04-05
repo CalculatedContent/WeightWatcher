@@ -568,24 +568,44 @@ class ONNXLayer(FrameworkLayer):
         self.model = model
         self.dims = node.dims     
 
-        layer = node
-        layer_id = inode
-        name = node.name
-        longname = name
+        self.layer = node
+        self.layer_id = inode
+        self.name = node.name
+        
+       
+        longname = self.name
             
         the_type = self.layer_type(self.dims)
         channels = CHANNELS.LAST
-        FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, the_type=the_type, 
+        FrameworkLayer.__init__(self, self.layer, self.layer_id, self.name, longname=longname, the_type=the_type, 
                                 framework=FRAMEWORK.ONNX, channels=channels)     
 
-            
-    def get_weights(self):
-        return onnx_get_weights(self.node)
-
+    
     def set_weights(self, W):
+        logger.fatal("Sorry set_weights not yet available for ONNX models")
+         
+    def get_weights(self):
+        """ get the weights from the ONNX graph"""
+        W= None
+        
         idx = self.layer_id
-        onnx_set_weights(self, idx, W)
+        node_weights = [self.model.graph.initializer[idx]][0]
+        
+        if node_weights is not None:
+            import onnx
+            W = onnx.numpy_helper.to_array(node_weights)       
+        
+        return W
 
+    def get_weights_and_biases(self):
+        """extract the original weights (as a tensor) for the layer, and biases for the layer, if present
+        
+         Hacked together right now for issue #233
+        """
+        
+        W =  self.get_weights()
+        return True, W, False, None
+    
 
     def layer_type(self, dims):
         """Given a framework layer, determine the weightwatcher LAYER_TYPE
@@ -1643,13 +1663,14 @@ class WeightWatcher:
                 logger.fatal("Can not load torch,  stopping")
             
 
+        #TODO: this doesn't work; IDK why yet, hacked in the ONNX layer
         elif framework==FRAMEWORK.ONNX:
             try:
                 import onnx
                 from onnx import numpy_helper
                 banner = f"onnx version {onnx.__version__}"   
             except ImportError:
-                logger.fatal("Can not load onnc, stopping")
+                logger.fatal("Can not load ONNX, stopping")
                 
         else:
             logger.warning(f"Unknown or unsupported framework {framework}")

@@ -571,8 +571,9 @@ class ONNXLayer(FrameworkLayer):
         layer = node
         layer_id = inode
         name = node.name
+        longname = name
             
-        the_type = self.layer_type(dims)
+        the_type = self.layer_type(self.dims)
         channels = CHANNELS.LAST
         FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, the_type=the_type, 
                                 framework=FRAMEWORK.ONNX, channels=channels)     

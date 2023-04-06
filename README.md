@@ -85,10 +85,10 @@ but the describe and other methods do not
 
 ```python
 watcher.analyze(model=None, layers=[], min_evals=50, max_evals=None,
-	 plot=True, randomize=True, mp_fit=True, ww2x=False, savefig=True):
+	 plot=True, randomize=True, mp_fit=True, pool=True, savefig=True):
 ...
 watcher.describe(self, model=None, layers=[], min_evals=0, max_evals=None,
-         plot=True, randomize=True, mp_fit=True, ww2x=False):
+         plot=True, randomize=True, mp_fit=True, pool=True):
 ...
 watcher.get_details()
 watcher.get_summary(details) or get_summary()
@@ -409,11 +409,12 @@ details = watcher.distances(initial_model, trained_model)
 
 The new 0.4.x version of WeightWatcher treats each layer as a single, unified set of eigenvalues.
 In contrast, the 0.2.x versions split the Conv2D layers into n slices, one for each receptive field.
-The `ww2x` option provides results which are back-compatable with the 0.2.x version of WeightWatcher,
-with details provide for each slice for each layer.
+The `pool=False` option provides results which are back-compatable with the 0.2.x version of WeightWatcher,
+(which used to be called `ww2x=True`) with details provide for each slice for each layer.
+Otherwise, the eigenvalues from each slice of th3 Conv2D layer are pooled into one ESD.
 
 ```python
-details = watcher.analyze(ww2x=True)
+details = watcher.analyze(pool=False)
 ```
 
 </details>

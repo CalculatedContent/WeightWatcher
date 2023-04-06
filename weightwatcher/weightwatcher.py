@@ -1620,6 +1620,7 @@ class WeightWatcher:
                 # we could dig inside the model and find the weight types, 
                 return FRAMEWORK.PYSTATEDICT
             
+            
             elif os.path.isdir(model):
                 # TODOL check config file, see if dir is for torch or tensorflow
                 return FRAMEWORK.PYSTATEDICTFILE
@@ -2750,11 +2751,16 @@ class WeightWatcher:
         self.model = model or self.model
         if self.model is None:
             logger.fatal("unknown model, stopping")
-            
+                        
         if self.framework is None:
             self.framework = self.infer_framework(self.model) 
             if not WeightWatcher.valid_framework(self.framework):
                 logger.fatal(f"{self.framework} is not a valid framework, stopping")
+               
+        #issue #243
+        if self.framework==FRAMEWORK.PYSTATEDICT:
+            if 'state_dict' in self.model:
+                self.model = model['state_dict']
                 
         return 
                 

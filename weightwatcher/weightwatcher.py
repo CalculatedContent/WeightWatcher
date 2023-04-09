@@ -495,45 +495,72 @@ class PyStateDictFileLayer(FrameworkLayer):
         longname = layer_config['longname']
         the_type = LAYER_TYPE.UNKNOWN
                 
-        weightfile = layer_config['weightfile']
-        weightfile = os.path.join(weights_dir, weightfile)
+        self.weights = None
+        self.weightfile = layer_config['weightfile']
+        self.weightfile = os.path.join(weights_dir, self.weightfile)
         self.has_weights = True
-        self.weights = np.load(weightfile)
-        self.weightfile = weightfile
 
         self.bias = None
         self.biasfile = None
         self.has_bias = False
         if layer_config['biasfile']:
-            biasfile = layer_config['biasfile']
-            biasfile = os.path.join(weights_dir, biasfile)
-            self.bias = np.load(biasfile) 
-            self.biasfile = biasfile
+            self.biasfile = layer_config['biasfile']
+            self.biasfile = os.path.join(weights_dir, self.biasfile)
             self.has_bias = True
         
-        the_type = self.layer_type(self.weights)
-        FrameworkLayer.__init__(self, layer_config, int(layer_id), name, longname=longname, weights=self.weights, bias=self.bias, the_type=the_type, 
+        str_type = layer_config['type']
+        the_type = WeightWatcher.layer_type_from_str(str_type)
+        
+        FrameworkLayer.__init__(self, layer_config, int(layer_id), name, longname=longname, weights=None, bias=None, the_type=the_type, 
                                 framework=FRAMEWORK.PYSTATEDICTFILE, channels=CHANNELS.LAST, has_bias=self.has_bias)
     
-    
-    
+    def lazy_load_weights_and_biases(self):
+        """load the weights and biases from the flat files"""
 
-    # TODO: change to dims
-    def layer_type(self, weights):
+        if self.weights is None:
+            logger.info("Loading weights from {weightfile}")
+            self.weights = np.load(self.weightfile)
+            if self.has_bias:
+                logger.info("Loading biases from {weightfile}")
+                self.bias = np.load(self.biasfile) 
+            return
+               
+
+    @staticmethod
+    def layer_type(weights):
         """Given a framework layer, determine the weightwatcher LAYER_TYPE
         This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
 
         the_type = LAYER_TYPE.UNKNOWN
-        if len(weights.shape)==2:
+        if len(weights.shape)==1:
+            the_type = LAYER_TYPE.NORM
+        elif len(weights.shape)==2:
             the_type = LAYER_TYPE.DENSE
         elif len(weights.shape)==4:
             the_type = LAYER_TYPE.CONV2D
         
         return the_type
     
+    @staticmethod
+    def layer_type_as_str(weights):
+        """Given a framework layer, determine the weightwatcher LAYER_TYPE as a STRING
+        This can detect basic  PyTorch classes by type, and will try to infer the type otherwise. """
+
+        the_type = UNKNOWN
+        if len(weights.shape)==1:
+            the_type = NORM
+        elif len(weights.shape)==2:
+            the_type = DENSE
+        elif len(weights.shape)==4:
+            the_type = CONV2D
+        
+        return the_type
+    
+    
     
     def get_weights_and_biases(self):
         """   return has_weights, weights, has_biases, biases  """
+        self.lazy_load_weights_and_biases()
         return self.has_weights, self.weights, self.has_bias, self.bias
 
 
@@ -4450,12 +4477,16 @@ class WeightWatcher:
                 logger.debug(f"saving {filename}")
                 np.save(filename, b)
     
+            the_type = PyStateDictFileLayer.layer_type_as_str(W)
                 
             layer_config = {}
             layer_config['name']=name
             layer_config['longname']=longname
             layer_config['weightfile']=weightfile
             layer_config['biasfile']=biasfile
+            layer_config['type']=the_type
+            layer_config['dims']=json.dumps(W.shape)
+
     
             config[int(layer_id_updated)]=layer_config
                 
@@ -4679,5 +4710,17 @@ class WeightWatcher:
             
         return found
     
+    @staticmethod 
+    def layer_type_from_str(str_type):
+        """convert a string to the layer type enum"""
+        
+        the_type = LAYER_TYPE.UNKNOWN
+        if str_type==NORM:
+            the_type = LAYER_TYPE.NORM
+        elif str_type==DENSE:
+            the_type = LAYER_TYPE.DENSE
+        elif str_type==CONV2D:
+            the_type = LAYER_TYPE.CONV2D
+        return the_type
 
         

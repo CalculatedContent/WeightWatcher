@@ -179,6 +179,10 @@ EPSILON = 1e-10 # only in normal precision
 EVALS_HALF_THRESH = 1e-4
 HALF_EPSILON = 6e-05 # torch half float precision
 
+UNKNOWN = 'unknown'
+NORM = 'norm'
+DENSE = 'dense'
+CONV2D = 'conv2d'
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()
     STACKED = auto()

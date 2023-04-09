@@ -521,7 +521,7 @@ class PyStateDictFileLayer(FrameworkLayer):
             logger.info(f"Loading weights from {self.weightfile}")
             self.weights = np.load(self.weightfile)
             if self.has_bias:
-                logger.info(self."Loading biases from {biasfile}")
+                logger.info(self."Loading biases from {self.biasfile}")
                 self.bias = np.load(self.biasfile) 
             return
                

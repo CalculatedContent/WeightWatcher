@@ -730,21 +730,31 @@ class Test_PyStateDictFileExtractor(Test_Base):
 				W = np.load(os.path.join(weights_dir,filename))
 				self.assertIsNotNone(W)
 	
+			# read the WW config directly (withut static method)
 			config_filename = os.path.join(weights_dir,WW_CONFIG_FILENAME)
 			with open(config_filename) as f:
 				config_loaded = json.load(f)
 				
-				# TODO: fix this
-				self.assertEqual(config, config_loaded)
+				print("The loaded keys are strings (not ints), fixing",config_loaded['layers'].keys())
+				# convert keys to strings for comparison
+				fixed_config = config_loaded	
+				fixed_config['layers'] = {int(k):v for k,v in fixed_config['layers'].items()}
+				self.maxDiff = None
+				self.assertDictEqual(config, fixed_config)
+				
+			# now test the config by reading it using the static method, which fixes the keys for the layers
+			loaded_config2 =  ww.WeightWatcher.read_pystatedict_config(weights_dir)
+			self.maxDiff = None
+			self.assertDictEqual(config, loaded_config2)
+				
 			
 				
 		self.assertEqual(actual_num_biasfiles, expected_num_biasfiles)
 		self.assertIsNotNone(weights_dir)
 		self.assertTrue(weights_dir.startswith("/tmp"))
 		
-		self._remove_tmp_dir(weights_dir)
-						
-		self.assertFalse(os.path.isdir(weights_dir))
+		# tmp dir is removed when test base is torn down	
+		#self.assertFalse(os.path.isdir(weights_dir))
 		
 		return
 
@@ -3156,7 +3166,7 @@ class Test_Keras(Test_Base):
 		self.assertListEqual(actual_layer_ids, expected_layer_ids)
 		
 	def test_keras_model_with_no_bias(self):
-		"""Resolve uissue #201 to treat
+		"""Resolved issue #201 to treat
 		
 		keras neural network contains dense layers WITHOUT BIAS TERM
 		
@@ -3181,8 +3191,10 @@ class Test_Keras(Test_Base):
 		self.assertTrue(len(details)==2)
 		
 				
+		logger = logging.getLogger(ww.__name__)
+		logger.setLevel(logging.DEBUG)
 		details = watcher.analyze(min_evals=20)
-		print(details)
+		print(details[['layer_id', 'M', 'num_evals']])
 		self.assertTrue(len(details)==1)
 		
         

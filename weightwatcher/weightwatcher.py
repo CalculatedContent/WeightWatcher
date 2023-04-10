@@ -71,6 +71,7 @@ class FrameworkLayer:
                  the_type = LAYER_TYPE.UNKNOWN, skipped=False, framework=FRAMEWORK.UNKNOWN, 
                  channels=CHANNELS.UNKNOWN, plot_id=None, has_bias=False):
         
+        self.lazy = False
         self.layer = layer
         self.layer_id = layer_id
         
@@ -484,6 +485,8 @@ class PyStateDictFileLayer(FrameworkLayer):
     
     def __init__(self, layer_id, config, layer_config):
         
+        self.lazy = True
+        
         self.config = config
         weights_dir =  config['weights_dir']
         
@@ -510,6 +513,32 @@ class PyStateDictFileLayer(FrameworkLayer):
         
         str_type = layer_config['type']
         the_type = WeightWatcher.layer_type_from_str(str_type)
+        
+        # TODO: set these in the enclosing WWLayer without loading the weights until needed...
+        #  hmmm
+        # set N, M, rf lazily (not so easy for Conv2D, not supported yet)
+        # OR:  set these when the matrices are read => need static methods
+        #  then can set on read...makes sense
+        #  BUT how is WWLayer set ?
+        #    N, M, rf
+        # ESSIEST HACK:
+        #  add a pre-check to the curr_layer:  if curr_layer is lazy, check constraints on N, M, ;ayer_id directly
+        #  if not lazy, don't check (wont be set)
+        #  
+        dims = layer_config['dims']
+        dims = json.loads(dims)
+        if the_type in [LAYER_TYPE.DENSE or LAYER_TYPE.NORM]:
+            self.N = np.max(dims)
+            self.M = np.min(dims)
+            self.rf = 1
+            self.dims = dims
+            self.weight_dims = dims
+            self.skipped = False
+        else:
+            self.skipped = True
+            logger.fatal
+            (f"Sorry, PyStateDictFileLayer only supports DENSE and NORM layers currently, not {str_type}")
+        
         
         FrameworkLayer.__init__(self, layer_config, int(layer_id), name, longname=longname, weights=None, bias=None, the_type=the_type, 
                                 framework=FRAMEWORK.PYSTATEDICTFILE, channels=CHANNELS.LAST, has_bias=self.has_bias)
@@ -676,6 +705,7 @@ class WWLayer:
         
         if params is None: params = DEFAULT_PARAMS.copy()
         
+        
         self.framework_layer = framework_layer
         self.layer_id = layer_id  
         self.plot_id = framework_layer.plot_id
@@ -808,11 +838,14 @@ class WWLayer:
         return self
         
 
-  
-
+    #
+    # TODO: maybe break this up into get dimensions and then set weights
+    #
     def set_weight_matrices(self, weights, combine_weights_and_biases=False):#, conv2d_fft=False, conv2d_norm=True):
         """extract the weight matrices from the framework layer weights (tensors)
         sets the weights and detailed properties on the ww (wrapper) layer 
+        
+        Sets parameters like N, M, rf, Wmats, num_components, ...
     
         conv2d_fft not supported yet
         
@@ -1078,15 +1111,6 @@ class ModelIterator:
         
         self.model_iter = self.model_iter_(model,start_id) 
         self.layer_iter = self.make_layer_iter_()            
-     
-        # TODL check that this actually works...or should this be done in set_model ?
-        # if self.framework == FRAMEWORK.PYSTATEDICTFILE:
-        #     model = WeightWatcher.read_pystatedict_config(model_dir=model)
-        #
-        #     self.model_iter = self.model_iter_(model,start_id) 
-        #     self.layer_iter = self.make_layer_iter_()       
-        
-
   
     
     def __iter__(self):
@@ -1238,42 +1262,57 @@ class WWLayerIterator(ModelIterator):
      
         return ww_layer.skipped
     
+    
+    
     def ww_layer_iter_(self):
-        """Create a generator for iterating over ww_layers, created lazily """
+        """Create a generator for iterating over ww_layers"""
+        
         for curr_layer in self.model_iter:
             
-           # old counting method
-           # curr_id, self.k = self.k, self.k + 1
-           # ww_layer = WWLayer(curr_layer, layer_id=curr_id, params=self.params)
-           
-           # NOte; of comv2d_fft is specified, the FFT is still run
-           
-            ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
+            is_skipped = True
+            
+            if curr_layer.lazy and not curr_layer.skipped:
+                logger.debug("fChceking lazy layer {curr_layer.layer_id}")
+                is_skipped = self.apply_filters(curr_layer)
+                is_supported = self.layer_supported(curr_layer)
+                if  is_supported and not is_skipped:
+                    ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
+                    ww_layer.skipped = False
+                    
+            else:     
+                logger.info(f"Building  layer {curr_layer.layer_id}")
+                ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
+                is_skipped = self.apply_filters(ww_layer)
+                is_supported = self.layer_supported(ww_layer)
 
-            self.apply_filters(ww_layer)
-            if not self.layer_supported(ww_layer):
-                ww_layer.skipped = True
-                        
-            if not ww_layer.skipped:
+
+            if is_supported and not is_skipped:
                 yield ww_layer    
                 
     def make_layer_iter_(self):
         return self.ww_layer_iter_()
     
     def layer_supported(self, ww_layer):
-        """Return true if this kind of layer is supported"""
+        """Return true if this kind of layer is supported
+        
+        Supports the WWLayer, or a Lazy FranmeWork layer
+        
+        Layer object must have the following fileds:
+            layer_id, name, longname, the_type, N, M, rf
+        """
         
         supported = False
 
         layer_id = ww_layer.layer_id
-        plot_id =  ww_layer.plot_id
+        #plot_id =  ww_layer.plot_id
         name = ww_layer.name
         longname = ww_layer.longname
         the_type = ww_layer.the_type
+        
+        N = ww_layer.N
+        M = ww_layer.M
         rf = ww_layer.rf
         
-        M = ww_layer.M
-        N = ww_layer.N
         
         min_evals = self.params.get(MIN_EVALS)
         max_evals = self.params.get(MAX_EVALS)
@@ -4692,6 +4731,8 @@ class WeightWatcher:
     def read_pystatedict_config(model_dir):
         """read the pystate config file, ww_config, 
         which has been previously created by running
+        
+        this method fixes the layer keys to be ints, not strings
         """
         
         # check file is present ?
@@ -4699,7 +4740,12 @@ class WeightWatcher:
         with open(filename, "r") as f:
             config = json.load(f)
             
-        return config
+        # convert keys to strings for comparison
+        fixed_config = config
+        fixed_config['layers'] = {int(k):v for k,v in config['layers'].items()}
+            
+            
+        return fixed_config
     
     @staticmethod 
     def found_pystate_config(model_dir):

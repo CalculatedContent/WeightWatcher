@@ -185,6 +185,40 @@ class Test_ValidParams(Test_Base):
 		valid = ww.WeightWatcher.valid_params(params)
 		self.assertFalse(valid)
 
+		return
+
+	def test_layer_type_from_str(self):
+		"""Test we can interconvert types"""
+		
+		
+		expected_type = LAYER_TYPE.UNKNOWN
+		actual_type = ww.WeightWatcher.layer_type_from_str(UNKNOWN)
+		self.assertEqual(expected_type, actual_type)
+		
+		
+		expected_type = LAYER_TYPE.NORM
+		actual_type = ww.WeightWatcher.layer_type_from_str(NORM)
+		self.assertEqual(expected_type, actual_type)
+		
+		expected_type = LAYER_TYPE.DENSE
+		actual_type = ww.WeightWatcher.layer_type_from_str(DENSE)
+		self.assertEqual(expected_type, actual_type)
+		
+		expected_type = LAYER_TYPE.CONV2D
+		actual_type = ww.WeightWatcher.layer_type_from_str(CONV2D)
+		self.assertEqual(expected_type, actual_type)
+		
+				
+		expected_type = LAYER_TYPE.CONV1D
+		actual_type = ww.WeightWatcher.layer_type_from_str(CONV1D)
+		self.assertEqual(expected_type, actual_type)
+		
+		expected_type = LAYER_TYPE.DENSE
+		actual_type = ww.WeightWatcher.layer_type_from_str(UNKNOWN)
+		self.assertNotEqual(expected_type, actual_type)
+
+		return
+
 class Test_KerasLayers(Test_Base):
 	
 	
@@ -879,6 +913,11 @@ class Test_PyStateDictFileLayers(Test_Base):
 	
 	def test_ww_layer_iterator(self):
 		"""Test that the layer iterators iterates over al layers as expected"""
+		
+		# this wont work for Resnet models because we dont support lazy loading of Conv2D yet
+				
+		logger = logging.getLogger(ww.__name__)
+		logger.setLevel(logging.DEBUG)
 		
 		expected_num_layers = 21 # I think 16 is the flattened layer
 
@@ -3190,9 +3229,7 @@ class Test_Keras(Test_Base):
 		print(details)
 		self.assertTrue(len(details)==2)
 		
-				
-		logger = logging.getLogger(ww.__name__)
-		logger.setLevel(logging.DEBUG)
+		
 		details = watcher.analyze(min_evals=20)
 		print(details[['layer_id', 'M', 'num_evals']])
 		self.assertTrue(len(details)==1)

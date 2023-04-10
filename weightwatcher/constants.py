@@ -183,6 +183,7 @@ UNKNOWN = 'unknown'
 NORM = 'norm'
 DENSE = 'dense'
 CONV2D = 'conv2d'
+CONV1D = 'conv1d'
 class LAYER_TYPE(IntFlag):
     UNKNOWN = auto()
     STACKED = auto()

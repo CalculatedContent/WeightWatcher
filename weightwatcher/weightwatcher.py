@@ -69,9 +69,9 @@ class FrameworkLayer:
     
     def __init__(self, layer, layer_id, name, longname="", weights=None, bias=None, 
                  the_type = LAYER_TYPE.UNKNOWN, skipped=False, framework=FRAMEWORK.UNKNOWN, 
-                 channels=CHANNELS.UNKNOWN, plot_id=None, has_bias=False):
+                 channels=CHANNELS.UNKNOWN, plot_id=None, has_bias=False, lazy=False):
         
-        self.lazy = False
+        self.lazy = lazy
         self.layer = layer
         self.layer_id = layer_id
         
@@ -476,7 +476,7 @@ class PyStateDictFileLayer(FrameworkLayer):
         
       Currently only supports DENSE layers: need to update
       
-      initializer reads weights and bias file directly from disk
+      initializer reads we logger.info(f"CReating CONFIG {config['layers'][3}")ights and bias file directly from disk
       
       would like to adapt to pystatedict to read off file
       we should let the user specify, and then it will create the temp files automatically ?
@@ -484,9 +484,6 @@ class PyStateDictFileLayer(FrameworkLayer):
     """
     
     def __init__(self, layer_id, config, layer_config):
-        
-        self.lazy = True
-        
         self.config = config
         weights_dir =  config['weights_dir']
         
@@ -513,24 +510,21 @@ class PyStateDictFileLayer(FrameworkLayer):
         
         str_type = layer_config['type']
         the_type = WeightWatcher.layer_type_from_str(str_type)
-        
-        # TODO: set these in the enclosing WWLayer without loading the weights until needed...
-        #  hmmm
-        # set N, M, rf lazily (not so easy for Conv2D, not supported yet)
-        # OR:  set these when the matrices are read => need static methods
-        #  then can set on read...makes sense
-        #  BUT how is WWLayer set ?
-        #    N, M, rf
-        # ESSIEST HACK:
-        #  add a pre-check to the curr_layer:  if curr_layer is lazy, check constraints on N, M, ;ayer_id directly
-        #  if not lazy, don't check (wont be set)
-        #  
+          
         dims = layer_config['dims']
         dims = json.loads(dims)
-        if the_type in [LAYER_TYPE.DENSE or LAYER_TYPE.NORM]:
+        if the_type in [LAYER_TYPE.DENSE, LAYER_TYPE.NORM, LAYER_TYPE.CONV1D]:
             self.N = np.max(dims)
             self.M = np.min(dims)
             self.rf = 1
+            self.dims = dims
+            self.weight_dims = dims
+            self.skipped = False
+        elif the_type in [LAYER_TYPE.CONV2D]:
+            # assume channel is not switched
+            self.N = np.max(dims[0:2])
+            self.M = np.min(dims[0:2])
+            self.rf = dims[2]*dims[3]
             self.dims = dims
             self.weight_dims = dims
             self.skipped = False
@@ -541,7 +535,10 @@ class PyStateDictFileLayer(FrameworkLayer):
         
         
         FrameworkLayer.__init__(self, layer_config, int(layer_id), name, longname=longname, weights=None, bias=None, the_type=the_type, 
-                                framework=FRAMEWORK.PYSTATEDICTFILE, channels=CHANNELS.LAST, has_bias=self.has_bias)
+                                framework=FRAMEWORK.PYSTATEDICTFILE, channels=CHANNELS.LAST, has_bias=self.has_bias, lazy=True)
+        
+        return 
+    
     
     def lazy_load_weights_and_biases(self):
         """load the weights and biases from the flat files"""
@@ -859,7 +856,7 @@ class WWLayer:
         the_type = self.the_type
         conv2d_fft = self.params[CONV2D_FFT]
         
-        N, M, n_comp, rf = 0, 0, 0, None
+        N, M, n_comp, rf = 0, 0, 0, 1.0
         Wmats = []
         
         # this may change if we treat Conv1D layyer differently 
@@ -1270,17 +1267,18 @@ class WWLayerIterator(ModelIterator):
         for curr_layer in self.model_iter:
             
             is_skipped = True
+            is_supported = False
             
             if curr_layer.lazy and not curr_layer.skipped:
-                logger.debug("fChceking lazy layer {curr_layer.layer_id}")
                 is_skipped = self.apply_filters(curr_layer)
-                is_supported = self.layer_supported(curr_layer)
-                if  is_supported and not is_skipped:
+                if not is_skipped:
+                    is_supported = self.layer_supported(curr_layer)
+                if not is_skipped and is_supported:
                     ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
                     ww_layer.skipped = False
-                    
+                #else:
+                #    logger.debug(f"skipping lazy layer {curr_layer.layer_id}")
             else:     
-                logger.info(f"Building  layer {curr_layer.layer_id}")
                 ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
                 is_skipped = self.apply_filters(ww_layer)
                 is_supported = self.layer_supported(ww_layer)
@@ -2367,7 +2365,6 @@ class WeightWatcher:
         #ww_layer.add_column('fit_entropy', fit_entropy) #-1 for PL, 
 
         if fit_type==TPL or fit_type==TRUNCATED_POWER_LAW or fit_type==E_TPL:
-            print('dp I get here?')
             ww_layer.add_column('Lambda', Lambda)  
 
         if fix_fingers==CLIP_XMAX:
@@ -4767,6 +4764,8 @@ class WeightWatcher:
             the_type = LAYER_TYPE.DENSE
         elif str_type==CONV2D:
             the_type = LAYER_TYPE.CONV2D
+        elif str_type==CONV1D:
+            the_type = LAYER_TYPE.CONV1D
         return the_type
 
         

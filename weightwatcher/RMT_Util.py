@@ -476,7 +476,7 @@ def discrete_entropy(vec, num_bins=100):
     p = p / np.sum(p)
 
     # p = p/(2*np.pi)
-    entropy = -np.sum(p * np.log(o))
+    entropy = -np.sum(p * np.log(p))
     entropy = entropy  # /(2*np.pi)#/float(num_bins)
     return entropy
 

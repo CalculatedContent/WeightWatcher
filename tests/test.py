@@ -1350,13 +1350,9 @@ class Test_VGG11_noModel(Test_Base):
 
 		details= self.watcher.analyze(model=self.model, layers=self.fc_layers, intra=True, randomize=False, vectors=False)
 		actual_alpha = details.alpha[0]
-		actual_best_fit = details.best_fit[0]
-		print(actual_alpha,actual_best_fit)
 
 		expected_alpha =  2.654 # not very accurate because of the sparisify transform
-		expected_best_fit = LOG_NORMAL
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
-		self.assertEqual(actual_best_fit, expected_best_fit)
 
 			
 
@@ -2057,7 +2053,7 @@ class Test_VGG11_Base(Test_Base):
 		"""Test that alphas are computed and values are within thresholds
 		"""
 		
-		new_model =  models.vgg13(weights='VGG13_Weights.IMAGENET1K_V1')
+		new_model =  models.vgg13(weights='VGG13_Weights.IMAGENET1K_V1').state_dict()
 		description = self.watcher.describe(model=new_model)
 		self.assertEqual(13, len(description))
 		

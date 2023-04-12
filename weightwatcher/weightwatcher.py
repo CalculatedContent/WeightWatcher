@@ -1228,10 +1228,9 @@ class WWLayerIterator(ModelIterator):
                 logger.debug("skipping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
                 ww_layer.skipped = True
 
-        
-        if self.filter_ids is not None and len(self.filter_ids) > 0:
+        if self.filter_ids is not None and len(self.filter_ids) > 0:            
             # keep positive layer ids
-            if np.min(self.filter_ids) > 0:
+            if np.min(self.filter_ids) >= 0:
                 if ww_layer.layer_id in self.filter_ids:
                     logger.debug("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
                     ww_layer.skipped = False
@@ -1274,10 +1273,11 @@ class WWLayerIterator(ModelIterator):
                 if not is_skipped:
                     is_supported = self.layer_supported(curr_layer)
                 if not is_skipped and is_supported:
+                    logger.debug(f"creating lazy layer {curr_layer.layer_id}")
                     ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
                     ww_layer.skipped = False
-                #else:
-                #    logger.debug(f"skipping lazy layer {curr_layer.layer_id}")
+                else:
+                    logger.debug(f"skipping lazy layer {curr_layer.layer_id}")
             else:     
                 ww_layer = WWLayer(curr_layer, layer_id=curr_layer.layer_id, params=self.params)
                 is_skipped = self.apply_filters(ww_layer)
@@ -1302,7 +1302,6 @@ class WWLayerIterator(ModelIterator):
         supported = False
 
         layer_id = ww_layer.layer_id
-        #plot_id =  ww_layer.plot_id
         name = ww_layer.name
         longname = ww_layer.longname
         the_type = ww_layer.the_type
@@ -2892,8 +2891,8 @@ class WeightWatcher:
         num_all_evals = 0
         for ww_layer in layer_iterator:
             if not ww_layer.skipped and ww_layer.has_weights:
-                logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
-                logger.debug("weights shape : {}  max size {}".format(ww_layer.weights.shape, params['max_evals']))
+                #logger.debug("LAYER TYPE: {} {}  layer type {}".format(ww_layer.layer_id, ww_layer.the_type, type(ww_layer.framework_layer)))
+                #logger.debug("layer_id {} weights shape : {}  max size {}".format(ww_layer.layer_id,ww_layer.weights.shape, params['max_evals']))
                 if not pool:
                     num_evals = ww_layer.M
                 elif conv2d_fft:

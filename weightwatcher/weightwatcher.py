@@ -3522,8 +3522,8 @@ class WeightWatcher:
         raw_alpha = -1
         if raw_fit is not None:
             raw_alpha = raw_fit.alpha
-        
-        
+            
+        warning = ""   
         if alpha < OVER_TRAINED_THRESH:
             warning = OVER_TRAINED
         elif alpha > UNDER_TRAINED_THRESH:

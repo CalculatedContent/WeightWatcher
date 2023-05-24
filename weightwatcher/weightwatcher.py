@@ -3039,7 +3039,7 @@ class WeightWatcher:
                 valid = False
 
         start_ids = params[START_IDS]
-        if start_ids not in [0,1]:
+        if start_ids < 0: #not in [0,1]:
             logger.fatal(f"Layer Ids must start at 0 or 1, start_ids={start_ids}")
             valid = False
             
@@ -4586,9 +4586,9 @@ class WeightWatcher:
                     # set framework
                     
                     if method == METHODS.DESCRIBE:
-                        details = watcher.describe(**kwargs)
+                        details = watcher.describe(start_ids = start_id, **kwargs)
                     elif method == METHODS.ANALYZE:
-                        details = watcher.analyze(**kwargs)           
+                        details = watcher.analyze(start_ids = start_id, **kwargs)           
                                  
                     if len(details) > 0:
                         details['model_name'] = state_dict_filename

@@ -2499,6 +2499,49 @@ class Test_VGG11_Base(Test_Base):
 		self.assertEqual(actual_ids,expected_ids)
 
 	
+	def test_start_ids_10(self):
+		"""same as  test_make_ww_iterator, but checks that the ids can start at 1, not 0
+		
+		"""
+		
+		details = self.watcher.describe()
+		print(details, len(details))
+		actual_num_layers = len(details)
+		expected_num_layers = 11
+		expected_ids = details.layer_id.to_numpy().tolist()
+		expected_ids = [x+10 for x in expected_ids]
+
+		self.assertEqual(actual_num_layers, expected_num_layers)
+		self.assertEqual(len(expected_ids), expected_num_layers)
+
+
+		# test decribe
+		details = self.watcher.describe(start_ids=10)
+		print(details)
+		actual_ids = details.layer_id.to_numpy().tolist()
+		self.assertEqual(actual_ids,expected_ids)
+
+		# test analyze: very slow
+		# details = self.watcher.analyze(start_ids=1)
+		# actual_ids = details.layer_id.to_numpy().tolist()
+		# self.assertEqual(actual_ids,expected_ids)
+
+		params = DEFAULT_PARAMS.copy()
+		params[START_IDS]=10
+		params[MIN_EVALS]=1 # there may be a side effect that resets this
+		
+		# test iterator
+		iterator = self.watcher.make_layer_iterator(model=self.model, params=params)
+		num = 0
+		actual_ids = []
+		for ww_layer in iterator:
+			self.assertGreater(ww_layer.layer_id,0)
+			actual_ids.append(ww_layer.layer_id)
+			num += 1
+			print(num, ww_layer.layer_id)
+		self.assertEqual(num,11)
+		self.assertEqual(actual_ids,expected_ids)
+		
 		
 	# CHM:  stacked layers may not be working properly, be careful
 	# needs more testing 

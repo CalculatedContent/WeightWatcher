@@ -1145,7 +1145,7 @@ class ModelIterator:
             layer_iter = ONNXLayer.get_layer_iterator(model) 
             
         elif self.framework == FRAMEWORK.PYSTATEDICT:
-            layer_iter = PyStateDictLayer.get_layer_iterator(model) 
+            layer_iter = PyStateDictLayer.get_layer_iterator(model, start_id=start_id) 
             
         elif self.framework == FRAMEWORK.PYSTATEDICTFILE:
             config = WeightWatcher.read_pystatedict_config(model)
@@ -4600,9 +4600,9 @@ class WeightWatcher:
                             #details.layer_id  = details.layer_id + start_id
                             total_details = pd.concat([total_details,details], ignore_index=True)      
                               
-                    start_id = total_details.layer_id.max()
+                    start_id = total_details.layer_id.max()+1
 
-                    logger.debug(f"num layer_ids {len(details)} last layer_id {start_id-1}")
+                    logger.info(f"num layer_ids {len(details)} last layer_id {start_id}")
                 
                 #https://stackoverflow.com/questions/12309269/how-do-i-write-json-data-to-a-file
                

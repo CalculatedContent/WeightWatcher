@@ -4597,7 +4597,7 @@ class WeightWatcher:
                         if total_details is None:
                             total_details = details
                         else:
-                            details.layer_id  = details.layer_id + start_id
+                            #details.layer_id  = details.layer_id + start_id
                             total_details = pd.concat([total_details,details], ignore_index=True)      
                               
                     start_id = total_details.layer_id.max()

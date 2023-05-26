@@ -4580,7 +4580,7 @@ class WeightWatcher:
                 start_id = 0
                 for state_dict_filename in sorted(glob.glob(f"{model_dir}/pytorch_model*bin")):
                     logger.info(f"loading {state_dict_filename}")
-                    model = torch.load(state_dict_filename)
+                    model = torch.load(state_dict_filename, map_location=torch.device('cpu'))
                     watcher = WeightWatcher(model=model)
                     
                     # set framework

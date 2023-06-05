@@ -36,7 +36,7 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.7.1.5
+## Installation:  Version 0.7.1.7
 
 ```sh
 pip install weightwatcher
@@ -67,8 +67,7 @@ It is as easy to run and generates a pandas dataframe with details (and plots) f
 and `summary` dictionary of generalization metrics
 
 ```python
-    {'log_norm': 2.11,
-      'alpha': 3.06,
+    {'log_norm': 2.11,      'alpha': 3.06,
       'alpha_weighted': 2.78,
       'log_alpha_norm': 3.21,
       'log_spectral_norm': 0.89,

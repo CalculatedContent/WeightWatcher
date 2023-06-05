@@ -394,7 +394,7 @@ class PyStateDictLayer(FrameworkLayer):
 
     
                               
-    def get_layer_iterator(model_state_dict, start_id=0):
+    def get_layer_iterator(model_state_dict, start_id=1):
         """model is just a dict, but we need the name of the dict
         
         start_id = 0 is ok since al counting starts at 1 for this layer"""
@@ -424,8 +424,8 @@ class PyStateDictLayer(FrameworkLayer):
                 # we may need to change this, set valid later
                 # because we want al the layers for describe
                 if weights is not None:
-                    layer_id += 1
                     the_layer = PyStateDictLayer(model_state_dict, layer_id, layer_name)
+                    layer_id += 1 # because we always start at 1 , we increment this after, not before
                     yield the_layer
 
         return layer_iter_()

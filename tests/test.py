@@ -2797,11 +2797,11 @@ class Test_VGG11_StateDict(Test_VGG11_Base):
 
 	def test_start_ids_1(self):
 		"""same as  test_make_ww_iterator, but checks that the ids can start at 1, not 0
-		   BUT FOR PyStateDict, we ALWAYS start at 1
+		   BUT FOR PyStateDict, we ALWAYS start at 1 (so this has to be adapted)
 		"""
 		
 		details = self.watcher.describe()
-		print(details, len(details))
+		print("default:" ,details, len(details))
 		actual_num_layers = len(details)
 		expected_num_layers = 11
 		expected_ids = details.layer_id.to_numpy().tolist()
@@ -2811,14 +2811,38 @@ class Test_VGG11_StateDict(Test_VGG11_Base):
 
 
 		# test decribe
-		details = self.watcher.describe(start_ids=1)
-		print(details)
+		details = self.watcher.describe(start_ids=0)
+		print("start id = 1", details)
 		actual_ids = details.layer_id.to_numpy().tolist()
 		self.assertEqual(actual_ids,expected_ids)
 			
 		return
 
 	
+	
+	def test_start_ids_10(self):
+		"""same as  test_make_ww_iterator, but checks that the ids can start at 1, not 0
+		   BUT FOR PyStateDict, we ALWAYS start at 1 (so this has to be adapted)
+		"""
+		
+		details = self.watcher.describe()
+		print("default:" ,details, len(details))
+		actual_num_layers = len(details)
+		expected_num_layers = 11
+		expected_ids = [idx+10 for idx in details.layer_id.to_numpy()]
+
+		self.assertEqual(actual_num_layers, expected_num_layers)
+		self.assertEqual(len(expected_ids), expected_num_layers)
+
+
+		# test decribe
+		details = self.watcher.describe(start_ids=10)
+		print("start id = 10", details)
+		actual_ids = details.layer_id.to_numpy().tolist()
+		self.assertEqual(actual_ids,expected_ids)
+			
+		return
+
 		
 		
 		

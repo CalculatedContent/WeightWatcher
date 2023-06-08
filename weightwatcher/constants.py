@@ -219,6 +219,11 @@ class CHANNELS(IntFlag):
 class METHODS(IntFlag):
     DESCRIBE = auto()
     ANALYZE = auto()
+    
+    
+class MODEL_FILE_FORMATS():
+    PYTORCH = "pytorch"
+    SAFETENSORS = "safetensors"
             
 # TODO either complete or remove thi 
 class METRICS():

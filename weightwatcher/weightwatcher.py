@@ -4464,14 +4464,14 @@ class WeightWatcher:
     def extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id = 0):
         """Read a pytorch state_dict file, and return a dict of layer configs
         
-        
+           Can read model.bin or model.safetensors (detects by filename)
         Parameters:
         
              weights_dir :  ww temp dir with the extracted weights and biases files
              
              model_name: prefix to  the weights files
              
-             state_dict_filename: name of the pytorch_model.bin file
+             state_dict_filename: name of the pytorch_model.bin  or safetensors file
              
              start_id: int to start layer id counter
          
@@ -4488,8 +4488,21 @@ class WeightWatcher:
         config = {}
         
         if os.path.exists(state_dict_filename):
-            state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
-            logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
+            if state_dict_filename.endswith(".bin"):
+                state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
+                logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
+                
+            elif state_dict_filename.endswith(".safetensors"):
+                from safetensors import safe_open
+
+                #state_dict = {k: f.get_tensor(k) for k in safe_open(state_dict_filename, framework="pt", device='cpu').keys()}
+                state_dict = {}
+                with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
+                    for k in f.keys():
+                        state_dict[k] = f.get_tensor(k)
+        
+                logger.info(f"Read safetensors: {state_dict_filename}, len={len(state_dict)}")
+         
         else:
             logger.fatal(f"PyTorch state_dict {state_dict_filename} not found")
             
@@ -4657,14 +4670,15 @@ class WeightWatcher:
     
     
     @staticmethod 
-    def process_pytorch_bins(model_dir=None, model_name=None, tmp_dir="/tmp"):
+    def process_pytorch_bins(model_dir=None, model_name=None, tmp_dir="/tmp", format=MODEL_FILE_FORMATS.PYTORCH):
         """Read the pytorch config and state_dict files, and create tmp direct, and write W and b .npy files
         
         Used currently to evaluate very large models downloaded from HuggingFace 
         
         Notice: the .bin files are parts of oystatedict files, but may or may not contain the ['model'] key
          
-        
+        Can read traditional pytorch_model.bin format and huggingface safe_tensors format
+
         Parameters:  
         
             model_dir:  string, directory of the config file and  pytorch_model.bin file(s)
@@ -4672,6 +4686,8 @@ class WeightWatcher:
             model_name:  name of model; if None, method attempts to read config.json in the model_dir
             
             tmp_dir:  root directory for the ww tmp weights_dir  that will contain the flat files
+            
+            format: 'pytorch' | 'safe_tensots'
             
         Returns:   a config which has a name, and layer_configs
         
@@ -4695,6 +4711,14 @@ class WeightWatcher:
         config['framework'] = PYTORCH
         config['weights_dir']=weights_dir
     
+        
+        if format==MODEL_FILE_FORMATS.PYTORCH:
+            fileglob = f"{model_dir}/pytorch_model*bin"
+        elif format==MODEL_FILE_FORMATS.SAFETENSORS:
+            fileglob = f"{model_dir}/model*safetensors"
+        else:
+            logger.fatal(f"Unknown file format {format}, quitting")
+    
         if os.path.exists(model_dir) and os.path.isdir(model_dir):
             
             try:
@@ -4714,12 +4738,13 @@ class WeightWatcher:
                 
                 config['layers'] = {}
                 
+                
                 # read all pytorch bin files, extract all files, and process
                 # note: this is not as smart as it could be but better than using all that memory
                 # maybe: need to input the glob, or user has to rename them
                 # this has never been tested with more than 1 bin file; maybe not necessary
                 start_id = 0
-                for state_dict_filename in sorted(glob.glob(f"{model_dir}/pytorch_model*bin")):
+                for state_dict_filename in sorted(glob.glob(fileglob)):
                     logger.info(f"reading and extracting {state_dict_filename}")
                     # TODO:  update layer ids
                     layer_configs = WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename, start_id) 

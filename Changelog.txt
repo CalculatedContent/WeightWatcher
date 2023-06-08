@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.7.1.8]
+added support for safetensors format
+rename test:  Test_VGG11_StateDict -> Test_VGG11_PyStateDict
+Issue 261 fixed bug in reading model config
+Issue 260 add min singular value to the dataframe
+
 ## [0.7.1.7]
 Issue 259, fixed torch.load() -> cpu
 and start_ids for Test_VGG11_StateDict test

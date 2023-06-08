@@ -36,13 +36,13 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.7.1.7
+## Installation:  Version 0.7.1.5
 
 ```sh
 pip install weightwatcher
 ```
 
-### Current TestPyPI Version: 0.7.1.6
+### Current TestPyPI Version: 0.7.1.8
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher

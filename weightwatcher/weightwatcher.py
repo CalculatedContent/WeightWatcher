@@ -1838,6 +1838,11 @@ class WeightWatcher:
         return dist
 
 
+    def model_deltas(self, model_1, model_2, layers = [], start_ids = 0):
+        """Compute the deltas  (or difference) between the weight matrices of two models"""
+        
+    
+    
     def distances(self, model_1, model_2,  method = RAW,
                   layers = [], start_ids = 0, pool = True, channels = None):
         """Compute the distances between model_1 and model_2 for each layer. 
@@ -1969,6 +1974,8 @@ class WeightWatcher:
 
         return avg_dW, avg_db, distances
     
+    
+    
     def combined_eigenvalues(self, Wmats, N, M, n_comp, params=None):
         """Compute the eigenvalues for all weights of the NxM weight matrices (N >= M), 
             combined into a single, sorted, numpy array
@@ -1984,6 +1991,8 @@ class WeightWatcher:
 
         all_evals = []
         max_sv = 0.0
+        min_sv = 0.0
+
         rank_loss = 0
     
         # TODO:  allow user to specify
@@ -2021,9 +2030,11 @@ class WeightWatcher:
             all_evals.extend(evals)
     
             max_sv = np.max([max_sv, np.max(sv)])
+            min_sv = np.max([min_sv, np.min(sv)])
+
             rank_loss = rank_loss + calc_rank_loss(sv, N)      
     
-        return np.sort(np.array(all_evals)), max_sv, rank_loss
+        return np.sort(np.array(all_evals)), max_sv, min_sv, rank_loss
             
             
     def apply_normalize_Wmats(self, ww_layer, params=None):
@@ -2117,7 +2128,7 @@ class WeightWatcher:
         Wmats = ww_layer.Wmats
         n_comp = ww_layer.num_components
                 
-        evals, sv_max, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
+        evals, sv_max, sv_min, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
         
         if params[TOLERANCE]:
             tolerance = params[TOLERANCE]
@@ -2129,9 +2140,11 @@ class WeightWatcher:
         ww_layer.add_column("has_esd", True)
         ww_layer.add_column("num_evals", len(evals))
         ww_layer.add_column("sv_max", sv_max)
+        ww_layer.add_column("sv_min", sv_min)
         ww_layer.add_column("rank_loss", rank_loss)
         ww_layer.add_column("weak_rank_loss", weak_rank_loss)
         ww_layer.add_column("lambda_max", np.max(evals))
+
             
         return ww_layer
     
@@ -4528,6 +4541,19 @@ class WeightWatcher:
         return config
     
     
+    # @staticmethod 
+    # def make_delta_pytorch_bins(model_dir=None, base_model_dir=None,  **kwargs): 
+    #     """make the delta (i.e LoRA update)  from the base model and the fine-tuned
+    #
+    #     creates a delta.bin file for each pytorch.bin file
+    #
+    #     N/A yet """    
+    # return 
+    #
+    #
+
+    
+    
     @staticmethod 
     def describe_pytorch_bins(model_dir=None,  **kwargs):
         return WeightWatcher.apply_watcher_to_pytorch_bins(method=METHODS.DESCRIBE, model_dir=model_dir, **kwargs)
@@ -4555,7 +4581,7 @@ class WeightWatcher:
         
         total_details = None
 
-        logger.info(f"analyzing_pytorch_bin files in {model_dir}, returning combined details")    
+        logger.info(f"apply_watcher_to_pytorch_bins files in {model_dir}, returning combined details")    
         if os.path.exists(model_dir) and os.path.isdir(model_dir):
             
             try:                  
@@ -4564,10 +4590,12 @@ class WeightWatcher:
                     config_filename = os.path.join(model_dir, "config.json")
                     with open(config_filename, "r") as f:
                         model_config = json.loads(f.read())
-        
-                    model_name = model_config['model_type']
+                            
+                    model_name = None
+                    if 'model_type' in model_config:
+                        model_name = model_config['model_type']
                     if model_name is None:
-                        model_name = "UNK"
+                         model_name = "UNK"
                     
                 logger.info(f"Processing model named: {model_name}")
                 
@@ -4588,7 +4616,8 @@ class WeightWatcher:
                     if method == METHODS.DESCRIBE:
                         details = watcher.describe(start_ids = start_id, **kwargs)
                     elif method == METHODS.ANALYZE:
-                        details = watcher.analyze(start_ids = start_id, **kwargs)           
+                        details = watcher.analyze(start_ids = start_id, **kwargs) 
+                        
                                  
                     if len(details) > 0:
                         details['model_name'] = state_dict_filename

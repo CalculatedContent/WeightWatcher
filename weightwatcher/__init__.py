@@ -18,7 +18,7 @@ from .weightwatcher import WeightWatcher
 
 
 __name__ = "weightwatcher"
-__version__ = "0.7.1.7"
+__version__ = "0.7.1.8"
 __license__ = "Apache License, Version 2.0"
 __description__ = "Diagnostic Tool for Deep Neural Networks"
 __url__ = "https://calculationconsulting.com/"

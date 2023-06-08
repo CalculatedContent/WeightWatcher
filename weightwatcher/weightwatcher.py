@@ -359,7 +359,7 @@ class PyTorchLayer(FrameworkLayer):
 
 
 class PyStateDictLayer(FrameworkLayer):  
-    """Similar to the PyTorch iteraror, but the layer ids may be different"""
+    """Similar to the PyTorch iterator, but the layer ids may be different"""
     
     def __init__(self, model, layer_id, name):
     
@@ -376,6 +376,7 @@ class PyStateDictLayer(FrameworkLayer):
         if bias_key in self.model:
             return True
         return False
+    
   
     def layer_type(self, layer):
         """Given a framework layer, determine the weightwatcher LAYER_TYPE"""
@@ -397,10 +398,11 @@ class PyStateDictLayer(FrameworkLayer):
     def get_layer_iterator(model_state_dict, start_id=1):
         """model is just a dict, but we need the name of the dict
         
-        start_id = 0 is ok since al counting starts at 1 for this layer"""
+        start_id = 0 is NOT ok since all counting starts at 1 for this layer"""
         
         def layer_iter_():
            layer_id = start_id 
+
            for key in model_state_dict.keys():
             # Check if the key corresponds to a weight matrix
             if key.endswith('.weight'):
@@ -1103,6 +1105,8 @@ class ModelIterator:
             start_id = params[START_IDS] 
         else:
             start_id = DEFAULT_START_ID
+            if framework==FRAMEWORK.PYSTATEDICT:
+                start_id = 1
                 
         self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
@@ -1134,6 +1138,7 @@ class ModelIterator:
         start_id = 0 is inc luded for back compability; really all counting should start at 1"""
         layer_iter = None
         
+     
         # sart_id can be erro (for back compatability) or one (better)
         if self.framework == FRAMEWORK.KERAS:
             layer_iter = KerasLayer.get_layer_iterator(model, start_id=start_id) 

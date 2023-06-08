@@ -158,7 +158,7 @@ WEAK_RANK_LOSS_TOLERANCE = 0.000001 # on ei=gen values
 
 ADD_BIASES = 'add_biases'
 
-DEFAULT_START_ID = 0
+DEFAULT_START_ID = 0 # this is hard coded to 1 for PyStateDict
     
 # These are NOT the defaults...see analyze() for actual defaults
 DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZE: True, 

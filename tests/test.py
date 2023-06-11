@@ -25,12 +25,18 @@ import numpy as np
 import pandas as pd
 import torchvision.models as models
 
+	
+from safetensors import safe_open
+from safetensors.torch import save_file as safe_save
+
 import gc
 
 warnings.simplefilter(action='ignore', category=RuntimeWarning)
 
 import matplotlib
 matplotlib.use('Agg')
+
+TEST_TMP_DIR = '/tmp'
 
 
 class Test_Base(unittest.TestCase):
@@ -64,11 +70,11 @@ class Test_Base(unittest.TestCase):
 	def _remove_all_ww_tmp_dirs():
 		"""This method should be called explicitly if the child class creates temp files
 		
-		Currently only used for testing PyStateDictFile methods	 
+		Currently only used for testing WWFlatFiles methods	 
 	 	"""
 	 
 		
-		for tmp_dir in  glob.glob("/tmp/ww_*"):
+		for tmp_dir in  glob.glob(f"{TEST_TMP_DIR}/ww_*"):
 			print(f"removing tmp_dir =  {tmp_dir}")
 			Test_Base._remove_ww_tmp_dir(tmp_dir)
 			
@@ -79,14 +85,14 @@ class Test_Base(unittest.TestCase):
 		"""remove /tmp-WW_* style temporary directory  that gor left over from a failed test
 			 or just needs removed by name 
 			 
-		Currently only used for testing PyStateDictFile methods		 
+		Currently only used for testing WWFlatFile methods		 
 	 	"""
 		
 		try:
 			# check 1  more time that weights dir being removed is in /tmp
 			if tmp_dir is not None:
-				if tmp_dir.startswith("/tmp/ww_"):
-					if  os.path.commonprefix([tmp_dir, '/tmp'])=='/tmp' :
+				if tmp_dir.startswith(f"{TEST_TMP_DIR}/ww_"):
+					if  os.path.commonprefix([tmp_dir, TEST_TMP_DIR])==TEST_TMP_DIR :
 							print(f"removing {tmp_dir}")
 							shutil.rmtree(tmp_dir)  # delete directory
 
@@ -580,7 +586,7 @@ class Test_PyTorchLayers(Test_Base):
 		
 	
 			
-class Test_PyStateDictFileExtractor(Test_Base):
+class Test_PyTorchBins_Extractor(Test_Base):
 	
 	"""BE VERY CAREFUL RUNNIG THIS BECAUSE THIS TESTS CREATES TEMPORARY FILES IN /TMP THAT *SHOULD*  BE REMOVED 
 
@@ -592,7 +598,7 @@ class Test_PyStateDictFileExtractor(Test_Base):
 		"""	Creates a /tmp.ww_weights_dir with the resnet weights extracted
 			Removes the tmp dir when done
 			
-			Assumes that process_pytorch_bins works properly"""
+			Assumes that extract_pytorch_bins works properly"""
 		
 		ww.weightwatcher.torch = torch		
 		return
@@ -616,9 +622,9 @@ class Test_PyStateDictFileExtractor(Test_Base):
 		
 		test_dir = None
 		try:
-			with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+			with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
 				print(f"using {model_dir} as model_dir")
-				self.assertTrue(model_dir.startswith("/tmp"))
+				self.assertTrue(model_dir.startswith(TEST_TMP_DIR))
 				test_dir = str(model_dir)
 				print(f"checking {test_dir} ")
 
@@ -627,7 +633,7 @@ class Test_PyStateDictFileExtractor(Test_Base):
 			pass
 	
 		self.assertIsNotNone(test_dir)
-		self.assertTrue(test_dir.startswith("/tmp/ww_"))
+		self.assertTrue(test_dir.startswith(f"{TEST_TMP_DIR}/ww_"))
 		self.assertFalse(os.path.isdir(test_dir))
 
 		return
@@ -664,13 +670,13 @@ class Test_PyStateDictFileExtractor(Test_Base):
 		self.assertEqual(expected_num_weightfiles,actual_num_weightfiles)
 
 
-		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
 			print(f"using {model_dir} as model_dir")
-			self.assertTrue(model_dir.startswith("/tmp"))
+			self.assertTrue(model_dir.startswith(TEST_TMP_DIR))
 			
-			with TemporaryDirectory(dir="/tmp", prefix="ww_") as weights_dir:
+			with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as weights_dir:
 				print(f"using {weights_dir} as weights_dir")
-				self.assertTrue(weights_dir.startswith("/tmp"))
+				self.assertTrue(weights_dir.startswith(TEST_TMP_DIR))
 			
 				state_dict_filename = os.path.join(model_dir, "pys.bin")
 				torch.save(model, state_dict_filename)
@@ -691,9 +697,57 @@ class Test_PyStateDictFileExtractor(Test_Base):
 		self.assertFalse(os.path.isdir(weights_dir))
 		
 		return
+	
+	def test_extract_safetensors_statedict(self):
+		"""Same as code test_extract_pytorch_statedict but using safetensors format
+		"""
+
+
+		model = models.resnet18().state_dict()
+		model_name = "resnet18"
+  
+		layer_names = model.keys()
+		expected_layer_names = [name for name in layer_names if 'weight' in name or 'bias' in name]
+		expected_num_files = len(expected_layer_names)	
+		
+		# there are 18 real layers with weights
+		layer_weightfiles = [name for name in layer_names if 'weight' in name  and 'bn' not in name and 'downsample' not in name ]	
+		expected_num_weightfiles = 18
+		actual_num_weightfiles = (len(layer_weightfiles))
+		self.assertEqual(expected_num_weightfiles,actual_num_weightfiles)
+
+
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
+			print(f"using {model_dir} as model_dir")
+			self.assertTrue(model_dir.startswith(TEST_TMP_DIR))
+			
+			with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as weights_dir:
+				print(f"using {weights_dir} as weights_dir")
+				self.assertTrue(weights_dir.startswith(TEST_TMP_DIR))
+			
+				state_dict_filename = os.path.join(model_dir, "pys.safetensors")
+				safe_save(model, state_dict_filename)
+				
+				ww.WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename)
+			
+				weightfiles = [f for f in listdir(weights_dir) if isfile(join(weights_dir, f))]	
+				actual_num_files = len(weightfiles)
+				self.assertEqual(expected_num_files,actual_num_files)	
+				print(f"checked {actual_num_files} weightfiles")			
+				
+				# test that we can read the files ?	
+				for filename in  weightfiles:
+					W = np.load(os.path.join(weights_dir,filename))
+					self.assertIsNotNone(W)
+			
+						
+		self.assertFalse(os.path.isdir(model_dir))
+		self.assertFalse(os.path.isdir(weights_dir))
+		
+		return
        
        
-	def test_process_pytorch_bins_on_resnet18(self):
+	def test_extract_pytorch_bins_on_resnet18(self):
 		""" This method should be able to read 1 or more state_dict files from the huggingface cache 
     	
     	Here we just test it on 1 file from resnet18, which is ok also
@@ -716,15 +770,15 @@ class Test_PyStateDictFileExtractor(Test_Base):
 		expected_biasfiles = [name for name in layer_names if ('bias' in name)]
 		expected_num_biasfiles = len(expected_biasfiles)	
 		
-		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
 			print(f"using {model_dir} as model_dir")
-			self.assertTrue(model_dir.startswith("/tmp"))
+			self.assertTrue(model_dir.startswith(TEST_TMP_DIR))
 		
 			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
 			torch.save(model, state_dict_filename)
 			
 			
-			config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=model_name)
+			config = ww.WeightWatcher.extract_pytorch_bins(model_dir=model_dir, model_name=model_name)
 			self.assertIsNotNone(config['weights_dir'])
 			weights_dir = config['weights_dir']
 			self.assertTrue(os.path.isdir(weights_dir))
@@ -739,7 +793,7 @@ class Test_PyStateDictFileExtractor(Test_Base):
 				
 			self.assertTrue(os.path.isdir(model_dir))
 			print(f"using {weights_dir} as weights_dir")
-			self.assertTrue(weights_dir.startswith("/tmp"))
+			self.assertTrue(weights_dir.startswith(TEST_TMP_DIR))
 			
 			self.assertEqual(config['model_name'],model_name)
 	
@@ -785,7 +839,7 @@ class Test_PyStateDictFileExtractor(Test_Base):
 				
 		self.assertEqual(actual_num_biasfiles, expected_num_biasfiles)
 		self.assertIsNotNone(weights_dir)
-		self.assertTrue(weights_dir.startswith("/tmp"))
+		self.assertTrue(weights_dir.startswith(TEST_TMP_DIR))
 		
 		# tmp dir is removed when test base is torn down	
 		#self.assertFalse(os.path.isdir(weights_dir))
@@ -794,15 +848,13 @@ class Test_PyStateDictFileExtractor(Test_Base):
 
 		
 		
-class Test_PyStateDictFileLayers(Test_Base):
+class Test_WWFlatFiles(Test_Base):
 	
-	"""BE VERY CAREFUL RUNNIG THIS BECAUSE THIS TESTS CREATES FILES IN /TMP THAT NEED TO BE REMOVED"""
-
-
+	"""BE VERY CAREFUL RUNNING THIS BECAUSE THIS TESTS CREATES FILES IN /TMP THAT NEED TO BE REMOVED"""
 	
 	"""Note:  This class may create temporary directories in /tmp/ww_ that don't get properly removed
 	
-	Assumes tmp dir is /tmp
+	Assumes tmp dir is /tmp = TEST_TMP_DIR
 	
 	"""	
 	@classmethod
@@ -810,10 +862,10 @@ class Test_PyStateDictFileLayers(Test_Base):
 		"""	Creates a /tmp.ww_weights_dir with the resnet weights extracted
 			Removes the tmp dir when done
 			
-			Assumes that process_pytorch_bins works properly"""
+			Assumes that extract_pytorch_bins works properly"""
 					
 		ww.weightwatcher.torch = torch
-		cls.weights_dir = Test_PyStateDictFileLayers._make_tmp_weights_dir()
+		cls.weights_dir = Test_WWFlatFiles._make_tmp_weights_dir()
 		
 		return
 
@@ -838,9 +890,13 @@ class Test_PyStateDictFileLayers(Test_Base):
 		#Test_Base.setUp(self):
 
 		self.model_name = 'resnet18'
-		self.model = Test_PyStateDictFileLayers.weights_dir
+		self.model = Test_WWFlatFiles.weights_dir
 		self.model_dir = self.model
 		self.tmp_dirs = []
+
+		# 'resnet18.40' for WW_FLATFILES; 'fc' for PYSTATEDICT
+		self.fc_layer_name = 'resnet18.40'
+		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.WWFlatFile'>"
 		return
 	
 		
@@ -852,20 +908,25 @@ class Test_PyStateDictFileLayers(Test_Base):
 	
 		
 	def test_setup(self):
-		"""test that the tmp model is built and then rown down"""
+		"""test that the tmp model is built and then tear down"""
 		
-		print(f"using self.weights_dir as model -= {self.model}")
+		print(f"using self.weights_dir as model = {self.model}")
 		self.assertTrue(os.path.isdir(self.model))
+		self.assertEquals(self.weights_dir, self.model)
+
+		num_files = len(glob.glob(f"{self.model}/*"))
+		self.assertTrue(num_files > 0)
+		
 		return
 	
 		
 	def test_tmpdir(self):
-		"""Shows how the TemporaryDirectory works in python; see also Test_PyStateDictFileExtractor """
+		"""Shows how the TemporaryDirectory works in python; see also Test_WWFlatFileExtractor """
 
-		with TemporaryDirectory(prefix="ww_", dir="/tmp") as tmp_dir:
+		with TemporaryDirectory(prefix="ww_", dir=TEST_TMP_DIR) as tmp_dir:
 			print(tmp_dir),
-			self.assertTrue(tmp_dir.startswith("/tmp"))
-			self.assertEqual( os.path.commonprefix([tmp_dir, '/tmp']),'/tmp') 
+			self.assertTrue(tmp_dir.startswith(TEST_TMP_DIR))
+			self.assertEqual( os.path.commonprefix([tmp_dir, TEST_TMP_DIR]),TEST_TMP_DIR) 
 
 		self.assertFalse(os.path.isdir(tmp_dir))
 
@@ -873,24 +934,35 @@ class Test_PyStateDictFileLayers(Test_Base):
 		return
 	
 	@staticmethod
-	def _make_tmp_weights_dir():
-		"""assumes that the process_pytorch_bins works correctly, uses it to create a tmp weights director"""
+	def _make_tmp_weights_dir(format=MODEL_FILE_FORMATS.WW_FLATFILES):
+		"""assumes that the extract_pytorch_bins works correctly, uses it to create a tmp weights director"""
 		
 		state_dict = models.resnet18().state_dict()
 		
 		model_name = 'resnet18'
 		weights_dir = None
 		
-		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
 			
 			print(f"using {model_dir} as model_dir")
 		
 			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
 			torch.save(state_dict, state_dict_filename)
 			
-			config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=model_name)
-			weights_dir = config['weights_dir']
-			print(config)
+			if format==MODEL_FILE_FORMATS.WW_FLATFILES:
+				print("analyzing WW_FLATFILES")	
+				config = ww.WeightWatcher.extract_pytorch_bins(model_dir=model_dir, model_name=model_name)
+				weights_dir = config['weights_dir']
+				print(config)
+			elif format==MODEL_FILE_FORMATS.PYTORCH:
+				weights_dir = tempfile.mkdtemp(dir=TEST_TMP_DIR, prefix="ww_")
+				state_dict_filename = os.path.join(weights_dir, "pytorch_model.0.bin")
+				torch.save(state_dict, state_dict_filename)	
+			elif format==MODEL_FILE_FORMATS.SAFETENSORS:
+				weights_dir = tempfile.mkdtemp(dir=TEST_TMP_DIR, prefix="ww_")
+				state_dict_filename = os.path.join(weights_dir, "model.0.safetensors")
+				safe_save(state_dict, state_dict_filename)		
+			
 		
 		return weights_dir
 
@@ -900,7 +972,7 @@ class Test_PyStateDictFileLayers(Test_Base):
 	def test_make_and_remove_ww_tmp_dir(self):
 		"""test the static method for the class"""
 		
-		weights_dir = Test_PyStateDictFileLayers._make_tmp_weights_dir()
+		weights_dir = Test_WWFlatFiles._make_tmp_weights_dir()
 		self.assertTrue(os.path.isdir(weights_dir))
 		
 		Test_Base._remove_ww_tmp_dir(weights_dir)
@@ -912,7 +984,7 @@ class Test_PyStateDictFileLayers(Test_Base):
 	
 	
 	def test_ww_layer_iterator(self):
-		"""Test that the layer iterators iterates over al layers as expected"""
+		"""Test that the layer iterators iterates over all layers as expected using default WW_FLATFILES"""
 		
 		# this wont work for Resnet models because we dont support lazy loading of Conv2D yet
 				
@@ -942,46 +1014,88 @@ class Test_PyStateDictFileLayers(Test_Base):
 
 
 		
-	def _get_last_ww_layer(self):
+	def _get_resnet_fc_layer(self):
 		"""Get the last layer off the diskl"""
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
 		num_layers = 0
 		for ww_layer in layer_iterator:
 			num_layers += 1	
-		last_ww_layer = ww_layer
+		fc_layer = ww_layer
 		
-		return last_ww_layer
+		return fc_layer
 	
 	
 	def test_infer_framework(self):
-		"""Test that we can infer the framework from the directory correctly"""
+		"""Test that we can infer the framework from the directory correctly, WW_FLATFILES"""
 		
+		print(f"test_infer_framework self.model={self.model}")
+		
+		num_files = len(glob.glob(f"{self.model}/*"))
+		print(f"test_infer_framework found {num_files} tmp files")
+		self.assertTrue(num_files > 0)
+		
+		
+		num_pytorch_bin_files = len(glob.glob(f"{self.model}/*bin"))
+		#print(f"test_infer_framework found {num_pytorch_bin_files} tmp pytorch bin  files")
+		self.assertEqual(num_pytorch_bin_files, 0)
+		
+		num_safetensors_files = len(glob.glob(f"{self.model}/*safetensors"))
+		#print(f"test_infer_framework found {num_pytorch_bin_files} tmp num_safetensors_files files")
+		self.assertEqual(num_safetensors_files, 0)
+		
+		num_flat_files = len(glob.glob(f"{self.model}/*npy"))
+		#print(f"test_infer_framework found {num_files} tmp npy flat files")
+		self.assertTrue(num_flat_files > 0)
+		
+		expected_format, expected_fileglob = ww.WeightWatcher.infer_model_file_format(self.model)
+		print(f"infer_model_file_format found {expected_format} expected format")
+		self.assertEqual(expected_format, MODEL_FILE_FORMATS.WW_FLATFILES)		
+
 		expected_framework = ww.WeightWatcher.infer_framework(self.model)
-		self.assertEqual(expected_framework, FRAMEWORK.PYSTATEDICTFILE)		
+		print(f"infer_model_file_format found {expected_framework} expected_framework ")
+		self.assertEqual(expected_framework, FRAMEWORK.WW_FLATFILES)		
 		
 		return
 		
+		
 
+	def test_ww_layer_iterator(self):
+		"""Test that we properly iterate over all ResNet layers = 21"""
+		
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		num_layers = 0
+		for ww_layer in layer_iterator:
+			print(num_layers, ww_layer.name, ww_layer.the_type)
+			num_layers += 1	
+			
+		expected_num_layers = 21
+		self.assertEquals(expected_num_layers, num_layers)
+		
+		return
+	
+	
 		
 	def test_ww_layer_attributes(self):
-		"""Test that the layer is a PYSTATEDICTFILE layer
+		"""Test that the layer is a WWFlatFile layer
 		
 		not working:  infer framework not correct"""
 		
-		ww_layer = self._get_last_ww_layer()
+		ww_layer = self._get_resnet_fc_layer()
 					
 		expected_type = "<class 'weightwatcher.weightwatcher.WWLayer'>"
 		actual_type = str(type(ww_layer))
 		self.assertEqual(expected_type, actual_type)
 		
-		expected_name = 'resnet18.40'
+		# RESET FOR WW_FLATFILES vs  PYSTATEDICT vs ...
+		expected_name = self.fc_layer_name 
 		actual_name = ww_layer.name
 		self.assertEqual(expected_name, actual_name)
 		
 		framework_layer = ww_layer.framework_layer
 		self.assertTrue(framework_layer is not None)
 		
-		expected_type = "<class 'weightwatcher.weightwatcher.PyStateDictFileLayer'>"
+		# RESET FOR WW_FLATFILES vs  PYSTATEDICT vs ...
+		expected_type = self.fc_layer_type 
 		actual_type = str(type(framework_layer))
 		self.assertEqual(expected_type, actual_type)
 	
@@ -1004,8 +1118,199 @@ class Test_PyStateDictFileLayers(Test_Base):
 		
 		return
 	
-    	
+	
+	
+	
+class Test_PyStateDictDir(Test_WWFlatFiles):
+	"""Same as Test_WWFlatFiles, but tests for a list of pytorch_model*bin files"""
+	
+	@classmethod
+	def setUpClass(cls):
+		"""	Creates a /tmp.ww_weights_dir with the resnet weights extracted
+			Removes the tmp dir when done
+			
+			Assumes that extract_pytorch_bins works properly"""
+					
+		ww.weightwatcher.torch = torch
+		cls.weights_dir = Test_PyStateDictDir._make_tmp_weights_dir(format=MODEL_FILE_FORMATS.PYTORCH)
+		
+		return
+	
+			
+	def setUp(self):
+		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
+		
+		#Test_Base.setUp(self):
 
+		self.model_name = 'resnet18'
+		self.model = Test_PyStateDictDir.weights_dir
+		self.model_dir = self.model
+		self.tmp_dirs = []
+		
+		self.fc_layer_name = 'fc'
+		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
+
+		return
+	
+	
+	def test_extract_pytorch_bins_on_resnet18(self):
+		pass
+	
+	def test_infer_framework(self):
+		"""Test that we can infer the framework from the directory correctly, WW_FLATFILES"""
+		
+		print(f"test_infer_framework self.model={self.model}")
+		
+		num_files = len(glob.glob(f"{self.model}/*"))
+		print(f"test_infer_framework found {num_files} tmp files")
+		self.assertTrue(num_files > 0)
+		
+		
+		num_pytorch_bin_files = len(glob.glob(f"{self.model}/*bin"))
+		#print(f"test_infer_framework found {num_pytorch_bin_files} tmp pytorch bin  files")
+		self.assertEqual(num_pytorch_bin_files, 1)
+		
+		num_safetensors_files = len(glob.glob(f"{self.model}/*safetensors"))
+		#print(f"test_infer_framework found {num_pytorch_bin_files} tmp num_safetensors_files files")
+		self.assertEqual(num_safetensors_files, 0)
+		
+		num_flat_files = len(glob.glob(f"{self.model}/*npy"))
+		#print(f"test_infer_framework found {num_files} tmp npy flat files")
+		self.assertEqual(num_flat_files, 0)
+		
+		expected_format, expected_fileglob = ww.WeightWatcher.infer_model_file_format(self.model)
+		print(f"infer_model_file_format found {expected_format} expected format")
+		self.assertEqual(expected_format, MODEL_FILE_FORMATS.PYTORCH)		
+
+		expected_framework = ww.WeightWatcher.infer_framework(self.model)
+		print(f"infer_model_file_format found {expected_framework} expected_framework ")
+		self.assertEqual(expected_framework, FRAMEWORK.PYSTATEDICT_DIR)	
+		
+		return
+	
+	
+
+class Test_SafeTensorsDir(Test_WWFlatFiles):
+	"""Same as Test_WWFlatFiles, but tests for a list of HuggingFace safetensors files"""
+	
+	@classmethod
+	def setUpClass(cls):
+		"""	Creates a /tmp.ww_weights_dir with the resnet weights extracted
+			Removes the tmp dir when done
+			
+			Assumes that extract_pytorch_bins works properly"""
+					
+		ww.weightwatcher.torch = torch
+		cls.weights_dir = Test_SafeTensorsDir._make_tmp_weights_dir(format=MODEL_FILE_FORMATS.SAFETENSORS)
+		
+		return
+	
+			
+	def setUp(self):
+		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
+		
+		#Test_Base.setUp(self):
+
+		self.model_name = 'resnet18'
+		self.model = Test_SafeTensorsDir.weights_dir
+		self.model_dir = self.model
+		self.tmp_dirs = []
+		
+		self.fc_layer_name = 'fc'
+		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
+
+		return
+	
+	
+	def test_extract_pytorch_bins_on_resnet18(self):
+		pass
+	
+	
+	def test_infer_framework(self):
+		"""Test that we can infer the framework from the directory correctly, WW_FLATFILES"""
+		
+		print(f"test_infer_framework self.model={self.model}")
+		
+		num_files = len(glob.glob(f"{self.model}/*"))
+		print(f"test_infer_framework found {num_files} tmp files")
+		self.assertTrue(num_files > 0)
+		
+		
+		num_pytorch_bin_files = len(glob.glob(f"{self.model}/*bin"))
+		#print(f"test_infer_framework found {num_pytorch_bin_files} tmp pytorch bin  files")
+		self.assertEqual(num_pytorch_bin_files, 0)
+		
+		num_safetensors_files = len(glob.glob(f"{self.model}/*safetensors"))
+		#print(f"test_infer_framework found {num_pytorch_bin_files} tmp num_safetensors_files files")
+		self.assertEqual(num_safetensors_files, 1)
+		
+		num_flat_files = len(glob.glob(f"{self.model}/*npy"))
+		#print(f"test_infer_framework found {num_files} tmp npy flat files")
+		self.assertEqual(num_flat_files, 0)
+		
+		expected_format, expected_fileglob = ww.WeightWatcher.infer_model_file_format(self.model)
+		print(f"infer_model_file_format found {expected_format} expected format")
+		self.assertEqual(expected_format, MODEL_FILE_FORMATS.SAFETENSORS)		
+
+		expected_framework = ww.WeightWatcher.infer_framework(self.model)
+		print(f"infer_model_file_format found {expected_framework} expected_framework ")
+		self.assertEqual(expected_framework, FRAMEWORK.PYSTATEDICT_DIR)	
+		
+		return
+	
+	
+	def test_read_safetensors(self):
+		"""Simply test that we can read the safetensors file here
+		
+		Turns out that safetensors is in sort of order of the names, not in layer order
+		
+		This means, without the order, we can not look at correlation flow or even intra-correlations
+		*(unless the names themselves are ordered)
+		
+		We also need to check if we detect the layers correctly
+		
+		TODO:  look at albert, other models
+		The user will need to reorder these layers themselves or provide us an ordering
+		
+		"""
+		
+		print(f"test_read_safetensors self.model={self.model}")
+		state_dict_filename = glob.glob(f"{self.model}/*safetensors")[0]
+		print(f"state_dict_filename {state_dict_filename}")
+
+		
+		state_dict = {}
+		with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
+			for k in f.keys():
+				state_dict[k] = f.get_tensor(k)
+				print(k)
+			
+		expected_num_keys = 122
+		actual_num_keys = len(state_dict)
+		self.assertEquals(expected_num_keys, actual_num_keys)
+		
+		return
+	
+
+	def _get_resnet_fc_layer(self):
+		"""Get the last layer off the diskl"""
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		fc_layer= None
+		for ww_layer in layer_iterator:
+			print(ww_layer.name)
+			if ww_layer.name=='fc':
+				fc_layer = ww_layer
+		
+		return fc_layer
+	
+	def test_get_resnet_fc_layer(self):
+		fc_layer = self._get_resnet_fc_layer()
+		self.assertIsNotNone(fc_layer)
+		return
+		
+		
+		
+		
 class Test_PyStateDictLayers(Test_Base):
 	
 	
@@ -1026,7 +1331,7 @@ class Test_PyStateDictLayers(Test_Base):
 		for key in self.model.keys():
 			if key.endswith('.weight'):
 				layer_name = key[:-len('.weight')]
-				self.last_layer_name = layer_name	
+				self.fc_layer_name = layer_name	
 				
 	
 			
@@ -1034,10 +1339,10 @@ class Test_PyStateDictLayers(Test_Base):
 	def test_pytorch_layer_constructor(self):
 				
 		expected_layer_id = 21
-		expected_name = self.last_layer_name 
+		expected_name = self.fc_layer_name 
 		expected_longname = expected_name
 
-		actual_layer = ww.weightwatcher.PyStateDictLayer(self.model, expected_layer_id, self.last_layer_name)
+		actual_layer = ww.weightwatcher.PyStateDictLayer(self.model, expected_layer_id, self.fc_layer_name)
 
 		print(actual_layer)
 		
@@ -1186,6 +1491,10 @@ class Test_PyStateDictLayers(Test_Base):
 		self.assertEqual(replaced_new_B_min, expected_old_B_min)
 		
 	
+
+	
+	
+	
 class Test_VGG11_noModel(Test_Base):
 	
 	"""Same as Test_VGG11 methods, but the model is not specified in setup """
@@ -1242,7 +1551,7 @@ class Test_VGG11_noModel(Test_Base):
 		details = self.watcher.analyze(model=self.model, layers=[self.fc2_layer])
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,sv_min,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -1355,6 +1664,7 @@ class Test_VGG11_noModel(Test_Base):
 		self.assertAlmostEqual(actual_alpha,expected_alpha, places=1)
 
 			
+
 
 
 class Test_VGG11_Distances(Test_Base):
@@ -1741,7 +2051,7 @@ class Test_VGG11_Base(Test_Base):
 		details = self.watcher.analyze()
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,sv_min,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -1755,7 +2065,7 @@ class Test_VGG11_Base(Test_Base):
 		details = self.watcher.analyze(model=self.model)
 		self.assertEqual(isinstance(details, pd.DataFrame), True, "details is a pandas DataFrame")
 
-		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
+		columns = "layer_id,name,D,M,N,alpha,alpha_weighted,has_esd,lambda_max,layer_type,log_alpha_norm,log_norm,log_spectral_norm,norm,num_evals,rank_loss,rf,sigma,spectral_norm,stable_rank,sv_max,sv_min,xmax,xmin,num_pl_spikes,weak_rank_loss".split(',')
 		print(details.columns)
 		for key in columns:
 			self.assertTrue(key in details.columns, "{} in details. Columns are {}".format(key, details.columns))
@@ -1972,7 +2282,7 @@ class Test_VGG11_Base(Test_Base):
 		"""Test dimensions of Conv2D layer
 		"""
 		
-			# default	
+		# default	
 		details = self.watcher.describe()
 		print(details)
 		
@@ -1989,6 +2299,7 @@ class Test_VGG11_Base(Test_Base):
 		self.assertEqual(M,3)
 		self.assertEqual(rf,9)
 		self.assertEqual(num_evals,M*rf)
+		
 		
 	def test_switch_channels(self):
 		"""Test user can switch the channels for a Conv2D layer
@@ -2138,6 +2449,7 @@ class Test_VGG11_Base(Test_Base):
 		actual = details.ww_maxdist[0]/100.0
 		expected = 39.9/100.0
 		self.assertAlmostEqual(actual,expected, places=2)
+		
 		
 	def test_reset_params(self):
 		"""test that params are reset / normalized ()
@@ -2653,7 +2965,7 @@ class Test_VGG11_Base(Test_Base):
 
 
 
-class Test_VGG11_PyStateDictFile(Test_VGG11_Base):
+class Test_VGG11_WWFlatFile(Test_VGG11_Base):
 	
 	"""BE VERY CAREFUL RUNNIG THIS BECAUSE THIS TESTS CREATES FILES IN /TMP THAT NEED TO BE REMOVED"""
 
@@ -2667,13 +2979,13 @@ class Test_VGG11_PyStateDictFile(Test_VGG11_Base):
 		model_name = 'vgg11'
 
 
-		with TemporaryDirectory(dir="/tmp", prefix="ww_") as model_dir:
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
 			print(f"setting up class using {model_dir} as model_dir")
 		
 			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
 			torch.save(state_dict, state_dict_filename)
 			
-			cls.config = ww.WeightWatcher.process_pytorch_bins(model_dir=model_dir, model_name=model_name)
+			cls.config = ww.WeightWatcher.extract_pytorch_bins(model_dir=model_dir, model_name=model_name)
 			cls.weights_dir = cls.config['weights_dir']
 			
 		return
@@ -2700,18 +3012,18 @@ class Test_VGG11_PyStateDictFile(Test_VGG11_Base):
 			Creates a /tmp.ww_weights_dir with the VGG weights extracted
 			Removes the tmp dir when done
 			
-			Assumes that process_pytorch_bins works properly
+			Assumes that extract_pytorch_bins works properly
 			
 		"""
 
-		print("\n-------------------------------------\nIn Test_VGG11_PyStateDictFile:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_VGG11_WWFlatFile:", self._testMethodName)
 		
 		
 		self.model_name = 'vgg11'	
 		self.state_dict = models.vgg11(weights='VGG11_Weights.IMAGENET1K_V1').state_dict()
 		
-		self.config = Test_VGG11_PyStateDictFile.config
-		self.weights_dir = Test_VGG11_PyStateDictFile.weights_dir
+		self.config = Test_VGG11_WWFlatFile.config
+		self.weights_dir = Test_VGG11_WWFlatFile.weights_dir
 		
 			
 		self.model = self.weights_dir
@@ -2767,7 +3079,7 @@ class Test_VGG11_PyStateDictFile(Test_VGG11_Base):
 	
 	
 
-class Test_VGG11_StateDict(Test_VGG11_Base):
+class Test_VGG11_PyStateDict(Test_VGG11_Base):
 	"""All the same tests as for VGG11, but using the statedict option"""
 	
 	def setUp(self):
@@ -2776,7 +3088,7 @@ class Test_VGG11_StateDict(Test_VGG11_Base):
 		print("\n-------------------------------------\nIn Test_VGG11_StateDict:", self._testMethodName)
 		
 		self.params = DEFAULT_PARAMS.copy()
-		# use older power lae
+		# use older power law
 		self.params[PL_PACKAGE]=POWERLAW
 		self.params[XMAX]=XMAX_FORCE
 		
@@ -2810,7 +3122,7 @@ class Test_VGG11_StateDict(Test_VGG11_Base):
 		self.assertEqual(len(expected_ids), expected_num_layers)
 
 
-		# test decribe
+		# test describe
 		details = self.watcher.describe(start_ids=0)
 		print("start id = 1", details)
 		actual_ids = details.layer_id.to_numpy().tolist()
@@ -2835,7 +3147,7 @@ class Test_VGG11_StateDict(Test_VGG11_Base):
 		self.assertEqual(len(expected_ids), expected_num_layers)
 
 
-		# test decribe
+		# test describe
 		details = self.watcher.describe(start_ids=10)
 		print("start id = 10", details)
 		actual_ids = details.layer_id.to_numpy().tolist()
@@ -3322,7 +3634,17 @@ class Test_ResNet(Test_Base):
 		self.assertTrue((details.M * details.rf == details.num_evals).all())
 		
 
-
+	def test_num_layers(self):
+		"""Test that the num of layers is correct
+		
+		Note: there are 21 layers because there are 3 downsample  (pereceptron) layers
+		"""
+		details = self.watcher.describe()	
+		print(details)
+		expected_num_layers = 21
+		actual_num_layers = len(details)
+		self.assertEquals(expected_num_layers, actual_num_layers)
+		return
 
 
 class Test_ResNet_Models(Test_Base):
@@ -3611,7 +3933,7 @@ class Test_PyTorchSVD(Test_Base):
 		details_accurate = watcher.analyze(layers=self.fc_layers, svd_method="accurate")
 		print(f"SciPy (accurate): {time() - start}s")
 
-		for f in ["alpha", "alpha_weighted", "D", "sigma", "sv_max", "xmin"]:
+		for f in ["alpha", "alpha_weighted", "D", "sigma", "sv_max", "sv_min", "xmin"]:
 			self.assertLess(np.max(np.abs(details_fast.alpha - details_accurate.alpha)), 0.0025)
 
 		for f in ["spectral_norm", "stable_rank", "xmax",]:
@@ -3831,7 +4153,7 @@ class Test_Pandas(Test_Base):
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 							'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
-							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
+							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'sv_min', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67])
@@ -3845,7 +4167,7 @@ class Test_Pandas(Test_Base):
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 							'num_fingers', 'num_pl_spikes', 'rank_loss',  'raw_alpha','rf', 'sigma',
-							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
+							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'sv_min', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], fix_fingers='clip_xmax')
@@ -3863,7 +4185,7 @@ class Test_Pandas(Test_Base):
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 							'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
-							'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
+							'spectral_norm', 'stable_rank', 'status', 'sv_max','sv_min', 'warning', 'weak_rank_loss',
 							'xmax', 'xmin']
 
 
@@ -3881,7 +4203,7 @@ class Test_Pandas(Test_Base):
 					        'num_evals', 'num_pl_spikes', 'rand_W_scale',
 					        'rand_bulk_max', 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank',
 					        'rand_num_spikes', 'rand_sigma_mp', 'rank_loss', 'rf', 'sigma',
-					        'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
+					        'spectral_norm', 'stable_rank', 'status', 'sv_max', 'sv_min', 'warning', 'weak_rank_loss',
 					        'ww_maxdist', 'ww_softrank', 'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], randomize=True)
@@ -3895,7 +4217,7 @@ class Test_Pandas(Test_Base):
 					        'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 					        'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
 					        'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
-					        'spectral_norm', 'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss',
+					        'spectral_norm', 'stable_rank', 'status', 'sv_max','sv_min', 'warning', 'weak_rank_loss',
 					        'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[64, 67], intra=True)
@@ -3910,7 +4232,7 @@ class Test_Pandas(Test_Base):
 							'log_norm', 'log_spectral_norm', 'longname', 'matrix_rank',
 							'mp_softrank', 'norm', 'num_evals', 'num_pl_spikes',
 							'num_spikes', 'rank_loss', 'rf', 'sigma', 'sigma_mp', 'spectral_norm',
-							'stable_rank', 'status', 'sv_max', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
+							'stable_rank', 'status', 'sv_max','sv_min', 'warning', 'weak_rank_loss', 'xmax', 'xmin']
 
 		details = self.watcher.analyze(layers=[67], mp_fit=True)
 		self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")

@@ -206,7 +206,8 @@ class FRAMEWORK(IntFlag):
     KERAS = auto()
     ONNX = auto()
     PYSTATEDICT = auto()
-    PYSTATEDICTFILE = auto()
+    PYSTATEDICT_DIR = auto()
+    WW_FLATFILES = auto()
     KERASH5 = auto()
     KERASH5FILE = auto()
 
@@ -224,6 +225,8 @@ class METHODS(IntFlag):
 class MODEL_FILE_FORMATS():
     PYTORCH = "pytorch"
     SAFETENSORS = "safetensors"
+    WW_FLATFILES = "ww_flatfiles"
+
             
 # TODO either complete or remove thi 
 class METRICS():

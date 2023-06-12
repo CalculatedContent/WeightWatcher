@@ -184,48 +184,63 @@ NORM = 'norm'
 DENSE = 'dense'
 CONV2D = 'conv2d'
 CONV1D = 'conv1d'
-class LAYER_TYPE(IntFlag):
-    UNKNOWN = auto()
-    STACKED = auto()
-    DENSE = auto()
-    CONV1D = auto()
-    CONV2D = auto()
-    FLATTENED = auto()
-    EMBEDDING = auto()
-    NORM = auto()
+
+class LAYER_TYPE():
+    UNKNOWN = UNKNOWN
+    STACKED = 'stacked'
+    DENSE = DENSE
+    CONV1D = CONV1D
+    CONV2D = CONV2D
+    FLATTENED = 'flattened'
+    EMBEDDING = 'embedding'
+    NORM = NORM
 
 # framework names
 KERAS = 'kers'
 PYTORCH = 'pytorch'
 PYSTATEDICT = 'pystatedict'
 ONNX = 'onnx'
+WW_FLATFILES = "ww_flatfiles"
+PYTORCH = "pytorch"
+SAFETENSORS = "safetensors"
 
-class FRAMEWORK(IntFlag):
-    UNKNOWN = auto()
-    PYTORCH = auto()
-    KERAS = auto()
-    ONNX = auto()
-    PYSTATEDICT = auto()
-    PYSTATEDICT_DIR = auto()
-    WW_FLATFILES = auto()
-    KERASH5 = auto()
-    KERASH5FILE = auto()
+# class FRAMEWORK(IntFlag):
+#     UNKNOWN = auto()
+#     PYTORCH = auto()
+#     KERAS = auto()
+#     ONNX = auto()
+#     PYSTATEDICT = auto()
+#     PYSTATEDICT_DIR = auto()
+#     WW_FLATFILES = auto()
+#     KERASH5 = auto()
+#     KERASH5FILE = auto()
+    
+class FRAMEWORK():
+    UNKNOWN = UNKNOWN
+    PYTORCH = 'pytorch'
+    KERAS = 'keras'
+    ONNX = 'onnx'
+    PYSTATEDICT = 'pystatedict'
+    PYSTATEDICT_DIR = 'pystatedict_dir'
+    WW_FLATFILES = WW_FLATFILES
+    KERAS_H5 = 'keras_h5'
+    KERAS_H5_FILE = 'keras_h5_file'
 
 
-class CHANNELS(IntFlag):
-    UNKNOWN = auto()
-    FIRST = auto()
-    LAST = auto()   
+class CHANNELS():
+    UNKNOWN = UNKNOWN
+    FIRST = 'first'
+    LAST = 'last' 
             
 class METHODS(IntFlag):
     DESCRIBE = auto()
     ANALYZE = auto()
     
-    
+# only used to extract into ww_flatfiels format        
 class MODEL_FILE_FORMATS():
     PYTORCH = "pytorch"
     SAFETENSORS = "safetensors"
-    WW_FLATFILES = "ww_flatfiles"
+    #WW_FLATFILES = WW_FLATFILES
 
             
 # TODO either complete or remove thi 

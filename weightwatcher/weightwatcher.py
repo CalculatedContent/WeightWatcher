@@ -877,7 +877,7 @@ class WWLayer:
 
     def __str__(self):
         return "WWLayer {}  {} {}  skipped {}".format(self.layer_id, self.name,
-                                                        self.the_type.name, self.skipped)
+                                                        self.the_type, self.skipped)
 
 
     
@@ -1358,9 +1358,9 @@ class WWLayerIterator(ModelIterator):
                 is_skipped = self.apply_filters(ww_layer)
                 is_supported = self.layer_supported(ww_layer)
 
-
             if is_supported and not is_skipped:
                 yield ww_layer    
+                
                 
     def make_layer_iter_(self):
         return self.ww_layer_iter_()
@@ -1815,7 +1815,6 @@ class WeightWatcher:
         fileglob = f"{model_dir}/*weight*npy"
         num_files = len(glob.glob(fileglob))
         if num_files > 0:
-            print("found ww files")
             format = MODEL_FILE_FORMATS.WW_FLATFILES
             return format, fileglob
 
@@ -2861,6 +2860,10 @@ class WeightWatcher:
             raise Exception(msg)
         params = self.normalize_params(params)
         
+        
+        #TODO: ? 
+        #  if we want deltas, we can just add the delta="model" in 
+        # 
         layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)     
         
         details = pd.DataFrame(columns=[])
@@ -4595,7 +4598,7 @@ class WeightWatcher:
 
     # helper methods for pre-processinf pytorch state_dict files
     @staticmethod
-    def extract_pytorch_statedict_(weights_dir, model_name, state_dict_filename, start_id = 0, format=None, save=None):
+    def extract_pytorch_statedict_(weights_dir, model_name, state_dict_filename, start_id = 0, format=MODEL_FILE_FORMATS.PYTORCH, save=None):
         """Read a pytorch state_dict file, and return a dict of layer configs
         
            Can read model.bin or model.safetensors (detects by filename)
@@ -4609,8 +4612,8 @@ class WeightWatcher:
              
              start_id: int to start layer id counter
              
-             format:  N/A yet, just infer
-             
+             format:  default id MODEL_FILE_FORMATS.PYTORCH, you must set SAFETENSORS to extract it
+                          
              save:  (not set by default) save is True for ww_flatfies , False otherwise (use
          
         Returns:
@@ -4620,24 +4623,25 @@ class WeightWatcher:
         
         Note:  Currently only process dense layers (i.e. transformers), and
                We may not want every layer in the state_dict
+               
+        Moreover, there is no operational reason to extract safetensors;
+             it is only here for testing and may be removed
+             that is, to extract the config file
         
         """
         
         config = {}
         
-        # TODO: check that format matches files if it is set
-        if format is not None:
-            logger.warning(f"Format {format} ignored, just selecting files we find ")
-        
+        weight_keys = {}
         if os.path.exists(state_dict_filename):
             logger.debug(f"Reading {state_dict_filename}")
-            if state_dict_filename.endswith(".bin"):
+            if format==MODEL_FILE_FORMATS.PYTORCH and state_dict_filename.endswith(".bin"):
                 state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
                 logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
-                format = MODEL_FILE_FORMATS.PYTORCH
+                weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
 
-            elif state_dict_filename.endswith(".safetensors"):
-                format = MODEL_FILE_FORMATS.SAFETENSORS
+
+            elif format==MODEL_FILE_FORMATS.SAFETENSORS and state_dict_filename.endswith(".safetensors"):
 
                 #TODO: move this to its own method
                 from safetensors import safe_open
@@ -4646,87 +4650,101 @@ class WeightWatcher:
                 state_dict = {}
                 with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
                     for k in f.keys():
-                        state_dict[k] = f.get_tensor(k)
+                        weight_keys[k] = k
         
                 logger.info(f"Read safetensors: {state_dict_filename}, len={len(state_dict)}")
          
         else:
-            logger.fatal(f"PyTorch state_dict {state_dict_filename} not found, stopping")
-            
+            logger.fatal(f"Format: {format } incorrect and /or PyTorch state_dict {state_dict_filename} not found, stopping")
+             
         # we only want the modell but sometimes the state dict has more info
         if 'model' in [str(x) for x in state_dict.keys()]:
             state_dict = state_dict['model']
             
-        weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
         
         for layer_id, weight_key in enumerate(weight_keys):
             
+            if 'weight' in weight_key or 'bias' in weight_key:
             # TODO: do not save weights by default
-            #  and change bias file name depending on safetensors or not
-            #
-            layer_id_updated = layer_id+start_id  
-            name = f"{model_name}.{layer_id_updated}"
-            longname = re.sub('.weight$', '', weight_key)
-                    
-            T = state_dict[weight_key]
-            
-            shape = len(T.shape)  
-            #if shape==2:
-            W = torch_T_to_np(T)
-            
-            # TODO: make sure this works with safetensors also
-            the_type = WWFlatFile.layer_type_as_str(W)
+                #  and change bias file name depending on safetensors or not
+                #
+                layer_id_updated = layer_id+start_id  
+                name = f"{model_name}.{layer_id_updated}"
+                longname = re.sub('.weight$', '', weight_key)
+                     
+                if format==MODEL_FILE_FORMATS.PYTORCH:   
+                    T = state_dict[weight_key]
+                elif format==MODEL_FILE_FORMATS.SAFETENSORS:   
+                    with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
+                        
+                        T= f.get_tensor(weight_key)
                 
-            # TODO: is this always corret
-            has_bias = None
-            
-            bias_key = re.sub('weight$', 'bias', weight_key)
-            if bias_key in state_dict:
-                T = state_dict[bias_key]
-                b = torch_T_to_np(T) 
-                has_bias = True                 
+                shape = len(T.shape)  
+                #if shape==2:
+                W = torch_T_to_np(T)
                 
-            # TODO: what about perceptron layers ?
-            
-            # Save files by default for ww_flatfiles, but only is save=True for safetensores
-            if format==MODEL_FILE_FORMATS.WW_FLATFILES or save:
-                weightfile = f"{name}.weight.npy"
-                filename = os.path.join(weights_dir,weightfile)
-                logger.debug(f"saving weights to {filename}")
-                np.save(filename, W)
-
-                if has_bias:
-                    biasfile = f"{name}.bias.npy"
-                    filename = os.path.join(weights_dir,biasfile)
-                    logger.debug(f"saving biases to {filename}")
-                    np.save(filename, b)
+                # TODO: make sure this works with safetensors also
+                the_type = WWFlatFile.layer_type_as_str(W)
                     
-            # safetensors
-            elif format==MODEL_FILE_FORMATS.SAFETENSORS:
-                weightfile = state_dict_filename
-                biasfile = None
-                if has_bias:
-                    biasfile = state_dict_filename
-                    
-            else:
-                logger.fatal("Unknown format {format}, stopping")
+                # TODO: is this always corret
+                has_bias = None
                 
+                bias_key = re.sub('weight$', 'bias', weight_key)
+                if bias_key in state_dict:
+                    
+                    if format==MODEL_FILE_FORMATS.PYTORCH:   
+                        T = state_dict[bias_key]
+                    elif format==MODEL_FILE_FORMATS.SAFETENSORS:   
+                        with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
+                            T= f.get_tensor(bias_key)
+                    
+                    b = torch_T_to_np(T) 
+                    has_bias = True                 
+                    
+                # TODO: what about perceptron layers ?
     
-           
-            # TODO
-            #  add the position id, 0 by default for weights and bias individuallu
-            #  allow other, percepton layers, because we need these later
-            #  = allow unknown types!
-            
-            layer_config = {}
-            layer_config['key']=weight_key
-            layer_config['longname']=longname
-            layer_config['weightfile']=weightfile
-            layer_config['biasfile']=biasfile
-            layer_config['type']=the_type
-            layer_config['dims']=json.dumps(W.shape)
- 
-            config[int(layer_id_updated)]=layer_config
+                # Save files by default for ww_flatfiles, but only is save=True for safetensores
+                if format!=MODEL_FILE_FORMATS.SAFETENSORS or save:
+                    weightfile = f"{name}.weight.npy"
+                    biasfile = None
+    
+                    filename = os.path.join(weights_dir,weightfile)
+                    logger.debug(f"saving weights to {filename}")
+                    np.save(filename, W)
+    
+                    if has_bias:
+                        biasfile = f"{name}.bias.npy"
+                        filename = os.path.join(weights_dir,biasfile)
+                        logger.debug(f"saving biases to {filename}")
+                        np.save(filename, b)
+                        
+                # safetensors
+                elif format==MODEL_FILE_FORMATS.SAFETENSORS:
+                    weightfile = state_dict_filename
+                    biasfile = None
+                    if has_bias:
+                        biasfile = state_dict_filename
+                        
+                else:
+                    logger.fatal("Unknown format {format}, stopping")
+                    
+        
+               
+                # TODO
+                #  add the position id, 0 by default for weights and bias individuallu
+                #  allow other, percepton layers, because we need these later
+                #  = allow unknown types!
+                
+                layer_config = {}
+                layer_config['key']=weight_key
+                layer_config['name']=name
+                layer_config['longname']=longname
+                layer_config['weightfile']=weightfile
+                layer_config['biasfile']=biasfile
+                layer_config['type']=the_type
+                layer_config['dims']=json.dumps(W.shape)
+     
+                config[int(layer_id_updated)]=layer_config
                 
         return config
     
@@ -4875,7 +4893,6 @@ class WeightWatcher:
         config['framework'] = FRAMEWORK.PYTORCH
         config['weights_dir'] = weights_dir
         
-        print("the format", format)
         # TODO:  infer the format ?
         if format is None:
             format, fileglob = WeightWatcher.infer_model_file_format(model_dir)
@@ -4883,13 +4900,12 @@ class WeightWatcher:
 
         config['format'] = format
         if format==MODEL_FILE_FORMATS.PYTORCH:
-            fileglob = f"{model_dir}/pytorch_model*bin"     
-        elif format==MODEL_FILE_FORMATS.SAFETENSORS:
+            fileglob = f"{model_dir}/pytorch_model*bin"      
+        elif format==MODEL_FILE_FORMATS.SAFETENSORS:    
             fileglob = f"{model_dir}/model*safetensors"
         else:
             logger.fatal(f"Unknown file format {format}, quitting")
             
-        print(config)
 
         logger.debug(f"searching for files {fileglob}")
     
@@ -4921,7 +4937,7 @@ class WeightWatcher:
                 for state_dict_filename in sorted(glob.glob(fileglob)):
                     logger.info(f"reading and extracting {state_dict_filename}")
                     # TODO:  update layer ids
-                    layer_configs = WeightWatcher.extract_pytorch_statedict_(weights_dir, model_name, state_dict_filename, start_id, format=format) 
+                    layer_configs = WeightWatcher.extract_pytorch_statedict_(weights_dir, model_name, state_dict_filename, start_id, format=format)
                     start_id = np.max([int(x) for x in layer_configs.keys()]) + 1
                     config['layers'].update(layer_configs) 
                     logger.debug(f"next start_id = {start_id}")

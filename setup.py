@@ -55,6 +55,7 @@ setup(
                         'matplotlib-inline',
                         'powerlaw',
                         'scikit-learn',
+                        'safetensors', # maybe will remove, autoload
                         'tqdm'],
     entry_points = '''
         [console_scripts]

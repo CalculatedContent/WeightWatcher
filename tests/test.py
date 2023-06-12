@@ -681,7 +681,7 @@ class Test_PyTorchBins_Extractor(Test_Base):
 				state_dict_filename = os.path.join(model_dir, "pys.bin")
 				torch.save(model, state_dict_filename)
 				
-				ww.WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename)
+				ww.WeightWatcher.extract_pytorch_statedict_(weights_dir, model_name, state_dict_filename, format=MODEL_FILE_FORMATS.PYTORCH)
 			
 				weightfiles = [f for f in listdir(weights_dir) if isfile(join(weights_dir, f))]	
 				actual_num_files = len(weightfiles)
@@ -709,6 +709,7 @@ class Test_PyTorchBins_Extractor(Test_Base):
 		layer_names = model.keys()
 		expected_layer_names = [name for name in layer_names if 'weight' in name or 'bias' in name]
 		expected_num_files = len(expected_layer_names)	
+		print(f"we expect {expected_num_files} files")
 		
 		# there are 18 real layers with weights
 		layer_weightfiles = [name for name in layer_names if 'weight' in name  and 'bn' not in name and 'downsample' not in name ]	
@@ -728,9 +729,18 @@ class Test_PyTorchBins_Extractor(Test_Base):
 				state_dict_filename = os.path.join(model_dir, "pys.safetensors")
 				safe_save(model, state_dict_filename)
 				
-				ww.WeightWatcher.extract_pytorch_statedict(weights_dir, model_name, state_dict_filename)
-			
+				# if save is false, we get no weightfiles
+				config = ww.WeightWatcher.extract_pytorch_statedict_(weights_dir, model_name, state_dict_filename, format=MODEL_FILE_FORMATS.SAFETENSORS, save=False)
 				weightfiles = [f for f in listdir(weights_dir) if isfile(join(weights_dir, f))]	
+				actual_num_files = len(weightfiles)
+				self.assertEqual(0,actual_num_files)	
+				
+				print(len(config.keys()))
+				
+				# is save is true, safetensors are extracted
+				ww.WeightWatcher.extract_pytorch_statedict_(weights_dir, model_name, state_dict_filename, format=MODEL_FILE_FORMATS.SAFETENSORS, save=True)
+				weightfiles = [f for f in listdir(weights_dir) if isfile(join(weights_dir, f))]	
+				print(weightfiles)
 				actual_num_files = len(weightfiles)
 				self.assertEqual(expected_num_files,actual_num_files)	
 				print(f"checked {actual_num_files} weightfiles")			
@@ -778,7 +788,8 @@ class Test_PyTorchBins_Extractor(Test_Base):
 			torch.save(model, state_dict_filename)
 			
 			
-			config = ww.WeightWatcher.extract_pytorch_bins(model_dir=model_dir, model_name=model_name)
+			config = ww.WeightWatcher.extract_pytorch_bins(model_dir=model_dir, model_name=model_name, format=MODEL_FILE_FORMATS.PYTORCH)
+			print(config)
 			self.assertIsNotNone(config['weights_dir'])
 			weights_dir = config['weights_dir']
 			self.assertTrue(os.path.isdir(weights_dir))
@@ -788,7 +799,7 @@ class Test_PyTorchBins_Extractor(Test_Base):
 			self.assertIsNotNone(config['model_name'])
 			self.assertIsNotNone(config['layers'])
 			
-			self.assertEqual(config['framework'], PYTORCH)
+			self.assertEqual(config['framework'], FRAMEWORK.PYTORCH)
 
 				
 			self.assertTrue(os.path.isdir(model_dir))
@@ -934,7 +945,7 @@ class Test_WWFlatFiles(Test_Base):
 		return
 	
 	@staticmethod
-	def _make_tmp_weights_dir(format=MODEL_FILE_FORMATS.WW_FLATFILES):
+	def _make_tmp_weights_dir(format=WW_FLATFILES):
 		"""assumes that the extract_pytorch_bins works correctly, uses it to create a tmp weights director"""
 		
 		state_dict = models.resnet18().state_dict()
@@ -949,16 +960,16 @@ class Test_WWFlatFiles(Test_Base):
 			state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
 			torch.save(state_dict, state_dict_filename)
 			
-			if format==MODEL_FILE_FORMATS.WW_FLATFILES:
+			if format==WW_FLATFILES:
 				print("analyzing WW_FLATFILES")	
 				config = ww.WeightWatcher.extract_pytorch_bins(model_dir=model_dir, model_name=model_name)
 				weights_dir = config['weights_dir']
 				print(config)
-			elif format==MODEL_FILE_FORMATS.PYTORCH:
+			elif format==PYTORCH:
 				weights_dir = tempfile.mkdtemp(dir=TEST_TMP_DIR, prefix="ww_")
 				state_dict_filename = os.path.join(weights_dir, "pytorch_model.0.bin")
 				torch.save(state_dict, state_dict_filename)	
-			elif format==MODEL_FILE_FORMATS.SAFETENSORS:
+			elif format==SAFETENSORS:
 				weights_dir = tempfile.mkdtemp(dir=TEST_TMP_DIR, prefix="ww_")
 				state_dict_filename = os.path.join(weights_dir, "model.0.safetensors")
 				safe_save(state_dict, state_dict_filename)		

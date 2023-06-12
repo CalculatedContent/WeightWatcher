@@ -4639,7 +4639,9 @@ class WeightWatcher:
                 state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
                 logger.info(f"Read pytorch state_dict: {state_dict_filename}, len={len(state_dict)}")
                 weight_keys = [key for key in state_dict.keys() if 'weight' in key.lower()]
-
+                # we only want the modell but sometimes the state dict has more info
+                if 'model' in [str(x) for x in state_dict.keys()]:
+                    state_dict = state_dict['model']
 
             elif format==MODEL_FILE_FORMATS.SAFETENSORS and state_dict_filename.endswith(".safetensors"):
 
@@ -4657,9 +4659,7 @@ class WeightWatcher:
         else:
             logger.fatal(f"Format: {format } incorrect and /or PyTorch state_dict {state_dict_filename} not found, stopping")
              
-        # we only want the modell but sometimes the state dict has more info
-        if 'model' in [str(x) for x in state_dict.keys()]:
-            state_dict = state_dict['model']
+
             
         
         for layer_id, weight_key in enumerate(weight_keys):

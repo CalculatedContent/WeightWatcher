@@ -1279,7 +1279,7 @@ class WWLayerIterator(ModelIterator):
         for f in filters:
             tf = type(f)
 
-            if tf is LAYER_TYPE:
+            if tf is str and f in LAYER_TYPES_SUPPORTED:
                 logger.info("Filtering layer by type {}".format(str(f)))
                 self.filter_types.append(f)
             elif isinstance(f, numbers.Integral):

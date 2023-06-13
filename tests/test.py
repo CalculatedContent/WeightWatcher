@@ -2235,11 +2235,11 @@ class Test_VGG11_Base(Test_Base):
 	def test_filter_conv2D_layer_types(self):
 		"""Test that ww.LAYER_TYPE.CONV2D filter is applied only to CONV2D layers"
 		"""
-
-		details = self.watcher.describe(layers=[ww.LAYER_TYPE.CONV2D])
+		print(f"LAYER_TYPE.CONV2D = {LAYER_TYPE.CONV2D}")
+		details = self.watcher.describe(layers=[LAYER_TYPE.CONV2D])
 		print(details)
 
-		conv2DLayers = details[details['layer_type']==str(LAYER_TYPE.CONV2D)]
+		conv2DLayers = details[details['layer_type']==str(ww.LAYER_TYPE.CONV2D)]
 		conv2DCount = len(conv2DLayers)
 		self.assertEqual(conv2DCount, 8, "# conv2D layers: {} found".format(conv2DCount))
 		nonConv2DLayers = details[details['layer_type']!=str(LAYER_TYPE.CONV2D)]

@@ -184,6 +184,7 @@ NORM = 'norm'
 DENSE = 'dense'
 CONV2D = 'conv2d'
 CONV1D = 'conv1d'
+MBEDDING = 'embedding'
 
 class LAYER_TYPE():
     UNKNOWN = UNKNOWN
@@ -194,6 +195,9 @@ class LAYER_TYPE():
     FLATTENED = 'flattened'
     EMBEDDING = 'embedding'
     NORM = NORM
+    
+LAYER_TYPES_SUPPORTED = [LAYER_TYPE.CONV2D, LAYER_TYPE.CONV1D, LAYER_TYPE.DENSE, LAYER_TYPE.EMBEDDING, LAYER_TYPE.NORM]
+
 
 # framework names
 KERAS = 'kers'

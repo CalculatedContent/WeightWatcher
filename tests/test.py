@@ -6,6 +6,8 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.applications.vgg16 import VGG16
 import torch
+import torch.nn as nn
+
 
 from transformers import AutoModel, TFAutoModelForSequenceClassification, AlbertModel
 
@@ -583,8 +585,9 @@ class Test_PyTorchLayers(Test_Base):
 		self.assertEqual(replaced_new_W_min, expected_old_W_min)
 		self.assertEqual(replaced_new_B_min, expected_old_B_min)
 		
+
 		
-	
+		
 			
 class Test_PyTorchBins_Extractor(Test_Base):
 	
@@ -1912,7 +1915,143 @@ class Test_Albert(Test_Base):
 		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.1 )
 		
 
+class Test_DeltaLayerIterator(Test_Base):
+	"""Test the Delta Layer Iterator on a dummy model"""
 
+	
+	def create_fake_model(self):
+	    class FakeModel(nn.Module):
+	        def __init__(self):
+	            super(FakeModel, self).__init__()
+	            self.layer = nn.Linear(200, 100)
+	
+	        def forward(self, x):
+	            x = self.layer(x)
+	            return x
+	
+	    model = FakeModel()
+	    return model
+   
+		
+	def setUp(self):
+		print("\n-------------------------------------\nIn Test_DeltaLayerIterator:", self._testMethodName)
+		self.params = DEFAULT_PARAMS.copy()
+		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
+		return
+		
+		
+	def test_delta_layer_iterator_0(self):
+		"""Make a fake model and test diff are zero"""
+		
+		# create a Fake model, set weight matrix to all ones
+		model = self.create_fake_model()
+		model.layer.weight.data.fill_(1.0)  
+
+		
+		delta_iter = self.watcher.make_delta_layer_iterator(base_model=model, model=model)
+	
+		for ww_layer in delta_iter:
+			
+			print(ww_layer.layer_id, ww_layer.name)
+			self.assertEquals(1, len(ww_layer.Wmats))
+			W = ww_layer.Wmats[0]
+			
+			layer_norm = np.linalg.norm(W)
+			layer_sum = np.sum(W)
+
+			self.assertAlmostEqual(0.0, layer_norm)
+			self.assertAlmostEqual(0.0, layer_sum)
+
+		return
+	
+	def test_delta_layer_iterator_1(self):
+		"""Make a fake model and test diffs are 1"""
+		
+		# create a Fake model, set weight matrix to all ones
+		base_model = self.create_fake_model()
+		base_model.layer.weight.data.fill_(0.0)  
+		
+		model = self.create_fake_model()
+		model.layer.weight.data.fill_(1.0)  
+
+		expected_layer_matrix = np.ones((100, 200))
+		expected_norm = np.linalg.norm(expected_layer_matrix, 'fro')
+		expected_sum = np.sum(expected_layer_matrix)
+		  
+		delta_iter = self.watcher.make_delta_layer_iterator(base_model=base_model, model=model)
+		  
+		for ww_layer in delta_iter:
+		  
+			print(ww_layer.layer_id, ww_layer.name)
+			self.assertEquals(1, len(ww_layer.Wmats))
+			W = ww_layer.Wmats[0]
+		  
+			layer_norm = np.linalg.norm(W)
+			layer_sum = np.sum(W)
+		  
+			print(layer_norm, layer_sum)
+		  
+			self.assertAlmostEqual(expected_norm, layer_norm)
+			self.assertAlmostEqual(expected_sum, layer_sum)
+
+		return
+		
+	
+class Test_Albert_DeltaLayerIterator(Test_Base):
+	"""Test the Delta Layer Iterator on Albert
+	
+		Warning: this test requires downloading a  large model		
+		"""
+
+	def setUp(self):
+
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_DeltaLayerIterator:", self._testMethodName)
+		
+		self.params = DEFAULT_PARAMS.copy()
+		model_name = f"albert-xxlarge-v2"
+		self.model  = AlbertModel.from_pretrained(model_name)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+	
+			
+	def test_albert_availble(self):
+		
+		details = self.watcher.describe(layers=[17])
+		print(details)
+		self.assertEqual(1, len(details))
+		
+		
+	
+	def test_delta_layer_iterator(self):
+		"""Test we can form the deltas between Albert, get zero weights back"""
+
+		delta_iter = self.watcher.make_delta_layer_iterator(base_model=self.model, model=self.model)
+	
+		for ww_layer in delta_iter:
+			
+			print(ww_layer.layer_id, ww_layer.name)
+			self.assertEquals(1, len(ww_layer.Wmats))
+			W = ww_layer.Wmats[0]
+			
+			layer_norm = np.linalg.norm(W)
+			layer_sum = np.sum(W)
+
+			self.assertAlmostEqual(0.0, layer_norm)
+			self.assertAlmostEqual(0.0, layer_sum)
+
+		return
+		
+	# more tests to check for possible bugs
+	
+	# fake models...check 
+	
+	# check Conv2D layers
+	
+	# add distances
+		
+		
 #  https://kapeli.com/cheat_sheets/Python_unittest_Assertions.docset/Contents/Resources/Documents/index
 
 class Test_VGG11_Base(Test_Base):

@@ -1291,6 +1291,8 @@ class WWLayerIterator(ModelIterator):
             else:
                 logger.warning("unknown filter type {} detected and ignored".format(tf))
                 
+        
+                
     def apply_filters(self, ww_layer):
         """Apply filters.  Set skipped False  if filter is applied to this layer, keeping the layer (or no filters, meaning all layers kept)"""
         ww_layer.skipped = False
@@ -1362,8 +1364,11 @@ class WWLayerIterator(ModelIterator):
                 yield ww_layer    
                 
                 
+                
     def make_layer_iter_(self):
         return self.ww_layer_iter_()
+    
+    
     
     def layer_supported(self, ww_layer):
         """Return true if this kind of layer is supported
@@ -1668,6 +1673,59 @@ class WWStackedLayerIterator(WWLayerIterator):
     def make_layer_iter_(self):
         return self.ww_stacked_iter_()
     
+
+
+class WWDeltaLayerIterator(WWLayerIterator):
+    """combines 2 layer iterators, and iterates over 2 layers"""
+    
+    def __init__(self, base_model, base_framework,  model, framework, filters=[], params=None):
+    
+        if params is None: params = DEFAULT_PARAMS.copy()
+        
+        self.iter_right = WWLayerIterator(base_model, framework=base_framework,  params=params)   
+        self.iter_left = WWLayerIterator(model, framework=framework,  params=params)   
+        
+        # we need this to , among other things, set self.layer_iter = make_layer_iter_(self):
+        super().__init__(model, framework=framework,  params=params)   
+
+
+        
+    def ww_layer_iter_(self):   
+        from copy import deepcopy
+        
+        for left_layer, right_layer in zip(self.iter_left, self.iter_right):
+            
+                ww_layer = deepcopy(left_layer)
+                
+                if ww_layer.has_weights:
+                    left_Wmats = left_layer.Wmats
+                    right_Wmats = right_layer.Wmats
+                    Wmats = []
+                    for W_left,  W_right in zip(left_Wmats, right_Wmats):
+                        if W_left is not None:
+                            Wmats.append(W_left -  W_right )
+                        else:
+                            Wmats.append(None)
+                    ww_layer.Wmats = Wmats 
+
+                
+                if ww_layer.has_biases:
+                    left_biases = left_layer.biases
+                    right_biases = right_layer.biases
+                    biases = []
+                    for B_left,  B_right in zip(left_biases, right_biases):
+                        if B_left is not None:
+                            biases.append(B_left -  B_right )
+                        else:
+                            biases.append(None)
+                    ww_layer.biases = biases 
+
+                yield ww_layer    
+             
+                
+                
+    def make_layer_iter_(self):
+        return self.ww_layer_iter_()
     
 
     
@@ -1972,6 +2030,12 @@ class WeightWatcher:
         """Compute the deltas  (or difference) between the weight matrices of two models"""
         
     
+    # TODO:
+    # replace with iterator that forms T2-T2
+    # then, raw is just T-T 4D tensor
+    # and not raw is just pool=False
+    #
+   
     
     def distances(self, model_1, model_2,  method = RAW,
                   layers = [], start_ids = 0, pool = True, channels = None):
@@ -2452,11 +2516,7 @@ class WeightWatcher:
             
         return ww_layer
     
-    
-  
-       
-        
-        
+     
     
  
     def apply_powerlaw(self, ww_layer, params=None):
@@ -2519,6 +2579,17 @@ class WeightWatcher:
 
         return ww_layer
 
+
+    def make_delta_layer_iterator(self, base_model, model=None, layers=[], params=None):
+        """make an iterator that takes returns the model weights (and biases) - base nmodel weights (and baises)"""
+  
+        framework = self.infer_framework(model)
+        base_framework = self.infer_framework(base_model)
+        
+        delta_iter = WWDeltaLayerIterator(base_model=base_model, base_framework=base_framework, model=model, framework=framework)
+        return delta_iter
+    
+    
 
     def make_layer_iterator(self, model=None, layers=[], params=None):
         """Constructor for the Layer Iterator; See analyze(...)

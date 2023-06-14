@@ -2630,7 +2630,7 @@ class WeightWatcher:
         if base_model is None:
             layer_iterator = Iterator_Class(self.model, self.framework, filters=layers, params=params)    
         else:
-            layer_iterator = make_delta_layer_iterator(self, base_model, model=model, layers=layers, params=params, Iterator_Class=WWLayerIterator)
+            layer_iterator = self.make_delta_layer_iterator(self, base_model, model=model, layers=layers, params=params, Iterator_Class=WWLayerIterator)
             
         return layer_iterator
     

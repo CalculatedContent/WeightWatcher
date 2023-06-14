@@ -2632,7 +2632,7 @@ class WeightWatcher:
             layer_iterator = Iterator_Class(self.model, self.framework, filters=layers, params=params)    
         else:
             logger.info(f"Using Delta Layer Iterator with base_model = {base_model} and class = {Iterator_Class} ")
-            layer_iterator = self.make_delta_layer_iterator(self, base_model, model=model, layers=layers, params=params, Iterator_Class=WWLayerIterator)
+            layer_iterator = self.make_delta_layer_iterator(base_model, model=model, layers=layers, params=params, Iterator_Class=WWLayerIterator)
             
         return layer_iterator
     

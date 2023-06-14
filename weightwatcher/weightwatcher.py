@@ -1675,15 +1675,17 @@ class WWStackedLayerIterator(WWLayerIterator):
     
 
 
+    
+
 class WWDeltaLayerIterator(WWLayerIterator):
     """combines 2 layer iterators, and iterates over 2 layers"""
     
-    def __init__(self, base_model, base_framework,  model, framework, filters=[], params=None):
+    def __init__(self, base_model, base_framework,  model, framework, filters=[], params=None, Iterator_Class=WWLayerIterator):
     
         if params is None: params = DEFAULT_PARAMS.copy()
         
-        self.iter_right = WWLayerIterator(base_model, framework=base_framework,  params=params)   
-        self.iter_left = WWLayerIterator(model, framework=framework,  params=params)   
+        self.iter_right = Iterator_Class(base_model, framework=base_framework,  params=params)   
+        self.iter_left = Iterator_Class(model, framework=framework,  params=params)   
         
         # we need this to , among other things, set self.layer_iter = make_layer_iter_(self):
         super().__init__(model, framework=framework,  params=params)   
@@ -2580,18 +2582,18 @@ class WeightWatcher:
         return ww_layer
 
 
-    def make_delta_layer_iterator(self, base_model, model=None, layers=[], params=None):
+    def make_delta_layer_iterator(self, base_model, model=None, layers=[], params=None, Iterator_Class=WWLayerIterator):
         """make an iterator that takes returns the model weights (and biases) - base nmodel weights (and baises)"""
   
         framework = self.infer_framework(model)
         base_framework = self.infer_framework(base_model)
         
-        delta_iter = WWDeltaLayerIterator(base_model=base_model, base_framework=base_framework, model=model, framework=framework)
+        delta_iter = WWDeltaLayerIterator(base_model=base_model, base_framework=base_framework, model=model, framework=framework, Iterator_Class=Iterator_Class)
         return delta_iter
     
     
 
-    def make_layer_iterator(self, model=None, layers=[], params=None):
+    def make_layer_iterator(self, model=None, layers=[], params=None, base_model=None):
         """Constructor for the Layer Iterator; See analyze(...)
          """
          
@@ -2611,18 +2613,25 @@ class WeightWatcher:
         stacked = params[STACKED]
         
         layer_iterator = None
+        
         if stacked:
             logger.info("Using Stacked Iterator (experimental)")
-            layer_iterator = WWStackedLayerIterator(self.model, self.framework, filters=layers, params=params)    
+            Iterator_Class = WWStackedLayerIterator
         elif intra:
             logger.info("using Intra layer Analysis (experimental)")
-            layer_iterator = WWIntraLayerIterator(self.model, self.framework, filters=layers, params=params)     
+            Iterator_Class = WWIntraLayerIterator    
         elif not pool:
             logger.info("Pooling eigenvalues, Using weightwatcher 0.2x style layer and slice iterator")
-            layer_iterator = WW2xSliceIterator(self.model, self.framework, filters=layers, params=params)     
+            Iterator_Class = WW2xSliceIterator 
         else:
-            layer_iterator = WWLayerIterator(self.model, self.framework, filters=layers, params=params)     
-    
+            Iterator_Class = WWLayerIterator 
+        
+   
+        if base_model is None:
+            layer_iterator = Iterator_Class(self.model, self.framework, filters=layers, params=params)    
+        else:
+            layer_iterator = make_delta_layer_iterator(self, base_model, model=model, layers=layers, params=params, Iterator_Class=WWLayerIterator)
+            
         return layer_iterator
     
     
@@ -2729,7 +2738,8 @@ class WeightWatcher:
                 tolerance=WEAK_RANK_LOSS_TOLERANCE,
                 start_ids=DEFAULT_START_ID,
                 pl_package=WW_POWERLAW_PACKAGE,
-                xmax=DEFAULT_XMAX
+                xmax=DEFAULT_XMAX,
+                base_model=None
                 ):
         """
         Analyze the weight matrices of a model.
@@ -2864,6 +2874,10 @@ class WeightWatcher:
            
            Setting to 'force' may cause the powerlw fits to find undesirable local minima, which can induce fingers
            
+        base_model:  None | same model with different weights and biases
+            if specified, the base model weights and biases are subtracted from the model
+            used for analyzing fine-tuned LLMs, or just looking at the deltas (i.e from init) during training
+           
         """
 
         self.set_model_(model)          
@@ -2935,7 +2949,7 @@ class WeightWatcher:
         #TODO: ? 
         #  if we want deltas, we can just add the delta="model" in 
         # 
-        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)     
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=base_model)     
         
         details = pd.DataFrame(columns=[])
 

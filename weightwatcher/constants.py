@@ -244,7 +244,7 @@ class METHODS(IntFlag):
 class MODEL_FILE_FORMATS():
     PYTORCH = "pytorch"
     SAFETENSORS = "safetensors"
-    #WW_FLATFILES = WW_FLATFILES
+    WW_FLATFILES = WW_FLATFILES
 
             
 # TODO either complete or remove thi 

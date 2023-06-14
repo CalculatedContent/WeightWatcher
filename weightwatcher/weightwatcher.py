@@ -2588,7 +2588,7 @@ class WeightWatcher:
         framework = self.infer_framework(model)
         base_framework = self.infer_framework(base_model)
         
-        delta_iter = WWDeltaLayerIterator(base_model=base_model, base_framework=base_framework, model=model, framework=framework, Iterator_Class=Iterator_Class)
+        delta_iter = WWDeltaLayerIterator(base_model=base_model, base_framework=base_framework, model=model, framework=framework, filters=layers, params=params, Iterator_Class=Iterator_Class)
         return delta_iter
     
     

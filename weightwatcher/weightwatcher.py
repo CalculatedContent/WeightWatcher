@@ -1789,7 +1789,7 @@ class WeightWatcher:
     @staticmethod
     def valid_framework(framework):
         """is a valid FRAMEWORK constant """
-        valid = framework in [ FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.ONNX,  FRAMEWORK.WW_FLATFILES,]
+        valid = framework in [ FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, PYSTATEDICT_DIR, FRAMEWORK.ONNX,  FRAMEWORK.WW_FLATFILES]
         return valid
         
     

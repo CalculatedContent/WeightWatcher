@@ -1705,7 +1705,12 @@ class WWDeltaLayerIterator(WWLayerIterator):
                     Wmats = []
                     for W_left,  W_right in zip(left_Wmats, right_Wmats):
                         if W_left is not None:
-                            Wmats.append(W_left -  W_right )
+                            if W_left.shape == W_right.shape:
+                                Wmats.append(W_left -  W_right )
+                            elif W_left.shape == W_right.T.shape:
+                                 Wmats.append(W_left -  W_right.T )
+                            else: 
+                                logger.fatal(f"W_left.shape, W_right.shape not compatble {W_left.shape } != {W_right.shape }")
                         else:
                             Wmats.append(None)
                     ww_layer.Wmats = Wmats 

@@ -1684,8 +1684,8 @@ class WWDeltaLayerIterator(WWLayerIterator):
     
         if params is None: params = DEFAULT_PARAMS.copy()
         
-        self.iter_right = Iterator_Class(base_model, framework=base_framework,  params=params)   
-        self.iter_left = Iterator_Class(model, framework=framework,  params=params)   
+        self.iter_right = Iterator_Class(base_model, framework=base_framework,  filters=filters, params=params)   
+        self.iter_left = Iterator_Class(model, framework=framework,   filters=filters, params=params)   
         
         # we need this to , among other things, set self.layer_iter = make_layer_iter_(self):
         super().__init__(model, framework=framework,  params=params)   
@@ -2582,7 +2582,7 @@ class WeightWatcher:
         return ww_layer
 
 
-    def make_delta_layer_iterator(self, base_model, model=None, layers=[], params=None, Iterator_Class=WWLayerIterator):
+    def make_delta_layer_iterator(self, base_model, model=None, filters=[], params=None, Iterator_Class=WWLayerIterator):
         """make an iterator that takes returns the model weights (and biases) - base nmodel weights (and baises)"""
   
         framework = self.infer_framework(model)
@@ -2632,7 +2632,7 @@ class WeightWatcher:
             layer_iterator = Iterator_Class(self.model, self.framework, filters=layers, params=params)    
         else:
             logger.info(f"Using Delta Layer Iterator with base_model = {base_model} and class = {Iterator_Class} ")
-            layer_iterator = self.make_delta_layer_iterator(base_model, model=model, layers=layers, params=params, Iterator_Class=WWLayerIterator)
+            layer_iterator = self.make_delta_layer_iterator(base_model, model=model, filters=layers, params=params, Iterator_Class=WWLayerIterator)
             
         return layer_iterator
     

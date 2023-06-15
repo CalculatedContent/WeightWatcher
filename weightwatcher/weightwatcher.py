@@ -1688,7 +1688,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
         self.iter_left = Iterator_Class(model, framework=framework,   filters=filters, params=params)   
         
         # we need this to , among other things, set self.layer_iter = make_layer_iter_(self):
-        super().__init__(model, framework=framework,  params=params)   
+        super().__init__(model, framework=framework, filters=filters, params=params)   
 
 
         

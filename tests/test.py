@@ -1995,6 +1995,9 @@ class Test_DeltaLayerIterator(Test_Base):
 			self.assertAlmostEqual(expected_sum, layer_sum)
 
 		return
+	
+	
+	
 		
 	
 class Test_Albert_DeltaLayerIterator(Test_Base):
@@ -2040,6 +2043,30 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 
 			self.assertAlmostEqual(0.0, layer_norm)
 			self.assertAlmostEqual(0.0, layer_sum)
+
+		return
+	
+	def test_delta_layer_iterator_with_filters(self):
+		"""Test we can form the deltas between Albert, get zero weights back"""
+
+		delta_iter = self.watcher.make_delta_layer_iterator(base_model=self.model, model=self.model, filters=[17])
+	
+		num_layers = 0
+		for ww_layer in delta_iter:
+			
+			print(ww_layer.layer_id, ww_layer.name)
+			self.assertEquals(1, len(ww_layer.Wmats))
+			W = ww_layer.Wmats[0]
+			
+			layer_norm = np.linalg.norm(W)
+			layer_sum = np.sum(W)
+
+			self.assertAlmostEqual(0.0, layer_norm)
+			self.assertAlmostEqual(0.0, layer_sum)
+			num_layers += 1
+			
+		self.assertEqual(1, num_layers)
+
 
 		return
 		

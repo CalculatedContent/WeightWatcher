@@ -976,6 +976,13 @@ class Test_WWFlatFiles(Test_Base):
 				weights_dir = tempfile.mkdtemp(dir=TEST_TMP_DIR, prefix="ww_")
 				state_dict_filename = os.path.join(weights_dir, "model.0.safetensors")
 				safe_save(state_dict, state_dict_filename)		
+				
+				layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
+				with open(layer_map_filename, 'w') as f:
+					for key in state_dict.keys():
+						f.write(key + '\n')
+						
+				
 			
 		
 		return weights_dir
@@ -1321,6 +1328,25 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 		fc_layer = self._get_resnet_fc_layer()
 		self.assertIsNotNone(fc_layer)
 		return
+	
+	
+	def test_get_last_layer(self):
+		"""Test that the last layer is the FC layer"""
+		
+		print("test_get_last_layer")
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		num_layers = 0
+		for ww_layer in layer_iterator:
+			num_layers += 1
+			print(num_layers, ww_layer.name, ww_layer.layer_id)
+			
+		self.assertEqual('fc', ww_layer.name)
+		# layer id is 40 because we skup batch normlayers
+		self.assertEqual(40, ww_layer.layer_id)
+
+		return	
+	
+		
 		
 		
 		

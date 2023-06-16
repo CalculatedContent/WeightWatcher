@@ -517,11 +517,37 @@ class PyStateDictDir(PyStateDictLayer):
                 if format==MODEL_FILE_FORMATS.SAFETENSORS:
                     from safetensors import safe_open
     
+                    # safetensors keys are stored in sort order, not layer order, so we need the ordering
+                    # so we either need to 
+                    # - read a mapp file for each safetensors file, or
+                    # - embed the mapping in the safetensors metadata 
+                    #
+                    # for now, we will read a simple file which the user has to make right now
+                    # the code will offer some helpers soon
+        
+                    layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
+                    layer_map = []
+                    
+                    if  os.path.exists(layer_map_filename):
+                        logger.info(f"loading {layer_map_filename}")
+                    else:
+                        logger.critical(f"loading {layer_map_filename} not found")
+                       
+                    with open(layer_map_filename, 'r') as f:
+                        layer_map = [line.strip() for line in f]
+                            
+                    if len(layer_map) == 0:
+                        logger.critical(f"no layers found in {layer_map_filename}")
+                        
                     #state_dict = {k: f.get_tensor(k) for k in safe_open(state_dict_filename, framework="pt", device='cpu').keys()}
                     state_dict = {}
                     with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
-                        for k in f.keys():
-                            state_dict[k] = f.get_tensor(k)
+                        if set(layer_map) != set(f.keys()):
+                            logger.critical(f"layer_map has different keys than safetensors file!")
+                        
+                        for layer_name in layer_map:
+                        #for k in f.keys():
+                            state_dict[layer_name] = f.get_tensor(layer_name)
             
                     logger.debug(f"Read safetensors: {state_dict_filename}, len={len(state_dict)}")
                     

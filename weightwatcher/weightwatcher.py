@@ -4609,7 +4609,6 @@ class WeightWatcher:
             axs[2].scatter(np.arange(len(data)), data, marker=".", label='part_ratio')
             axs[2].set_ylabel("Participation Ratios")  
             axs[2].label_outer()     
-            axs[2].set_ylim(3.5, 7.0)
             
             data = np.array(all_evals)[sort_ids]        
             axs[3].scatter(np.arange(len(data)), data, marker=".", label='eigenvalue')

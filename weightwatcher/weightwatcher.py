@@ -4591,7 +4591,8 @@ class WeightWatcher:
         sort_ids = np.argsort(all_evals)
                 
         if params[PLOT]:
-            fig, axs = plt.subplots(4)
+            fig, axs = plt.subplots(4, figsize=(8, 12))
+            
             fig.suptitle("Vector Localization Metrics for {}".format(layer_name))   
             
             data = np.array(all_vec_entropies)[sort_ids]

@@ -104,7 +104,6 @@ try:
             del M_cuda
             return rvals          
             
-
         def _eig_full_fast(M):
             L, V = torch_wrapper(M, lambda M: torch.linalg.eig(M))
             return torch_T_to_np(L), torch_T_to_np(V)

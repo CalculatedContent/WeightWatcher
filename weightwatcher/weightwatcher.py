@@ -4571,7 +4571,7 @@ class WeightWatcher:
             else:
                 X = np.matmul(W.T, W)
 
-            evals, V = eig_full(W, method=params[SVD_METHOD])
+            evals, V = eig_full(X, method=params[SVD_METHOD])
             all_evals.extend(evals)
 
             vec_entropies = []

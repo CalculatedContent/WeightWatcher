@@ -4547,8 +4547,6 @@ class WeightWatcher:
         name = ww_layer.name or ""
         layer_name = "{} {}".format(plot_id, name)
 
-        logger.warning(f"SP {layer_name}")
-
         M = ww_layer.M
         N = ww_layer.N    
         

@@ -511,6 +511,11 @@ class PyStateDictDir(PyStateDictLayer):
              
         
         def layer_iter_():
+            # Track the number of layers already yielded
+            num_layers_yielded = 0
+            current_start_id = start_id  # Create a copy of start_id
+
+            # loop over stat dict files in sort order
             for state_dict_filename in sorted(glob.glob(fileglob)):
                 logger.info(f"loading {state_dict_filename}")
                 
@@ -519,35 +524,41 @@ class PyStateDictDir(PyStateDictLayer):
     
                     # safetensors keys are stored in sort order, not layer order, so we need the ordering
                     # so we either need to 
-                    # - read a mapp file for each safetensors file, or
+                    # - read a custom layer_map file for each safetensors file, or
                     # - embed the mapping in the safetensors metadata 
+                    # - read the huggingface model.safetensors.index.json file
                     #
-                    # for now, we will read a simple file which the user has to make right now
-                    # the code will offer some helpers soon
+                    # for now, we will use will just flat file, ending in layer_map
+                    # and if not found, just use the safetensors order
         
                     layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
                     layer_map = []
-                    
+                       
+                    # read layer map if found, otherwise ignore
                     if  os.path.exists(layer_map_filename):
                         logger.info(f"loading {layer_map_filename}")
-                    else:
-                        logger.critical(f"loading {layer_map_filename} not found")
-                       
-                    with open(layer_map_filename, 'r') as f:
-                        layer_map = [line.strip() for line in f]
+                        
+                        with open(layer_map_filename, 'r') as f:
+                            layer_map = [line.strip() for line in f]
                             
-                    if len(layer_map) == 0:
-                        logger.critical(f"no layers found in {layer_map_filename}")
+                        if len(layer_map) == 0:
+                            logger.critical(f"no layers found in {layer_map_filename}")
+                    else:
+                        logger.info(f"loading {layer_map_filename} not found, ignoring")
+                       
                         
                     #state_dict = {k: f.get_tensor(k) for k in safe_open(state_dict_filename, framework="pt", device='cpu').keys()}
                     state_dict = {}
                     with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
-                        if set(layer_map) != set(f.keys()):
-                            logger.critical(f"layer_map has different keys than safetensors file!")
+                        if layer_map is not None and len(layer_map)>0:
+                            if set(layer_map) != set(f.keys()):
+                                logger.critical(f"layer_map has different keys than safetensors file!")
                         
-                        for layer_name in layer_map:
-                        #for k in f.keys():
-                            state_dict[layer_name] = f.get_tensor(layer_name)
+                            for layer_name in layer_map:
+                                state_dict[layer_name] = f.get_tensor(layer_name)
+                        else:
+                            for layer_name in f.keys():
+                                state_dict[layer_name] = f.get_tensor(layer_name)
             
                     logger.debug(f"Read safetensors: {state_dict_filename}, len={len(state_dict)}")
                     
@@ -555,11 +566,15 @@ class PyStateDictDir(PyStateDictLayer):
                     state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
                     logger.debug(f"Read pytorch model bin file: {state_dict_filename}, len={len(state_dict)}")
                 
+                # Update the start_id based on the number of layers already yielded
+                current_start_id += num_layers_yielded
+    
                 # Yield individual layers
-                sub_layer_iter = PyStateDictLayer.get_layer_iterator(state_dict, start_id)
-                for layer in sub_layer_iter:  
-                    yield layer  
-                                                         
+                sub_layer_iter = PyStateDictLayer.get_layer_iterator(state_dict, current_start_id)
+                for layer in sub_layer_iter:
+                    num_layers_yielded += 1  # Increment the counter
+                    yield layer
+                                                             
         return layer_iter_()
     
          
@@ -4763,6 +4778,9 @@ class WeightWatcher:
 
             elif format==MODEL_FILE_FORMATS.SAFETENSORS and state_dict_filename.endswith(".safetensors"):
 
+                # since safetensors does not keep the order of the keys we need to
+                # read a file with a list keys for the safetensors file
+                # 
                 #TODO: move this to its own method
                 from safetensors import safe_open
 
@@ -4819,7 +4837,7 @@ class WeightWatcher:
                     b = torch_T_to_np(T) 
                     has_bias = True                 
                     
-                # TODO: what about perceptron layers ?
+                # TODO: what about Perceptron layers ?
     
                 # Save files by default for ww_flatfiles, but only is save=True for safetensores
                 if format!=MODEL_FILE_FORMATS.SAFETENSORS or save:

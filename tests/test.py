@@ -948,7 +948,7 @@ class Test_WWFlatFiles(Test_Base):
 		return
 	
 	@staticmethod
-	def _make_tmp_weights_dir(format=WW_FLATFILES):
+	def _make_tmp_weights_dir(format=WW_FLATFILES, layer_map=True):
 		"""assumes that the extract_pytorch_bins works correctly, uses it to create a tmp weights director"""
 		
 		state_dict = models.resnet18().state_dict()
@@ -977,10 +977,11 @@ class Test_WWFlatFiles(Test_Base):
 				state_dict_filename = os.path.join(weights_dir, "model.0.safetensors")
 				safe_save(state_dict, state_dict_filename)		
 				
-				layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
-				with open(layer_map_filename, 'w') as f:
-					for key in state_dict.keys():
-						f.write(key + '\n')
+				if layer_map:
+					layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
+					with open(layer_map_filename, 'w') as f:
+						for key in state_dict.keys():
+							f.write(key + '\n')
 						
 				
 			
@@ -1228,7 +1229,7 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 	
 			
 	def setUp(self):
-		print("\n-------------------------------------\nIn Test_PyStateDictLayers:", self._testMethodName)
+		print("\n-------------------------------------\nIn Test_SafeTensorsDir:", self._testMethodName)
 		
 		#Test_Base.setUp(self):
 
@@ -1238,7 +1239,8 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 		self.tmp_dirs = []
 		
 		self.fc_layer_name = 'fc'
-		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
+		# why this ?
+		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher._PyStateDictLayer'>"
 
 		return
 	
@@ -1314,7 +1316,7 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 	
 
 	def _get_resnet_fc_layer(self):
-		"""Get the last layer off the diskl"""
+		"""Get the FC layer off the disk from the safetensors file"""
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
 		fc_layer= None
 		for ww_layer in layer_iterator:
@@ -1349,7 +1351,57 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 		
 		
 		
+class Test_SafeTensorsDirNoLayerMap(Test_SafeTensorsDir):
+	"""Exactly the same as Test_SafeTensorsDir, but the layer_map is not present
+	
+	But because of this, the last layer is not the FC layer
+	"""
+	
+	@classmethod
+	def setUpClass(cls):
+		"""	Creates a /tmp.ww_weights_dir with the resnet weights extracted
+			Removes the tmp dir when done
+			
+			Assumes that extract_pytorch_bins works properly"""
+					
+		ww.weightwatcher.torch = torch
+		cls.weights_dir = Test_SafeTensorsDir._make_tmp_weights_dir(format=MODEL_FILE_FORMATS.SAFETENSORS, layer_map=False)
 		
+		return
+	
+	def setUp(self):
+		print("\n-------------------------------------\nIn Test_SafeTensorsDirNoLayerMap:", self._testMethodName)
+		
+		#Test_Base.setUp(self):
+
+		self.model_name = 'resnet18'
+		self.model = Test_SafeTensorsDirNoLayerMap.weights_dir
+		self.model_dir = self.model
+		self.tmp_dirs = []
+		
+		self.fc_layer_name = 'fc'
+		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.Test_SafeTensorsDirNoLayerMap'>"
+
+		return
+	
+	def test_get_last_layer(self):
+		"""Test that the last layer is the FC layer"""
+		
+		print("test_get_last_layer")
+		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
+		num_layers = 0
+		for ww_layer in layer_iterator:
+			num_layers += 1
+			print(num_layers, ww_layer.name, ww_layer.layer_id)
+			
+		self.assertEqual('layer4.1.conv2', ww_layer.name)
+		# layer id is 40 because we skup batch normlayers
+		self.assertEqual(40, ww_layer.layer_id)
+
+		return	
+		
+
+
 		
 class Test_PyStateDictLayers(Test_Base):
 	

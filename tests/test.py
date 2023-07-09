@@ -1240,7 +1240,7 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 		
 		self.fc_layer_name = 'fc'
 		# why this ?
-		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher._PyStateDictLayer'>"
+		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
 
 		return
 	
@@ -1380,7 +1380,7 @@ class Test_SafeTensorsDirNoLayerMap(Test_SafeTensorsDir):
 		self.tmp_dirs = []
 		
 		self.fc_layer_name = 'fc'
-		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.Test_SafeTensorsDirNoLayerMap'>"
+		self.fc_layer_type =  "<class 'weightwatcher.weightwatcher.PyStateDictLayer'>"
 
 		return
 	

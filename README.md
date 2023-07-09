@@ -43,7 +43,7 @@ And in the notebooks provided in the [examples](https://github.com/CalculatedCon
 pip install weightwatcher
 ```
 
-### Current TestPyPI Version: 0.7.2.4
+### Current TestPyPI Version: 0.7.3
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher

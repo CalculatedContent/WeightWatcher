@@ -89,6 +89,7 @@ try:
 
         # float changed to half to save memory
         torch_T_to_np = lambda T: T.to("cpu").half().numpy()
+        torch_T_to_np_32 = lambda T: T.to("cpu").float().numpy()
         EPSILON = HALF_EPSILON
         EVALS_THRESH = EVALS_HALF_THRESH
         
@@ -109,10 +110,10 @@ try:
             return torch_T_to_np(L), torch_T_to_np(V)
         def _svd_full_fast(M):
             U, S, Vh = torch_wrapper(M, lambda M: torch.linalg.svd(M))
-            return torch_T_to_np(U), torch_T_to_np(S), torch_T_to_np(Vh)
+            return torch_T_to_np(U), torch_T_to_np_32(S), torch_T_to_np(Vh)
         def _svd_vals_fast(M):
             S = torch_wrapper(M, lambda M: torch.linalg.svdvals(M))
-            return torch_T_to_np(S)
+            return torch_T_to_np_32(S)
     else:
         msg_svd = "SciPy"
         if has_mac_accelerate():

@@ -190,6 +190,7 @@ class KerasLayer(FrameworkLayer):
         weights, biases = None, None
                    
         w = self.layer.get_weights()
+        
         if self.the_type==LAYER_TYPE.CONV2D:
             weights = w[0]
             biases = None
@@ -4354,7 +4355,7 @@ class WeightWatcher:
         # get the model weights and biases directly, converted to numpy arrays        
         has_W, old_W, has_B, old_B = ww_layer.get_weights_and_biases()
         # TODO fix biases, not working yet
-        old_B = None
+       # old_B = None
         
         logger.info("LAYER TYPE  {} out of {} {} {} ".format(layer_type,LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING))          
 

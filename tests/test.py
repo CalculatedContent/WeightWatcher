@@ -3787,6 +3787,7 @@ class Test_Keras(Test_Base):
 		"""
 		details = self.watcher.describe()
 		print("Testing Keras on VGG16")
+		print(details)
 		self.assertEqual(len(details), 16)
 
 
@@ -3856,6 +3857,19 @@ class Test_Keras(Test_Base):
 		details = watcher.analyze(min_evals=20)
 		print(details[['layer_id', 'M', 'num_evals']])
 		self.assertTrue(len(details)==1)
+		
+			
+	#DEBUG ME				
+	def test_svd_smoothing_no_model(self):
+		"""Test the svd smoothing on FC2 layer of VGG16
+		"""
+		
+		# 819 =~ 4096*0.2
+		
+		self.watcher.SVDSmoothing(model=self.model, layers=[21])
+		esd = self.watcher.get_ESD(layer=21) 
+		num_comps = len(esd[esd>10**-10])
+		self.assertEqual(num_comps, 819)
 		
         
 class Test_ResNet(Test_Base):

@@ -4637,7 +4637,7 @@ class WeightWatcher:
         
         sort_ids = np.argsort(all_evals)
                 
-        if params[PLOT]:
+        if WW_PLOT_VECTOR_METRICS in params[PLOT]:
             fig, axs = plt.subplots(4, figsize=(8, 12))
             
             fig.suptitle("Vector Localization Metrics for {}".format(layer_name))   
@@ -4715,7 +4715,7 @@ class WeightWatcher:
                 ww_layer.add_column("tail_var_{}".format(name), tail_var)
                     
 
-            if params[PLOT]:
+            if WW_PLOT_VECTOR_HIST in params[PLOT]:
                 fig, axs = plt.subplots(3)
                 fig.suptitle("Vector Bulk/Tail Metrics for {}".format(layer_name))   
                 
@@ -4729,8 +4729,7 @@ class WeightWatcher:
                     data = np.array(arr)[sort_ids]        
                     bulk_data = data[bulk_ids]
                     tail_data = data[tail_ids]
-                    
-                    
+
                     # should never happen
                     if len(bulk_data)>0:
                         ax.hist(bulk_data, bins=100, color='blue', alpha=0.5, label='bulk', density=True)
@@ -4742,9 +4741,7 @@ class WeightWatcher:
                     ax.set_ylabel(title) 
                     ax.label_outer() 
                     ax.legend()
-                    
-                    
-                
+
                 if savefig:
                     save_fig(plt, "vector_histograms", ww_layer.plot_id, savedir)
                 plt.show(); plt.clf()

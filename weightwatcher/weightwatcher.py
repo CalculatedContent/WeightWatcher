@@ -4794,6 +4794,7 @@ class WeightWatcher:
         
             # TODO: replot on log scale, along with randomized evals
             # we might add this back in later
+            # REMEMBER TO ADD a WW_PLOT_MPFIT_XXX constant
             
             # plt.hist(to_plot, bins=100, density=True)
             # plt.hist(to_plot, bins=100, density=True, color='red')

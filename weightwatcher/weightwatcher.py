@@ -3509,6 +3509,9 @@ class WeightWatcher:
             logger.warning("WW2X option deprecated, reverting too POOL=False")
             ww2x=False
             pool=False
+
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
             
         params=DEFAULT_PARAMS.copy()          
         
@@ -3878,7 +3881,18 @@ class WeightWatcher:
             params[SAVEDIR] = savefig
             logger.info("Saving all images to {}".format(savedir))
         elif not isinstance(savefig,str) and not isinstance(savefig,bool):
-            valid = False      
+            valid = False
+
+
+        plot = params.get(PLOT)
+        if (plot is True) or (plot is False):
+            logger.warning(f"plot param has not been converted from boolean to list")
+            valid = False
+
+        invalid_plots = set(plot) - set(WW_ALL_PLOTS)
+        if invalid_plots:
+            logger.warning(f"Invalid plot types detected: {invalid_plots}. See WW_ALL_PLOTS in constants.py")
+            valid = False
             
             
         fix_fingers =  params[FIX_FINGERS]
@@ -4851,14 +4865,17 @@ class WeightWatcher:
         
         """
         
-        self.set_model_(model)          
+        self.set_model_(model)
+
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
          
         params = DEFAULT_PARAMS.copy()
         
         params[POOL] = pool
         params[LAYERS] = layers
         params[FIT] = fit # only useful for method=LAMBDA_MINa
-        params[PLOT] = False
+        params[PLOT] = []
         params[START_IDS] = start_ids
 
         params[SVD_METHOD] = svd_method
@@ -5071,6 +5088,9 @@ class WeightWatcher:
         """
         
         self.set_model_(model)          
+        
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
          
         params=DEFAULT_PARAMS.copy()
         params[POOL] = pool
@@ -5138,7 +5158,10 @@ class WeightWatcher:
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
         """Seperate method to analyze the eigenvectors of each layer"""
         
-        self.set_model_(model)          
+        self.set_model_(model)
+
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
         
         params=DEFAULT_PARAMS.copy()
         params[SAVEFIG] = savefig

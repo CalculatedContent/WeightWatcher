@@ -154,6 +154,13 @@ DEFAULT_MAX_N = 50000
 PLOT = 'plot'
 STACKED = 'stacked'
 
+# constants used to indicate which plots should be generated
+WW_PLOT_DETX = 'detX'
+
+WW_ALL_PLOTS = [
+    WW_PLOT_DETX ,
+]
+
 CHANNELS_STR = 'channels'
 FIRST = 'first'
 LAST = 'last'   

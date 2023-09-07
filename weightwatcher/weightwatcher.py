@@ -3062,7 +3062,7 @@ class WeightWatcher:
         detX_val = evals[detX_idx]
 
 
-        if plot:
+        if WW_PLOT_DETX in plot:
             name = ww_layer.name
             # fix rescaling to plot xmin
 
@@ -4138,7 +4138,7 @@ class WeightWatcher:
         plt.show(); plt.clf()
         
 
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=WW_ALL_PLOTS, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
                      thresh=EVALS_THRESH,\
                      fix_fingers=False, finger_thresh=DEFAULT_FINGER_THRESH, xmin_max=None, max_fingers=DEFAULT_MAX_FINGERS, \
@@ -4319,8 +4319,7 @@ class WeightWatcher:
             
             #fit_entropy = line_entropy(fit.Ds)
 
-        if plot:
-            
+        if set(WW_FIT_PL_PLOTS) & set(plot):
             if status==SUCCESS:
                 min_evals_to_plot = (xmin/100)
                 
@@ -4338,6 +4337,7 @@ class WeightWatcher:
                 xmin = -1
                 min_evals_to_plot = (0.4*np.max(evals)/100)
 
+        if WW_PLOT_LOGLOG_ESD in plot:
             evals_to_plot = evals[evals>min_evals_to_plot]
             plot_loghist(evals_to_plot, bins=100, xmin=xmin)
             title = "Log-Log ESD for {}\n".format(layer_name) 
@@ -4356,8 +4356,9 @@ class WeightWatcher:
                 #plt.savefig("ww.layer{}.esd.png".format(layer_id))
                 save_fig(plt, "esd", plot_id, savedir)
             plt.show(); plt.clf()
-                
-    
+
+
+        if WW_PLOT_LINLIN_ESD in plot:
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
             plt.hist(evals_to_plot, bins=num_bins, density=True)
@@ -4370,6 +4371,7 @@ class WeightWatcher:
                 save_fig(plt, "esd2", plot_id, savedir)
             plt.show(); plt.clf()
 
+        if WW_PLOT_LOGLIN_ESD in plot:
             # plot log eigenvalue histogram
             nonzero_evals = evals_to_plot[evals_to_plot > 0.0]
             plt.hist(np.log10(nonzero_evals), bins=100, density=True)
@@ -4384,7 +4386,8 @@ class WeightWatcher:
             plt.show(); plt.clf()
     
             # plot xmins vs D
-            
+
+        if WW_PLOT_DKS in plot:
             plt.plot(fit.xmins, fit.Ds, label=r'$D_{KS}$')
             plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             #plt.plot(fit.xmins, fit.sigmas / fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
@@ -4402,9 +4405,10 @@ class WeightWatcher:
             if savefig:
                 save_fig(plt, "esd4", plot_id, savedir)
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
-            plt.show(); plt.clf() 
-            
-            
+            plt.show(); plt.clf()
+
+
+        if WW_PLOT_XMIN_ALPHA in plot:
             plt.plot(fit.xmins, fit.alphas, label=r'$\alpha(xmin)$')
             plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             plt.xlabel(r'$x_{min}$')
@@ -4415,9 +4419,7 @@ class WeightWatcher:
             if savefig:
                 save_fig(plt, "esd5", plot_id, savedir)
                 #plt.savefig("ww.layer{}.esd5.png".format(layer_id))
-                
-                                
-            plt.show(); plt.clf() 
+            plt.show(); plt.clf()
 
         raw_alpha = -1
         if raw_fit is not None:

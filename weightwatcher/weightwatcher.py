@@ -3600,7 +3600,7 @@ class WeightWatcher:
                         logger.debug("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
 
-                    if params[DELTA_ES] and params[PLOT]:
+                    if params[DELTA_ES] and set(WW_DELTAES_PLOTS) & set(params[PLOT]):
                         logger.debug("Computing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_plot_deltaEs(ww_layer, random=False, params=params)
                     
@@ -3615,7 +3615,7 @@ class WeightWatcher:
                         logger.debug("MP Fitting Random layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=True, params=params)
 
-                        if params[DELTA_ES] and params[PLOT]:
+                        if params[DELTA_ES] and set(WW_DELTAES_PLOTS) & set(params[PLOT]):
                             logger.debug("Computing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                             self.apply_plot_deltaEs(ww_layer, random=True, params=params)
                         
@@ -4593,54 +4593,58 @@ class WeightWatcher:
         plot_id = ww_layer.plot_id
         name = ww_layer.name or ""
         layer_name = "{} {}".format(plot_id, name)
-        
+
+        plot = params[PLOT]
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
+        if not set(WW_DELTAES_PLOTS) & set(plot): return
+
         if random:
             layer_name = "{} Randomized".format(layer_name)
-            title = "Layer {} W".format(layer_name)
             evals = ww_layer.rand_evals
             color='mediumorchid'
-            bulk_max = ww_layer.rand_bulk_max
         else:
-            title = "Layer {} W".format(layer_name)
             evals = ww_layer.evals
             color='blue'
 
-        # sequence of deltas    
         deltaEs = np.diff(evals)
         logDeltaEs = np.log10(deltaEs)
         x = np.arange(len(deltaEs))
         eqn = r"$\log_{10}\Delta(\lambda)$"
-        plt.scatter(x,logDeltaEs, color=color, marker='.')
-        
-        if not random:
-            idx = np.searchsorted(evals, ww_layer.xmin, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{xmin}$')
-        else:
-            idx = np.searchsorted(evals, bulk_max, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{+}$')
 
-        plt.title("Log Delta Es for Layer {}".format(layer_name))
-        plt.ylabel("Log Delta Es: "+eqn)
-        plt.legend()
-        if savefig:  
-            #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
-            save_fig(plt, "deltaEs", plot_id, savedir)
-        plt.show(); plt.clf()
+        # sequence of deltas
+        if WW_PLOT_LOG_DELTAES in plot:
+            plt.scatter(x,logDeltaEs, color=color, marker='.')
 
-        
+            if random:
+                bulk_max = ww_layer.rand_bulk_max
+                idx = np.searchsorted(evals, bulk_max, side="left")
+                label=r'$\lambda_{+}$'
+            else:
+                idx = np.searchsorted(evals, ww_layer.xmin, side="left")
+                label=r'$\lambda_{xmin}$'
+            plt.axvline(x=idx, color='red', label=label)
+
+            plt.title("Log Delta Es for Layer {}".format(layer_name))
+            plt.ylabel("Log Delta Es: "+eqn)
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))
+                save_fig(plt, "deltaEs", plot_id, savedir)
+            plt.show(); plt.clf()
+
         # level statistics (not mean adjusted because plotting log)
-        plt.hist(logDeltaEs, bins=100, color=color, density=True)
-        plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
-        plt.ylabel("density")
-        plt.xlabel(eqn)
-        plt.legend()
-        if savefig:  
-            #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
-            save_fig(plt, "level-stats", plot_id, savedir)
-        plt.show(); plt.clf()
+        if WW_PLOT_DELTAES_LEVELS in plot:
+            plt.hist(logDeltaEs, bins=100, color=color, density=True)
+            plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
+            plt.ylabel("density")
+            plt.xlabel(eqn)
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))
+                save_fig(plt, "level-stats", plot_id, savedir)
+            plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=None):
         """Perform MP fit on random or actual random eigenvalues

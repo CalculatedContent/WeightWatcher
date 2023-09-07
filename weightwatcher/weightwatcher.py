@@ -4757,7 +4757,7 @@ class WeightWatcher:
             
             #TODO: set cutoff 
             #Even if the quarter circle applies, still plot the MP_fit
-            if plot:
+            if WW_PLOT_MPFIT in plot:
                 plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=bulk_max_TW)#, scale=Wscale)
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
@@ -4773,7 +4773,7 @@ class WeightWatcher:
         sigma_mp, x, mp = plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
         
-        if plot:
+        if WW_PLOT_MPFIT2 in plot:
             title = fit_law +" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
             title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
             title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)

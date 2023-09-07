@@ -4321,12 +4321,15 @@ class WeightWatcher:
             
             #fit_entropy = line_entropy(fit.Ds)
 
+
         if set(WW_FIT_PL_PLOTS) & set(plot):
             if status==SUCCESS:
                 min_evals_to_plot = (xmin/100)
             else:
                 xmin = -1
                 min_evals_to_plot = (0.4*np.max(evals)/100)
+
+        if WW_PLOT_LOGLOG_ESD in plot:
             evals_to_plot = evals[evals>min_evals_to_plot]
 
         if WW_PLOT_LOGLOG_ESD in plot:

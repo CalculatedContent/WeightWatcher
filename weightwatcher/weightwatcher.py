@@ -2988,7 +2988,7 @@ class WeightWatcher:
             value = np.max(evals)-np.max(rand_evals)
             ww_layer.add_column("ww_maxdist", value)
 
-        if params[PLOT]:
+        if set(WW_RANDESD_PLOTS) & set(params[PLOT]):
             self.plot_random_esd(ww_layer, params)
             
         return ww_layer
@@ -4100,7 +4100,8 @@ class WeightWatcher:
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
         if params is None: params = DEFAULT_PARAMS.copy()
-        
+
+        plot = params[PLOT]
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
@@ -4108,34 +4109,36 @@ class WeightWatcher:
         plot_id = ww_layer.plot_id
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
-        title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-          
+
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
         max_rand_eval = np.max(rand_evals)
 
-        plt.hist((nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
-        plt.title(title)   
-        plt.xlabel(r" Eigenvalues $(\lambda)$")               
-        plt.legend()
-        if savefig:
-            #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            save_fig(plt, "randesd1", plot_id, savedir)
-        plt.show(); plt.clf()
+        if WW_PLOT_RANDESD in plot:
+            plt.hist((nonzero_evals), bins=100, density=True, color='g', label='original')
+            plt.hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+            plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
+            title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
+            plt.title(title)
+            plt.xlabel(r" Eigenvalues $(\lambda)$")
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.esd.png".format(layer_id))
+                save_fig(plt, "randesd1", plot_id, savedir)
+            plt.show(); plt.clf()
 
-        plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
-        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-        plt.title(title)   
-        plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
-        plt.legend()
-        if savefig:
-            #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
-            save_fig(plt, "randesd2", plot_id, savedir)
-        plt.show(); plt.clf()
+        if WW_PLOT_LOG_RANDESD in plot:
+            plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
+            plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+            plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
+            title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
+            plt.title(title)
+            plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
+                save_fig(plt, "randesd2", plot_id, savedir)
+            plt.show(); plt.clf()
         
 
     def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=WW_ALL_PLOTS, layer_name="", layer_id=0, plot_id=0, \

@@ -3884,10 +3884,9 @@ class WeightWatcher:
             valid = False
 
 
-        plot = params.get(PLOT)
-        if (plot is True) or (plot is False):
-            logger.warning(f"plot param has not been converted from boolean to list")
-            valid = False
+        if params[PLOT] is True: params[PLOT] = WW_ALL_PLOTS
+        if params[PLOT] is False: params[PLOT] = []
+        plot = params[PLOT]
 
         invalid_plots = set(plot) - set(WW_ALL_PLOTS)
         if invalid_plots:

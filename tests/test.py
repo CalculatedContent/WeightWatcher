@@ -4953,7 +4953,6 @@ class Test_PyTorchSVD(Test_Base):
             self.assertTrue(RMT_Util._svd_vals_accurate is RMT_Util._svd_vals_fast)
             
 
-
     def test_torch_linalg(self):
         # Note that if torch is not available then this will test scipy instead.
         W = np.random.random((50,50))
@@ -4976,6 +4975,7 @@ class Test_PyTorchSVD(Test_Base):
 		W_reconstruct = np.matmul(V.astype("float32"), np.matmul(np.diag(L), np.linalg.inv(V.astype("float32"))))
 		err = np.sum(np.abs(W - W_reconstruct))
 		self.assertLess(err, 0.005, f"torch eig absolute reconstruction error was {err}")
+
 
 	def test_torch_linalg_svd(self):
 		W = np.random.random((50,100))

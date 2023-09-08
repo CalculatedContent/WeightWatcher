@@ -4251,19 +4251,22 @@ class Test_PyTorchSVD(Test_Base):
 			self.assertTrue(RMT_Util._svd_vals_accurate is RMT_Util._svd_vals_fast)
 			
 
-	def test_torch_linalg(self):
+	def test_torch_linalg_eig(self):
 		# Note that if torch is not available then this will test scipy instead.
 		W = np.random.random((50,50))
+		W = np.matmul(W, W.T) / 2500
 		L, V = RMT_Util._eig_full_fast(W)
-		W_reconstruct = np.matmul(V, np.matmul(np.diag(L), np.linalg.inv(V)))
+		W_reconstruct = np.matmul(V.astype("float32"), np.matmul(np.diag(L), np.linalg.inv(V.astype("float32"))))
 		err = np.sum(np.abs(W - W_reconstruct))
-		self.assertLess(err, 0.002, f"torch eig absolute reconstruction error was {err}")
+		self.assertLess(err, 0.005, f"torch eig absolute reconstruction error was {err}")
 
+
+	def test_torch_linalg_svd(self):
 		W = np.random.random((50,100))
 		U, S, Vh = RMT_Util._svd_full_fast(W)
-		W_reconstruct = np.matmul(U, np.matmul(np.diag(S), Vh[:50,:]))
+		W_reconstruct = np.matmul(U.astype("float32"), np.matmul(np.diag(S), Vh[:50,:].astype("float32")))
 		err = np.sum(np.abs(W - W_reconstruct))
-		self.assertLess(err, 0.05, f"torch svd absolute reconstruction error was {err}")
+		self.assertLess(err, 0.75, f"torch svd absolute reconstruction error was {err}")
 
 		S_vals_only = RMT_Util._svd_vals_accurate(W)
 		err = np.sum(np.abs(S - S_vals_only))

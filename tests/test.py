@@ -5300,7 +5300,7 @@ class Test_Plots(Test_Base):
 
 		self.assertTrue(self.plotDir.exists(), f"Savefig dir {self.plotDir} should exist after analyze() with plot=True")
 
-		expected_plots = WW_FIT_PL_PLOTS + WW_RANDESD_PLOTS + [WW_PLOT_MPFIT2, WW_PLOT_MPDENSITY]
+		expected_plots = WW_FIT_PL_PLOTS + WW_RANDESD_PLOTS + [WW_PLOT_MPDENSITY]
 		self.check_expected_plots(expected_plots)
 
 
@@ -5316,9 +5316,6 @@ class Test_Plots(Test_Base):
 
 		self.watcher.analyze(layers=[67], plot=[WW_PLOT_MPFIT], mp_fit=True, savefig=str(self.plotDir))
 		self.check_expected_plots([])
-
-		self.watcher.analyze(layers=[67], plot=[WW_PLOT_MPFIT2], mp_fit=True, savefig=str(self.plotDir))
-		self.check_expected_plots([WW_PLOT_MPFIT2])
 
 		self.watcher.analyze(layers=[67], plot=[WW_PLOT_MPDENSITY], mp_fit=True, savefig=str(self.plotDir))
 		self.check_expected_plots([WW_PLOT_MPDENSITY])

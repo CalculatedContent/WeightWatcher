@@ -4779,7 +4779,7 @@ class WeightWatcher:
         sigma_mp, x, mp = plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
         
-        if WW_PLOT_MPFIT2 in plot:
+        if WW_PLOT_MPDENSITY in plot:
             title = fit_law +" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
             title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
             title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)

@@ -5290,6 +5290,28 @@ class Test_Plots(Test_Base):
 		self.tearDown_plots()
 
 
+		self.plotDir = Path("./testPlots")
+
+	def tearDown_plots(self):
+		if not self.plotDir.exists(): return
+
+		for f in self.plotDir.iterdir():
+			f.unlink()
+		self.plotDir.rmdir()
+
+
+	def check_expected_plots(self, plot_figs):
+		if len(plot_figs) == 0:
+			self.assertFalse(self.plotDir.exists())
+			return
+
+		self.assertTrue(self.plotDir.exists())
+
+		figs = list(self.plotDir.iterdir())
+		self.assertEqual(len(figs), len(plot_figs), f"plot={plot_figs} produced {len(figs)} images")
+		self.tearDown_plots()
+
+
 	def testPlots(self):
 		""" Simply tests that the plot functions will not generate an exception.
 			Does not guarantee correctness, yet.

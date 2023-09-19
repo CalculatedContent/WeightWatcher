@@ -4324,23 +4324,23 @@ class WeightWatcher:
         if set(WW_FIT_PL_PLOTS) & set(plot):
             if status==SUCCESS:
                 min_evals_to_plot = (xmin/100)
-                
-                fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
-                fig2 = fit.plot_pdf(color='r', linewidth=2)
-                if fit_type==POWER_LAW:
-                    if pl_package == WW_POWERLAW_PACKAGE:
-                        fit.plot_power_law_pdf(color='r', linestyle='--', ax=fig2)
-                    else:
-                        fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
-                
-                else:
-                    fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
             else:
                 xmin = -1
                 min_evals_to_plot = (0.4*np.max(evals)/100)
             evals_to_plot = evals[evals>min_evals_to_plot]
 
         if WW_PLOT_LOGLOG_ESD in plot:
+            fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
+            fig2 = fit.plot_pdf(color='r', linewidth=2)
+            if fit_type==POWER_LAW:
+                if pl_package == WW_POWERLAW_PACKAGE:
+                    fit.plot_power_law_pdf(color='r', linestyle='--', ax=fig2)
+                else:
+                    fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+            
+            else:
+                fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+
             plot_loghist(evals_to_plot, bins=100, xmin=xmin)
             title = "Log-Log ESD for {}\n".format(layer_name) 
             

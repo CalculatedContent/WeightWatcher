@@ -3129,7 +3129,6 @@ class WeightWatcher:
         layer_id = ww_layer.layer_id
         plot_id =  ww_layer.plot_id
         name = ww_layer.name
-        title = "{} {}".format(layer_id, name)
 
         xmin = None  # TODO: allow other xmin settings
         xmax = params[XMAX]#issue  199np.max(evals)
@@ -3145,7 +3144,7 @@ class WeightWatcher:
         max_fingers =  params[MAX_FINGERS]
         finger_thresh = params[FINGER_THRESH]
         
-        layer_name = "Layer {}".format(plot_id)
+        layer_name = f"{layer_id} {name}"
         
         fit_type =  params[FIT]
         pl_package = params[PL_PACKAGE]

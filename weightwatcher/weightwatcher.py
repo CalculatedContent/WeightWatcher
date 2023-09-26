@@ -2511,6 +2511,8 @@ class WeightWatcher:
         detX_num, detX_idx = detX_constraint(evals, rescale=False)
         detX_val = evals[detX_idx]
 
+        alpha = ww_layer.alpha
+
 
         if WW_PLOT_DETX in plot:
             name = ww_layer.name
@@ -2518,7 +2520,7 @@ class WeightWatcher:
 
             layer_id = ww_layer.layer_id  # where is the layer_id
             plot_id =  ww_layer.plot_id
-            plt.title(f"DetX constraint for {name}")
+            plt.title(f"DetX constraint for {name}\n" + r"$\alpha$=" + f"{alpha:0.02f}")
             plt.xlabel("log10 eigenvalues (norm scaled)")
             nz_evals = evals[evals > EVALS_THRESH]
             plt.hist(np.log10(nz_evals), bins=100)

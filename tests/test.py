@@ -5430,7 +5430,6 @@ class Test_Pandas(Test_Base):
                             'xmax', 'xmin']
 
 
-
         details = self.watcher.analyze(layers=[67], detX=True)  
         self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
         self.assertEqual(len(expected_columns), len(details.columns))

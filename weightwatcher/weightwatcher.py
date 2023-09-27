@@ -3063,6 +3063,14 @@ class WeightWatcher:
 
         alpha = ww_layer.alpha
 
+        # Calculate the value of xmin - detX_val in normalized units.
+        detX_delta = None
+        if ww_layer.xmin:
+            xmin = ww_layer.xmin *  np.max(evals)/ww_layer.xmax
+            detX_delta = xmin - detX_val
+        else:
+            xmin = None
+
 
         if WW_PLOT_DETX in plot:
             name = ww_layer.name
@@ -3077,7 +3085,6 @@ class WeightWatcher:
             plt.axvline(np.log10(detX_val), color='purple', label=r"detX$=1$")
             
             if ww_layer.xmin:
-                xmin = ww_layer.xmin *  np.max(evals)/ww_layer.xmax
                 plt.axvline(np.log10(xmin), color='red', label=r"PL $\lambda_{min}$")
                 
             plt.legend()
@@ -3094,6 +3101,7 @@ class WeightWatcher:
 
         ww_layer.add_column('detX_val', detX_val)
         ww_layer.add_column('detX_val_unrescaled', detX_val_unrescaled)
+        ww_layer.add_column('detX_delta', detX_delta)
 
         return ww_layer
     

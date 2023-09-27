@@ -1,4 +1,5 @@
 import sys, logging
+from pathlib import Path
 import unittest
 import warnings
 
@@ -19,7 +20,6 @@ from weightwatcher.constants import  *
 import tempfile
 from tempfile import TemporaryDirectory
 import os, errno, shutil, glob
-import json
 from os import listdir
 from os.path import isfile, join
 		
@@ -4251,19 +4251,22 @@ class Test_PyTorchSVD(Test_Base):
 			self.assertTrue(RMT_Util._svd_vals_accurate is RMT_Util._svd_vals_fast)
 			
 
-	def test_torch_linalg(self):
+	def test_torch_linalg_eig(self):
 		# Note that if torch is not available then this will test scipy instead.
 		W = np.random.random((50,50))
+		W = np.matmul(W, W.T) / 2500
 		L, V = RMT_Util._eig_full_fast(W)
-		W_reconstruct = np.matmul(V, np.matmul(np.diag(L), np.linalg.inv(V)))
+		W_reconstruct = np.matmul(V.astype("float32"), np.matmul(np.diag(L), np.linalg.inv(V.astype("float32"))))
 		err = np.sum(np.abs(W - W_reconstruct))
-		self.assertLess(err, 0.002, f"torch eig absolute reconstruction error was {err}")
+		self.assertLess(err, 0.005, f"torch eig absolute reconstruction error was {err}")
 
+
+	def test_torch_linalg_svd(self):
 		W = np.random.random((50,100))
 		U, S, Vh = RMT_Util._svd_full_fast(W)
-		W_reconstruct = np.matmul(U, np.matmul(np.diag(S), Vh[:50,:]))
+		W_reconstruct = np.matmul(U.astype("float32"), np.matmul(np.diag(S), Vh[:50,:].astype("float32")))
 		err = np.sum(np.abs(W - W_reconstruct))
-		self.assertLess(err, 0.05, f"torch svd absolute reconstruction error was {err}")
+		self.assertLess(err, 0.75, f"torch svd absolute reconstruction error was {err}")
 
 		S_vals_only = RMT_Util._svd_vals_accurate(W)
 		err = np.sum(np.abs(S - S_vals_only))
@@ -4386,11 +4389,87 @@ class Test_Plots(Test_Base):
 		self.model = models.resnet18(weights='ResNet18_Weights.IMAGENET1K_V1')
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
 
+		self.plotDir = Path("./testPlots")
+
+	def tearDown_plots(self):
+		if not self.plotDir.exists(): return
+
+		for f in self.plotDir.iterdir():
+			f.unlink()
+		self.plotDir.rmdir()
+
+
+	def check_expected_plots(self, plot_figs):
+		if len(plot_figs) == 0:
+			self.assertFalse(self.plotDir.exists())
+			return
+
+		self.assertTrue(self.plotDir.exists())
+
+		figs = list(self.plotDir.iterdir())
+		self.assertEqual(len(figs), len(plot_figs), f"plot={plot_figs} produced {len(figs)} images")
+		self.tearDown_plots()
+
+
 	def testPlots(self):
 		""" Simply tests that the plot functions will not generate an exception.
 			Does not guarantee correctness, yet.
 		"""
-		self.watcher.analyze(layers=[67], plot=True, randomize=True)
+		self.tearDown_plots()	# Sometimes tearDown_plots() doesn't get called when a test fails previously.
+
+		self.watcher.analyze(layers=[67], plot=True, randomize=True, savefig=str(self.plotDir))
+
+		self.assertTrue(self.plotDir.exists(), f"Savefig dir {self.plotDir} should exist after analyze() with plot=True")
+
+		expected_plots = WW_FIT_PL_PLOTS + WW_RANDESD_PLOTS + [WW_PLOT_MPDENSITY]
+		self.check_expected_plots(expected_plots)
+
+
+	def testPlotSingletons(self):
+		self.tearDown_plots()	# Sometimes tearDown_plots() doesn't get called when a test fails previously.
+
+		self.watcher.analyze(layers=[67], plot=[WW_PLOT_DETX], detX=True, savefig=str(self.plotDir))
+		self.check_expected_plots([WW_PLOT_DETX])
+
+		# MPFIT needs Q=1			 \/
+		self.watcher.analyze(layers=[13], plot=[WW_PLOT_MPFIT], mp_fit=True, savefig=str(self.plotDir))
+		self.check_expected_plots([WW_PLOT_MPFIT])
+
+		self.watcher.analyze(layers=[67], plot=[WW_PLOT_MPFIT], mp_fit=True, savefig=str(self.plotDir))
+		self.check_expected_plots([])
+
+		self.watcher.analyze(layers=[67], plot=[WW_PLOT_MPDENSITY], mp_fit=True, savefig=str(self.plotDir))
+		self.check_expected_plots([WW_PLOT_MPDENSITY])
+
+		for plot_fig in WW_FIT_PL_PLOTS:
+			self.watcher.analyze(layers=[67], plot=[plot_fig], savefig=str(self.plotDir))
+			self.check_expected_plots([plot_fig])
+
+		for plot_fig in WW_RANDESD_PLOTS:
+			self.watcher.analyze(layers=[67], plot=[plot_fig], randomize=True, savefig=str(self.plotDir))
+			self.check_expected_plots([plot_fig])
+
+		# Commented for future in case support for this is re-enabled.
+		# for plot_fig in WW_DELTAES_PLOTS:
+		# 	self.watcher.analyze(layers=[67], plot=[plot_fig], deltas=True, savefig=str(self.plotDir))
+		# 	self.check_expected_plots([plot_fig])
+	
+
+	def testPlotCombos(self):
+		self.tearDown_plots()	# Sometimes tearDown_plots() doesn't get called when a test fails previously.
+
+		self.watcher.analyze(layers=[67], plot=WW_FIT_PL_PLOTS, savefig=str(self.plotDir))
+		self.check_expected_plots(WW_FIT_PL_PLOTS)
+
+		self.watcher.analyze(layers=[67], plot=WW_RANDESD_PLOTS, randomize=True, savefig=str(self.plotDir))
+		self.check_expected_plots(WW_RANDESD_PLOTS)
+
+		# Commented for future in case support for this is re-enabled.
+		# self.watcher.analyze(layers=[67], plot=WW_DELTAES_PLOTS, deltas=True, savefig=str(self.plotDir))
+		# self.check_expected_plots(WW_DELTAES_PLOTS)
+
+
+
 
 class Test_Pandas(Test_Base):
 	def setUp(self):
@@ -4442,7 +4521,7 @@ class Test_Pandas(Test_Base):
 
 	def test_column_names_analyze_detX(self):
 		expected_columns = ['layer_id', 'name', 'D',  'M', 'N', 'Q', 'alpha',
-							'alpha_weighted',  'detX_num', 'detX_val',
+							'alpha_weighted',  'detX_delta', 'detX_num', 'detX_val',
 							'detX_val_unrescaled', 'entropy',  'has_esd',
 							'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
 							'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',

@@ -132,7 +132,9 @@ class FrameworkLayer:
         pass
   
 
-  
+    
+    
+
 class KerasLayer(FrameworkLayer):
 
     
@@ -219,7 +221,6 @@ class KerasLayer(FrameworkLayer):
 
     def replace_layer_weights(self, W, B=None):
         """My not work,, see https://stackoverflow.com/questions/51354186/how-to-update-weights-manually-with-keras"""
-        
         if self.has_biases() and B is not None:
             W = [W, B]
         self.layer.set_weights(W)
@@ -1250,6 +1251,14 @@ class ModelIterator:
         # sart_id can be erro (for back compatability) or one (better)
         if self.framework == FRAMEWORK.KERAS:
             layer_iter = KerasLayer.get_layer_iterator(model, start_id=start_id) 
+            
+                        
+        elif self.framework == FRAMEWORK.KERAS_H5_FILE:
+            model = WeightWatcher.read_keras_h5_file(model)
+            self.model = model
+            self.framework = FRAMEWORK.KERAS
+
+            layer_iter = KerasLayer.get_layer_iterator(model, start_id=start_id) 
 
         elif self.framework == FRAMEWORK.PYTORCH:
             layer_iter = PyTorchLayer.get_layer_iterator(model,start_id=start_id) 
@@ -1266,7 +1275,7 @@ class ModelIterator:
              
         elif self.framework == FRAMEWORK.PYSTATEDICT_DIR:
             layer_iter = PyStateDictDir.get_layer_iterator(model, start_id=start_id) 
-            
+
             
         else:
             layer_iter = None
@@ -1849,8 +1858,7 @@ class WeightWatcher:
         
         """
         
-
-        
+  
         def is_framework(name='UNKNOWN'):
             found = False
             for cls in inspect.getmro(type(model)):
@@ -1878,6 +1886,8 @@ class WeightWatcher:
                     return FRAMEWORK.PYSTATEDICT_DIR
                 elif format == MODEL_FILE_FORMATS.WW_FLATFILES:
                     return FRAMEWORK.WW_FLATFILES
+                elif format == FRAMEWORK.KERAS_H5_FILE:
+                    return FRAMEWORK.KERAS_H5_FILE
                 else:
                     logger.fatal(f"Directory {model} does not contain any known files")
             #
@@ -1924,6 +1934,13 @@ class WeightWatcher:
         if num_files > 0:
             format = MODEL_FILE_FORMATS.WW_FLATFILES
             return format, fileglob
+        
+        
+        fileglob = f"{model_dir}/*h5"
+        num_files = len(glob.glob(fileglob))
+        if num_files > 0:
+            format = MODEL_FILE_FORMATS.KERAS_H5_FILE
+            return format, fileglob
 
                  
         format = UNKNOWN
@@ -1949,7 +1966,7 @@ class WeightWatcher:
                 keras = importlib.import_module('tensorflow.keras')
         
                 banner = f"tensorflow version {tf.__version__}"+"\n"
-                banner += f"keras version {keras.__version__}"
+                #banner += f"keras version {keras.__version__}"
             except ImportError:
                 logger.fatal("Can not load tensorflow or keras, stopping")
             
@@ -2801,7 +2818,7 @@ class WeightWatcher:
             If layer ids < 0, then skip the layers specified
             All layer ids must be > 0 or < 0
             
-        min_evals:  int, default=50, NOT 0
+        min_evals:  int, default=10, NOT 0
             Minimum number of evals (M*rf) 
             
         max_evals:  int, default=15000
@@ -3556,10 +3573,10 @@ class WeightWatcher:
         num_evals = len(evals)
         logger.debug("fitting {} on {} eigenvalues".format(fit_type, num_evals))
 
-        if num_evals < MIN_NUM_EVALS:  # 10 , really 50
-            logger.warning("not enough eigenvalues, stopping")
-            status = FAILED
-            return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
+        # if num_evals < MIN_NUM_EVALS:  # 10 , really 50
+        #     logger.warning("not enough eigenvalues, stopping")
+        #     status = FAILED
+        #     return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, best_fit, status
                           
         # if Power law, Lambda=-1 
         distribution = POWER_LAW
@@ -3697,9 +3714,6 @@ class WeightWatcher:
             
             #fit_entropy = line_entropy(fit.Ds)
 
-      
-               
-
         if plot:
             
             if status==SUCCESS:
@@ -3811,6 +3825,7 @@ class WeightWatcher:
             warning = UNDER_TRAINED
             
         return alpha, Lambda, xmin, xmax, D, sigma, num_pl_spikes, num_fingers, raw_alpha, status, warning
+    
     
     def get_ESD(self, model=None, layer=None, random=False, params=None):
         """Get the ESD (empirical spectral density) for the layer, specified by id or name)"""
@@ -4305,8 +4320,8 @@ class WeightWatcher:
                 # TODO: do not recompute ESD if present ?
                 self.apply_svd_smoothing(ww_layer, params)
         
-        logger.info("Returning smoothed model")
-        return model   
+        logger.info(f"Returning smoothed model ")
+        return self.model   
 
     
     # TODO: add methods that use ETPL-alpha and/or DETX
@@ -5153,4 +5168,45 @@ class WeightWatcher:
             the_type = LAYER_TYPE.CONV1D
         return the_type
 
+
+    @staticmethod
+    def read_keras_h5_file(model_dir):
+
+        WeightWatcher.load_framework_imports(FRAMEWORK.KERAS)
         
+        fileglob = f"{model_dir}/*.h5"
+        matching_files = glob.glob(fileglob)
+        num_files = len(matching_files)
+
+        if num_files != 1:
+            logger.fatal("Sorry, can only read 1 keras h5 file at a time.")
+            raise ValueError("Multiple or no Keras H5 files found.")
+
+        model_filename = matching_files[0]  # since num_files must be 1 here
+        try:
+            logger.debug(f"Reading Keras H5 file {model_filename}")
+            loaded_model = tf.keras.models.load_model(model_filename)
+            print(loaded_model.summary())
+            return loaded_model
+        except Exception as e:
+            logger.fatal(f"Failed to read Keras h5 file {model_filename}. Error: {str(e)}")
+            raise  # This will re-raise the caught exception, allowing you to see the full traceback if needed.
+        
+        
+        
+    #
+    # def extract_deltas(self, model=None,  base_model=None, layers=[]):
+    #     """Extracts the deltas (i.e fine-tuning updates) 
+    #
+    #       Note: for LoRA updates, this could be a problem since we get back a full rank matrix, 
+    #       not the low ank update
+    #     """
+    #
+    #     # TODO:  
+    #     #   save model weights in what format ?
+    #     # since thats the case, we don't really save anything unless we can recover the W rank
+    #     layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=base_model)    
+    #     for ww_layer in  layer_iterator:
+    #         print(ww_layer)
+        
+

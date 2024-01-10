@@ -37,13 +37,13 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.7.1.5
+## Installation:  Version 0.7.3.5
 
 ```sh
 pip install weightwatcher
 ```
 
-### Current TestPyPI Version: 0.7.3
+### Current TestPyPI Version: 0.7.3.5
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
@@ -147,9 +147,24 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
  - (Truncated) PL quality of fit `D` : <img src="https://render.githubusercontent.com/render/math?math=\D"> (the Kolmogorov Smirnov Distance metric)
 
 
+#### PEFT / LORA models
+
+To analyze an PEFT / LORA fine-tuned model, specify the peft option.
+
+ - peft = True:  Analyes the base_model, the delta, and the combined layer weight matrices
+ - peft = 'lora_only':  Musch faster, only analyzes the delta
+
+i.e.
+```
+details = watcher.analyze(peft=True)
+```
+
+
 (advanced usage)
  - TPL : (alpha and Lambda) Truncated Power Law Fit
  - E_TPL : (alpha and Lambda) Extended Truncated Power Law Fit
+
+
  
 #### Scale-adjusted Shape Metrics
 
@@ -622,6 +637,7 @@ Otherwise, you need to install them first
 [Calculation Consulting](https://calculationconsulting.com)
 
 [Serena Peng](https://www.linkedin.com/in/serenapeng)
+[Christopher Hinrichs](https://www.linkedin.com/in/chris-hinrichs-203a222b/)
 
 <hr>
 

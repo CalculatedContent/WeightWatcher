@@ -1727,6 +1727,94 @@ class WWStackedLayerIterator(WWLayerIterator):
 
 
     
+class WWPeftLayerIterator(WWLayerIterator):
+    """ Iterates over a layer and creates an extended model
+      
+        For every layer, we check it there is a LORA update
+        If present,  
+           the A layer is replaced with full lora update,  np.dot(A.T, B.T)
+           the B layer is W + Lora update
+           
+        This will NOT be called  if params.PEFT=False
+        
+        Assumes base_layer, lora_a, lora_b are in this order
+    
+    """
+    
+    def __init__(self, model, framework, params=None, filters=[]):
+        self.peft_only = (params[PEFT]==PEFT_ONLY)
+        super().__init__(model, framework=framework, filters=filters, params=params)   
+    
+    
+    def ww_peft_iter_(self):
+    
+        last_W = None
+        
+        A_layer = None
+        B_layer = None
+    
+        yield_B = False
+       
+        for ww_layer in self.ww_layer_iter_():
+            ww_layer.add_column("peft", False)
+            
+            if yield_B:
+                yield_B = False
+                yield B_layer
+                
+            elif ww_layer.the_type == LAYER_TYPE.DENSE and 'lora_' in ww_layer.longname:
+
+                if not A_layer:
+                    yield_B = False
+                    A_layer = ww_layer  
+                    
+                else:
+                    B_layer = ww_layer
+        
+                    A = A_layer.Wmats[0].T
+                    B = B_layer.Wmats[0].T
+        
+                    lora_rank = min(A.shape)
+                    
+                    AB = np.dot(A,B)  
+                    updated_W = last_W + AB
+                    
+                    A_layer.Wmats[0] = AB
+                    A_layer.N = max(AB.shape)
+                    A_layer.M = min(AB.shape)
+                    A_layer.longname = A_layer.longname.replace("lora_A", "lora_AB")    
+                    A_layer.num_components = lora_rank
+                    A_layer.peft = True
+                                        
+                    B_layer.Wmats[0] = updated_W
+                    B_layer.N = max(updated_W.shape)
+                    B_layer.M = min(updated_W.shape)
+                    B_layer.longname = B_layer.longname.replace("lora_B", "lora_W_plus_AB")
+                    B_layer.num_components = lora_rank
+                    A_layer.peft = True
+
+                    yield_B = True
+                    yield A_layer
+             
+            else:
+                # I ASSUME WE NEED TRANSPOST SINCE WE DO FOR A AND B ?
+                last_W = ww_layer.Wmats[0].T 
+                
+                A_layer = None
+                B_layer = None
+                yield_B = False
+                
+                if self.peft_only:
+                    ww_layer.skipped = True
+       
+                yield ww_layer
+                
+                
+    def make_layer_iter_(self):
+        return self.ww_peft_iter_()
+    
+    
+
 
 class WWDeltaLayerIterator(WWLayerIterator):
     """combines 2 layer iterators, and iterates over 2 layers"""
@@ -1766,7 +1854,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
                             Wmats.append(None)
                     ww_layer.Wmats = Wmats 
 
-                
+                #  its possible the fine tuned model did not update the biases...may need to treat this case too
                 if ww_layer.has_biases:
                     left_biases = left_layer.biases
                     right_biases = right_layer.biases
@@ -2270,13 +2358,20 @@ class WeightWatcher:
 
             W = W.astype(float)
             logger.debug("Running {} SVD:  W.shape={}  n_comp = {}".format(params[SVD_METHOD], W.shape, n_comp))
-            sv = svd_vals(W, method=params[SVD_METHOD])
-            sv = sv.flatten()
-            sv = np.sort(sv)[-n_comp:]
-            # TODO:  move to PL fit for robust estimator
-            # if len(sv) > max_evals:
-            #    #logger.info("chosing {} singular values from {} ".format(max_evals, len(sv)))
-            #    sv = np.random.choice(sv, size=max_evals)
+            
+            # if peft, need to use Truncated SVD
+            if params[PEFT] and  n_comp < M:
+                sv = svd_vals_truncated(W, k=n_comp)
+                sv = sv.flatten()
+                sv = np.sort(sv)
+            else:
+                sv = svd_vals(W, method=params[SVD_METHOD])
+                sv = sv.flatten()
+                sv = np.sort(sv)[-n_comp:]
+                # TODO:  move to PL fit for robust estimator
+                # if len(sv) > max_evals:
+                #    #logger.info("chosing {} singular values from {} ".format(max_evals, len(sv)))
+                #    sv = np.random.choice(sv, size=max_evals)
     
             if params[INTRA]:
                 evals = sv
@@ -2387,7 +2482,7 @@ class WeightWatcher:
     
         Wmats = ww_layer.Wmats
         n_comp = ww_layer.num_components
-                
+                        
         evals, sv_max, sv_min, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
         
         if params[TOLERANCE]:
@@ -2656,6 +2751,16 @@ class WeightWatcher:
         return delta_iter
     
     
+    def make_peft_layer_iterator(self, base_model, model=None, filters=[], params=None, Iterator_Class=WWLayerIterator):
+        """make an iterator that re-works the LORA A abd B layers to analyze with weightwatcher """
+  
+        framework = self.infer_framework(model)
+        base_framework = self.infer_framework(base_model)
+        
+        peft_iter = WWDeltaLayerIterator(model=model, framework=framework, filters=filters, params=params, Iterator_Class=Iterator_Class)
+        return peft_iter
+    
+    
 
     def make_layer_iterator(self, model=None, layers=[], params=None, base_model=None):
         """Constructor for the Layer Iterator; See analyze(...)
@@ -2675,6 +2780,7 @@ class WeightWatcher:
         intra = params[INTRA]
         pool = params[POOL]
         stacked = params[STACKED]
+        peft = params[PEFT]
         
         layer_iterator = None
         
@@ -2684,6 +2790,9 @@ class WeightWatcher:
         elif intra:
             logger.info("using Intra layer Analysis (experimental)")
             Iterator_Class = WWIntraLayerIterator    
+        elif peft:
+            logger.info("using PEFT LORA layer Analysis (experimental)")
+            Iterator_Class = WWPeftLayerIterator 
         elif not pool:
             logger.info("Pooling eigenvalues, Using weightwatcher 0.2x style layer and slice iterator")
             Iterator_Class = WW2xSliceIterator 
@@ -2805,7 +2914,8 @@ class WeightWatcher:
                 start_ids=DEFAULT_START_ID,
                 pl_package=WW_POWERLAW_PACKAGE,
                 xmax=DEFAULT_XMAX,
-                base_model=None
+                base_model=None,
+                peft = DEFAULT_PEFT
                 ):
         """
         Analyze the weight matrices of a model.
@@ -2943,6 +3053,8 @@ class WeightWatcher:
         base_model:  None | same model with different weights and biases
             if specified, the base model weights and biases are subtracted from the model
             used for analyzing fine-tuned LLMs, or just looking at the deltas (i.e from init) during training
+            
+        peft: set to True if using an PEFT / LORA fine-tuned model
            
         """
 
@@ -3002,6 +3114,9 @@ class WeightWatcher:
         
         params[PL_PACKAGE] = pl_package
         params[XMAX] = xmax
+        
+        params[PEFT] = peft
+
 
             
         logger.debug("params {}".format(params))
@@ -3130,7 +3245,7 @@ class WeightWatcher:
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR, ww2x=False, pool=True,
                 conv2d_fft=False,  fft=False, conv2d_norm=True, 
-                intra=False, channels=None, stacked=False,  start_ids=0):
+                intra=False, channels=None, stacked=False,  start_ids=0, peft=DEFAULT_PEFT):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -3174,6 +3289,8 @@ class WeightWatcher:
         params[SAVEFIG] = savefig
         #params[SAVEDIR] = savedir
         params[START_IDS] = start_ids
+        
+        params[PEFT] = peft
 
         
         logger.info("params {}".format(params))

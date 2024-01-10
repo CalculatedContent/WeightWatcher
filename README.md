@@ -97,6 +97,19 @@ watcher.get_ESD()
 watcher.distances(model_1, model_2)
 ```
 
+## PEFT / LORA models
+
+To analyze an PEFT / LORA fine-tuned model, specify the peft option.
+
+ - peft = True:  Analyes the base_model, the delta, and the combined layer weight matrices
+ - peft = 'lora_only':  Musch faster, only analyzes the delta
+
+i.e.
+```
+details = watcher.analyze(peft=True)
+```
+
+
 ## Ploting and Fitting the Empirical Spectral Density (ESD)
 
 WW creates plots for each layer weight matrix to observe how well the power law fits work
@@ -147,17 +160,6 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
  - (Truncated) PL quality of fit `D` : <img src="https://render.githubusercontent.com/render/math?math=\D"> (the Kolmogorov Smirnov Distance metric)
 
 
-#### PEFT / LORA models
-
-To analyze an PEFT / LORA fine-tuned model, specify the peft option.
-
- - peft = True:  Analyes the base_model, the delta, and the combined layer weight matrices
- - peft = 'lora_only':  Musch faster, only analyzes the delta
-
-i.e.
-```
-details = watcher.analyze(peft=True)
-```
 
 
 (advanced usage)
@@ -210,7 +212,8 @@ The summary statistics can be used to gauge the test error of a series of pre/tr
 - average `alpha` can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, when depth is not a driving factor (i.e transformer models)
 - average `log_spectral_norm` is useful to compare models of different depths **L** at a coarse grain level
 - average `alpha_weighted` and `log_alpha_norm` are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously. (i.e CV models like VGG and ResNet)
-	
+
+
 #### Predicting the Generalization Error
 
 

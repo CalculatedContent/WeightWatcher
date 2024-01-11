@@ -1746,106 +1746,110 @@ class WWPeftLayerIterator(WWLayerIterator):
         super().__init__(model, framework=framework, filters=filters, params=params)   
     
     
-    def ww_peft_iter_(self):
+    def update_peft_layers(self, A_layer, B_layer, last_W):
+        transpose = False
+        A = A_layer.Wmats[0]
+        B = B_layer.Wmats[0]
+
+        #print(f"{A_layer.longname} AB shape {B.shape} x {A.shape} " )
+
+        # switch order or not ?
+        if A.shape[0] > A.shape[1]:
+            logger.debug("Transposing A ")
+            transpose = True
+            A = A.T
+
+        if B.shape[1]!=A.shape[0]:
+            logger.debug("Transposing B ")
+            B = B.T
+
+        if B.shape[1]!=A.shape[0]: 
+            logger.warning(f"LoRA matrices can not be aligned AB shape as {B.shape} x {A.shape} ")
+
+        lora_rank = min(A.shape)
+
+        BA = np.dot(B,A)  
+
+        A_layer.Wmats[0] = BA
+        A_layer.N = max(BA.shape)
+        A_layer.M = min(BA.shape)
+        A_layer.name = A_layer.name.replace("lora_A", "lora_BA")   
+        A_layer.longname = A_layer.longname.replace("lora_A", "lora_BA")    
+        A_layer.num_components = lora_rank
+        A_layer.peft = True
+
+        # if we are onlyb analyzing the adpater_model.bin. this is skipped
+        # not entirely sure about the updates with transpose
+        if last_W is None:  
+            transpose = False
+
+        else:
+            if transpose:  
+                updated_W = last_W + BA.T
+            else:
+                updated_W = last_W + BA
+
+
+            B_layer.Wmats[0] = updated_W
+            B_layer.N = max(updated_W.shape)
+            B_layer.M = min(updated_W.shape)
+            B_layer.name = B_layer.name.replace("lora_B", "lora_W_plus_AB")
+            B_layer.longname = B_layer.longname.replace("lora_B", "lora_W_plus_AB")
+            B_layer.num_components = lora_rank
+
+            if self.peft_only:
+                B_layer.skipped = True
+            else:
+                B_layer.peft = True
+                
+        return B_layer
+                
+                                
+                
+    
+    def ww_peft_iter_X(self):
     
         last_W = None
-        
-        A_layer = None
-        B_layer = None
-    
-        yield_B = False
-        transpose = False
-       
+        AB_layers = []
+               
         for ww_layer in self.ww_layer_iter_():
             ww_layer.add_column("peft", False)
+            if ww_layer.the_type == LAYER_TYPE.DENSE and 'lora_' in ww_layer.longname:
             
-            if yield_B:
-                yield_B = False
-                yield B_layer
-                
-            elif ww_layer.the_type == LAYER_TYPE.DENSE and 'lora_' in ww_layer.longname:
-
                 if 'lora_A' in ww_layer.longname:
                     
-                    yield_B = False
                     A_layer = ww_layer  
                     A = A_layer.Wmats[0]
-
-                    #print(f"{ww_layer.longname} A shape {A.shape}" )
-                    
+                    AB_layers.append(A_layer)
+                        
                 elif 'lora_B' in ww_layer.longname:
                     B_layer = ww_layer
-    
-                    A = A_layer.Wmats[0]
-                    B = B_layer.Wmats[0]
+                    self.update_peft_layers(A_layer, B_layer, last_W)
                     
-                    #print(f"{ww_layer.longname} AB shape {B.shape} x {A.shape} " )
-                    
-                    # switch order or not ?
-                    if A.shape[0] > A.shape[1]:
-                        logger.debug("Transposing A ")
-                        transpose = True
-                        A = A.T
-                        
-                    if B.shape[1]!=A.shape[0]:
-                        logger.debug("Transposing B ")
-                        B = B.T
-                        
-                    if B.shape[1]!=A.shape[0]: 
-                        logger.warning(f"LoRA matrices can not be aligned AB shape as {B.shape} x {A.shape} ")
-                        
-                    lora_rank = min(A.shape)
-                    
-                    BA = np.dot(B,A)  
-                    
-                    A_layer.Wmats[0] = BA
-                    A_layer.N = max(BA.shape)
-                    A_layer.M = min(BA.shape)
-                    A_layer.longname = A_layer.longname.replace("lora_A", "lora_BA")    
-                    A_layer.num_components = lora_rank
-                    A_layer.peft = True
-                    
-                    # if we are onlyb analyzing the adpater_model.bin. this is skipped
-                    # not entirely sure about the updates with transpose
-                    if last_W is not None:        
-                        if transpose:  
-                            updated_W = last_W + BA.T
+                    if last_W is not None:  
+                        if self.peft_only:
+                            B_layer.skipped = True
                         else:
-                            updated_W = last_W + BA
+                            B_layer.peft = True
+                        AB_layers.append(B_layer)
 
-              
-                        B_layer.Wmats[0] = updated_W
-                        B_layer.N = max(updated_W.shape)
-                        B_layer.M = min(updated_W.shape)
-                        B_layer.longname = B_layer.longname.replace("lora_B", "lora_W_plus_AB")
-                        B_layer.num_components = lora_rank
-                        A_layer.peft = True
-                        transpose = False
-    
-                        A_layer = None
-                        yield_B = True
-                        
-                    yield A_layer
-                
+                    while len(AB_layers)>0:
+                        yield AB_layers.pop()
+            
                 else:
                     logger.warning(f"unknown lora layer {ww_layer.longname}")
-             
+            
             else:
-                # I ASSUME WE NEED TRANSPOST SINCE WE DO FOR A AND B ?
-                last_W = ww_layer.Wmats[0].T 
-                
-                A_layer = None
-                B_layer = None
-                yield_B = False
-                
+                last_W = ww_layer.Wmats[0]
+            
                 if self.peft_only:
                     ww_layer.skipped = True
-       
                 yield ww_layer
+    
                 
                 
     def make_layer_iter_(self):
-        return self.ww_peft_iter_()
+        return self.ww_peft_iter_X()
     
     
 

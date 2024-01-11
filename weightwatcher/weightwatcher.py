@@ -286,7 +286,7 @@ class PyTorchLayer(FrameworkLayer):
         
         
     def has_biases(self):
-        return self.layer.bias is not None and self.layer.bias.data is not None
+        return hasattr(self.layer, 'bias') and self.layer.bias is not None and self.layer.bias.data is not None
     
     def get_weights_and_biases(self):
         """extract the original weights (as a tensor) for the layer, and biases for the layer, if present
@@ -319,7 +319,7 @@ class PyTorchLayer(FrameworkLayer):
                 
                 biases = None
                 has_biases = False
-                if self.layer.bias is not None and self.layer.bias.data is not None:
+                if self.has_biases():
                     #biases = self.layer.bias.data.clone().cpu()
                     #biases = biases.detach().numpy()
                     biases = torch_T_to_np(self.layer.bias.data)            

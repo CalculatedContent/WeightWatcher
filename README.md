@@ -31,15 +31,17 @@ It can be used to:
 
 - For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
 
-- and some of the most recent podcasta:
- -- [Practical AI](https://changelog.com/practicalai/194)
- -- [The Prompt Desk](https://smartlink.ausha.co/the-prompt-desk/data-free-quality-analysis-of-deep-neural-nets-with-charles-h-martin)
+- and some of the most recent Podcasts:
+
+ - [Practical AI](https://changelog.com/practicalai/194)
+ 
+ - [The Prompt Desk](https://smartlink.ausha.co/the-prompt-desk/data-free-quality-analysis-of-deep-neural-nets-with-charles-h-martin)
 
 - More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.7.3.5
+## Installation:  Version 0.7.3.2
 
 ```sh
 pip install weightwatcher
@@ -47,7 +49,7 @@ pip install weightwatcher
 
 if this fails try
 
-### Current TestPyPI Version: 0.7.3.5
+### Current TestPyPI Version: 0.7.3.6
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher

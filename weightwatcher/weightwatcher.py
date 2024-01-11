@@ -1754,6 +1754,7 @@ class WWPeftLayerIterator(WWLayerIterator):
         B_layer = None
     
         yield_B = False
+        transpose = False
        
         for ww_layer in self.ww_layer_iter_():
             ww_layer.add_column("peft", False)
@@ -1764,37 +1765,70 @@ class WWPeftLayerIterator(WWLayerIterator):
                 
             elif ww_layer.the_type == LAYER_TYPE.DENSE and 'lora_' in ww_layer.longname:
 
-                if not A_layer:
+                if 'lora_A' in ww_layer.longname:
+                    
                     yield_B = False
                     A_layer = ww_layer  
+                    A = A_layer.Wmats[0]
+
+                    #print(f"{ww_layer.longname} A shape {A.shape}" )
                     
-                else:
+                elif 'lora_B' in ww_layer.longname:
                     B_layer = ww_layer
-        
-                    A = A_layer.Wmats[0].T
-                    B = B_layer.Wmats[0].T
-        
+    
+                    A = A_layer.Wmats[0]
+                    B = B_layer.Wmats[0]
+                    
+                    #print(f"{ww_layer.longname} AB shape {B.shape} x {A.shape} " )
+                    
+                    # switch order or not ?
+                    if A.shape[0] > A.shape[1]:
+                        logger.debug("Transposing A ")
+                        transpose = True
+                        A = A.T
+                        
+                    if B.shape[1]!=A.shape[0]:
+                        logger.debug("Transposing B ")
+                        B = B.T
+                        
+                    if B.shape[1]!=A.shape[0]: 
+                        logger.warning(f"LoRA matrices can not be aligned AB shape as {B.shape} x {A.shape} ")
+                        
                     lora_rank = min(A.shape)
                     
-                    AB = np.dot(A,B)  
-                    updated_W = last_W + AB
+                    BA = np.dot(B,A)  
                     
-                    A_layer.Wmats[0] = AB
-                    A_layer.N = max(AB.shape)
-                    A_layer.M = min(AB.shape)
-                    A_layer.longname = A_layer.longname.replace("lora_A", "lora_AB")    
+                    A_layer.Wmats[0] = BA
+                    A_layer.N = max(BA.shape)
+                    A_layer.M = min(BA.shape)
+                    A_layer.longname = A_layer.longname.replace("lora_A", "lora_BA")    
                     A_layer.num_components = lora_rank
                     A_layer.peft = True
-                                        
-                    B_layer.Wmats[0] = updated_W
-                    B_layer.N = max(updated_W.shape)
-                    B_layer.M = min(updated_W.shape)
-                    B_layer.longname = B_layer.longname.replace("lora_B", "lora_W_plus_AB")
-                    B_layer.num_components = lora_rank
-                    A_layer.peft = True
+                    
+                    # if we are onlyb analyzing the adpater_model.bin. this is skipped
+                    # not entirely sure about the updates with transpose
+                    if last_W is not None:        
+                        if transpose:  
+                            updated_W = last_W + BA.T
+                        else:
+                            updated_W = last_W + BA
 
-                    yield_B = True
+              
+                        B_layer.Wmats[0] = updated_W
+                        B_layer.N = max(updated_W.shape)
+                        B_layer.M = min(updated_W.shape)
+                        B_layer.longname = B_layer.longname.replace("lora_B", "lora_W_plus_AB")
+                        B_layer.num_components = lora_rank
+                        A_layer.peft = True
+                        transpose = False
+    
+                        A_layer = None
+                        yield_B = True
+                        
                     yield A_layer
+                
+                else:
+                    logger.warning(f"unknown lora layer {ww_layer.longname}")
              
             else:
                 # I ASSUME WE NEED TRANSPOST SINCE WE DO FOR A AND B ?
@@ -2011,6 +2045,13 @@ class WeightWatcher:
        
        
         fileglob = f"{model_dir}/pytorch_model*bin"
+        num_files = len(glob.glob(fileglob))
+        if num_files > 0:
+            format = MODEL_FILE_FORMATS.PYTORCH
+            return format, fileglob
+        
+        
+        fileglob = f"{model_dir}/adapter_model*bin"
         num_files = len(glob.glob(fileglob))
         if num_files > 0:
             format = MODEL_FILE_FORMATS.PYTORCH

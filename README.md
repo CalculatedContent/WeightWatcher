@@ -33,9 +33,8 @@ It can be used to:
 
 - and some of the most recent Podcasts:
 
- - [Practical AI](https://changelog.com/practicalai/194)
- 
- - [The Prompt Desk](https://smartlink.ausha.co/the-prompt-desk/data-free-quality-analysis-of-deep-neural-nets-with-charles-h-martin)
+  - [Practical AI](https://changelog.com/practicalai/194)
+  - [The Prompt Desk](https://smartlink.ausha.co/the-prompt-desk/data-free-quality-analysis-of-deep-neural-nets-with-charles-h-martin)
 
 - More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
 

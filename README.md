@@ -114,7 +114,7 @@ To analyze an PEFT / LORA fine-tuned model, specify the peft option.
    
  - peft = 'peft_only':  Musch faster, only analyzes the delta
  
-   ```details = watcher.analyze(peft='peft_only)```
+   ```details = watcher.analyze(peft='peft_only')```
 
 If you want to select by layer_ids, you must first run describe(peft=False), and then select *both* the lora_A and lora_B layers
 

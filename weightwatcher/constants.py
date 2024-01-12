@@ -120,6 +120,10 @@ GLOROT_FIT = 'glorot_fit'
 
 WW2X = 'ww2x'  # deprecated
 POOL = 'pool'
+
+PEFT = 'peft'
+
+
 VECTORS = 'vectors'
 SMOOTH = 'smooth'
 MP_FIT = 'mp_fit'
@@ -158,6 +162,10 @@ WEAK_RANK_LOSS_TOLERANCE = 0.000001 # on ei=gen values
 
 ADD_BIASES = 'add_biases'
 
+DEFAULT_PEFT = False # | True | 'peft' | 'peft_onlu'
+PEFT_ONLY = 'peft_only'
+
+
 DEFAULT_START_ID = 0 # this is hard coded to 1 for PyStateDict
     
 # These are NOT the defaults...see analyze() for actual defaults
@@ -169,8 +177,8 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
                   FIX_FINGERS:None, FIT:POWER_LAW, MAX_FINGERS:DEFAULT_MAX_FINGERS, FINGER_THRESH:DEFAULT_FINGER_THRESH,
                   SPARSIFY: True, DETX: True,  MP_FIT:False,
                   MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, MAX_N:DEFAULT_MAX_N,
-                  TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False,
-                  PL_PACKAGE:DEFAULT_POWERLAW_PACKAGE, XMAX:DEFAULT_XMAX}
+                  TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False, XMIN_MAX:None,
+                  PL_PACKAGE:DEFAULT_POWERLAW_PACKAGE, XMAX:DEFAULT_XMAX, PEFT:DEFAULT_PEFT}
 
 
 EVALS_THRESH =1e-5
@@ -200,7 +208,9 @@ LAYER_TYPES_SUPPORTED = [LAYER_TYPE.CONV2D, LAYER_TYPE.CONV1D, LAYER_TYPE.DENSE,
 
 
 # framework names
-KERAS = 'kers'
+KERAS = 'keras'
+KERAS_H5_FILE = 'keras_h5_file'
+
 PYTORCH = 'pytorch'
 PYSTATEDICT = 'pystatedict'
 ONNX = 'onnx'
@@ -227,7 +237,6 @@ class FRAMEWORK():
     PYSTATEDICT = 'pystatedict'
     PYSTATEDICT_DIR = 'pystatedict_dir'
     WW_FLATFILES = WW_FLATFILES
-    KERAS_H5 = 'keras_h5'
     KERAS_H5_FILE = 'keras_h5_file'
 
 
@@ -245,6 +254,7 @@ class MODEL_FILE_FORMATS():
     PYTORCH = "pytorch"
     SAFETENSORS = "safetensors"
     WW_FLATFILES = WW_FLATFILES
+    KERAS_H5_FILE = 'keras_h5_file'
 
             
 # TODO either complete or remove thi 

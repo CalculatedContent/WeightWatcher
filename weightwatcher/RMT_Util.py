@@ -56,11 +56,14 @@ def has_mac_accelerate():
 
 # TODO: change this based on ENV var and/or auto-detect
 # see: issue #220
+
+
 if has_mac_accelerate():
     logger.info("Using Numoy with MAC M1/2 Accelerate for SVD")
     _eig_full_accurate = lambda W: np.linalg.eig(W)
     _svd_full_accurate = lambda W: np.linalg.svd(W, compute_uv=True)
     _svd_vals_accurate = lambda W: np.linalg.svd(W, compute_uv=False)
+
 else:
     logger.info("Using Scipy for SVD")
     _eig_full_accurate = lambda W: sp.linalg.eig(W)
@@ -146,6 +149,10 @@ def svd_vals(W, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
     if method == ACCURATE_SVD: return _svd_vals_accurate(W)
     if method == FAST_SVD:     return _svd_vals_fast(W)
+
+
+def svd_vals_truncated(W, k):    
+    return sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False)
 
 
 

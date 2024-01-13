@@ -151,8 +151,13 @@ def svd_vals(W, method=ACCURATE_SVD):
     if method == FAST_SVD:     return _svd_vals_fast(W)
 
 
-def svd_vals_truncated(W, k):    
-    return sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False)
+# quick timing test on my mac, 16 eigenvalues
+# ‘arpack’  ~2 sec
+# ‘propack’~ N/A
+# ‘lobpcg’  < 1 sec
+def svd_vals_truncated(W, k):   
+    return sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False, solver = 'lobpcg')
+
 
 
 

@@ -2405,7 +2405,7 @@ class WeightWatcher:
             logger.debug("Running {} SVD:  W.shape={}  n_comp = {}".format(params[SVD_METHOD], W.shape, n_comp))
             
             # if peft, need to use Truncated SVD
-            if params[PEFT] and  n_comp < M:
+            if (params[PEFT] and n_comp < M) or (n_comp < M):
                 sv = svd_vals_truncated(W, k=n_comp)
                 sv = sv.flatten()
                 sv = np.sort(sv)

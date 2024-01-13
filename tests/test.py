@@ -10,6 +10,8 @@ import torch.nn as nn
 
 
 from transformers import AutoModel, TFAutoModelForSequenceClassification, AlbertModel
+from transformers import BertForSequenceClassification
+
 
 import weightwatcher as ww
 from weightwatcher import RMT_Util
@@ -226,6 +228,9 @@ class Test_ValidParams(Test_Base):
 		self.assertNotEqual(expected_type, actual_type)
 
 		return
+	
+
+
 
 class Test_KerasLayers(Test_Base):
 	
@@ -410,6 +415,113 @@ class Test_KerasLayers(Test_Base):
 		
 		
 
+
+class Test_ReadKerasH5File(unittest.TestCase):
+	
+
+	def setUp(self):
+		"""I run before every test in this class
+		
+			
+		"""
+		print("\n-------------------------------------\nIn Test_ReadKerasH5File:", self._testMethodName)
+		
+		return
+	
+	
+	def test_single_h5_file(self):
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
+			# Create a simple model and save it in the temp directory
+			model = tf.keras.models.Sequential([tf.keras.layers.Dense(10, input_shape=(10,))])
+			model.save(os.path.join(model_dir, "test_model.h5"))
+			
+			loaded_model = ww.WeightWatcher.read_keras_h5_file(model_dir)
+			self.assertIsInstance(loaded_model, tf.keras.models.Model)
+
+  
+class Test_KerasH5FileLayers(Test_KerasLayers):
+	
+	"""BE VERY CAREFUL RUNNING THIS BECAUSE THIS TESTS CREATES FILES IN /TMP THAT NEED TO BE REMOVED"""
+	
+	"""Note:  This class may create temporary directories in /tmp/ww_ that don't get properly removed
+	
+	Assumes tmp dir is /tmp = TEST_TMP_DIR
+	
+	"""	
+	@classmethod
+	def setUpClass(cls):
+		"""	Creates a /tmp.ww_weights_dir with the resnet weights extracted
+			Removes the tmp dir when done
+			
+			Assumes that extract_pytorch_bins works properly"""
+					
+		ww.weightwatcher.torch = torch
+		cls.model_dir = Test_KerasH5FileLayers._make_tmp_model_dir()
+		
+		return
+
+
+	@classmethod
+	def tearDownClass(cls):
+		"""Remove class specific weights_dir, and any leftover temp files from failed tests"""
+				 
+		Test_Base._remove_ww_tmp_dir(cls.model_dir)
+		Test_Base._remove_all_ww_tmp_dirs()
+		
+		super().tearDownClass()
+		
+		return
+	
+	
+	def setUp(self):
+		print("\n-------------------------------------\nIn Test_KerasH5File:", self._testMethodName)
+
+
+		ww.weightwatcher.keras = keras
+		
+		vgg16 = VGG16()
+		self.model_name = 'vgg16'
+		self.last_layer = vgg16.submodules[-1]
+		
+		self.model = Test_KerasH5FileLayers.model_dir
+
+		return
+	
+			
+	def test_setup_class(self):
+		self.assertTrue(os.path.isdir(self.model))
+		return 
+		
+		
+			
+	def test_setup(self):
+		"""test that the tmp model is built and then tear down"""
+		
+		print(f"using self.weights_dir as model = {self.model}")
+		self.assertTrue(os.path.isdir(self.model))
+		self.assertEquals(self.model_dir, self.model)
+
+		num_files = len(glob.glob(f"{self.model}/*h5"))
+		self.assertTrue(num_files == 1)
+		
+		return
+	
+	
+	@staticmethod
+	def _make_tmp_model_dir():
+				
+		model_dir = tempfile.mkdtemp(dir=TEST_TMP_DIR, prefix="ww_")
+		print(f"using {model_dir} as model_dir")
+	
+		model = VGG16() 
+		model_filename = os.path.join(model_dir, 'model.h5')
+		model.save(model_filename)
+			
+
+		return model_dir
+
+
+		 		
 			
 
 class Test_PyTorchLayers(Test_Base):
@@ -862,6 +974,8 @@ class Test_PyTorchBins_Extractor(Test_Base):
 
 		
 		
+		
+
 class Test_WWFlatFiles(Test_Base):
 	
 	"""BE VERY CAREFUL RUNNING THIS BECAUSE THIS TESTS CREATES FILES IN /TMP THAT NEED TO BE REMOVED"""
@@ -981,10 +1095,7 @@ class Test_WWFlatFiles(Test_Base):
 					layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
 					with open(layer_map_filename, 'w') as f:
 						for key in state_dict.keys():
-							f.write(key + '\n')
-						
-				
-			
+							f.write(key + '\n')			
 		
 		return weights_dir
 
@@ -1300,7 +1411,6 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 		print(f"test_read_safetensors self.model={self.model}")
 		state_dict_filename = glob.glob(f"{self.model}/*safetensors")[0]
 		print(f"state_dict_filename {state_dict_filename}")
-
 		
 		state_dict = {}
 		with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
@@ -1655,7 +1765,8 @@ class Test_VGG11_noModel(Test_Base):
 		"""
 		
 		# 819 =~ 4096*0.2
-		self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer])
+		smoothed_model = self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer])
+		print(f"smoothed model {smoothed_model}")
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)
@@ -1886,7 +1997,47 @@ class Test_VGG11_Distances(Test_Base):
 		actual_mean_distance = avg_db
 		expected_mean_distance = 0.0
 		self.assertAlmostEqual(actual_mean_distance,expected_mean_distance, places=1)
+	
+	
+
+class Test_FineTunedBertWithLoRA(Test_Base):
+	"""Test using the BERT and a LoRA fine tuned examplel
+	
+	WarningL: this test requires downloading 2 large models
+	
+	This exists to test the base_model features
+	"""
+
+	def setUp(self):
+
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_FineTunedBertWithLoRA:", self._testMethodName)
 		
+		self.params = DEFAULT_PARAMS.copy()
+		model_name = f"bert-base-cased"
+		self.model  = BertForSequenceClassification.from_pretrained(model_name)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+			
+		
+	def test_bert_availble(self):
+		
+		details = self.watcher.describe()
+		print(details)
+		self.assertEqual(75, len(details))
+		
+		
+	def test_layer_alpha(self):
+
+		details = self.watcher.analyze(layers=[13])
+		print(details)
+		actual_alpha = details.alpha.to_numpy()[0]
+		expected_alpha = 2.7
+		self.assertAlmostEqual(actual_alpha,expected_alpha, delta=0.5)
+			
+			
+			
 		
 
 class Test_Albert(Test_Base):
@@ -2075,7 +2226,216 @@ class Test_DeltaLayerIterator(Test_Base):
 		return
 	
 	
+class Test_PeftLayerIterator(Test_Base):
+	"""Test the PEFT / LoRA options
 	
+	Note: to test this we either need to
+	
+	(1) pull an adapter_model.bin directly from git
+	or
+	(2) install and use the peft library
+	
+	For the initial unit tests, I am just using some random PEFt/LoRa model from huggingface
+	"""
+	
+	def setUp(self):
+
+		"""I run before every test in this class
+		"""
+		print("\n-------------------------------------\nIn Test_PeftLayerIterator:", self._testMethodName)
+		
+		self.params = DEFAULT_PARAMS.copy()
+		
+		from transformers import AutoModelForTokenClassification
+		from peft import PeftConfig, PeftModel
+		
+		peft_model_id = "akdeniz27/bert-base-turkish-cased-ner-lora"
+		config = PeftConfig.from_pretrained(peft_model_id)
+		inference_model = AutoModelForTokenClassification.from_pretrained(
+		    config.base_model_name_or_path, num_labels=7
+		)
+		self.model = PeftModel.from_pretrained(inference_model, peft_model_id)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		
+		
+	#def test_peft_model_availble(self):
+		
+		
+	def test_layer_count_with_peft_true(self):
+		
+		details = self.watcher.describe(peft=True)
+		self.assertEqual(122, len(details))
+		
+	def test_layer_count_with_peft_only(self):
+		
+		details = self.watcher.describe(peft='peft_only')
+		self.assertEqual(24, len(details))
+		
+		
+	def test_layer_count_with_peft_only2(self):
+		"""If we change the peft model, this test can still be used"""
+		
+		details = self.watcher.describe(peft=False)
+		expected_len_peft_details = len([x for x in details.longname.to_numpy() if 'lora_A' in x])
+		
+		peft_details = self.watcher.describe(peft='peft_only')
+		actual_len_peft_details = len(peft_details)
+		
+		self.assertEqual(expected_len_peft_details, actual_len_peft_details)	
+		
+		
+			
+	def test_layer_longnames_with_peft_only(self):
+		
+		details = self.watcher.describe(peft='peft_only')
+		actual_num_longnames_with_BA = len([x for x in details.longname.to_numpy() if 'lora_BA' in x])
+		expected_num_longnames_with_BA = len(details)
+		
+		self.assertNotEqual(expected_num_longnames_with_BA, 0)
+		self.assertNotEqual(actual_num_longnames_with_BA, 0)
+
+		self.assertEqual(expected_num_longnames_with_BA, actual_num_longnames_with_BA)	
+
+
+	def test_layer_longnames_with_peft_False(self):
+		
+		details = self.watcher.describe(peft='peft_only')
+		expected_num_longnames_with_A = len(details)
+		
+		details = self.watcher.describe(peft=False)
+		actual_num_longnames_with_A_only = len([x for x in details.longname.to_numpy() if 'lora_A' in x])
+		
+		self.assertNotEqual(expected_num_longnames_with_A, 0)
+		self.assertNotEqual(actual_num_longnames_with_A_only, 0)
+				
+		self.assertEqual(expected_num_longnames_with_A, actual_num_longnames_with_A_only)	
+
+
+
+	def test_layer_longnames_with_peft_true(self):
+		
+		details = self.watcher.describe(peft='peft_only')
+		expected_num_longnames_with_BA = len(details)
+		
+		details = self.watcher.describe(peft=True)
+		actual_num_longnames_with_BA = len([x for x in details.longname.to_numpy() if 'lora_BA' in x])
+				
+		self.assertEqual(expected_num_longnames_with_BA, actual_num_longnames_with_BA)	
+		
+		
+			
+	def test_analyze_peft_true(self):
+		"""
+		
+		Notice we have to specify the layer_uds with the lora_A and lora_B matrices 
+		Also, I hope this is correct but right now the value of alpha is just the placeholder
+		
+		Note: this may be a bit slow 
+		
+		For peft=True, we run this
+		
+			details = self.watcher.analyze(peft='peft_only', layers=[15, 19,21])
+		
+		and we expect the longnames in this order
+		
+			0   base_model.model.bert.encoder.layer.0.attention.self.query
+			1   base_model.model.bert.encoder.layer.0.attention.self.query.lora_W_plus_AB.default
+			2   base_model.model.bert.encoder.layer.0.attention.self.query.lora_BA.default
+
+		
+		"""
+
+		peft_details = self.watcher.analyze(peft=True, layers=[15, 19,21])
+		
+	
+		expected_longname_0 = "base_model.model.bert.encoder.layer.0.attention.self.query"
+		expected_longname_1 = "base_model.model.bert.encoder.layer.0.attention.self.query.lora_W_plus_AB.default"
+		expected_longname_2 = "base_model.model.bert.encoder.layer.0.attention.self.query.lora_BA.default"
+		
+		expected_longnames = [expected_longname_0, expected_longname_1, expected_longname_2]
+		actual_longnames = peft_details.longname.to_numpy()
+		for idx, name  in enumerate(actual_longnames):
+			self.assertEqual(expected_longnames[idx], name)	
+			
+
+	#-------------
+
+		AB_idx= 0
+			
+		peft_flag = peft_details.peft.to_numpy()[AB_idx]
+		self.assertFalse(peft_flag)
+
+		
+		expected_N = 768
+		actual_N = peft_details.N.to_numpy()[AB_idx]
+		self.assertEqual(expected_N, actual_N)	
+		
+		expected_M = 768
+		actual_M = peft_details.M.to_numpy()[AB_idx]
+		self.assertEqual(expected_M, actual_M)	
+		
+		expected_num_evals = 768
+		actual_num_evals = peft_details.num_evals.to_numpy()[AB_idx]
+		self.assertEqual(expected_num_evals, actual_num_evals)	
+		
+		expected_matrix_rank = 768
+		actual_matrix_rank = peft_details.matrix_rank.to_numpy()[AB_idx]
+		self.assertEqual(expected_matrix_rank, actual_matrix_rank)	
+		
+	#-------------
+		AB_idx= 1
+			
+		peft_flag = peft_details.peft.to_numpy()[AB_idx]
+		self.assertTrue(peft_flag)
+		
+
+		actual_N = peft_details.N.to_numpy()[AB_idx]
+		self.assertEqual(expected_N, actual_N)	
+		
+		expected_M = 768
+		actual_M = peft_details.M.to_numpy()[AB_idx]
+		self.assertEqual(expected_M, actual_M)	
+		
+		expected_num_evals = 16
+		actual_num_evals = peft_details.num_evals.to_numpy()[AB_idx]
+		self.assertEqual(expected_num_evals, actual_num_evals)	
+		
+		expected_matrix_rank = 16
+		actual_matrix_rank = peft_details.matrix_rank.to_numpy()[AB_idx]
+		self.assertEqual(expected_matrix_rank, actual_matrix_rank)	
+	#-------------
+
+		AB_idx= 2
+			
+		peft_flag = peft_details.peft.to_numpy()[AB_idx]
+		self.assertTrue(peft_flag)
+		
+		expected_longname = "base_model.model.bert.encoder.layer.0.attention.self.query.lora_BA.default"
+		actual_longname = peft_details.longname.to_numpy()[AB_idx]
+		self.assertEqual(expected_longname, actual_longname)	
+		
+		expected_N = 768
+		actual_N = peft_details.N.to_numpy()[AB_idx]
+		self.assertEqual(expected_N, actual_N)	
+		
+		expected_M = 768
+		actual_M = peft_details.M.to_numpy()[AB_idx]
+		self.assertEqual(expected_M, actual_M)	
+		
+		expected_num_evals = 16
+		actual_num_evals = peft_details.num_evals.to_numpy()[AB_idx]
+		self.assertEqual(expected_num_evals, actual_num_evals)	
+		
+		expected_matrix_rank = 16
+		actual_matrix_rank = peft_details.matrix_rank.to_numpy()[AB_idx]
+		self.assertEqual(expected_matrix_rank, actual_matrix_rank)	
+
+		expected_alpha = 1.385381
+		actual_alpha = peft_details.alpha.to_numpy()[AB_idx]
+		self.assertAlmostEqual(expected_alpha, actual_alpha, places=4)
+		
+		
+		
 		
 	
 class Test_Albert_DeltaLayerIterator(Test_Base):
@@ -3866,7 +4226,8 @@ class Test_Keras(Test_Base):
 		
 		# 819 =~ 4096*0.2
 		
-		self.watcher.SVDSmoothing(model=self.model, layers=[21])
+		smoothed_model = self.watcher.SVDSmoothing(model=self.model, layers=[21])
+		print(f"smoothed_model {smoothed_model}")
 		esd = self.watcher.get_ESD(layer=21) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)

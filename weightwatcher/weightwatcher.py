@@ -546,6 +546,7 @@ class PyStateDictDir(PyStateDictLayer):
                         if len(layer_map) == 0:
                             logger.critical(f"no layers found in {layer_map_filename}")
                     else:
+                        # TODO just ignore state, buld as it goes
                         logger.info(f"loading {layer_map_filename} not found, ignoring")
                        
                         
@@ -1203,8 +1204,6 @@ class ModelIterator:
                 banner = WeightWatcher.load_framework_imports(self.framework)
                 logger.info(banner)
                 logger.info(f"framework from model = {self.framework}")
-
-
             else:
                 logger.fatal("Could not infer framework from model, stopping")
                 
@@ -1751,7 +1750,6 @@ class WWPeftLayerIterator(WWLayerIterator):
         A = A_layer.Wmats[0]
         B = B_layer.Wmats[0]
 
-        #print(f"{A_layer.longname} AB shape {B.shape} x {A.shape} " )
 
         # switch order or not ?
         if A.shape[0] > A.shape[1]:
@@ -1807,7 +1805,7 @@ class WWPeftLayerIterator(WWLayerIterator):
                                 
                 
     
-    def ww_peft_iter_X(self):
+    def ww_peft_iter(self):
     
         last_W = None
         AB_layers = []
@@ -1824,6 +1822,10 @@ class WWPeftLayerIterator(WWLayerIterator):
                         
                 elif 'lora_B' in ww_layer.longname:
                     B_layer = ww_layer
+                    
+                    if self.peft_only:
+                        last_W = None
+                        
                     self.update_peft_layers(A_layer, B_layer, last_W)
                     
                     if last_W is not None:  
@@ -1849,7 +1851,7 @@ class WWPeftLayerIterator(WWLayerIterator):
                 
                 
     def make_layer_iter_(self):
-        return self.ww_peft_iter_X()
+        return self.ww_peft_iter()
     
     
 
@@ -1908,7 +1910,6 @@ class WWDeltaLayerIterator(WWLayerIterator):
              
                 
                 
-    def make_layer_iter_(self):
         return self.ww_layer_iter_()
     
 
@@ -1983,8 +1984,7 @@ class WeightWatcher:
         
         
         """
-        
-  
+          
         def is_framework(name='UNKNOWN'):
             found = False
             for cls in inspect.getmro(type(model)):
@@ -1994,6 +1994,7 @@ class WeightWatcher:
     
         framework = FRAMEWORK.UNKNOWN
         if model is not None:
+            
             if is_framework(name='torch'):
                 return FRAMEWORK.PYTORCH
             elif is_framework(name='keras'):
@@ -2007,6 +2008,7 @@ class WeightWatcher:
                 return FRAMEWORK.PYSTATEDICT
             
             elif os.path.isdir(model):
+                print("MODEL IS DIR")
                 format, fileglob = WeightWatcher.infer_model_file_format(model)
                 if format in [MODEL_FILE_FORMATS.PYTORCH, MODEL_FILE_FORMATS.SAFETENSORS]:
                     return FRAMEWORK.PYSTATEDICT_DIR
@@ -2034,14 +2036,19 @@ class WeightWatcher:
             
             returns: format, fileglob
         """
-        
              
         format = UNKNOWN
         fileglob = UNKNOWN
-        
-   
+                
         # first, try SAFETENSORS
         fileglob = f"{model_dir}/model*safetensors"
+        num_files = len(glob.glob(fileglob))
+        if num_files > 0:
+            format = MODEL_FILE_FORMATS.SAFETENSORS
+            return format, fileglob
+        
+        # first, try SAFETENSORS
+        fileglob = f"{model_dir}/adapter_model*safetensors"
         num_files = len(glob.glob(fileglob))
         if num_files > 0:
             format = MODEL_FILE_FORMATS.SAFETENSORS
@@ -5348,7 +5355,6 @@ class WeightWatcher:
         try:
             logger.debug(f"Reading Keras H5 file {model_filename}")
             loaded_model = tf.keras.models.load_model(model_filename)
-            print(loaded_model.summary())
             return loaded_model
         except Exception as e:
             logger.fatal(f"Failed to read Keras h5 file {model_filename}. Error: {str(e)}")

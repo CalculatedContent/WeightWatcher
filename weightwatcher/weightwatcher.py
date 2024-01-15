@@ -1738,6 +1738,7 @@ class WWPeftLayerIterator(WWLayerIterator):
         
         Assumes base_layer, lora_a, lora_b are in this order
     
+        # TODO:  check names ?
     """
     
     def __init__(self, model, framework, params=None, filters=[]):

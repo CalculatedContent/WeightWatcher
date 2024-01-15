@@ -156,7 +156,7 @@ def svd_vals(W, method=ACCURATE_SVD):
 # ‘propack’~ N/A
 # ‘lobpcg’  < 1 sec
 def svd_vals_truncated(W, k):   
-    return sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False, solver = 'lobpcg')
+    return sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False, solver = 'arpack')
 
 
 

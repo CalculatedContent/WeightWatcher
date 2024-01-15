@@ -2008,7 +2008,6 @@ class WeightWatcher:
                 return FRAMEWORK.PYSTATEDICT
             
             elif os.path.isdir(model):
-                print("MODEL IS DIR")
                 format, fileglob = WeightWatcher.infer_model_file_format(model)
                 if format in [MODEL_FILE_FORMATS.PYTORCH, MODEL_FILE_FORMATS.SAFETENSORS]:
                     return FRAMEWORK.PYSTATEDICT_DIR

@@ -1898,7 +1898,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
                 
                 # sometimes we need to skip the first (and last) layer 
                 while base_name not in model_name:
-                    left_layer = left_layer.next()
+                    left_layer = self.iter_left.next()
                     base_name = left_layer.name
                     
                          

@@ -1893,6 +1893,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
         
         for left_layer, right_layer in zip(self.iter_left, self.iter_right):
             
+                print(left_layer.name, right_layer.name)
                 base_name = left_layer.name
                 model_name = right_layer.name
                 

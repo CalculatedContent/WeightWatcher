@@ -1901,8 +1901,12 @@ class WWDeltaLayerIterator(WWLayerIterator):
                 # sometimes we need to skip the first (and last) layer 
                 while base_name not in model_name:
                     logger.info(f"Skipping base model {base_name}")
+                    print(f"Skipping base model {base_name}")
+
                     left_layer = self.iter_left.next()
                     base_name = left_layer.name
+                    print(left_layer.name, right_layer.name)
+
                     
                          
                 ww_layer = deepcopy(left_layer)

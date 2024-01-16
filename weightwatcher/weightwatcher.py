@@ -533,11 +533,27 @@ class PyStateDictDir(PyStateDictLayer):
                     # for now, we will use will just flat file, ending in layer_map
                     # and if not found, just use the safetensors order
         
+                    
                     layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
                     layer_map = []
-                       
+                    
+                    weight_map_filename = state_dict_filename.replace("safetensors", ".safetensors.index.json")
+                    weight_map = []
+
+                    if os.path.exists(weight_map_filename):
+                        logger.info(f"loading {weight_map_filename}")
+                        
+                        with open(weight_map_filename, 'r') as f:
+                            data = json.load(file)
+                            weight_map = data['weight_map']
+                            files = np.unique([x for x in weight_map.values()])
+                            for file in files:
+                                for k, v in weight_map.items():
+                                    if v == file:
+                                        layer_map.append(k)
+                            
                     # read layer map if found, otherwise ignore
-                    if  os.path.exists(layer_map_filename):
+                    elif  os.path.exists(layer_map_filename):
                         logger.info(f"loading {layer_map_filename}")
                         
                         with open(layer_map_filename, 'r') as f:

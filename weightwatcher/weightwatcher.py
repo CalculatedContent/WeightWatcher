@@ -1878,6 +1878,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
     
     def __init__(self, base_model, base_framework,  model, framework, filters=[], params=None, Iterator_Class=WWLayerIterator):
     
+        print("making WWDeltaLayerIterator ")
         if params is None: params = DEFAULT_PARAMS.copy()
         
         self.iter_right = Iterator_Class(base_model, framework=base_framework,  filters=filters, params=params)   

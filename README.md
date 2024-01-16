@@ -40,7 +40,7 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.7.3.2
+## Installation:  Version 0.7.4  (PEFT Release)
 
 ```sh
 pip install weightwatcher

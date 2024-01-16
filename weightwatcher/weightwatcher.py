@@ -1893,6 +1893,15 @@ class WWDeltaLayerIterator(WWLayerIterator):
         
         for left_layer, right_layer in zip(self.iter_left, self.iter_right):
             
+                base_name = left_layer.name
+                model_name = right_layer.name
+                
+                # sometimes we need to skip the first (and last) layer 
+                while base_name not in model_name:
+                    left_layer = left_layer.next()
+                    base_name = left_layer.name
+                    
+                         
                 ww_layer = deepcopy(left_layer)
                 
                 if ww_layer.has_weights:

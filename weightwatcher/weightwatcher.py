@@ -1899,7 +1899,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
                 model_name = right_layer.name
                 
                 # sometimes we need to skip the first (and last) layer 
-                while base_name not in model_name:
+                if base_name not in model_name:
                     logger.info(f"Skipping base model {base_name}")
                     print(f"Skipping base model {base_name}")
 

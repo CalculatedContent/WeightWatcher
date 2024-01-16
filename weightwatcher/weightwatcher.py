@@ -1897,9 +1897,9 @@ class WWDeltaLayerIterator(WWLayerIterator):
                 model_name = right_layer.name
                 
                 # sometimes we need to skip the first (and last) layer 
-                #while base_name not in model_name:
-                #    left_layer = self.iter_left.next()
-                #    base_name = left_layer.name
+                while base_name not in model_name:
+                    left_layer = self.iter_left.next()
+                    base_name = left_layer.name
                     
                          
                 ww_layer = deepcopy(left_layer)

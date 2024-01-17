@@ -593,7 +593,6 @@ class PyStateDictDir(PyStateDictLayer):
                                 logger.critical(f"layer_map has different keys than safetensors file!")
                         
                             for layer_name in layer_map:
-                                print(state_dict)
                                 state_dict[layer_name] = f.get_tensor(layer_name)
                         else:
                             for layer_name in f.keys():

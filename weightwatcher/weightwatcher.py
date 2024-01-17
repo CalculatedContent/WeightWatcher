@@ -517,7 +517,7 @@ class PyStateDictDir(PyStateDictLayer):
         filenames = glob.glob(fileglob.replace("safetensors", "layer_map"))
         if len(filenames)==1:
             layer_map_filename = filenames[0]
-        else:
+        elif len(filenames)>1:
             logger.warning(f"More than 1  layer_map_filename found! {filenames}")
             
         weight_map = []
@@ -525,7 +525,7 @@ class PyStateDictDir(PyStateDictLayer):
         filenames = glob.glob(fileglob.replace("safetensors", ".safetensors.index.json"))
         if len(filenames)==1:
             weight_map_filename = filenames[0]
-        else:
+        elif len(filenames)>1:
             logger.warning(f"More than 1  weight_map_filename found! {filenames}")
             
 

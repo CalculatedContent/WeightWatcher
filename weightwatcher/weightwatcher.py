@@ -533,7 +533,7 @@ class PyStateDictDir(PyStateDictLayer):
             logger.info(f"loading weight_map {weight_map_filename}")
             
             with open(weight_map_filename, 'r') as f:
-                data = json.load(file)
+                data = json.load(f)
                 weight_map = data['weight_map']
                 files = np.unique([x for x in weight_map.values()])
                 for file in files:

@@ -471,6 +471,7 @@ class PyStateDictLayer(FrameworkLayer):
             model_state_dict[bias_key] = torch.from_numpy(B)
         
         return 
+
         
       
 class PyStateDictDir(PyStateDictLayer):
@@ -497,8 +498,56 @@ class PyStateDictDir(PyStateDictLayer):
         Note: this is only used as a static class
         
     """
-
     
+    
+    @staticmethod
+    def get_layer_map(state_dict_filename):
+        from safetensors import safe_open
+                
+        # safetensors keys are stored in sort order, not layer order, so we need the ordering
+        # so we either need to 
+        # - read a custom layer_map file for each safetensors file, or
+        # - embed the mapping in the safetensors metadata 
+        # - read the huggingface model.safetensors.index.json file
+        #
+        # for now, we will use will just flat file, ending in layer_map
+        # and if not found, just use the safetensors order
+
+        
+        layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
+        layer_map = []
+        
+        weight_map_filename = state_dict_filename.replace("safetensors", ".safetensors.index.json")
+        weight_map = []
+
+        if os.path.exists(weight_map_filename):
+            logger.info(f"loading {weight_map_filename}")
+            
+            with open(weight_map_filename, 'r') as f:
+                data = json.load(file)
+                weight_map = data['weight_map']
+                files = np.unique([x for x in weight_map.values()])
+                for file in files:
+                    for k, v in weight_map.items():
+                        if v == file:
+                            layer_map.append(k)
+                
+        # read layer map if found, otherwise ignore
+        elif  os.path.exists(layer_map_filename):
+            logger.info(f"loading {layer_map_filename}")
+            
+            with open(layer_map_filename, 'r') as f:
+                layer_map = [line.strip() for line in f]
+                
+            if len(layer_map) == 0:
+                logger.critical(f"no layers found in {layer_map_filename}")
+        else:
+            # TODO just ignore state, buld as it goes
+            logger.info(f"loading {layer_map_filename} not found, ignoring")
+            
+        return layer_map
+
+
     @staticmethod
     def get_layer_iterator(model_dir, start_id=1):
 
@@ -516,6 +565,8 @@ class PyStateDictDir(PyStateDictLayer):
             # Track the number of layers already yielded
             num_layers_yielded = 0
             current_start_id = start_id  # Create a copy of start_id
+            
+
 
             # loop over stat dict files in sort order
             for state_dict_filename in sorted(glob.glob(fileglob)):
@@ -523,49 +574,9 @@ class PyStateDictDir(PyStateDictLayer):
                 
                 if format==MODEL_FILE_FORMATS.SAFETENSORS:
                     from safetensors import safe_open
-    
-                    # safetensors keys are stored in sort order, not layer order, so we need the ordering
-                    # so we either need to 
-                    # - read a custom layer_map file for each safetensors file, or
-                    # - embed the mapping in the safetensors metadata 
-                    # - read the huggingface model.safetensors.index.json file
-                    #
-                    # for now, we will use will just flat file, ending in layer_map
-                    # and if not found, just use the safetensors order
-        
                     
-                    layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
-                    layer_map = []
-                    
-                    weight_map_filename = state_dict_filename.replace("safetensors", ".safetensors.index.json")
-                    weight_map = []
-
-                    if os.path.exists(weight_map_filename):
-                        logger.info(f"loading {weight_map_filename}")
-                        
-                        with open(weight_map_filename, 'r') as f:
-                            data = json.load(file)
-                            weight_map = data['weight_map']
-                            files = np.unique([x for x in weight_map.values()])
-                            for file in files:
-                                for k, v in weight_map.items():
-                                    if v == file:
-                                        layer_map.append(k)
-                            
-                    # read layer map if found, otherwise ignore
-                    elif  os.path.exists(layer_map_filename):
-                        logger.info(f"loading {layer_map_filename}")
-                        
-                        with open(layer_map_filename, 'r') as f:
-                            layer_map = [line.strip() for line in f]
-                            
-                        if len(layer_map) == 0:
-                            logger.critical(f"no layers found in {layer_map_filename}")
-                    else:
-                        # TODO just ignore state, buld as it goes
-                        logger.info(f"loading {layer_map_filename} not found, ignoring")
-                       
-                        
+                    layer_map = PyStateDictDir.get_layer_map(state_dict_filename)
+                                    
                     #state_dict = {k: f.get_tensor(k) for k in safe_open(state_dict_filename, framework="pt", device='cpu').keys()}
                     state_dict = {}
                     with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
@@ -3330,7 +3341,8 @@ class WeightWatcher:
                 glorot_fix=False, 
                 savefig=DEF_SAVE_DIR, ww2x=False, pool=True,
                 conv2d_fft=False,  fft=False, conv2d_norm=True, 
-                intra=False, channels=None, stacked=False,  start_ids=0, peft=DEFAULT_PEFT):
+                intra=False, channels=None, stacked=False,  start_ids=0,                 
+                base_model=None, peft=DEFAULT_PEFT):
         """
         Same as analyze() , but does not run the ESD or Power law fits
         
@@ -3385,7 +3397,7 @@ class WeightWatcher:
             raise Exception(msg)
         params = self.normalize_params(params)
 
-        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params)            
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=base_model)     
         details = pd.DataFrame(columns=[])
            
         num_all_evals = 0

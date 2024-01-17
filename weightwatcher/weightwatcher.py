@@ -590,13 +590,12 @@ class PyStateDictDir(PyStateDictLayer):
                     with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
                         if layer_map is not None and len(layer_map)>0:
                             if not set(f.keys()).issubset(set(layer_map)):
-                                logger.critical(f"layer_map has different keys than safetensors file!")
-                        
-                            for layer_name in layer_map:
-                                state_dict[layer_name] = f.get_tensor(layer_name)
-                        else:
-                            for layer_name in f.keys():
-                                state_dict[layer_name] = f.get_tensor(layer_name)
+                                logger.critical(f"safetensors file has keys not found in the layer_map!")
+                            else:
+                                for layer_name in f.keys():
+                                    state_dict[layer_name] = f.get_tensor(layer_name)
+                        #else:
+                           # 
             
                     logger.debug(f"Read safetensors: {state_dict_filename}, len={len(state_dict)}")
                     

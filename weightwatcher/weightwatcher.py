@@ -501,7 +501,7 @@ class PyStateDictDir(PyStateDictLayer):
     
     
     @staticmethod
-    def get_layer_map(state_dict_filename):
+    def get_layer_map(fileglob):
         from safetensors import safe_open
                 
         # safetensors keys are stored in sort order, not layer order, so we need the ordering
@@ -509,19 +509,28 @@ class PyStateDictDir(PyStateDictLayer):
         # - read a custom layer_map file for each safetensors file, or
         # - embed the mapping in the safetensors metadata 
         # - read the huggingface model.safetensors.index.json file
-        #
-        # for now, we will use will just flat file, ending in layer_map
-        # and if not found, just use the safetensors order
 
-        
-        layer_map_filename = state_dict_filename.replace("safetensors", "layer_map")
+
+        # Assumes there is 1 filename
         layer_map = []
-        
-        weight_map_filename = state_dict_filename.replace("safetensors", ".safetensors.index.json")
+        layer_map_filename = None
+        filenames = glob.glob(fileglob.replace("safetensors", "layer_map"))
+        if len(filenames)==1:
+            layer_map_filename = filenames[0]
+        else:
+            logger.warning("More than 1  layer_map_filename found!")
+            
         weight_map = []
+        weight_map_filename = None
+        filenames = glob.glob(fileglob.replace("safetensors", ".safetensors.index.json"))
+        if len(filenames)==1:
+            weight_map_filename = filenames[0]
+        else:
+            logger.warning("More than 1  weight_map_filename found!")
+            
 
-        if os.path.exists(weight_map_filename):
-            logger.info(f"loading {weight_map_filename}")
+        if weight_map_filename is not None and  os.path.exists(weight_map_filename):
+            logger.info(f"loading weight_map {weight_map_filename}")
             
             with open(weight_map_filename, 'r') as f:
                 data = json.load(file)
@@ -533,8 +542,8 @@ class PyStateDictDir(PyStateDictLayer):
                             layer_map.append(k)
                 
         # read layer map if found, otherwise ignore
-        elif  os.path.exists(layer_map_filename):
-            logger.info(f"loading {layer_map_filename}")
+        elif layer_map_filename is not None and os.path.exists(layer_map_filename):
+            logger.info(f"loading layer_map {layer_map_filename}")
             
             with open(layer_map_filename, 'r') as f:
                 layer_map = [line.strip() for line in f]
@@ -566,7 +575,8 @@ class PyStateDictDir(PyStateDictLayer):
             num_layers_yielded = 0
             current_start_id = start_id  # Create a copy of start_id
             
-
+            if format==MODEL_FILE_FORMATS.SAFETENSORS:                    
+                layer_map = PyStateDictDir.get_layer_map(fileglob)
 
             # loop over stat dict files in sort order
             for state_dict_filename in sorted(glob.glob(fileglob)):
@@ -574,9 +584,7 @@ class PyStateDictDir(PyStateDictLayer):
                 
                 if format==MODEL_FILE_FORMATS.SAFETENSORS:
                     from safetensors import safe_open
-                    
-                    layer_map = PyStateDictDir.get_layer_map(state_dict_filename)
-                                    
+                                                        
                     #state_dict = {k: f.get_tensor(k) for k in safe_open(state_dict_filename, framework="pt", device='cpu').keys()}
                     state_dict = {}
                     with safe_open(state_dict_filename, framework="pt", device='cpu') as f:

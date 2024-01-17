@@ -518,7 +518,7 @@ class PyStateDictDir(PyStateDictLayer):
         if len(filenames)==1:
             layer_map_filename = filenames[0]
         else:
-            logger.warning("More than 1  layer_map_filename found!")
+            logger.warning("More than 1  layer_map_filename found! {filenames}")
             
         weight_map = []
         weight_map_filename = None
@@ -526,7 +526,7 @@ class PyStateDictDir(PyStateDictLayer):
         if len(filenames)==1:
             weight_map_filename = filenames[0]
         else:
-            logger.warning("More than 1  weight_map_filename found!")
+            logger.warning("More than 1  weight_map_filename found! {filenames}")
             
 
         if weight_map_filename is not None and  os.path.exists(weight_map_filename):

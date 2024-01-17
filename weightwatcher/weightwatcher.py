@@ -1905,7 +1905,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
         
         for left_layer, right_layer in zip(self.iter_left, self.iter_right):
             
-                logger.info(left_layer.name, right_layer.name)
+                logger.info(f"{left_layer.name} <-> {right_layer.name}")
                 base_name = left_layer.name
                 model_name = right_layer.name
                 
@@ -1916,8 +1916,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
 
                     left_layer = self.iter_left.next()
                     base_name = left_layer.name
-                    logger.info(left_layer.name, right_layer.name)
-                    #print(left_layer.name, right_layer.name)
+                logger.info(f"{left_layer.name} <-> {right_layer.name}")
 
                     
                          

@@ -589,7 +589,7 @@ class PyStateDictDir(PyStateDictLayer):
                     state_dict = {}
                     with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
                         if layer_map is not None and len(layer_map)>0:
-                            if set(layer_map) != set(f.keys()):
+                            if not set(f.keys()).issubset(set(layer_map)):
                                 logger.critical(f"layer_map has different keys than safetensors file!")
                         
                             for layer_name in layer_map:

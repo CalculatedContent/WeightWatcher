@@ -2649,7 +2649,7 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 		self.params = DEFAULT_PARAMS.copy()
 		model_name = f"albert-xxlarge-v2"
 		self.model  = AlbertModel.from_pretrained(model_name)
-		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.INFO)
 		
 	
 			

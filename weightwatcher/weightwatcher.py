@@ -1344,6 +1344,9 @@ class ModelIterator:
                 
         self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
+        self.layer_map = layer_map
+        
+        print(f"maming model Iterator, layer_map = {layer_map}")
         self.model_iter = self.model_iter_(model,start_id,layer_map)
         self.layer_iter = self.make_layer_iter_()            
   
@@ -1453,8 +1456,10 @@ class WWLayerIterator(ModelIterator):
         """
         
         if params is None: params = DEFAULT_PARAMS.copy()
-        super().__init__(model, framework=framework,  params=params)
+        super().__init__(model, framework=framework,  params=params, layer_map=layer_map)
                 
+        self.filters = filters
+        
         self.filter_ids = []
         self.filter_types = []
         self.filter_names = []
@@ -1558,18 +1563,16 @@ class WWLayerIterator(ModelIterator):
     
     
     def make_layer_map(self):
-        """if the layer map is None, 
-        
-           - ask model iterator if it can read it from file  (maybe don't need!_
-           - if not, create by iterating over entire model: easiest idea
+        """ Make a copy of the iterator, iterate over all layers, and make the layer_map
            
-           NEED TO UNIT TEST
-           
+            We use cls=type(self) to allow recreating the iterator from a subclass
         """
-        
+
         if self.layer_map is None:
-            logger.info("making layer map")
-            self.layer_map = [ww_layer.name for ww_layer in self.ww_layer_iter_()]
+            cls = type(self)
+            iter_copy = cls(self.model, self.framework, params=self.params, filters=self.filters, layer_map=None)
+            self.layer_map = [ww_layer.name for ww_layer in   iter_copy.make_layer_iter_()]
+            
     
         return self.layer_map
     
@@ -2021,20 +2024,19 @@ class WWDeltaLayerIterator(WWLayerIterator):
     
     def __init__(self, base_model, base_framework,  model, framework, filters=[], params=None, Iterator_Class=WWLayerIterator):
     
-        print("making WWDeltaLayerIterator ")
         if params is None: params = DEFAULT_PARAMS.copy()
         
         self.iter_left = Iterator_Class(model, framework=framework,   filters=filters, params=params)   
         
+        # warning: this creates a copy of the iterator and iterates over the all layers
         layer_map = self.iter_left.make_layer_map()
-        if layer_map is not None:
-            logger.info(f"Using model layer map, len={len(layer_map)}")
+        if layer_map is not None and len(layer_map)>0:
+            logger.info(f"Using model layer map, num layers={len(layer_map)}")
             
-        # warning: layer ma may be ignored
+        # warning: layer_map may be ignored
         self.iter_right = Iterator_Class(base_model, framework=base_framework,  filters=filters, params=params, layer_map=layer_map)   
         
-
-        super().__init__(model, framework=framework, filters=filters, params=params)   
+        super().__init__(model, framework=framework, filters=filters, params=params, layer_map=layer_map)   
 
 
         
@@ -2050,7 +2052,6 @@ class WWDeltaLayerIterator(WWLayerIterator):
                 # sometimes we need to skip the first (and last) layer 
                 if base_name not in model_name:
                     logger.info(f"Skipping base model {base_name}")
-                   # print(f"Skipping base model {base_name}")
 
                     left_layer = self.iter_left.next()
                     base_name = left_layer.name

@@ -1192,7 +1192,7 @@ class Test_WWFlatFiles(Test_Base):
 		
 		
 
-	def test_ww_layer_iterator(self):
+	def test_ww_layer_iterator_B(self):
 		"""Test that we properly iterate over all ResNet layers = 21"""
 		
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
@@ -1286,8 +1286,27 @@ class Test_PyStateDictDir(Test_WWFlatFiles):
 		return
 	
 	
+
+		
+	def test_get_layer_map_not_found(self):
+		"""the layer_map is None (or empty) if not found"""
+		
+		print(os.listdir(self.model_dir))
+
+		fileglob = f"{self.model_dir}*model*bin"
+		layer_map = ww.weightwatcher.PyStateDictDir.get_layer_map(fileglob)
+		
+		self.assertIsNotNone(layer_map)
+		self.assertEqual(0, len(layer_map))
+
+		return
+			
+		
+	
 	def test_extract_pytorch_bins_on_resnet18(self):
 		pass
+	
+	
 	
 	def test_infer_framework(self):
 		"""Test that we can infer the framework from the directory correctly, WW_FLATFILES"""
@@ -1322,6 +1341,55 @@ class Test_PyStateDictDir(Test_WWFlatFiles):
 		return
 	
 	
+	
+class Test_SafeTensorsDict(Test_Base):
+	""" Test we can read 1 or more safetensors files and access the tensors as if they are stored in a dict """
+
+	@classmethod
+	def setUpClass(cls):
+		"""	Creates a /tmp.ww_weights_dir with the resnet weights extracted
+			Removes the tmp dir when done
+			
+			Assumes that extract_pytorch_bins works properly"""
+					
+		ww.weightwatcher.torch = torch
+		return
+	
+	def setUp(self):
+		print("\n-------------------------------------\nIn Test_SafeTensorsDict:", self._testMethodName)
+		logger = logging.getLogger(WW_NAME) 
+		logger.setLevel(logging.INFO)
+		return
+	
+	
+	def test_SafeTensorsDict(self):
+		"""Makes a tmp dir locally"""
+		
+		state_dict = models.resnet18().state_dict()
+		actual_keys = [k for k in state_dict.keys()]
+		
+		print(actual_keys)
+		model_name = 'resnet18'
+		weights_dir = None
+		
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:
+			
+			print(f"using {model_dir} as model_dir")			
+			state_dict_filename = os.path.join(model_dir, "model.0.safetensors")
+			safe_save(state_dict, state_dict_filename)		
+			
+			fileglob = f"{model_dir}/model*safetensors"
+
+			safetensors_dict =  ww.weightwatcher.SafeTensorDict(fileglob)
+			
+			for key in actual_keys:
+				T = safetensors_dict[key]
+				self.assertIsNotNone(T)
+				
+		return
+		
+		
+		
 
 class Test_SafeTensorsDir(Test_WWFlatFiles):
 	"""Same as Test_WWFlatFiles, but tests for a list of HuggingFace safetensors files"""
@@ -1424,11 +1492,45 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 		
 		return
 	
+	
+	def test_static_read_safetensor_state_dict(self):
+		"""Simply test that we can read the safetensors file here
+		
+		Turns out that safetensors is in sort of order of the names, not in layer order
+		
+		This means, without the order, we can not look at correlation flow or even intra-correlations
+		*(unless the names themselves are ordered)
+		
+		We also need to check if we detect the layers correctly
+		
+		TODO:  look at albert, other models
+		The user will need to reorder these layers themselves or provide us an ordering
+		
+		"""
+		
+		print(f"test_read_safetensors self.model={self.model}")
+		state_dict_filename = glob.glob(f"{self.model}/*safetensors")[0]
+		print(f"state_dict_filename {state_dict_filename}")
+		
+		# why does this fail ?
+		state_dict = ww.weightwatcher.PyStateDictDir.read_safetensor_state_dict(state_dict_filename)
+		
+		expected_num_keys = 122
+		actual_num_keys = len(state_dict)
+		self.assertEquals(expected_num_keys, actual_num_keys)
+		
+		return
+	
+	
 
 	def _get_resnet_fc_layer(self):
 		"""Get the FC layer off the disk from the safetensors file"""
+		print(f"_get_resnet_fc_layer {self.model}")
+		print(os.listdir(self.model))
+
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
 		fc_layer= None
+		print("")
 		for ww_layer in layer_iterator:
 			print(ww_layer.name)
 			if ww_layer.name=='fc':
@@ -1445,7 +1547,9 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 	def test_get_last_layer(self):
 		"""Test that the last layer is the FC layer"""
 		
-		print("test_get_last_layer")
+		print(f"test_get_last_layer for {self.model}")
+		print("files are ",os.listdir(self.model))
+
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
 		num_layers = 0
 		for ww_layer in layer_iterator:
@@ -1455,8 +1559,25 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
 		self.assertEqual('fc', ww_layer.name)
 		# layer id is 40 because we skup batch normlayers
 		self.assertEqual(40, ww_layer.layer_id)
-
+		
 		return	
+	
+	
+		
+	def test_get_layer_map_first(self):
+		"""the layer_map needs to be loaded preferentially even if safetensors.json found """
+		
+		print(os.listdir(self.model_dir))
+		
+		fileglob = f"{self.model_dir}/model*safetensors"
+		layer_map = ww.weightwatcher.PyStateDictDir.get_layer_map(fileglob)
+		self.assertIsNotNone(layer_map)
+		self.assertEqual(122, len(layer_map))
+		
+		return
+		
+		
+
 	
 		
 		
@@ -1494,10 +1615,13 @@ class Test_SafeTensorsDirNoLayerMap(Test_SafeTensorsDir):
 
 		return
 	
+	
 	def test_get_last_layer(self):
 		"""Test that the last layer is the FC layer"""
 		
-		print("test_get_last_layer")
+		print(f"test_get_last_layer {self.model}")
+		print(f"files: {os.listdir(self.model)}")
+
 		layer_iterator = ww.WeightWatcher().make_layer_iterator(self.model)
 		num_layers = 0
 		for ww_layer in layer_iterator:
@@ -1509,7 +1633,79 @@ class Test_SafeTensorsDirNoLayerMap(Test_SafeTensorsDir):
 		self.assertEqual(40, ww_layer.layer_id)
 
 		return	
+	
+	def test_get_layer_map_empty(self):
+		"""the layer_map needs to be loaded preferentially even if safetensors.json found"""
 		
+		print(os.listdir(self.model_dir))
+		
+		fileglob = f"{self.model_dir}/model*safetensors"
+		layer_map = ww.weightwatcher.PyStateDictDir.get_layer_map(fileglob)
+		self.assertIsNotNone(layer_map)
+		self.assertEqual(0, len(layer_map))
+		
+		return
+	
+	
+		
+	def test_get_layer_map_first(self):
+		"""the layer_map needs to be loaded preferentially even if safetensors.json found """
+		
+		pass
+
+
+	def remove_dummy_json(self):
+		print("remove_dummy_json")
+		filename = f"{self.model_dir}/model.safetensors.index.json"
+		os.remove(filename)
+		return
+	
+	def create_dummy_json(self):
+		import json
+		
+		print("create_dummy_json")
+		# Example of weight_map structure, replace with your actual data source
+		weight_map = {
+		    "lm_head.weight": "model.0.safetensors",
+		    "model.layer.0.weight": "model.0.safetensors",
+		   	"model.layer.0.bias": "model.0.safetensors"
+		}
+		
+		# The structure you need
+		data_to_save = {
+		    "weight_map": weight_map
+		}
+		
+		# Convert to JSON
+		index_json = json.dumps(data_to_save, indent=4)
+		
+		# Write to file
+		filename = f"{self.model_dir}/model.safetensors.index.json"
+		with open(filename, 'w') as file:
+		    file.write(index_json)
+		    
+		return
+    
+    
+	# we need to create the json file 
+	def test_get_layer_map_from_safetensors_json(self):
+		"""the layer_map needs to be loaded preferentially"""
+		
+		# make a sample file
+		self.create_dummy_json()
+		
+		print(os.listdir(self.model_dir))
+
+		fileglob = f"{self.model_dir}/model*safetensors"
+		layer_map = ww.weightwatcher.PyStateDictDir.get_layer_map(fileglob)
+		
+		self.assertIsNotNone(layer_map)
+		self.assertEqual(3, len(layer_map)) 
+		
+		self.remove_dummy_json()
+				
+		return
+	
 
 
 		
@@ -2165,7 +2361,7 @@ class Test_DeltaLayerIterator(Test_Base):
 	def setUp(self):
 		print("\n-------------------------------------\nIn Test_DeltaLayerIterator:", self._testMethodName)
 		self.params = DEFAULT_PARAMS.copy()
-		self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
+		self.watcher = ww.WeightWatcher(log_level=logging.INFO)
 		return
 		
 		

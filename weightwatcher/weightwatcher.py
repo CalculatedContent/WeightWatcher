@@ -30,6 +30,10 @@ from copy import deepcopy
 import importlib
 import numbers
 
+import safetensors
+from safetensors import safe_open
+
+
 #
 # this is use to allow editing in Eclipse but also
 # building on the commend line
@@ -42,10 +46,13 @@ from .WW_powerlaw import *
 
 
 # WW_NAME moved to constants.py
+
+# Configure logging
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(WW_NAME) 
 logger.setLevel(logging.WARNING)
+
 
 mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
@@ -397,42 +404,48 @@ class PyStateDictLayer(FrameworkLayer):
 
     
     @staticmethod                  
-    def get_layer_iterator(model_state_dict, start_id=1):
+    def get_layer_iterator(model_state_dict, start_id=1, layer_map=None):
         """model is just a dict, but we need the name of the dict
         
-        start_id = 0 is NOT ok since all counting starts at 1 for this layer"""
+        start_id = 0 is NOT ok since all counting starts at 1 for this layer
+        
+        layer_map = ordered list of keys (layer names in the file)"""
                 
-        def layer_iter_():
-           layer_id = start_id 
+                              
+        def layer_iter_(model_state_dict, layer_map):
+            layer_id = start_id 
+            
+            if layer_map is None or len(layer_map)==0:
+               layer_map = model_state_dict.keys()
 
-           for key in model_state_dict.keys():
-            # Check if the key corresponds to a weight matrix
-            if key.endswith('.weight'):
-                # Extract the weight matrix and layer name
-                weights = model_state_dict[key]
-                layer_name = key[:-len('.weight')]
-                # Check if the layer has a bias vector
-                bias_key = layer_name + '.bias'
-                if bias_key in model_state_dict:
-                    biases = model_state_dict[bias_key]
-                else:
-                    biases = None
-        
-                if type(weights)==torch.Tensor:
-                    """We want to store data in float16, not 32"""
-                    weights = torch_T_to_np(weights.data)
-                    if biases is not None:
-                        biases = torch_T_to_np(biases.data)
-        
-                    
-                # we may need to change this, set valid later
-                # because we want al the layers for describe
-                if weights is not None:
-                    the_layer = PyStateDictLayer(model_state_dict, layer_id, layer_name)
-                    layer_id += 1 # because we always start at 1 , we increment this after, not before
-                    yield the_layer
+            for key in layer_map:
+                # Check if the key corresponds to a weight matrix
+                if key.endswith('.weight'):
+                    # Extract the weight matrix and layer name
+                    weights = model_state_dict[key]
+                    layer_name = key[:-len('.weight')]
+                    # Check if the layer has a bias vector
+                    bias_key = layer_name + '.bias'
+                    if bias_key in model_state_dict:
+                        biases = model_state_dict[bias_key]
+                    else:
+                        biases = None
+            
+                    if type(weights)==torch.Tensor:
+                        """We want to store data in float16, not 32"""
+                        weights = torch_T_to_np(weights.data)
+                        if biases is not None:
+                            biases = torch_T_to_np(biases.data)
+            
+                        
+                    # we may need to change this, set valid later
+                    # because we want al the layers for describe
+                    if weights is not None:
+                        the_layer = PyStateDictLayer(model_state_dict, layer_id, layer_name)
+                        layer_id += 1 # because we always start at 1 , we increment this after, not before
+                        yield the_layer
 
-        return layer_iter_()
+        return layer_iter_(model_state_dict, layer_map)
     
     
     def get_weights_and_biases(self):
@@ -498,11 +511,10 @@ class PyStateDictDir(PyStateDictLayer):
         Note: this is only used as a static class
         
     """
-    
+
     
     @staticmethod
-    def get_layer_map(fileglob):
-        from safetensors import safe_open
+    def get_layer_map(fileglob): 
                 
         # safetensors keys are stored in sort order, not layer order, so we need the ordering
         # so we either need to 
@@ -529,7 +541,17 @@ class PyStateDictDir(PyStateDictLayer):
             logger.warning(f"More than 1  weight_map_filename found! {filenames}")
             
 
-        if weight_map_filename is not None and  os.path.exists(weight_map_filename):
+        # read layer map if found, otherwise ignore
+        if layer_map_filename is not None and os.path.exists(layer_map_filename):
+            logger.info(f"loading layer_map {layer_map_filename}")
+            
+            with open(layer_map_filename, 'r') as f:
+                layer_map = [line.strip() for line in f]
+                
+            if len(layer_map) == 0:
+                logger.critical(f"no layers found in {layer_map_filename}")
+                
+        elif weight_map_filename is not None and  os.path.exists(weight_map_filename):
             logger.info(f"loading weight_map {weight_map_filename}")
             
             with open(weight_map_filename, 'r') as f:
@@ -556,9 +578,27 @@ class PyStateDictDir(PyStateDictLayer):
             
         return layer_map
 
-
+    
     @staticmethod
-    def get_layer_iterator(model_dir, start_id=1):
+    def read_safetensor_state_dict(state_dict_filename):
+        """Reads the entire state dict into memory
+        
+        NOT USED YET """
+        state_dict = {}
+        with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
+            for layer_name in f.keys():
+                state_dict[layer_name] = f.get_tensor(layer_name)
+        return state_dict
+        
+
+    
+    
+    @staticmethod
+    def get_layer_iterator(model_dir, start_id=1, layer_map=None):
+        # TODO:  if layer_map is set, use this ordered
+        # TODO:  find layer in the list of layers provided, skip if layer not found
+        #        notice: we could use layer_map from the other model
+        #        need to skip layers if found
 
         logger.debug(f"Buidling Layer for {model_dir}")    
         if not os.path.exists(model_dir) or not os.path.isdir(model_dir):
@@ -568,51 +608,103 @@ class PyStateDictDir(PyStateDictLayer):
 
         if format not in [MODEL_FILE_FORMATS.SAFETENSORS, MODEL_FILE_FORMATS.PYTORCH]:
              logger.fatal(f"Unknown or unsupporteed model format {format}" )    
-             
+    
         
-        def layer_iter_():
+        def layer_iter_(fileglob, layer_map=None):
             # Track the number of layers already yielded
             num_layers_yielded = 0
             current_start_id = start_id  # Create a copy of start_id
-            
-            if format==MODEL_FILE_FORMATS.SAFETENSORS:                    
+                        
+            if layer_map is None and format==MODEL_FILE_FORMATS.SAFETENSORS:    
+                logger.info(f"Reading layer map from {fileglob}") 
                 layer_map = PyStateDictDir.get_layer_map(fileglob)
+            else:
+                logger.info("Using specified layer map")
+                            
 
             # loop over stat dict files in sort order
-            for state_dict_filename in sorted(glob.glob(fileglob)):
-                logger.info(f"loading {state_dict_filename}")
-                
-                if format==MODEL_FILE_FORMATS.SAFETENSORS:
-                    from safetensors import safe_open
-                                                        
-                    #state_dict = {k: f.get_tensor(k) for k in safe_open(state_dict_filename, framework="pt", device='cpu').keys()}
-                    state_dict = {}
-                    with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
-                        if layer_map is not None and len(layer_map)>0:
-                            if not set(f.keys()).issubset(set(layer_map)):
-                                logger.critical(f"safetensors file has keys not found in the layer_map!")
-                            else:
-                                for layer_name in f.keys():
-                                    state_dict[layer_name] = f.get_tensor(layer_name)
-                        #else:
-                           # 
             
-                    logger.debug(f"Read safetensors: {state_dict_filename}, len={len(state_dict)}")
-                    
-                else:
-                    state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
-                    logger.debug(f"Read pytorch model bin file: {state_dict_filename}, len={len(state_dict)}")
-                
-                # Update the start_id based on the number of layers already yielded
-                current_start_id += num_layers_yielded
-    
-                # Yield individual layers
-                sub_layer_iter = PyStateDictLayer.get_layer_iterator(state_dict, current_start_id)
+            # TODO: open all safetensors files at once
+            # access layers as requested from map 
+            
+            if (layer_map is not None and len(layer_map)>0) and format==MODEL_FILE_FORMATS.SAFETENSORS:
+                fileglob = f"{model_dir}/*model*safetensors"
+                safetensors_dict = SafeTensorDict(fileglob)
+                            
+                current_start_id += num_layers_yielded 
+                sub_layer_iter = PyStateDictLayer.get_layer_iterator(safetensors_dict, start_id = current_start_id, layer_map=layer_map)
                 for layer in sub_layer_iter:
                     num_layers_yielded += 1  # Increment the counter
                     yield layer
+                        
+            
+            elif (layer_map is None or len(layer_map)==0) and format==MODEL_FILE_FORMATS.SAFETENSORS:
+                for state_dict_filename in sorted(glob.glob(fileglob)):
+                    logger.info(f"loading {state_dict_filename}")
+                    state_dict = SafeTensorDict(state_dict_filename)
+                    #with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
+                    #    for layer_name in f.keys():
+                    #        state_dict[layer_name] = f.get_tensor(layer_name)
+                    #logger.info(f"Read safetensors file: {state_dict_filename}, len={len(state_dict)}")
+
+                    # Yield individual layers
+                    current_start_id += num_layers_yielded 
+                    sub_layer_iter = PyStateDictLayer.get_layer_iterator(state_dict, start_id = current_start_id)
+                    for layer in sub_layer_iter:
+                        num_layers_yielded += 1  # Increment the counter
+                        yield layer
+                        
+            else:  # format is PYTORCH BIN 
+                fileglob = f"{model_dir}/*model*bin"
+                for state_dict_filename in sorted(glob.glob(fileglob)):
+                    logger.info(f"loading {state_dict_filename}")
+                    
+                    # is this correct ?
+                    state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
+                    logger.info(f"Read pytorch model bin file: {state_dict_filename}, len={len(state_dict)}")
+                    
+                     # Yield individual layers
+                    current_start_id += num_layers_yielded
+                    sub_layer_iter = PyStateDictLayer.get_layer_iterator(state_dict, start_id = current_start_id)
+                    for layer in sub_layer_iter:
+                        num_layers_yielded += 1  # Increment the counter
+                        yield layer
+                                                            
+            
+            # for state_dict_filename in sorted(glob.glob(fileglob)):
+            #     logger.info(f"loading {state_dict_filename}")
+            #
+            #     if format==MODEL_FILE_FORMATS.SAFETENSORS:
+            #         from safetensors import safe_open
+            #
+            #         #state_dict = {k: f.get_tensor(k) for k in safe_open(state_dict_filename, framework="pt", device='cpu').keys()}
+            #         state_dict = {}
+            #         with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
+            #             if layer_map is not None and len(layer_map)>0:
+            #                 if not set(f.keys()).issubset(set(layer_map)):
+            #                     logger.critical(f"safetensors file has keys not found in the layer_map!")
+            #                 else:
+            #                     for layer_name in f.keys():
+            #                         state_dict[layer_name] = f.get_tensor(layer_name)
+            #             #else:
+            #                # 
+            #
+            #         logger.debug(f"Read safetensors: {state_dict_filename}, len={len(state_dict)}")
+            #
+            #     else:
+            #         state_dict = torch.load(state_dict_filename, map_location=torch.device('cpu'))
+            #         logger.debug(f"Read pytorch model bin file: {state_dict_filename}, len={len(state_dict)}")
+            #
+            #     # Update the start_id based on the number of layers already yielded
+            #     current_start_id += num_layers_yielded
+            #
+            #     # Yield individual layers
+            #     sub_layer_iter = PyStateDictLayer.get_layer_iterator(state_dict, current_start_id)
+            #     for layer in sub_layer_iter:
+            #         num_layers_yielded += 1  # Increment the counter
+            #         yield layer
                                                              
-        return layer_iter_()
+        return layer_iter_(fileglob, layer_map=layer_map)
     
          
     
@@ -1223,7 +1315,7 @@ class ModelIterator:
     
     """
 
-    def __init__(self, model, framework = None, params=None):
+    def __init__(self, model, framework = None, params=None, layer_map=None):
  
         if params is None: params = DEFAULT_PARAMS.copy()
         
@@ -1252,7 +1344,7 @@ class ModelIterator:
                 
         self.channels  = self.set_channels(params.get(CHANNELS_STR))
         
-        self.model_iter = self.model_iter_(model,start_id) 
+        self.model_iter = self.model_iter_(model,start_id,layer_map)
         self.layer_iter = self.make_layer_iter_()            
   
     
@@ -1272,12 +1364,16 @@ class ModelIterator:
         
     
     
-    def model_iter_(self, model, start_id=0):
+    def model_iter_(self, model, start_id=0, layer_map=None):
         """Return a generator for iterating over the layers in the model.  
         Also detects the framework being used. 
         Used by base class and child classes to iterate over the framework layers 
         
-        start_id = 0 is included for back compability; really all counting should start at 1"""
+        start_id = 0 is included for back compability; really all counting should start at 1
+        
+        layer_map used by subclasses for SafeTensors , PyStateDIct
+        
+        """
         layer_iter = None
         
      
@@ -1307,7 +1403,7 @@ class ModelIterator:
             layer_iter = WWFlatFile.get_layer_iterator(config, start_id=start_id) 
              
         elif self.framework == FRAMEWORK.PYSTATEDICT_DIR:
-            layer_iter = PyStateDictDir.get_layer_iterator(model, start_id=start_id) 
+            layer_iter = PyStateDictDir.get_layer_iterator(model, start_id=start_id, layer_map=layer_map)
 
             
         else:
@@ -1348,7 +1444,13 @@ class ModelIterator:
 class WWLayerIterator(ModelIterator):
     """Creates an iterator that generates WWLayer wrapper objects to the model layers"""
 
-    def __init__(self, model, framework, params=None, filters=[]):
+    def __init__(self, model, framework, params=None, filters=[], layer_map=None):
+        """ 
+        This is the base LayerIterator, used for most caclulations
+        
+        layer_map is only used by models where layers can be  accessed by name from a dict (i.e SafeTensors)
+        
+        """
         
         if params is None: params = DEFAULT_PARAMS.copy()
         super().__init__(model, framework=framework,  params=params)
@@ -1356,6 +1458,8 @@ class WWLayerIterator(ModelIterator):
         self.filter_ids = []
         self.filter_types = []
         self.filter_names = []
+        
+        self.layer_map = layer_map
         
         if type(filters) is not list:
             filters = [filters]
@@ -1451,6 +1555,23 @@ class WWLayerIterator(ModelIterator):
                 
     def make_layer_iter_(self):
         return self.ww_layer_iter_()
+    
+    
+    def make_layer_map(self):
+        """if the layer map is None, 
+        
+           - ask model iterator if it can read it from file  (maybe don't need!_
+           - if not, create by iterating over entire model: easiest idea
+           
+           NEED TO UNIT TEST
+           
+        """
+        
+        if self.layer_map is None:
+            logger.info("making layer map")
+            self.layer_map = [ww_layer.name for ww_layer in self.ww_layer_iter_()]
+    
+        return self.layer_map
     
     
     
@@ -1892,17 +2013,27 @@ class WWPeftLayerIterator(WWLayerIterator):
 
 
 class WWDeltaLayerIterator(WWLayerIterator):
-    """combines 2 layer iterators, and iterates over 2 layers"""
+    """ Combines 2 layer iterators, and iterates over 2 layers
+    
+        W_delta := W_model - W_base  (biases currently ignored)
+    
+    """
     
     def __init__(self, base_model, base_framework,  model, framework, filters=[], params=None, Iterator_Class=WWLayerIterator):
     
         print("making WWDeltaLayerIterator ")
         if params is None: params = DEFAULT_PARAMS.copy()
         
-        self.iter_right = Iterator_Class(base_model, framework=base_framework,  filters=filters, params=params)   
         self.iter_left = Iterator_Class(model, framework=framework,   filters=filters, params=params)   
         
-        # we need this to , among other things, set self.layer_iter = make_layer_iter_(self):
+        layer_map = self.iter_left.make_layer_map()
+        if layer_map is not None:
+            logger.info(f"Using model layer map, len={len(layer_map)}")
+            
+        # warning: layer ma may be ignored
+        self.iter_right = Iterator_Class(base_model, framework=base_framework,  filters=filters, params=params, layer_map=layer_map)   
+        
+
         super().__init__(model, framework=framework, filters=filters, params=params)   
 
 
@@ -1923,9 +2054,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
 
                     left_layer = self.iter_left.next()
                     base_name = left_layer.name
-                logger.info(f"{left_layer.name} <-> {right_layer.name}")
-
-                    
+                    logger.info(f"{left_layer.name} <-> {right_layer.name}")                
                          
                 ww_layer = deepcopy(left_layer)
                 
@@ -5411,6 +5540,87 @@ class WeightWatcher:
             logger.fatal(f"Failed to read Keras h5 file {model_filename}. Error: {str(e)}")
             raise  # This will re-raise the caught exception, allowing you to see the full traceback if needed.
         
+        
+
+# TODO;
+#  get weight and bias .. check how we do it internally
+
+class SafeTensorDict(dict):
+    
+    """ Stored N safetensors file handles and access them lazily in any order 
+    Note: layers are usually named name.weight, name.bias  -- this need to be dealt with"""
+    
+    import glob
+    from safetensors import safe_open
+    import logging
+
+    def __init__(self, fileglob, *args, **kwargs):
+        super().__init__(*args, **kwargs)  # Initialize the dict
+        try:
+            self.handles = self.open_safetensor_handles(fileglob)  # Open the handles and store them
+            logging.info(f"SafetensorDict initialized with files: {fileglob}")
+
+        except Exception as e:
+            logging.error(f"Failed to initialize SafetensorDict with files: {fileglob}")
+            raise e
+        
+        for handle in self.handles:
+            for key in handle.keys():
+                self[key] = None  # Populate with keys, values are lazy-loaded
+    
+    @staticmethod
+    def open_safetensor_handles(fileglob):
+        """Read a list of open files"""
+        try:
+            logging.info(f"Opening safetensor handles for files: {fileglob}")
+            handles = []
+            for state_dict_filename in sorted(glob.glob(fileglob)):
+                f = safe_open(state_dict_filename, framework="pt", device='cpu')
+                handles.append(f)
+            return handles
+        except Exception as e:
+            logging.error(f"Failed to open safetensor handles for files: {fileglob}")
+            raise e
+    
+    def close(self):
+        """Close all handles and clean up"""
+        try:
+            self.close_safetensor_handles(self.handles)
+            self.handles = []
+            self.clear()  # Optionally clear the dictionary
+            logging.info("SafetensorDict handles closed and dictionary cleared")
+        except Exception as e:
+            logging.error("Failed to close SafetensorDict handles")
+            raise e
+    
+    @staticmethod
+    def close_safetensor_handles(handles):
+        """Close all handles in the list"""
+        try:
+            for f in handles:
+                f.close()
+            logging.info("Safetensor handles closed successfully")
+        except Exception as e:
+            logging.error("Failed to close safetensor handles")
+            raise e
+    
+    def get_value(self, key):
+        try:
+            value = None
+            for f in self.handles:
+                if key in f.keys():
+                    value = f.get_tensor(key)
+                    return value
+            else:
+                raise KeyError(f"Key {key} not found in safetensors files.")
+        except Exception as e:
+            logging.error(f"Error occurred while getting value for key: {key}")
+            raise e
+    
+    def __getitem__(self, key):
+        return self.get_value(key)
+    
+
         
         
     #

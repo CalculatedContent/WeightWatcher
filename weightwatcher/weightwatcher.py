@@ -2030,6 +2030,7 @@ class WWDeltaLayerIterator(WWLayerIterator):
         
         # warning: this creates a copy of the iterator and iterates over the all layers
         layer_map = self.iter_left.make_layer_map()
+        orint("WWDeltaLayerIterator layer map ", layer_map)
         if layer_map is not None and len(layer_map)>0:
             logger.info(f"Using model layer map, num layers={len(layer_map)}")
             

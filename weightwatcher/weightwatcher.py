@@ -1346,7 +1346,6 @@ class ModelIterator:
         
         self.layer_map = layer_map
         
-        print(f"maming model Iterator, layer_map = {layer_map}")
         self.model_iter = self.model_iter_(model,start_id,layer_map)
         self.layer_iter = self.make_layer_iter_()            
   

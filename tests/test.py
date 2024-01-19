@@ -2724,9 +2724,10 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 		copy_dict = deepcopy(state_dict)
 		
 		for k, w in copy_dict.items():
-			dW = np.ones_like(w)
-			copy_dict[k] += dW
-			print(k, np.linalg.norm(dW))
+			if k.endswith('weight') and 'norm' not in k.lower():
+				dW = np.ones_like(w)
+				copy_dict[k] += dW
+				print("NORM DW",k, np.linalg.norm(dW))
 
 		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:	
 			base_dir = os.path.join(model_dir, "base")
@@ -2758,12 +2759,11 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 			self.assertIsNotNone(details)
 			self.assertEqual(len(base_details), len(details))
 
-			print(details[['layer_id', 'N', 'M']])
-
 			layer_ids = details.layer_id.to_numpy()
-			for layer_id in layer_ids:
-				dW = self.watcher.get_Weights(layer=layer_id)
-				print(layer_id,np.linalg.norm(dW))
+			layer_names = details.name.to_numpy()
+			for layer_id, layer_name in zip(layer_ids,layer_names):
+				dW = self.watcher.get_Weights(layer=layer_id)[0]
+				print(layer_id,layer_name, dW.shape, np.linalg.norm(dW))
 			
 		return		
 				

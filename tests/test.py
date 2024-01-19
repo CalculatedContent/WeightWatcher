@@ -2713,8 +2713,8 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 		from copy import deepcopy
 		
 		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
-		base_details = self.watcher.describe()
-		print(base_details)
+		base_details = self.watcher.describe(min_evals = 20)
+		#print(base_details)
 
 		self.assertIsNotNone(base_details)
 		expected_num_layers = 10
@@ -2723,11 +2723,17 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 		state_dict = self.model.state_dict()
 		copy_dict = deepcopy(state_dict)
 		
+		expected_dW_norms = {}
+		
 		for k, w in copy_dict.items():
-			if k.endswith('weight') and 'norm' not in k.lower():
+			if len(w.shape)==2 and np.min(w.shape)>20:
+			#if k.endswith('weight') and 'norm' not in k.lower():
 				dW = np.ones_like(w)
 				copy_dict[k] += dW
-				print("NORM DW",k, np.linalg.norm(dW))
+				layer_name = k.replace(".weight","")
+				dW_norm =  np.linalg.norm(dW)
+				expected_dW_norms[layer_name] = dW_norm
+				
 
 		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:	
 			base_dir = os.path.join(model_dir, "base")
@@ -2755,16 +2761,24 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 				
 			
 			self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
-			details = self.watcher.describe(model=copy_dir,  base_model=base_dir)
+			details = self.watcher.describe(model=copy_dir,  base_model=base_dir, min_evals = 20)
 			self.assertIsNotNone(details)
 			self.assertEqual(len(base_details), len(details))
 
+			# check that the percent norm of the delta dW = W - W_base is within 0.5%
+			
 			layer_ids = details.layer_id.to_numpy()
 			layer_names = details.name.to_numpy()
 			for layer_id, layer_name in zip(layer_ids,layer_names):
-				dW = self.watcher.get_Weights(layer=layer_id)[0]
-				print(layer_id,layer_name, dW.shape, np.linalg.norm(dW))
-			
+				
+				Ws = self.watcher.get_Weights(layer=layer_id)
+				if Ws is not None and len(Ws)>0:
+					dW = Ws[0]
+					actual_dW_norm = np.linalg.norm(dW)
+					actual_dW_prcnt_diff = 100.0*(actual_dW_norm / expected_dW_norms[layer_name])
+					#print(layer_name, actual_dW_prcnt_diff)
+					self.assertAlmostEqual(100.0, actual_dW_prcnt_diff, delta=0.5)
+					
 		return		
 				
     # state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")

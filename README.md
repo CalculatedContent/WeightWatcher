@@ -40,7 +40,7 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.7.4  (PEFT Release)
+## Installation:  Version 0.7.4.1  (PEFT Release)
 
 ```sh
 pip install weightwatcher
@@ -48,7 +48,7 @@ pip install weightwatcher
 
 if this fails try
 
-### Current TestPyPI Version: 0.7.3.8
+### Current TestPyPI Version: 0.7.4.1
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
@@ -116,7 +116,11 @@ To analyze an PEFT / LORA fine-tuned model, specify the peft option.
  
    ```details = watcher.analyze(peft='peft_only')```
 
-If you want to select by layer_ids, you must first run describe(peft=False), and then select *both* the lora_A and lora_B layers
+The base_model and fine-tuned model must have the same layer names.  And weightwatcher will ignore layers that do not share the same name.
+Also,at this point, biases are not considered.  Finally, both models should be stored in the same format (i.e safetensors)
+
+Note: If you want to select by layer_ids, you must first run describe(peft=False), and then select *both* the lora_A and lora_B layers
+
 
 
 ## Ploting and Fitting the Empirical Spectral Density (ESD)

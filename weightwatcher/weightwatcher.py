@@ -405,20 +405,28 @@ class PyStateDictLayer(FrameworkLayer):
     
     @staticmethod                  
     def get_layer_iterator(model_state_dict, start_id=1, layer_map=None):
+        
+        from copy import deepcopy
         """model is just a dict, but we need the name of the dict
         
         start_id = 0 is NOT ok since all counting starts at 1 for this layer
         
         layer_map = ordered list of keys (layer names in the file)"""
-                
-                              
+                        
         def layer_iter_(model_state_dict, layer_map):
             layer_id = start_id 
             
             if layer_map is None or len(layer_map)==0:
                layer_map = model_state_dict.keys()
-
-            for key in layer_map:
+               
+            has_weight = any(key.endswith(".weight") for key in layer_map)
+            if not has_weight:
+                layer_names = [f"{x}.weight" for x in layer_map]
+            else:
+                layer_names = layer_map
+                
+            for key in layer_names:
+                    
                 # Check if the key corresponds to a weight matrix
                 if key.endswith('.weight'):
                     # Extract the weight matrix and layer name
@@ -619,7 +627,7 @@ class PyStateDictDir(PyStateDictLayer):
                 logger.info(f"Reading layer map from {fileglob}") 
                 layer_map = PyStateDictDir.get_layer_map(fileglob)
             else:
-                logger.info("Using specified layer map")
+                logger.info(f"Using specified layer map")
                             
 
             # loop over stat dict files in sort order
@@ -940,15 +948,19 @@ class WWLayer:
         
         if params is None: params = DEFAULT_PARAMS.copy()
         
-        
         self.framework_layer = framework_layer
         self.layer_id = layer_id  
+        self.skipped = skipped
+        self.is_make_weights = make_weights
+        self.params = params
+
+        
         self.plot_id = framework_layer.plot_id
         self.name = framework_layer.name
         self.longname = framework_layer.longname
 
 
-        self.skipped = skipped
+        
         self.the_type = framework_layer.the_type
         self.framework = framework_layer.framework      
         self.channels = framework_layer.channels
@@ -990,7 +1002,6 @@ class WWLayer:
         # conv2d_fft
         # only applies to Conv2D layers
         # layer, this would be some kind of layer weight options
-        self.params = params
         
         # original dimensions of the weight tensor for this layer
         self.weight_dims = None
@@ -1049,6 +1060,29 @@ class WWLayer:
         return "WWLayer {}  {} {}  skipped {}".format(self.layer_id, self.name,
                                                         self.the_type, self.skipped)
 
+    def copy(self):
+        """Create a shallow copy of WWLayer, sharing the framework_layer with the original."""
+        # Create a new instance with the same properties
+        copied_layer = WWLayer(
+            framework_layer=self.framework_layer,  # Share the same framework_layer
+            layer_id=self.layer_id,
+            skipped=self.skipped,
+            make_weights=self.is_make_weights,
+            params=self.params.copy()  # Assuming params is a dictionary and needs a shallow copy
+        )
+        return copied_layer
+    
+    def __deepcopy__(self, memo):
+        """Custom deep copy implementation for WWLayer."""
+        # Create a new instance with copied properties
+        copied_layer = WWLayer(
+            framework_layer=self.framework_layer, 
+            layer_id=self.layer_id,
+            skipped=self.skipped,
+            make_weights=self.is_make_weights,
+            params=self.params
+        )
+        return copied_layer
 
     
     def make_weights(self):
@@ -2029,7 +2063,6 @@ class WWDeltaLayerIterator(WWLayerIterator):
         
         # warning: this creates a copy of the iterator and iterates over the all layers
         layer_map = self.iter_left.make_layer_map()
-        print("WWDeltaLayerIterator layer map ", layer_map)
         if layer_map is not None and len(layer_map)>0:
             logger.info(f"Using model layer map, num layers={len(layer_map)}")
             

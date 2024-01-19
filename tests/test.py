@@ -2661,7 +2661,7 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 		
 		
 	
-	def test_delta_layer_iterator(self):
+	def test_delta_layer_iterator_0(self):
 		"""Test we can form the deltas between Albert, get zero weights back"""
 
 		delta_iter = self.watcher.make_delta_layer_iterator(base_model=self.model, model=self.model)
@@ -2703,6 +2703,72 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 
 
 		return
+	
+	def test_safetensors_deltas(self):
+		"""Save model to safetensors
+		   save a copy with all W->W+I
+		   check deltas
+		"""
+		
+		from copy import deepcopy
+		
+		self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+		base_details = self.watcher.describe()
+		print(base_details)
+
+		self.assertIsNotNone(base_details)
+		expected_num_layers = 10
+		self.assertEqual(len(base_details),expected_num_layers)
+		
+		state_dict = self.model.state_dict()
+		copy_dict = deepcopy(state_dict)
+		
+		for k, w in copy_dict.items():
+			dW = np.ones_like(w)
+			copy_dict[k] += dW
+			print(k, np.linalg.norm(dW))
+
+		with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:	
+			base_dir = os.path.join(model_dir, "base")
+			os.mkdir(base_dir)
+		
+			state_dict_filename = os.path.join(base_dir, "model.safetensors")
+			safe_save(state_dict, state_dict_filename)
+			
+			files = os.listdir(base_dir)
+			self.assertEqual(1, len(files))	
+			if len(files)>0:
+				self.assertEqual("model.safetensors", files[0])	
+				
+				
+			copy_dir = os.path.join(model_dir, "copy")
+			os.mkdir(copy_dir)
+
+			state_dict_filename = os.path.join(copy_dir, "model.safetensors")
+			safe_save(copy_dict, state_dict_filename)
+			
+			files = os.listdir(copy_dir)
+			self.assertEqual(1, len(files))	
+			if len(files)>0:
+				self.assertEqual("model.safetensors", files[0])	
+				
+			
+			self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
+			details = self.watcher.describe(model=copy_dir,  base_model=base_dir)
+			self.assertIsNotNone(details)
+			self.assertEqual(len(base_details), len(details))
+
+			print(details[['layer_id', 'N', 'M']])
+
+			layer_ids = details.layer_id.to_numpy()
+			for layer_id in layer_ids:
+				dW = self.watcher.get_Weights(layer=layer_id)
+				print(layer_id,np.linalg.norm(dW))
+			
+		return		
+				
+    # state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
+    # torch.save(state_dict, state_dict_filename)
 		
 	# more tests to check for possible bugs
 	

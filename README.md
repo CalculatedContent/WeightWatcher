@@ -121,6 +121,7 @@ Also,at this point, biases are not considered.  Finally, both models should be s
 
 Note: If you want to select by layer_ids, you must first run describe(peft=False), and then select *both* the lora_A and lora_B layers
 
+#### Usage: Base Model
 ![Usage: Base Model](./img/ww0.7.4.jpeg)
 
 

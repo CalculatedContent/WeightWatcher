@@ -689,7 +689,7 @@ class PyStateDictDir(PyStateDictLayer):
             #         state_dict = {}
             #         with safe_open(state_dict_filename, framework="pt", device='cpu') as f:
             #             if layer_map is not None and len(layer_map)>0:
-            #                 if not set(f.keys()).issubset(set(layer_map)):
+            #                 if not set(f.keys()).issubset(not compatble set(layer_map)):
             #                     logger.critical(f"safetensors file has keys not found in the layer_map!")
             #                 else:
             #                     for layer_name in f.keys():
@@ -1549,15 +1549,30 @@ class WWLayerIterator(ModelIterator):
                     logger.debug("keeping layer {} {} by id".format(ww_layer.layer_id, ww_layer.name))
                     ww_layer.skipped = False
 
-
-                
         if self.filter_names is not None and len(self.filter_names) > 0:
-            if ww_layer.name in self.filter_names:
-                logger.debug("keeping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
-                ww_layer.skipped = False
+            
+            # can either remove 1 or names or keep 1 or names, not both
+            bool_list = ["-" in x for x in self.filter_names]
+            
+
+            if not any(bool_list):
+                if ww_layer.name in self.filter_names:
+                    logger.debug("keeping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped = False
+                else:
+                    logger.debug("skipping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped = True
+                
+            elif all(bool_list):
+                if f"-{ww_layer.name}" in self.filter_names:
+                    logger.debug("skipping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped =True
+                else:
+                    logger.debug("keeping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
+                    ww_layer.skipped = False
+                    
             else:
-                logger.debug("skipping layer {} {} by name ".format(ww_layer.layer_id, ww_layer.name))
-                ww_layer.skipped = True
+                logger.critical("Input error, can only specify a list of names to keep or a lsit to skip")
      
         return ww_layer.skipped
     
@@ -2103,7 +2118,9 @@ class WWDeltaLayerIterator(WWLayerIterator):
                             elif W_left.shape == W_right.T.shape:
                                  Wmats.append(W_left -  W_right.T )
                             else: 
-                                logger.fatal(f"W_left.shape, W_right.shape not compatble {W_left.shape } != {W_right.shape }")
+                                logger.warning(f"W_left.shape, W_right.shape not compatable {W_left.shape } != {W_right.shape }")
+                                W_zero = np.zeros_like(W_left)
+                                Wmats.append(W_zero)
                         else:
                             Wmats.append(None)
                     ww_layer.Wmats = Wmats 

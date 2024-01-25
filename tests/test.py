@@ -2780,6 +2780,41 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 					self.assertAlmostEqual(100.0, actual_dW_prcnt_diff, delta=0.5)
 					
 		return		
+	
+	
+		
+	def test_deltas_layer_id_filters(self):
+		"""Save model to safetensors
+		   save a copy with all W->W+I
+		   check deltas
+		"""
+		
+		details = self.watcher.describe(base_model=self.model, model=self.model)
+		self.assertEqual(10, len(details))
+		
+		print(details)
+		details = self.watcher.describe(base_model=self.model, model=self.model, layers=[-2])
+		self.assertEqual(9, len(details))
+		
+		details = self.watcher.describe(base_model=self.model, model=self.model, layers=[3,8])
+		self.assertEqual(2, len(details))
+		
+		details = self.watcher.describe(base_model=self.model, model=self.model, layers=["-Embedding"])
+		self.assertEqual(8, len(details))
+		
+		details = self.watcher.describe(base_model=self.model, model=self.model, layers=["Embedding"])
+		self.assertEqual(2, len(details))
+		
+		details = self.watcher.describe(base_model=self.model, model=self.model, layers=["Embedding", "Linear"])
+		self.assertEqual(10, len(details))
+		
+		# error
+		#details = self.watcher.describe(base_model=self.model, model=self.model, layers=["-Embedding", "Linear"])
+
+
+		return
+	
+		
 				
     # state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")
     # torch.save(state_dict, state_dict_filename)

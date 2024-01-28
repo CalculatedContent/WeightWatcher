@@ -1945,10 +1945,13 @@ class WWPeftLayerIterator(WWLayerIterator):
         Assumes base_layer, lora_a, lora_b are in this order
     
         # TODO:  check names ?
+        
+        PEFT_WITH_BASE => compute the base layer if it can be found
+             (not really supported, legacy code)
     """
     
     def __init__(self, model, framework, params=None, filters=[]):
-        self.peft_only = (params[PEFT]==PEFT_ONLY)
+        self.peft_only = params[PEFT]!=PEFT_WITH_BASE
         super().__init__(model, framework=framework, filters=filters, params=params)   
     
     

@@ -40,7 +40,7 @@ It can be used to:
 
 And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
 
-## Installation:  Version 0.7.4.2  (PEFT Release)
+## Installation:  Version 0.7.4.3  (PEFT Release)
 
 ```sh
 pip install weightwatcher
@@ -48,7 +48,7 @@ pip install weightwatcher
 
 if this fails try
 
-### Current TestPyPI Version: 0.7.4.2
+### Current TestPyPI Version: 0.7.4.3
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
@@ -108,13 +108,14 @@ watcher.distances(model_1, model_2)
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.
 
- - peft = True:  Analyes the base_model, the delta, and the combined layer weight matrices
+ - peft = True:  Forms the BA low rank matric and analyzes the delta layers, with 'lora_BA" tag in name
+ 
+   ```details = watcher.analyze(peft='peft_only')```
+
+ - peft = 'with_base':  Analyes the base_model, the delta, and the combined layer weight matrices.  
  
    ```details = watcher.analyze(peft=True)```
    
- - peft = 'peft_only':  Musch faster, only analyzes the delta
- 
-   ```details = watcher.analyze(peft='peft_only')```
 
 The base_model and fine-tuned model must have the same layer names.  And weightwatcher will ignore layers that do not share the same name.
 Also,at this point, biases are not considered.  Finally, both models should be stored in the same format (i.e safetensors)

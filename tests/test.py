@@ -2457,33 +2457,34 @@ class Test_PeftLayerIterator(Test_Base):
 	#def test_peft_model_availble(self):
 		
 		
-	def test_layer_count_with_peft_true(self):
+	def test_layer_count_with_peft(self):
 		
 		details = self.watcher.describe(peft=True)
-		self.assertEqual(122, len(details))
-		
-	def test_layer_count_with_peft_only(self):
-		
-		details = self.watcher.describe(peft='peft_only')
 		self.assertEqual(24, len(details))
 		
 		
-	def test_layer_count_with_peft_only2(self):
+	def test_layer_count_with_peft_with_base(self):
+		
+		details = self.watcher.describe(peft=PEFT_WITH_BASE)
+		self.assertEqual(122, len(details))
+			
+		
+	def test_layer_lora_A_with_peft(self):
 		"""If we change the peft model, this test can still be used"""
 		
-		details = self.watcher.describe(peft=False)
+		details = self.watcher.describe()
 		expected_len_peft_details = len([x for x in details.longname.to_numpy() if 'lora_A' in x])
 		
-		peft_details = self.watcher.describe(peft='peft_only')
+		peft_details = self.watcher.describe(peft=True)
 		actual_len_peft_details = len(peft_details)
 		
 		self.assertEqual(expected_len_peft_details, actual_len_peft_details)	
 		
 		
 			
-	def test_layer_longnames_with_peft_only(self):
+	def test_layer_longnames_with_peft(self):
 		
-		details = self.watcher.describe(peft='peft_only')
+		details = self.watcher.describe(peft=True)
 		actual_num_longnames_with_BA = len([x for x in details.longname.to_numpy() if 'lora_BA' in x])
 		expected_num_longnames_with_BA = len(details)
 		
@@ -2493,34 +2494,21 @@ class Test_PeftLayerIterator(Test_Base):
 		self.assertEqual(expected_num_longnames_with_BA, actual_num_longnames_with_BA)	
 
 
-	def test_layer_longnames_with_peft_False(self):
-		
-		details = self.watcher.describe(peft='peft_only')
-		expected_num_longnames_with_A = len(details)
-		
-		details = self.watcher.describe(peft=False)
-		actual_num_longnames_with_A_only = len([x for x in details.longname.to_numpy() if 'lora_A' in x])
-		
-		self.assertNotEqual(expected_num_longnames_with_A, 0)
-		self.assertNotEqual(actual_num_longnames_with_A_only, 0)
-				
-		self.assertEqual(expected_num_longnames_with_A, actual_num_longnames_with_A_only)	
 
 
-
-	def test_layer_longnames_with_peft_true(self):
-		
-		details = self.watcher.describe(peft='peft_only')
-		expected_num_longnames_with_BA = len(details)
+	def test_layer_longnames_with_peft_with_base(self):
 		
 		details = self.watcher.describe(peft=True)
+		expected_num_longnames_with_BA = len(details)
+		
+		details = self.watcher.describe(peft=PEFT_WITH_BASE)
 		actual_num_longnames_with_BA = len([x for x in details.longname.to_numpy() if 'lora_BA' in x])
 				
 		self.assertEqual(expected_num_longnames_with_BA, actual_num_longnames_with_BA)	
 		
 		
 			
-	def test_analyze_peft_true(self):
+	def test_analyze_peft_with_base(self):
 		"""
 		
 		Notice we have to specify the layer_uds with the lora_A and lora_B matrices 
@@ -2541,7 +2529,7 @@ class Test_PeftLayerIterator(Test_Base):
 		
 		"""
 
-		peft_details = self.watcher.analyze(peft=True, layers=[15, 19,21])
+		peft_details = self.watcher.analyze(peft=PEFT_WITH_BASE, layers=[15, 19,21])
 		
 	
 		expected_longname_0 = "base_model.model.bert.encoder.layer.0.attention.self.query"

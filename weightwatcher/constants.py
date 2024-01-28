@@ -163,7 +163,8 @@ WEAK_RANK_LOSS_TOLERANCE = 0.000001 # on ei=gen values
 ADD_BIASES = 'add_biases'
 
 DEFAULT_PEFT = False # | True | 'peft' | 'peft_onlu'
-PEFT_ONLY = 'peft_only'
+#PEFT_ONLY = 'peft_only'  #deprcated
+PEFT_WITH_BASE = 'with_base'
 
 
 DEFAULT_START_ID = 0 # this is hard coded to 1 for PyStateDict

@@ -4790,8 +4790,8 @@ class WeightWatcher:
 
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
             if params[SMOOTH]==RMT:
-                logger.fatal("RMT smoothing method removed")
-                #new_W = self.clean_W(old_W) 
+                logger.debug("Keeping top {} singular values".format(num_smooth))
+                new_W = self.smooth_W(old_W, num_smooth) 
             elif num_smooth > 0:
                 logger.debug("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 

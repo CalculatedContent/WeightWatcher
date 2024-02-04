@@ -4650,6 +4650,13 @@ class WeightWatcher:
     #    """Apply pyRMT RIE cleaning method"""
     #    
     #    return pyRMT.optimalShrinkage(W)
+    
+    # TODO:
+    # 1) add return datafrane
+    # 2) add LASER syntatic sugar
+    # 3) change defaul tto detX ?
+    # 4) fix RMT
+     
 
     def SVDSmoothing(self, model=None, percent=0.2, pool=True, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
@@ -4717,6 +4724,10 @@ class WeightWatcher:
                     self.apply_esd(ww_layer, params)
                     self.apply_detX(ww_layer, params)
                     params['num_smooth'] = ww_layer.detX_num
+                elif method==RMT:
+                    self.apply_esd(ww_layer, params)
+                    self.apply_mp_fit(ww_layer, random=False, params=params)
+                    params['num_smooth'] = ww_layer.num_spikes
                 else:
                     params['num_smooth'] = int(percent*ww_layer.M*ww_layer.rf)
                     

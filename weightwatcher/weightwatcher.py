@@ -4647,7 +4647,7 @@ class WeightWatcher:
 
      
 
-    def SVDSmoothing(self, model=None, percent=0.2, pool=True, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):
+    def SVDSmoothing(self, model=None, percent=0.6, pool=True, layers=[], method=DETX, fit=PL, plot=False, start_ids=0):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:

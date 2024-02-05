@@ -48,7 +48,7 @@ pip install weightwatcher
 
 if this fails try
 
-### Current TestPyPI Version: 0.7.4.3
+### Current TestPyPI Version: 0.7.4.6 (SVD Smoothing / LASER Release)
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher

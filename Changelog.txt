@@ -5,9 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.7.4.6]
+## [0.7.4.6]
 LASER release
 Fixed bugs in SVDSmoothing implementation
-changed default to method=SVD, percent=0.8 (very conservative)
+changed default to method=DETX and also  percent=0.8 (very conservative) for any SVD
+also added an AUTO option, which is not working yet (i.e poor results)
 
 ## [0.7.4.3]
 Changed peft=True tp default to only analyzing the lora_BA matrices

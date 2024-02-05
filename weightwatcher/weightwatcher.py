@@ -4731,6 +4731,7 @@ class WeightWatcher:
                 elif method==AUTO:
                     self.apply_esd(ww_layer, params)
                     self.apply_powerlaw(ww_layer, params)
+                    self.apply_detX(ww_layer, params)
                     self.apply_mp_fit(ww_layer, random=False, params=params)
                     alpha = ww_layer.alpha
                     if alpha > 6:

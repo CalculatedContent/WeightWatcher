@@ -3438,7 +3438,7 @@ class Test_VGG11_Base(Test_Base):
 		"""Test the svd smoothing on layer FC2 of VGG"""
 		
 		# 819 =~ 4096*0.2
-		self.watcher.SVDSmoothing(layers=[self.fc2_layer])
+		self.watcher.SVDSmoothing(layers=[self.fc2_layer], method='svd', percent=0.2)
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd > 10**-10])
 		self.assertEqual(num_comps, 819)
@@ -3449,7 +3449,7 @@ class Test_VGG11_Base(Test_Base):
 
 		
 		# 819 =~ 4096*0.2
-		self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer])
+		self.watcher.SVDSmoothing(model=self.model, layers=[self.fc2_layer], method='svd', percent=0.2)
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		self.assertEqual(num_comps, 819)
@@ -3473,7 +3473,7 @@ class Test_VGG11_Base(Test_Base):
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
 		#model = models.vgg11(pretrained=True)
 		
-		self.watcher.SVDSmoothing(layers=[self.fc2_layer], percent=-0.2)
+		self.watcher.SVDSmoothing(layers=[self.fc2_layer], method='svd', percent=-0.2)
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		# 3277 = 4096 - 819
@@ -3490,7 +3490,7 @@ class Test_VGG11_Base(Test_Base):
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
 		#model = models.vgg11(pretrained=True)
 		
-		self.watcher.SVDSmoothing(layers=[self.fc2_layer], percent=0.2)
+		self.watcher.SVDSmoothing(layers=[self.fc2_layer], , method='svd', percent=0.2)
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		# 3277 = 4096 - 819
@@ -4525,7 +4525,7 @@ class Test_Keras(Test_Base):
 		
 		# 819 =~ 4096*0.2
 		
-		smoothed_model = self.watcher.SVDSmoothing(model=self.model, layers=[21])
+		smoothed_model = self.watcher.SVDSmoothing(model=self.model, layers=[21], method='svd', percent=0.2)
 		print(f"smoothed_model {smoothed_model}")
 		esd = self.watcher.get_ESD(layer=21) 
 		num_comps = len(esd[esd>10**-10])

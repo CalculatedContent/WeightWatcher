@@ -4728,6 +4728,15 @@ class WeightWatcher:
                     self.apply_esd(ww_layer, params)
                     self.apply_mp_fit(ww_layer, random=False, params=params)
                     params['num_smooth'] = ww_layer.num_spikes
+                elif method==AUTO:
+                    self.apply_esd(ww_layer, params)
+                    self.apply_powerlaw(ww_layer, params)
+                    self.apply_mp_fit(ww_layer, random=False, params=params)
+                    alpha = ww_layer.alpha
+                    if alpha > 6:
+                        params['num_smooth'] = ww_layer.num_spikes
+                    else:
+                        params['num_smooth'] = ww_layer.detX_num    
                 else:
                     params['num_smooth'] = int(percent*ww_layer.M*ww_layer.rf)
                     
@@ -4789,10 +4798,7 @@ class WeightWatcher:
         logger.info("LAYER TYPE  {} out of {} {} {} ".format(layer_type,LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING))          
 
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
-            if params[SMOOTH]==RMT:
-                logger.debug("Keeping top {} singular values".format(num_smooth))
-                new_W = self.smooth_W(old_W, num_smooth) 
-            elif num_smooth > 0:
+            if num_smooth > 0:
                 logger.debug("Keeping top {} singular values".format(num_smooth))
                 new_W = self.smooth_W(old_W, num_smooth) 
             elif num_smooth < 0:

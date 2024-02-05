@@ -137,6 +137,8 @@ RANDOMIZE = 'randomize'
 SPARSIFY = 'sparsify'
 DETX = 'detX' # compute detx and for smoothing
 LAMBDA_MIN = 'alpha_min' # smoothing
+AUTO = 'auto' # smoothing
+
 
 MIN_EVALS = 'min_evals'
 DEFAULT_MIN_EVALS = 10

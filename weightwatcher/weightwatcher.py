@@ -4738,7 +4738,7 @@ class WeightWatcher:
                     else:
                         self.apply_detX(ww_layer, params)
                         params['num_smooth'] = ww_layer.detX_num   
-                    logger.info(f"SVDSmoothing alpha={alpha:0.2f} num_smooth={num_smooth}")
+                    logger.info(f"SVDSmoothing alpha={alpha:0.2f} num_smooth={params['num_smooth']}")
  
                 else:
                     params['num_smooth'] = int(percent*ww_layer.M*ww_layer.rf)

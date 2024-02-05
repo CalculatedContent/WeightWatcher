@@ -3490,7 +3490,7 @@ class Test_VGG11_Base(Test_Base):
 		# need model here; somehow self.model it gets corrupted by SVD smoothing
 		#model = models.vgg11(pretrained=True)
 		
-		self.watcher.SVDSmoothing(layers=[self.fc2_layer], , method='svd', percent=0.2)
+		self.watcher.SVDSmoothing(layers=[self.fc2_layer], method='svd', percent=0.2)
 		esd = self.watcher.get_ESD(layer=self.fc2_layer) 
 		num_comps = len(esd[esd>10**-10])
 		# 3277 = 4096 - 819

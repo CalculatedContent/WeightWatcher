@@ -4644,18 +4644,7 @@ class WeightWatcher:
         logger.debug("smoothed W {} -> {} n_comp={}".format(W.shape, smoothed_W.shape, n_comp))
 
         return smoothed_W
-    
-    
-    #def clean_W(self, W):
-    #    """Apply pyRMT RIE cleaning method"""
-    #    
-    #    return pyRMT.optimalShrinkage(W)
-    
-    # TODO:
-    # 1) add return datafrane
-    # 2) add LASER syntatic sugar
-    # 3) change defaul tto detX ?
-    # 4) fix RMT
+
      
 
     def SVDSmoothing(self, model=None, percent=0.2, pool=True, layers=[], method=SVD, fit=PL, plot=False, start_ids=0):

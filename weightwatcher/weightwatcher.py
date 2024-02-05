@@ -4731,13 +4731,15 @@ class WeightWatcher:
                 elif method==AUTO:
                     self.apply_esd(ww_layer, params)
                     self.apply_powerlaw(ww_layer, params)
-                    self.apply_detX(ww_layer, params)
-                    self.apply_mp_fit(ww_layer, random=False, params=params)
                     alpha = ww_layer.alpha
                     if alpha > 6:
+                        self.apply_mp_fit(ww_layer, random=False, params=params)
                         params['num_smooth'] = ww_layer.num_spikes
                     else:
-                        params['num_smooth'] = ww_layer.detX_num    
+                        self.apply_detX(ww_layer, params)
+                        params['num_smooth'] = ww_layer.detX_num   
+                    logger.info(f"SVDSmoothing alpha={alpha:0.2f} num_smooth={num_smooth}")
+ 
                 else:
                     params['num_smooth'] = int(percent*ww_layer.M*ww_layer.rf)
                     

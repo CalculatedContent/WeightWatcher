@@ -16,6 +16,9 @@ import numpy as np
 import scipy as sp
 import scipy.stats as stats
 
+from sklearn.decomposition import TruncatedSVD
+
+
 from .constants import *
 from .WW_powerlaw import *
 
@@ -98,6 +101,57 @@ def _svd_values_accurate(W, k):
     S = sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False, solver = 'arpack')
     return S
 
+
+
+def _smooth_W_torch(W, n_comp):
+    """Apply the torch svd_lowrank method to each W, return smoothed W
+    
+    """
+    
+    # Convert W to a torch tensor
+    W_tensor = torch.tensor(W, dtype=torch.float32)
+
+    # Perform SVD low-rank approximation
+    # Note: torch.svd_lowrank returns U, S, Vh such that W ≈ U * diag(S) * Vh
+    U, S, Vh = torch.svd_lowrank(W_tensor, q=n_comp)
+    
+    # Compute the smoothed W using the low-rank approximation
+    smoothed_W_tensor = torch.mm(U, torch.mm(torch.diag(S), Vh))
+    
+    # If the original W has more columns than rows, transpose the result
+    if W.shape[0] < W.shape[1]:
+        smoothed_W_tensor = smoothed_W_tensor.T
+    
+    # Convert the smoothed W back to a NumPy array if necessary
+    smoothed_W = smoothed_W_tensor.numpy()
+    
+    del W_tensor
+
+    return smoothed_W
+
+    
+ 
+# these methods really belong in RMTUtil
+def _smooth_W_accurate(W, n_comp):
+    """Apply the sklearn TruncatedSVD method to each W, return smoothed W
+    
+    """      
+    #TODO; augment with torch 
+    svd = TruncatedSVD(n_components=n_comp, n_iter=7, random_state=42)
+    if W.shape[0]<W.shape[1]:
+        X = svd.fit_transform(W.T)
+        VT = svd.components_
+        smoothed_W = np.dot(X,VT).T     
+
+    else:
+        X = svd.fit_transform(W)
+        VT = svd.components_
+        smoothed_W = np.dot(X,VT)
+    
+    return smoothed_W
+
+
+
 # 
 try:
     import torch
@@ -148,6 +202,12 @@ try:
                 _, S, _ = torch.svd_lowrank(M_cuda, q=k)
             del M_cuda
             return torch_T_to_np_32(S)
+        
+        def _smooth_W_fast(W, k):
+            torch.cuda.empty_cache()
+            with torch.no_grad():
+                resuit = _smooth_W_torch(W, k)
+            return resuit
             
     else:
         msg_svd = "SciPy"
@@ -164,7 +224,8 @@ except ImportError:
     _svd_vals_fast = _svd_vals_accurate
     _svd_lowrank_fast = _svd_lowrank_accurate
     _svd_values_fast =  _svd_values_accurate
-
+    _smooth_W_fast = _smooth_W_accurate
+    
     torch_T_to_np = lambda T: T.to("cpu").float().numpy()
 
     
@@ -186,13 +247,18 @@ def svd_vals(W, method=ACCURATE_SVD):
 
 def svd_lowrank(W, k, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
-    if method == ACCURATE_SVD: return _svd_lowrank_fast(W, k)
-    if method == FAST_SVD:     return _svd_lowrank_accurate(W, k)
+    if method == ACCURATE_SVD: return _svd_lowrank_accurate(W, k)
+    if method == FAST_SVD:     return _svd_lowrank_fast(W, k)
     
 def svd_values(W, k, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
-    if method == ACCURATE_SVD: return _svd_values_fast(W, k)
-    if method == FAST_SVD:     return _svd_values_accurate(W, k)
+    if method == ACCURATE_SVD: return _svd_values_accurate(W, k)
+    if method == FAST_SVD:     return _svd_values_fast(W, k)
+    
+def smooth_W_switch(W, k, method=ACCURATE_SVD):
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
+    if method == ACCURATE_SVD: return _smooth_W_accurate(W, k)
+    if method == FAST_SVD:     return _smooth_W_fast(W, k)
 
 
 

@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import matplotlib.pyplot as plt
-from sklearn.decomposition import TruncatedSVD
+#from sklearn.decomposition import TruncatedSVD
 
 from copy import deepcopy
 import importlib
@@ -4582,6 +4582,13 @@ class WeightWatcher:
         bulk_max = bulk_max/(Wscale*Wscale)
         bulk_min = bulk_min/(Wscale*Wscale)
         return num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale
+    
+    
+    def smooth_W(self, W, n_comp, svd_method=ACCURATE_SVD):
+        
+        smoothed_W = smooth_W_switch(W, n_comp, svd_method)
+        logger.debug("smoothed W {} -> {} n_comp={}".format(W.shape, smoothed_W.shape, n_comp))
+        return smoothed_W
 
         
     def smooth_W_alt(self, W, n_comp, svd_method=ACCURATE_SVD):
@@ -4623,28 +4630,8 @@ class WeightWatcher:
         return smoothed_W
     
     
- 
-    # these methods really belong in RMTUtil
-    def smooth_W(self, W, n_comp):
-        """Apply the sklearn TruncatedSVD method to each W, return smoothed W
         
-        """
                 
-        #TODO; augment with torch 
-        svd = TruncatedSVD(n_components=n_comp, n_iter=7, random_state=42)
-        if W.shape[0]<W.shape[1]:
-            X = svd.fit_transform(W.T)
-            VT = svd.components_
-            smoothed_W = np.dot(X,VT).T     
-
-        else:
-            X = svd.fit_transform(W)
-            VT = svd.components_
-            smoothed_W = np.dot(X,VT)
-        
-        logger.debug("smoothed W {} -> {} n_comp={}".format(W.shape, smoothed_W.shape, n_comp))
-
-        return smoothed_W
 
     # AUTO:  should probably use fix fingers
 

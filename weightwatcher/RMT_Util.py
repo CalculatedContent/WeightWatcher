@@ -84,6 +84,20 @@ def has_cuda():
 """This method is over-written in tourch cuda is available"""
 torch_T_to_np = lambda T: T.to("cpu").float().numpy()
 
+# quick timing test on my mac, 16 eigenvalues
+# ‘arpack’  ~2 sec
+# ‘propack’~ N/A
+# ‘lobpcg’  < 1 sec
+def _svd_lowrank_accurate(W, k):   
+    """returns U, S, Vh"""
+    U, S, Vh = sp.sparse.linalg.svds(W, k=k, return_singular_vectors=True, solver = 'arpack')
+    return U, S, Vh
+
+def _svd_values_accurate(W, k):   
+    """returns S only"""
+    S = sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False, solver = 'arpack')
+    return S
+
 # 
 try:
     import torch
@@ -117,6 +131,24 @@ try:
         def _svd_vals_fast(M):
             S = torch_wrapper(M, lambda M: torch.linalg.svdvals(M))
             return torch_T_to_np_32(S)
+        
+        def _svd_lowrank_fast(M, k):
+            torch.cuda.empty_cache()
+            with torch.no_grad():
+                M_cuda = torch.Tensor(M).to("cuda")
+                U, S, V = torch.svd_lowrank(M_cuda, q=k)
+            del M_cuda
+            return torch_T_to_np_32(U), torch_T_to_np_32(S), torch_T_to_np_32(V)
+        
+        
+        def _svd_values_fast(M, k):
+            torch.cuda.empty_cache()
+            with torch.no_grad():
+                M_cuda = torch.Tensor(M).to("cuda")
+                _, S, _ = torch.svd_lowrank(M_cuda, q=k)
+            del M_cuda
+            return torch_T_to_np_32(S)
+            
     else:
         msg_svd = "SciPy"
         if has_mac_accelerate():
@@ -130,35 +162,37 @@ except ImportError:
     _eig_full_fast = _eig_full_accurate
     _svd_full_fast = _svd_full_accurate
     _svd_vals_fast = _svd_vals_accurate
-    
+    _svd_lowrank_fast = _svd_lowrank_accurate
+    _svd_values_fast =  _svd_values_accurate
+
     torch_T_to_np = lambda T: T.to("cpu").float().numpy()
 
     
 
 def eig_full(W, method=ACCURATE_SVD):
-    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD?
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
     if method == ACCURATE_SVD: return _eig_full_accurate(W)
     if method == FAST_SVD:     return _eig_full_fast(W)
 
 def svd_full(W, method=ACCURATE_SVD):
-    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
     if method == ACCURATE_SVD: return _svd_full_accurate(W)
     if method == FAST_SVD:     return _svd_full_fast(W)
 
 def svd_vals(W, method=ACCURATE_SVD):
-    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method #TODO TRUNCATED_SVD
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
     if method == ACCURATE_SVD: return _svd_vals_accurate(W)
     if method == FAST_SVD:     return _svd_vals_fast(W)
 
-
-# quick timing test on my mac, 16 eigenvalues
-# ‘arpack’  ~2 sec
-# ‘propack’~ N/A
-# ‘lobpcg’  < 1 sec
-def svd_vals_truncated(W, k):   
-    return sp.sparse.linalg.svds(W, k=k, return_singular_vectors=False, solver = 'arpack')
-
-
+def svd_lowrank(W, k, method=ACCURATE_SVD):
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
+    if method == ACCURATE_SVD: return _svd_lowrank_fast(W, k)
+    if method == FAST_SVD:     return _svd_lowrank_accurate(W, k)
+    
+def svd_values(W, k, method=ACCURATE_SVD):
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
+    if method == ACCURATE_SVD: return _svd_values_fast(W, k)
+    if method == FAST_SVD:     return _svd_values_accurate(W, k)
 
 
 

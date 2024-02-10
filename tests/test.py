@@ -5164,7 +5164,108 @@ class Test_Pandas(Test_Base):
 
 
 
-		
+
+
+class Test_SVDLowrank(unittest.TestCase):
+
+    def setUp(self):
+        """
+        Setup that runs before each test.
+        """
+        # Setup logging, random seed, or other necessary components
+        np.random.seed(0)  # Ensure reproducible results
+
+    def test_svd_lowrank_accurate(self):
+        """
+        Test the 'accurate' low-rank SVD method.
+        """
+        W = np.random.random((10, 10))  # Create a random matrix
+        k = 9  # Target rank , must be ~10 for eror to be small
+
+        # Assuming 'ACCURATE_SVD' and 'FAST_SVD' are defined constants for selecting the method
+        U, S, Vh = RMT_Util.svd_lowrank(W, k, method=ACCURATE_SVD)
+
+        # Verify the dimensions of the decomposition
+        self.assertEqual(U.shape, (10, k), "U matrix has incorrect shape")
+        self.assertEqual(S.shape, (k,), "S vector has incorrect length")
+        self.assertEqual(Vh.shape, (k, 10), "Vh matrix has incorrect shape")
+        
+        # Verify that the approximation error is within acceptable bounds
+        W_approx = np.dot(U, np.dot(np.diag(S), Vh))
+        error = np.linalg.norm(W - W_approx)
+        self.assertTrue(error < 0.1, "Accurate low-rank SVD approximation error is too high")
+
+    def test_svd_lowrank_fast(self):
+        """
+        Test the 'fast' low-rank SVD method, assuming CUDA is available.
+        """
+        W = np.random.random((10, 10))  # Create a random matrix
+        k = 9  # Target rank
+
+        # This test assumes CUDA is available; you might need to skip this test if CUDA is not available
+        if not RMT_Util.has_cuda():
+            self.skipTest("CUDA not available")
+
+        U, S, Vh = RMT_Util.svd_lowrank(W, k, method=FAST_SVD)
+
+        # Verify the dimensions of the decomposition
+        self.assertEqual(U.shape, (10, k), "U matrix has incorrect shape")
+        self.assertEqual(S.shape, (k,), "S vector has incorrect length")
+        self.assertEqual(Vh.shape, (k, 10), "Vh matrix has incorrect shape")
+
+        # Verify that the approximation error is within acceptable bounds
+        W_approx = np.dot(U, np.dot(np.diag(S), Vh))
+        error = np.linalg.norm(W - W_approx)
+        self.assertTrue(error < 0.1, "Fast low-rank SVD approximation error is too high")
+        
+
+
+
+    def test_svd_values_accurate(self):
+        """
+        Test the 'accurate' low-rank SVD method.
+        """
+        W = np.random.random((10, 10))  # Create a random matrix
+        k = 9  # Target rank , must be ~10 for eror to be small
+
+        # Assuming 'ACCURATE_SVD' and 'FAST_SVD' are defined constants for selecting the method
+        S = RMT_Util.svd_values(W, k, method=ACCURATE_SVD)
+        self.assertEqual(S.shape, (k,), "S vector has incorrect length")
+       
+
+    def test_svd_values_fast(self):
+        """
+        Test the 'fast' low-rank SVD method, assuming CUDA is available.
+        """
+        W = np.random.random((10, 10))  # Create a random matrix
+        k = 9  # Target rank
+
+        # This test assumes CUDA is available; you might need to skip this test if CUDA is not available
+        if not RMT_Util.has_cuda():
+            self.skipTest("CUDA not available")
+
+    	# Assuming 'ACCURATE_SVD' and 'FAST_SVD' are defined constants for selecting the method
+        S = RMT_Util.svd_values(W, k, method=FAST_SVD)
+        self.assertEqual(S.shape, (k,), "S vector has incorrect length")
+
+
+    def test_value_errors(self):
+        """
+        Test that a bad input gives a value error
+        """
+        W = np.random.random((4,4))  # Create a random matrix
+        k = 9  # Target rank
+        
+        
+        with self.assertRaises(ValueError):
+            U, S, Vh = RMT_Util.svd_lowrank(W, k)
+        
+
+        with self.assertRaises(ValueError):
+            S = RMT_Util.svd_values(W, k)
+        
+        
+
 		
 if __name__ == '__main__':
 	unittest.main()

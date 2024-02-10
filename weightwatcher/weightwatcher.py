@@ -2646,7 +2646,7 @@ class WeightWatcher:
             
             # if peft, need to use Truncated SVD
             if (params[PEFT] and n_comp < M) or (n_comp < M):
-                sv = svd_vals_truncated(W, k=n_comp)
+                sv = svd_values(W, k=n_comp)
                 sv = sv.flatten()
                 sv = np.sort(sv)
             else:
@@ -4630,6 +4630,7 @@ class WeightWatcher:
         
         """
                 
+        #TODO; augment with torch 
         svd = TruncatedSVD(n_components=n_comp, n_iter=7, random_state=42)
         if W.shape[0]<W.shape[1]:
             X = svd.fit_transform(W.T)
@@ -4645,7 +4646,7 @@ class WeightWatcher:
 
         return smoothed_W
 
-     
+    # AUTO:  should probably use fix fingers
 
     def SVDSmoothing(self, model=None, percent=0.8, pool=True, layers=[], method=DETX, fit=PL, plot=False, start_ids=0):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues

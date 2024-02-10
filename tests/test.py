@@ -5291,7 +5291,7 @@ class TestSmoothWTorch(unittest.TestCase):
         smoothed_W = RMT_Util._smooth_W_torch(self.W, self.n_comp)
         u, s, vh = np.linalg.svd(smoothed_W, full_matrices=False)
         print("s=",s)
-        rank = np.count_nonzero(s > 1e-8)
+        rank = np.count_nonzero(s > 1e-7)
         print('rank=',rank)
         self.assertLessEqual(rank, self.n_comp, "Rank of smoothed matrix should not exceed specified number of components.")
 

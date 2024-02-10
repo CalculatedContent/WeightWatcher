@@ -5300,29 +5300,29 @@ class TestSmoothWTorch(unittest.TestCase):
         difference_norm = np.linalg.norm(self.W - smoothed_W, ord='fro')
         self.assertLess(difference_norm, 0.75, "Smoothed matrix should approximate the original matrix within a reasonable error.")
 
-	def test_smooth_W_torch_singular_values(self):
-		"""Test that the top N singular values of smoothed_W match those of the original W."""
-		smoothed_W = RMT_Util.norm(self.W, self.n_comp)
-		# Compute the singular values of the original and smoothed matrices
-		original_singular_values = np.linalg.svd(self.W, compute_uv=False)
-		smoothed_singular_values = np.linalg.svd(smoothed_W, compute_uv=False)
-		
-		print(original_singular_values)
-		print(smoothed_singular_values)
-		
-		# Compare the top N singular values
-		np.testing.assert_almost_equal(
-			original_singular_values[:self.n_comp],
-			smoothed_singular_values[:self.n_comp],
-			decimal=6,
-			err_msg="Top N singular values of smoothed_W do not match those of the original W"
-		)
-		
-		# Check that the remaining singular values are near zero
-		# Assuming a numerical tolerance for what is considered "zero"
-		tolerance = 1e-10
-		self.assertTrue(np.all(smoothed_singular_values[self.n_comp:] < tolerance),
-					"Not all remaining singular values are near zero")
+    def test_smooth_W_torch_singular_values(self):
+	"""Test that the top N singular values of smoothed_W match those of the original W."""
+	smoothed_W = RMT_Util.norm(self.W, self.n_comp)
+	# Compute the singular values of the original and smoothed matrices
+	original_singular_values = np.linalg.svd(self.W, compute_uv=False)
+	smoothed_singular_values = np.linalg.svd(smoothed_W, compute_uv=False)
+	
+	print(original_singular_values)
+	print(smoothed_singular_values)
+	
+	# Compare the top N singular values
+	np.testing.assert_almost_equal(
+	        original_singular_values[:self.n_comp],
+		smoothed_singular_values[:self.n_comp],
+		decimal=6,
+		err_msg="Top N singular values of smoothed_W do not match those of the original W"
+	)
+	
+	# Check that the remaining singular values are near zero
+	# Assuming a numerical tolerance for what is considered "zero"
+	tolerance = 1e-10
+	self.assertTrue(np.all(smoothed_singular_values[self.n_comp:] < tolerance),
+	        "Not all remaining singular values are near zero")
 
 
 

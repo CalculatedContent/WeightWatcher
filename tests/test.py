@@ -5300,7 +5300,6 @@ class TestSmoothWTorch(unittest.TestCase):
         difference_norm = np.linalg.norm(self.W - smoothed_W, ord='fro')
         self.assertLess(difference_norm, 0.75, "Smoothed matrix should approximate the original matrix within a reasonable error.")
 
-
 	def test_smooth_W_torch_singular_values(self):
 		"""Test that the top N singular values of smoothed_W match those of the original W."""
 		smoothed_W = RMT_Util.norm(self.W, self.n_comp)

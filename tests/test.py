@@ -5303,7 +5303,7 @@ class TestSmoothWTorch(unittest.TestCase):
     def test_smooth_W_torch_singular_values(self):
         """Test that the top N singular values of smoothed_W match those of the original W."""
         
-        smoothed_W = RMT_Util.norm(self.W, self.n_comp)
+        smoothed_W = RMT_Util._smooth_W_torch(self.W, self.n_comp)
         
         # Compute the singular values of the original and smoothed matrices
         original_singular_values = np.linalg.svd(self.W, compute_uv=False)

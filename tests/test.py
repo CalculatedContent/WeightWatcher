@@ -5310,11 +5310,10 @@ class TestSmoothWTorch(unittest.TestCase):
         smoothed_singular_values = np.linalg.svd(smoothed_W, compute_uv=False)
         
         # Compare the top N singular values
-        # for torch, need smaller threshold
         np.testing.assert_almost_equal(
             original_singular_values[:self.n_comp],
             smoothed_singular_values[:self.n_comp],
-            decimal=4,
+            decimal=6,
             err_msg="Top N singular values of smoothed_W do not match those of the original W"
         )
         

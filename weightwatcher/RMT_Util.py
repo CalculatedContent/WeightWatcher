@@ -123,15 +123,16 @@ def _smooth_W_torch(W, n_comp):
         smoothed_W_tensor = smoothed_W_tensor.T
     
     # Convert the smoothed W back to a NumPy array if necessary
-    smoothed_W = smoothed_W_tensor.numpy()
+    # not using half...need to check this
+    smoothed_W = smoothed_W_tensor.float().numpy()
     
     del W_tensor
 
     return smoothed_W
 
     
- 
-# these methods really belong in RMTUtil
+
+
 def _smooth_W_accurate(W, n_comp):
     """Apply the sklearn TruncatedSVD method to each W, return smoothed W
     
@@ -149,6 +150,8 @@ def _smooth_W_accurate(W, n_comp):
         smoothed_W = np.dot(X,VT)
     
     return smoothed_W
+
+_smooth_W_numpy = _smooth_W_accurate
 
 
 

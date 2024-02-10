@@ -5249,7 +5249,7 @@ class Test_SVDLowrank(unittest.TestCase):
         self.assertEqual(S.shape, (k,), "S vector has incorrect length")
 
 
-    def test_errors(self):
+    def test_value_errors(self):
         """
         Test that a bad input gives a  error
         """
@@ -5264,6 +5264,125 @@ class Test_SVDLowrank(unittest.TestCase):
             S = RMT_Util.svd_values(W, k)
 
 
+
+
+
+class TestSmoothWTorch(unittest.TestCase):
+    def setUp(self):
+        self.W = np.random.rand(10, 5)  # Example random matrix
+        self.n_comp = 3  # Number of components for low-rank approximation
+
+        # Skip tests if CUDA is not available
+        if not torch.cuda.is_available():
+            self.skipTest("CUDA not available")
+
+    def test_smooth_W_torch_shape(self):
+        """Test that the smoothed matrix has the correct shape."""
+        smoothed_W = RMT_Util._smooth_W_torch(self.W, self.n_comp)
+        self.assertEqual(smoothed_W.shape, self.W.shape, "Smoothed matrix should have the same shape as input matrix.")
+
+    def test_smooth_W_torch_type(self):
+        """Test that the output is a numpy array."""
+        smoothed_W = RMT_Util._smooth_W_torch(self.W, self.n_comp)
+        self.assertIsInstance(smoothed_W, np.ndarray, "Output should be a numpy array.")
+
+    def test_smooth_W_torch_rank(self):
+        """Test that the rank of the smoothed matrix does not exceed the specified number of components."""
+        smoothed_W = RMT_Util._smooth_W_torch(self.W, self.n_comp)
+        u, s, vh = np.linalg.svd(smoothed_W, full_matrices=False)
+        rank = np.sum(s > 1e-10)
+        print('rank=',rank)
+        self.assertLessEqual(rank, self.n_comp, "Rank of smoothed matrix should not exceed specified number of components.")
+
+    def test_smooth_W_torch_values(self):
+        """Optionally, test certain properties of values, like approximation error."""
+        smoothed_W = RMT_Util._smooth_W_torch(self.W, self.n_comp)
+        difference_norm = np.linalg.norm(self.W - smoothed_W, ord='fro')
+        self.assertLess(difference_norm, 0.75, "Smoothed matrix should approximate the original matrix within a reasonable error.")
+
+
+	def test_smooth_W_torch_singular_values(self):
+		"""Test that the top N singular values of smoothed_W match those of the original W."""
+		smoothed_W = RMT_Util.norm(self.W, self.n_comp)
+		# Compute the singular values of the original and smoothed matrices
+		original_singular_values = np.linalg.svd(self.W, compute_uv=False)
+		smoothed_singular_values = np.linalg.svd(smoothed_W, compute_uv=False)
+		
+		print(original_singular_values)
+		print(smoothed_singular_values)
+	
+		# Compare the top N singular values
+		np.testing.assert_almost_equal(
+			original_singular_values[:self.n_comp],
+			smoothed_singular_values[:self.n_comp],
+			decimal=6,
+			err_msg="Top N singular values of smoothed_W do not match those of the original W"
+		)
+	
+		# Check that the remaining singular values are near zero
+		# Assuming a numerical tolerance for what is considered "zero"
+		tolerance = 1e-10
+		self.assertTrue(np.all(smoothed_singular_values[self.n_comp:] < tolerance),
+						"Not all remaining singular values are near zero")
+
+
+
+class TestSmoothWNumpy(unittest.TestCase):
+    def setUp(self):
+        self.W = np.random.rand(10, 5)  # Example random matrix
+        self.n_comp = 3  # Number of components for low-rank approximation
+
+    def test_smooth_W_numpy_shape(self):
+        """Test that the smoothed matrix has the correct shape."""
+        smoothed_W = RMT_Util._smooth_W_numpy(self.W, self.n_comp)
+        self.assertEqual(smoothed_W.shape, self.W.shape, "Smoothed matrix should have the same shape as input matrix.")
+
+    def test_smooth_W_numpy_type(self):
+        """Test that the output is a numpy array."""
+        smoothed_W = RMT_Util._smooth_W_numpy(self.W, self.n_comp)
+        self.assertIsInstance(smoothed_W, np.ndarray, "Output should be a numpy array.")
+
+    def test_smooth_W_numpy_rank(self):
+        """Test that the rank of the smoothed matrix does not exceed the specified number of components."""
+        smoothed_W = RMT_Util._smooth_W_numpy(self.W, self.n_comp)
+        u, s, vh = np.linalg.svd(smoothed_W, full_matrices=False)
+        rank = np.sum(s > 1e-10)
+        print('rank=',rank)
+        self.assertLessEqual(rank, self.n_comp, "Rank of smoothed matrix should not exceed specified number of components.")
+        self.assertEqual(rank, self.n_comp)
+
+    def test_smooth_W_numpy_values(self):
+        """Optionally, test certain properties of values, like approximation error."""
+        smoothed_W = RMT_Util._smooth_W_numpy(self.W, self.n_comp)
+        difference_norm = np.linalg.norm(self.W - smoothed_W, ord='fro')
+        print("difference_norm=", difference_norm)
+        self.assertLess(difference_norm, 0.75, "Smoothed matrix should approximate the original matrix within a reasonable error.")
+       
+        
+    def test_smooth_W_numpy_singular_values(self):
+	    """Test that the top N singular values of smoothed_W match those of the original W."""
+	    smoothed_W = RMT_Util._smooth_W_numpy(self.W, self.n_comp)
+	    # Compute the singular values of the original and smoothed matrices
+	    original_singular_values = np.linalg.svd(self.W, compute_uv=False)
+	    smoothed_singular_values = np.linalg.svd(smoothed_W, compute_uv=False)
+	    
+	    print(original_singular_values)
+	    print(smoothed_singular_values)
+	
+	    # Compare the top N singular values
+	    np.testing.assert_almost_equal(
+	        original_singular_values[:self.n_comp],
+	        smoothed_singular_values[:self.n_comp],
+	        decimal=6,
+	        err_msg="Top N singular values of smoothed_W do not match those of the original W"
+	    )
+	
+		# Check that the remaining singular values are near zero
+	    # Assuming a numerical tolerance for what is considered "zero"
+	    tolerance = 1e-10
+	    self.assertTrue(np.all(smoothed_singular_values[self.n_comp:] < tolerance),
+	                    "Not all remaining singular values are near zero")
+		    
 
 		
 if __name__ == '__main__':

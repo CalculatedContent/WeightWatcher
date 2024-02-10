@@ -113,10 +113,10 @@ def _smooth_W_torch(W, n_comp):
 
     # Perform SVD low-rank approximation
     # Note: torch.svd_lowrank returns U, S, Vh such that W ≈ U * diag(S) * Vh
-    U, S, Vh = torch.svd_lowrank(W_tensor, q=n_comp)
+    U, S, V = torch.svd_lowrank(W_tensor, q=n_comp)
     
     # Compute the smoothed W using the low-rank approximation
-    smoothed_W_tensor = torch.mm(U, torch.mm(torch.diag(S), Vh))
+    smoothed_W_tensor = torch.mm(U, torch.mm(torch.diag(S), V.T))
     
     # If the original W has more columns than rows, transpose the result
     if W.shape[0] < W.shape[1]:

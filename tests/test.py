@@ -5310,7 +5310,7 @@ class TestSmoothWTorch(unittest.TestCase):
 		
 		print(original_singular_values)
 		print(smoothed_singular_values)
-	
+		
 		# Compare the top N singular values
 		np.testing.assert_almost_equal(
 			original_singular_values[:self.n_comp],
@@ -5318,12 +5318,12 @@ class TestSmoothWTorch(unittest.TestCase):
 			decimal=6,
 			err_msg="Top N singular values of smoothed_W do not match those of the original W"
 		)
-	
+		
 		# Check that the remaining singular values are near zero
 		# Assuming a numerical tolerance for what is considered "zero"
 		tolerance = 1e-10
 		self.assertTrue(np.all(smoothed_singular_values[self.n_comp:] < tolerance),
-						"Not all remaining singular values are near zero")
+					"Not all remaining singular values are near zero")
 
 
 

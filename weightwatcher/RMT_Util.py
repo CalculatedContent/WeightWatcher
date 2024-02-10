@@ -138,7 +138,7 @@ try:
                 M_cuda = torch.Tensor(M).to("cuda")
                 U, S, V = torch.svd_lowrank(M_cuda, q=k)
             del M_cuda
-            return torch_T_to_np_32(U), torch_T_to_np_32(S), torch_T_to_np_32(V)
+            return torch_T_to_np_32(U), torch_T_to_np_32(S), torch_T_to_np_32(V).T
         
         
         def _svd_values_fast(M, k):

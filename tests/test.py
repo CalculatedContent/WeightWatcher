@@ -5249,22 +5249,29 @@ class Test_SVDLowrank(unittest.TestCase):
         self.assertEqual(S.shape, (k,), "S vector has incorrect length")
 
 
-    def test_value_errors(self):
+    def test_errors(self):
         """
-        Test that a bad input gives a value error
+        Test that a bad input gives a  error
         """
         W = np.random.random((4,4))  # Create a random matrix
         k = 9  # Target rank
         
-        
-        with self.assertRaises(ValueError):
-            U, S, Vh = RMT_Util.svd_lowrank(W, k)
-        
+        if not RMT_Util.has_cuda():
+	        with self.assertRaises(ValueError):
+	            U, S, Vh = RMT_Util.svd_lowrank(W, k)
+	        
+	
+	        with self.assertRaises(ValueError):
+	            S = RMT_Util.svd_values(W, k)
 
-        with self.assertRaises(ValueError):
-            S = RMT_Util.svd_values(W, k)
         
-        
+        else:
+        	with self.assertRaises(AssertionError):
+	            U, S, Vh = RMT_Util.svd_lowrank(W, k)
+	        
+	
+	        with self.assertRaises(AssertionError):
+	            S = RMT_Util.svd_values(W, k)
 
 		
 if __name__ == '__main__':

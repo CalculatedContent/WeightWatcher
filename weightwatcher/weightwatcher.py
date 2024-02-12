@@ -4587,7 +4587,7 @@ class WeightWatcher:
     def smooth_W(self, W, n_comp, svd_method=ACCURATE_SVD):
         
         smoothed_W = smooth_W_switch(W, n_comp, svd_method)
-        logger.debug("smoothed W {} -> {} n_comp={}".format(W.shape, smoothed_W.shape, n_comp))
+        logger.info("smoothed W {} -> {} n_comp={} with {}".format(W.shape, smoothed_W.shape, n_comp, svd_method))
         return smoothed_W
 
         

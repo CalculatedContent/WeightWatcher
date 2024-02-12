@@ -4660,7 +4660,7 @@ class WeightWatcher:
         params[PLOT] = False
         params[START_IDS] = start_ids
 
-        params[START_IDS] = svd_method
+        params[SVD_METHOD] = svd_method
 
 
         if not pool:

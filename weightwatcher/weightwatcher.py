@@ -4585,13 +4585,14 @@ class WeightWatcher:
     
     
     def smooth_W(self, W, n_comp, svd_method):
-        
+        logger.info(f"SMOOTH W {svd_method}")
+
         smoothed_W = smooth_W_switch(W, n_comp, svd_method)
         logger.info("smoothed W {} -> {} n_comp={} with {}".format(W.shape, smoothed_W.shape, n_comp, svd_method))
         return smoothed_W
 
         
-    def smooth_W_alt(self, W, n_comp, svd_method=ACCURATE_SVD):
+    def smooth_W_alt(self, W, n_comp, svd_method):
         """Apply the SVD Smoothing Transform to W
         if n_comp < 0, then chomp off the top n_comp eiganvalues
         """       

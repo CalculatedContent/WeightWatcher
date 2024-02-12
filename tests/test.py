@@ -5383,8 +5383,21 @@ class TestSmoothWNumpy(unittest.TestCase):
             "Not all remaining singular values are near zero")
             
 
+#class TestSVDSmoothingOnAlbert(unittest.TestCase):
 
 
+
+
+    
+
+# TODO
+#  - ***test svd smoothing directly with interface on MLP / ALBERT models***
+#    this is good enough for first blog 
+#
+#- - implement safetensors save smoothed model
+#  - implement entropy selection .. harder
+#
+#
 #         
 if __name__ == '__main__':
     unittest.main()

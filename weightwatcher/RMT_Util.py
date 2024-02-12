@@ -108,6 +108,7 @@ def _smooth_W_torch(W, n_comp):
     
     """
     
+    print("_smooth_W_torch")
     # Convert W to a torch tensor
     W_tensor = torch.tensor(W, dtype=torch.float32)
 
@@ -138,6 +139,10 @@ def _smooth_W_accurate(W, n_comp):
     
     """      
     #TODO; augment with torch 
+    
+    print("_smooth_W_accurate")
+
+
     svd = TruncatedSVD(n_components=n_comp, n_iter=7, random_state=42)
     if W.shape[0]<W.shape[1]:
         X = svd.fit_transform(W.T)

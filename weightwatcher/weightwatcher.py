@@ -4636,7 +4636,7 @@ class WeightWatcher:
 
     # AUTO:  should probably use fix fingers
 
-    def SVDSmoothing(self, model=None, percent=0.8, pool=True, layers=[], method=DETX, fit=PL, plot=False, start_ids=0):
+    def SVDSmoothing(self, model=None, percent=0.8, pool=True, layers=[], method=DETX, fit=PL, plot=False, start_ids=0, svd_method=FAST_SVD):
         """Apply the SVD Smoothing Transform to model, keeping (percent)% of the eigenvalues
         
         layers:
@@ -4660,7 +4660,9 @@ class WeightWatcher:
         params[PLOT] = False
         params[START_IDS] = start_ids
 
-        
+        params[START_IDS] = svd_method
+
+
         if not pool:
             msg = "only pooling (not ww2x) is supported yet for SVDSmoothness, ending"
             logger.error(msg)

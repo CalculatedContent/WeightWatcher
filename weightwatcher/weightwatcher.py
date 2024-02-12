@@ -4780,7 +4780,7 @@ class WeightWatcher:
         if layer_type in [LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D, LAYER_TYPE.EMBEDDING]:
             if num_smooth > 0:
                 logger.debug("Keeping top {} singular values".format(num_smooth))
-                new_W = self.smooth_W(old_W, num_smooth) 
+                new_W = self.smooth_W(old_W, num_smooth, svd_method=params[SVD_METHOD])
             elif num_smooth < 0:
                 logger.debug("Chomping off top {} singular values".format(-num_smooth))
                 new_W = self.smooth_W_alt(old_W, num_smooth, svd_method=params[SVD_METHOD])
@@ -4816,7 +4816,7 @@ class WeightWatcher:
                     for j in range(j_max):                         
                         if num_smooth > 0:
                             logger.debug("Keeping top {} singular values".format(num_smooth))
-                            new_W[i,j,:,:] = self.smooth_W(old_W[i,j,:,:], num_smooth)
+                            new_W[i,j,:,:] = self.smooth_W(old_W[i,j,:,:], num_smooth, svd_method=params[SVD_METHOD])
                         elif num_smooth < 0:
                             logger.debug("Chomping off top {} singular values".format(-num_smooth))
                             new_W[i,j,:,:] = self.smooth_W_alt(old_W[i,j,:,:], num_smooth, svd_method=params[SVD_METHOD])
@@ -4833,7 +4833,7 @@ class WeightWatcher:
                     for j in range(j_max):   
                         if num_smooth > 0:
                             logger.debug("Keeping top {} singular values".format(num_smooth))
-                            new_W[:,:,i,j] = self.smooth_W(old_W[:,:,i,j], num_smooth)
+                            new_W[:,:,i,j] = self.smooth_W(old_W[:,:,i,j], num_smooth, svd_method=params[SVD_METHOD])
                         elif num_smooth < 0:
                             logger.debug("Chomping off top {} singular values".format(-num_smooth))
                             new_W[:,:,i,j] = self.smooth_W_alt(old_W[:,:,i,j], num_smooth, svd_method=params[SVD_METHOD])

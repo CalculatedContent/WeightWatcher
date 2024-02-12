@@ -4584,7 +4584,7 @@ class WeightWatcher:
         return num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale
     
     
-    def smooth_W(self, W, n_comp, svd_method=ACCURATE_SVD):
+    def smooth_W(self, W, n_comp, svd_method):
         
         smoothed_W = smooth_W_switch(W, n_comp, svd_method)
         logger.info("smoothed W {} -> {} n_comp={} with {}".format(W.shape, smoothed_W.shape, n_comp, svd_method))

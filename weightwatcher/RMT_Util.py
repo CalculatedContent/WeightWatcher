@@ -225,8 +225,10 @@ try:
         logger.warning(f"PyTorch is available but CUDA is not. Defaulting to {msg_svd} for SVD")
         raise ImportError()
     
-except ImportError:
+except ImportError as e:
     # if torch / cuda are not available, default to scipy
+    logger.warning(f"Import error {str(e)}, reetting to svd accurate methods")
+
     _eig_full_fast = _eig_full_accurate
     _svd_full_fast = _svd_full_accurate
     _svd_vals_fast = _svd_vals_accurate

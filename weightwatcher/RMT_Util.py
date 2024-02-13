@@ -108,14 +108,12 @@ def _smooth_W_torch(W, n_comp):
     
     """
     
-    print("_smooth_W_torch")
     # Convert W to a torch tensor
     W_tensor = torch.tensor(W, dtype=torch.float32)
 
     # Perform SVD low-rank approximation
     # Note: torch.svd_lowrank returns U, S, Vh such that W ≈ U * diag(S) * Vh
     U, S, V = torch.svd_lowrank(W_tensor, q=n_comp)
-    print(S)
     # Compute the smoothed W using the low-rank approximation
     smoothed_W_tensor = torch.mm(U, torch.mm(torch.diag(S), V.T))
     
@@ -138,10 +136,6 @@ def _smooth_W_accurate(W, n_comp):
     """Apply the sklearn TruncatedSVD method to each W, return smoothed W
     
     """      
-    #TODO; augment with torch 
-    
-    print("_smooth_W_accurate")
-
 
     svd = TruncatedSVD(n_components=n_comp, n_iter=7, random_state=42)
     if W.shape[0]<W.shape[1]:

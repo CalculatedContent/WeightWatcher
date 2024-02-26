@@ -168,6 +168,9 @@ DEFAULT_PEFT = False # | True | 'peft' | 'peft_onlu'
 #PEFT_ONLY = 'peft_only'  #deprcated
 PEFT_WITH_BASE = 'with_base'
 
+INVERSE = 'inverse'
+
+
 
 DEFAULT_START_ID = 0 # this is hard coded to 1 for PyStateDict
     
@@ -181,7 +184,7 @@ DEFAULT_PARAMS = {GLOROT_FIX: False, NORMALIZE:False, CONV2D_NORM:True, RANDOMIZ
                   SPARSIFY: True, DETX: True,  MP_FIT:False,
                   MIN_EVALS:DEFAULT_MIN_EVALS, MAX_EVALS:DEFAULT_MAX_EVALS, MAX_N:DEFAULT_MAX_N,
                   TOLERANCE:WEAK_RANK_LOSS_TOLERANCE, START_IDS:DEFAULT_START_ID, ADD_BIASES:False, XMIN_MAX:None,
-                  PL_PACKAGE:DEFAULT_POWERLAW_PACKAGE, XMAX:DEFAULT_XMAX, PEFT:DEFAULT_PEFT}
+                  PL_PACKAGE:DEFAULT_POWERLAW_PACKAGE, XMAX:DEFAULT_XMAX, PEFT:DEFAULT_PEFT, INVERSE:False}
 
 
 EVALS_THRESH =1e-5
@@ -220,6 +223,8 @@ ONNX = 'onnx'
 WW_FLATFILES = "ww_flatfiles"
 PYTORCH = "pytorch"
 SAFETENSORS = "safetensors"
+
+
 
 # class FRAMEWORK(IntFlag):
 #     UNKNOWN = auto()

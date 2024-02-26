@@ -2668,13 +2668,18 @@ class WeightWatcher:
             #    evals = evals / N
     
             all_evals.extend(evals)
+            
+            if params[INVERSE]:
+               all_evals = 1.0/np.array(all_evals)
+            else:
+               all_evals = np.array(all_evals)
     
             max_sv = np.max([max_sv, np.max(sv)])
             min_sv = np.max([min_sv, np.min(sv)])
 
             rank_loss = rank_loss + calc_rank_loss(sv, N)      
     
-        return np.sort(np.array(all_evals)), max_sv, min_sv, rank_loss
+        return np.sort(all_evals), max_sv, min_sv, rank_loss
             
             
     def apply_normalize_Wmats(self, ww_layer, params=None):
@@ -2767,7 +2772,7 @@ class WeightWatcher:
     
         Wmats = ww_layer.Wmats
         n_comp = ww_layer.num_components
-                        
+                                
         evals, sv_max, sv_min, rank_loss = self.combined_eigenvalues(Wmats, N, M, n_comp, params)
         
         if params[TOLERANCE]:
@@ -3200,7 +3205,8 @@ class WeightWatcher:
                 pl_package=WW_POWERLAW_PACKAGE,
                 xmax=DEFAULT_XMAX,
                 base_model=None,
-                peft = DEFAULT_PEFT
+                peft = DEFAULT_PEFT,
+                inverse = False
                 ):
         """
         Analyze the weight matrices of a model.
@@ -3340,6 +3346,8 @@ class WeightWatcher:
             used for analyzing fine-tuned LLMs, or just looking at the deltas (i.e from init) during training
             
         peft: set to True if using an PEFT / LORA fine-tuned model
+        
+        inverse:  compute the inverse ESD 
            
         """
 
@@ -3401,6 +3409,7 @@ class WeightWatcher:
         params[XMAX] = xmax
         
         params[PEFT] = peft
+        params[INVERSE] = inverse
 
 
             
@@ -3769,6 +3778,14 @@ class WeightWatcher:
         #    logger.warning(f"{FIX_FINGERS} ignores xmax = {xmax}" )
         #    valid = True
             
+            
+        inverse = params[INVERSE]
+        if inverse:
+            for theParam in [VECTORS, DETX]:
+                print(theParam, params[theParam])
+                if params[theParam]:
+                    logger.fatal(f"Sorry, the {theParam} option is not yet available when using inverse=True")
+                    valid = False
                 
         return valid
     
@@ -3891,8 +3908,13 @@ class WeightWatcher:
                 else:
                     evals = sv * sv 
                 all_evals.extend(evals)
+                
+        if params[INVERSE]:
+            all_evals = 1.0/np.array(all_evals)
+        else:
+            all_evals = np.array(all_evals)
                                        
-        return np.sort(np.array(all_evals))
+        return np.sort(all_evals)
    
     def plot_random_esd(self, ww_layer, params=None):
         """Plot histogram and log histogram of ESD and randomized ESD"""

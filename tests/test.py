@@ -229,6 +229,48 @@ class Test_ValidParams(Test_Base):
 
         return
     
+    
+    
+    def test_inverse(self):
+        """Test we can inverse option types"""
+        
+        params = DEFAULT_PARAMS.copy()
+        params[VECTORS]=False
+        params[DETX]=False
+        
+        params[INVERSE]=False
+        valid = ww.WeightWatcher.valid_params(params)
+        self.assertTrue(valid)
+        
+        params[INVERSE]=True
+        valid = ww.WeightWatcher.valid_params(params)
+        self.assertTrue(valid)
+        
+        
+        params = DEFAULT_PARAMS.copy()
+        params[INVERSE]=True
+        params[VECTORS]=False
+        params[DETX]=True
+        valid = ww.WeightWatcher.valid_params(params)
+        self.assertFalse(valid)
+        
+
+        params = DEFAULT_PARAMS.copy()
+        params[INVERSE]=True
+        params[DETX]=False
+        params[VECTORS]=True
+        valid = ww.WeightWatcher.valid_params(params)
+        self.assertFalse(valid)
+        
+        
+        params = DEFAULT_PARAMS.copy()
+        params[INVERSE]=False
+        params[DETX]=True
+        params[VECTORS]=True
+        valid = ww.WeightWatcher.valid_params(params)
+        self.assertTrue(valid)
+        
+        return
 
 
 

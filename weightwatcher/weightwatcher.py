@@ -3781,7 +3781,7 @@ class WeightWatcher:
             
         inverse = params[INVERSE]
         if inverse:
-            for theParam in [VECTORS, DETX]:
+            for theParam in [VECTORS]:
                 if params[theParam]:
                     logger.fatal(f"Sorry, the {theParam} option is not yet available when using inverse=True")
                     valid = False

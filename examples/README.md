@@ -9,7 +9,7 @@ Basic functionality
 <hr>
 
 #### Addtional Examples
-[WeightWatcher-Example](https://github.com/CalculatedContent/WeightWatcher-Examples)
+[WeightWatcher-Examplea](https://github.com/CalculatedContent/WeightWatcher-Examples)
 
 
 <hr>

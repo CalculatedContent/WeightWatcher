@@ -2667,7 +2667,10 @@ class WeightWatcher:
             #if normalize:
             #    evals = evals / N
     
-            all_evals.extend(evals)
+            #all_evals.extend(evals)
+            # hacked this to fix bug
+            all_evals = np.concatenate((np.array(all_evals), np.array(evals)))
+
             
             if params[INVERSE]:
                all_evals = 1.0/np.array(all_evals)

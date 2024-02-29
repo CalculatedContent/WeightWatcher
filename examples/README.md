@@ -8,6 +8,12 @@ Basic functionality
 
 <hr>
 
+#### Addtional Examples
+[WeightWatcher-Example](https://github.com/CalculatedContent/WeightWatcher-Examples)
+
+
+<hr>
+
 #### Aopplications for LLMs / Transformer Models
 
 [WW-BERT-BlogExample.ipynb](WW-BERT-BlogExample.ipynb):\

@@ -26,6 +26,54 @@ from .WW_powerlaw import *
 logger = logging.getLogger(WW_NAME)
 
 
+# def has_mac_accelerate():
+#     """Check if the platform is the MAC M1/M2 and numpy is using the accelerate library.
+#     If so, numpy SVD will be faster than linalg SVD, and we auto-switch to that upon import
+#
+#     Note: """
+#
+#     import platform
+#     import warnings
+#
+#     use_linalg = False
+#     mac_arch = platform.machine()
+#     if mac_arch == 'arm64':
+#
+#         with warnings.catch_warnings():
+#             warnings.filterwarnings("ignore",category=DeprecationWarning)
+#             import numpy.distutils.system_info as sysinfo
+#             info = sysinfo.get_info('accelerate')
+#             if info is not None and len(info)>0:
+#                 for x in info['extra_link_args']:
+#                     if 'Accelerate' in x:
+#                         use_linalg = True
+#
+#     return use_linalg
+
+
+
+def check_accelerate():
+    # Check if running on macOS
+    import ctypes
+    import platform
+    has_accelerate= False
+    if platform.system() == 'Darwin':
+        print("Running on macOS.")
+        try:
+            # Attempt to load the Accelerate framework
+            # This does not guarantee NumPy uses it, but suggests it's available
+            _ = ctypes.cdll.LoadLibrary('/System/Library/Frameworks/Accelerate.framework/Accelerate')
+            logger.info("Accelerate framework is loadable, suggesting it's available.")
+            has_accelerate= True
+
+        except OSError:
+            logger.warning("Accelerate framework is not loadable on this system.")
+    else:
+        logger.info("Not running on macOS, Accelerate framework is not applicable.")
+
+    return  has_accelerate
+
+    
 def has_mac_accelerate():
     """Check if the platform is the MAC M1/M2 and numpy is using the accelerate library.
     If so, numpy SVD will be faster than linalg SVD, and we auto-switch to that upon import
@@ -38,18 +86,8 @@ def has_mac_accelerate():
     use_linalg = False
     mac_arch = platform.machine()
     if mac_arch == 'arm64':
-    
-        with warnings.catch_warnings():
-            warnings.filterwarnings("ignore",category=DeprecationWarning)
-            import numpy.distutils.system_info as sysinfo
-            info = sysinfo.get_info('accelerate')
-            if info is not None and len(info)>0:
-                for x in info['extra_link_args']:
-                    if 'Accelerate' in x:
-                        use_linalg = True
+        return check_accelerate()
                         
-    return use_linalg
-    
 
 
 # PyTorch has 2 separate SVD methods, one for the vals, and one for the factorization

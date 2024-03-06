@@ -48,7 +48,7 @@ pip install weightwatcher
 
 if this fails try
 
-### Current TestPyPI  Version 0.7.5.1
+### Current TestPyPI  Version 0.7.5.2
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher

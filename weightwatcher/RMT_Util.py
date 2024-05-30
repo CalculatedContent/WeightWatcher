@@ -1094,11 +1094,11 @@ def jensen_shannon_distance(p, q):
 
 
 def rescale_eigenvalues(evals):
-    """Rescale eigenvalues by their Frobenius Norm"""
+    """Rescale eigenvalues by their Norm to N"""
     
-    M = len(evals)
+    N = len(evals)
     Wnorm = np.sqrt(np.sum(evals))
-    Wscale = np.sqrt(M)/Wnorm
+    Wscale = np.sqrt(N)/Wnorm
     evals = (Wscale*Wscale)*evals
     
     return evals, Wscale  

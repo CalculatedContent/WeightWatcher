@@ -12,6 +12,73 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+'''
+=====================================================================================================================
+This file defines constants, enums, and global variables used by the WeightWatcher module. Let's break down its content:
+1. Constants and Global Variables
+WW_NAME: The name of the WeightWatcher module.
+ERROR: Represents an error code, usually -1.
+DEF_SAVE_DIR: The default directory for saving figures, "ww-img".
+LAYERS: Key used in configuration dictionaries for specifying layer filters.
+START_IDS: Key for setting the starting layer ID counter (0 or 1).
+TRUNCATED_SVD, ACCURATE_SVD, FAST_SVD, SVD_METHOD: Constants related to singular value decomposition (SVD) methods.
+VALID_SVD_METHODS: List of valid SVD methods.
+XMIN_PEAK, XMIN_MAX, CLIP_XMAX, MAX_FINGERS, DEFAULT_MAX_FINGERS: Constants for handling "finger" issues in power law fits.
+SVD, RMT: Constants for SVD-based smoothing methods.
+FIT, PL, POWER_LAW, PL_PACKAGE, POWERLAW_PACKAGE, WW_POWERLAW_PACKAGE, WW_POWERLAW: Constants related to power law fitting and the package used (either powerlaw or ww).
+WW_CONFIG_FILENAME: The name of the configuration file for PyTorch state dictionaries ("ww_config.json").
+PYTORCH, TENSORFLOW: Framework names.
+XMAX, XMAX_FORCE, FORCE, DEFAULT_XMAX: Constants related to the maximum eigenvalue range for power law fits.
+TPL, TRUNCATED_POWER_LAW, FIX_FINGERS, E_TPL: Constants related to truncated power law fitting and finger fixing.
+LOG_NORMAL, EXPONENTIAL: Other potential distributions for fitting.
+EUCLIDEAN, CKA, RAW: Distance calculation methods.
+SUCCESS, FAILED, OVER_TRAINED, UNDER_TRAINED, OVER_TRAINED_THRESH, UNDER_TRAINED_THRESH: Constants for representing analysis status and over/under-training indicators.
+UNKNOWN: Represents an unknown value.
+GLOROT_FIX, NORMALIZE: Flags for applying Glorot normalization or general normalization.
+SAVEFIG, SAVEDIR: Keys for saving figures and specifying the save directory.
+DELTA_ES, INTRA, FFT, CONV2D_NORM, CONV2D_FFT, FINGER_THRESH, DEFAULT_FINGER_THRESH: Flags and constants for various analysis and transformation options.
+GLOROT_FIT: Flag for applying Glorot normalization.
+WW2X, POOL: Deprecated constants; POOL is the replacement for WW2X.
+PEFT: Flag for handling PEFT/LoRA models.
+VECTORS, SMOOTH, MP_FIT: Flags for analyzing eigenvectors, smoothing, and performing MP fitting.
+DEFAULT_WW2X, DEFAULT_POOL: Default values for WW2X and POOL.
+RESCALE, RANDOMIZE, SPARSIFY, DETX, LAMBDA_MIN, AUTO: Constants related to rescaling, randomization, sparsification, and SVD smoothing methods.
+MIN_EVALS, DEFAULT_MIN_EVALS, MIN_NUM_EVALS, MAX_EVALS, DEFAULT_MAX_EVALS, MAX_NUM_EVALS, MAX_N, DEFAULT_MAX_N: Constants for specifying minimum and maximum numbers of eigenvalues.
+PLOT, STACKED: Flags for enabling plotting and stacked analysis.
+CHANNELS_STR, FIRST, LAST: Keys and values for handling channel order.
+TOLERANCE, WEAK_RANK_LOSS_TOLERANCE: Tolerance values for rank loss computations.
+ADD_BIASES: Flag for adding biases.
+DEFAULT_PEFT, PEFT_WITH_BASE: Default and specific values for handling PEFT/LoRA models.
+INVERSE: Flag for computing the inverse ESD.
+DEFAULT_START_ID: Default starting layer ID.
+DEFAULT_PARAMS: Dictionary of default parameter settings.
+EVALS_THRESH, EPSILON, EVALS_HALF_THRESH, HALF_EPSILON: Thresholds and epsilon values used in precision computations.
+2. Enums
+LAYER_TYPE: Enum for representing different layer types.
+FRAMEWORK: Enum for representing deep learning frameworks.
+CHANNELS: Enum for representing channel order.
+METHODS: Enum for representing analysis methods (DESCRIBE or ANALYZE).
+MODEL_FILE_FORMATS: Enum for representing different model file formats.
+METRICS: Enum for representing different metrics calculated.
+XMIN: Enum for representing different options for setting the minimum eigenvalue.
+3. Layer Types
+LAYER_TYPES_SUPPORTED: List of supported layer types.
+4. Framework Names
+KERAS, KERAS_H5_FILE, PYTORCH, PYSTATEDICT, ONNX, WW_FLATFILES, SAFETENSORS: String representations of framework names.
+5. Channel Order
+CHANNELS: Enum for handling channel order.
+6. Analysis Methods
+METHODS: Enum for representing analysis methods.
+7. Model File Formats
+MODEL_FILE_FORMATS: Enum for representing different model file formats.
+8. Metrics
+METRICS: Enum for representing calculated metrics.
+9. Minimum Eigenvalue Options
+XMIN: Enum for minimum eigenvalue settings.
+In essence, this file provides a comprehensive set of constants, enums, and global variables that organize the information and functionality of the WeightWatcher module. These elements ensure consistency and readability within the module's code.
+
+=====================================================================================================================================================================================================================================================
+'''
 
 from enum import IntFlag, auto, Enum
 

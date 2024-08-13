@@ -1,3 +1,38 @@
+
+'''
+====================================================================================================================================================
+This Python file defines a custom power law fitting class (WWFit) and functions for interacting with the powerlaw package. Let's break down the code:
+1. Imports and Configuration
+Imports: The code imports essential libraries:
+io for string manipulation.
+warnings to control warning handling.
+contextlib for redirecting output streams.
+sys for system-level settings.
+powerlaw for power law fitting.
+numpy for numerical operations.
+constants for importing relevant constants from the WeightWatcher module.
+supported_distributions: A dictionary mapping distribution names to their corresponding classes from the powerlaw package.
+Logging: The code sets up a logger named WW_NAME (defined in the constants module).
+2. WWFit Class
+Purpose: This class provides a custom wrapper around the powerlaw.Fit class, simplifying the power law fitting process.
+Constructor:
+Initializes attributes like data, xmin, xmax, distribution, N, xmins.
+Fits the data to the specified distribution (currently only supports POWER_LAW).
+Methods:
+fit_power_law: Fits the data to a power law distribution using a custom method for calculating alpha and D.
+__getattr__: Allows accessing attributes from the powerlaw classes using the same syntax as powerlaw.Fit.
+plot_pdf: Plots the probability density function (PDF) of the data.
+plot_power_law_pdf: Plots the PDF of the fitted power law distribution.
+distribution_compare: Compares the current distribution with another distribution using powerlaw.loglikelihood_ratio.
+3. Helper Functions
+pl_fit: A wrapper function that either uses the custom WWFit class for power law fitting or the powerlaw.Fit class for other distributions, depending on the pl_package argument. It also handles potential warnings and output redirection during the fitting process.
+pl_compare: A wrapper function that compares two distributions using the powerlaw.Fit.distribution_compare method, handling warnings and output redirection.
+4. Global Variable
+Fit: Alias for the WWFit class, making it easier to use.
+In summary, this file provides a custom power law fitting class and helper functions that streamline the power law analysis process while also managing warnings and output redirection. This approach makes the code more user-friendly and consistent with the powerlaw package's interface.
+===============================================================================================================================================================================================================================================================================================
+'''
+
 import io
 
 # for powerlaw warnings

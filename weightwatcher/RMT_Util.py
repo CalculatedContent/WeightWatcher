@@ -1,3 +1,68 @@
+'''
+===========================================================================================================================================================================================================================================
+This Python file contains utility functions for Random Matrix Theory (RMT) analysis, focusing on eigenvalue calculations, fitting power laws, and analyzing eigenvector localization. It's a crucial component of the WeightWatcher module.
+Let's break down the key elements:
+1. Imports and Configuration
+Imports: It imports several libraries:
+logging for logging messages.
+copy for making copies of objects.
+pickle for serialization.
+time for time measurements.
+shutil for file operations.
+sys, os for system interactions.
+warnings for controlling warnings.
+powerlaw for power law fitting.
+scipy for scientific computing.
+sklearn.decomposition for truncated SVD.
+matplotlib.pyplot for plotting.
+constants from the WeightWatcher module.
+WW_powerlaw from the WeightWatcher module.
+Logging: It sets up a logger named WW_NAME.
+2. Functions Related to SVD and Eigenvalue Calculation
+check_accelerate: Checks if the Accelerate framework is loadable on macOS.
+has_mac_accelerate: Checks if the platform is macOS with Accelerate framework, potentially switching to NumPy's SVD for speed.
+has_cuda: Checks for CUDA availability.
+torch_T_to_np: Converts PyTorch tensors to NumPy arrays, using half precision if CUDA is available.
+_svd_lowrank_accurate, _svd_values_accurate: Functions for performing low-rank SVD using SciPy's sparse.linalg.svds method.
+_smooth_W_torch, _smooth_W_accurate, _smooth_W_numpy: Functions for smoothing weight matrices using truncated SVD with different methods (Torch, SciPy, or NumPy).
+_eig_full_fast, _svd_full_fast, _svd_vals_fast, _svd_lowrank_fast, _svd_values_fast, _smooth_W_fast: Functions for performing SVD and eigenvalue calculations using optimized methods, potentially leveraging CUDA.
+eig_full, svd_full, svd_vals, svd_lowrank, svd_values, smooth_W_switch: Wrapper functions that choose the appropriate SVD method based on the method argument.
+3. Functions Related to Matrix Properties
+matrix_rank: Calculates the matrix rank using singular values.
+calc_rank_loss: Computes the rank loss based on singular values.
+matrix_entropy: Calculates the matrix entropy using singular values.
+4. Functions Related to RMT Distributions
+marchenko_pastur_pdf, quarter_circle_pdf: Functions for generating the Marchenko-Pastur and Quarter-Circle distributions.
+calc_sigma, calc_lambda_plus, calc_lambda_minus: Functions for calculating relevant RMT parameters.
+get_Q: Calculates the aspect ratio of a matrix.
+hard_rank: Calculates the matrix rank using a specific tolerance.
+get_shuffled_eigenvalues: Generates shuffled eigenvalues for a matrix.
+5. Functions for Plotting and Visualization
+plot_density_and_fit: Plots a histogram of eigenvalues and fits a Marchenko-Pastur or Quarter-Circle distribution.
+plot_density: Plots the density of eigenvalues and fits a theoretical distribution.
+plot_loghist: Plots a histogram on a log scale.
+6. Functions for Matrix Manipulation
+permute_matrix, unpermute_matrix: Functions for permuting a matrix in a reversible way.
+shuf_matrix: Shuffles the elements of a matrix.
+7. Functions for Power Law Fitting
+mu4alpha: Calculates a specific value for alpha.
+best_dist: Determines the best distribution fit for a power law.
+fit_density, fit_density_with_range: Functions for fitting the ESD to a Marchenko-Pastur distribution.
+fit_clipped_powerlaw: Fits a power law, clipping off eigenvalues until a satisfactory fit is found, potentially removing "fingers" in the distribution.
+8. Other Functions
+jensen_shannon_distance: Calculates the Jensen-Shannon distance between two probability distributions.
+rescale_eigenvalues, un_rescale_eigenvalues: Functions for rescaling and unrescaling eigenvalues.
+detX_constraint: Identifies the number of eigenvalues necessary to satisfy the det(X)=1 constraint.
+combine_weights_and_biases: Combines weight matrices and biases.
+line_entropy: Calculates the entropy of a 1D function.
+spike_min, spike_lmax: Functions related to spike analysis.
+9. Utility Functions
+save_fig: Saves a Matplotlib figure.
+Overall, this file provides a collection of powerful tools for analyzing the spectral properties of weight matrices in deep learning models. It encompasses various functions for calculating eigenvalues, fitting power laws, analyzing eigenvector localization, and visualizing results.
+==========================================================================================================================================================================================================================================================================================
+'''
+
+
 # -*- coding: utf-8 -*-
 import logging
 from copy import deepcopy

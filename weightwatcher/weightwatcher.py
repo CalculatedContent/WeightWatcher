@@ -137,7 +137,6 @@ class FrameworkLayer:
     #@abc.abstractmethod:
     def replace_layer_weights(self, W, B=None):
         pass
-  
 
     
     
@@ -171,6 +170,11 @@ class KerasLayer(FrameworkLayer):
         
         elif isinstance(layer, keras.layers.Conv2D) or 'conv2d' in typestr:             
            the_type = LAYER_TYPE.CONV2D
+        #
+        # elif isinstance(layer, keras.layers.Bidirectional) or 'bidirectional' in typestr:             
+        #    the_type = LAYER_TYPE.BIDIRECTIONAL       
+        #
+
                            
         elif isinstance(layer, keras.layers.Flatten) or 'flatten' in typestr:
            the_type = LAYER_TYPE.FLATTENED
@@ -184,9 +188,11 @@ class KerasLayer(FrameworkLayer):
         return the_type
         
 
-    # only works for dense layers
+ 
     def has_biases(self):
-        return self.layer.use_bias is True
+        return hasattr(self.layer, 'use_bias') and self.layer.use_bias is True
+
+        #return self.layer.use_bias is True
     
          
     def get_weights_and_biases(self):
@@ -218,14 +224,27 @@ class KerasLayer(FrameworkLayer):
             if self.has_biases():
                 biases = w[1]
                 has_biases = True
-
+                
+                
+       ### BIDIRECTIONAL added as a hack not fuly tested
+       # A bidirectional model has 4 distinct matrices,
+       # each one would need to be treated as a different layer in keras
+       # 
+#        elif self.the_type==LAYER_TYPE.BIDIRECTIONAL:
+#             weights = [w[0], w[1], w[3], w[4]]
+#             has_weights = True
+#             has_biases = False
+##             if self.has_biases():
+##                biases = [w[2], w[6]]
+##                has_biases = True
+#             
         else: 
             logger.info("keras layer: {} {}  type {} not found ".format(self.layer.name,str(self.layer),str(self.the_type)))
     
         return has_weights, weights, has_biases, biases  
 
 
-
+    # warningL may not work for BIDIRECTIONAL
     def replace_layer_weights(self, W, B=None):
         """My not work,, see https://stackoverflow.com/questions/51354186/how-to-update-weights-manually-with-keras"""
         if self.has_biases() and B is not None:
@@ -1150,6 +1169,8 @@ class WWLayer:
             #logger.info("Layer id {}  Layer norm has no matrices".format(self.layer_id))
             pass
         
+        #TODO: add Bibirectional Layer here
+        
         else:
             logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, type(self.framework_layer)))
     
@@ -1422,7 +1443,6 @@ class ModelIterator:
             model = WeightWatcher.read_keras_h5_file(model)
             self.model = model
             self.framework = FRAMEWORK.KERAS
-
             layer_iter = KerasLayer.get_layer_iterator(model, start_id=start_id) 
 
         elif self.framework == FRAMEWORK.PYTORCH:
@@ -2070,6 +2090,11 @@ class WWDeltaLayerIterator(WWLayerIterator):
     """ Combines 2 layer iterators, and iterates over 2 layers
     
         W_delta := W_model - W_base  (biases currently ignored)
+        
+        TODO:  ensure layers are aligned (when using 1 safetensors, 1 other)
+        ALSO:  need layer_id map for correlation flow
+        
+        ALSO:  can we 'force' the framework ?
     
     """
     
@@ -2099,6 +2124,9 @@ class WWDeltaLayerIterator(WWLayerIterator):
                 logger.info(f"{left_layer.name} <-> {right_layer.name}")
                 base_name = left_layer.name
                 model_name = right_layer.name
+                
+                # TODO: check longnames first
+                # 
                 
                 # sometimes we need to skip the first (and last) layer 
                 if base_name not in model_name:
@@ -2150,7 +2178,8 @@ class WWDeltaLayerIterator(WWLayerIterator):
     
 class WeightWatcher:
 
-    def __init__(self, model=None, framework=None, log_level=None):
+    # add base model
+    def __init__(self, model=None, framework=None, base_model=None, log_level=None):
         """ model is set or is none
             the framework can be set or it is inferred
         
@@ -2162,6 +2191,8 @@ class WeightWatcher:
             logger.setLevel(log_level)
         
         self.model = model
+        self.base_model = base_model
+        
         self.details = None
         self.framework = None
         
@@ -2174,11 +2205,24 @@ class WeightWatcher:
             if WeightWatcher.valid_framework(framework):
                 self.framework = framework
                 banner += "\n"+ self.load_framework_imports(framework)
-                logger.info(banner)
             else:
                 logger.fatal("Could not infer framework from model, stopping")
+                
+        if model is None and base_model is not None:
+            logger.fatal("Model can not be none if base_model is not None")
+            
+        if base_model is not None:
+            base_framework = self.infer_framework(base_model)
+            if not WeightWatcher.valid_framework(base_framework):
+                logger.fatal("Could not infer framework from base_model, stopping")
+            elif base_framework != self.framework:
+                banner += "\n"+ self.load_framework_imports(base_framework)
         
+            if base_framework!=self.framework:
+                 logger.fatal(f" base_framework {base_framework} is different from model framework {self.framework}, stopping")
+                 
         logger.info(banner)
+        
         
   
     
@@ -3060,7 +3104,7 @@ class WeightWatcher:
          """
          
         if params is None: params = DEFAULT_PARAMS.copy()
-        self.set_model_(model)
+        self.set_model_(model, base_model=base_model)
             
         logger.info("params {}".format(params))
         if not WeightWatcher.valid_params(params):
@@ -3353,8 +3397,8 @@ class WeightWatcher:
         inverse:  compute the inverse ESD 
            
         """
-
-        self.set_model_(model)          
+        
+        self.set_model_(model, base_model)    
         
         if min_size or max_size:
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
@@ -3427,7 +3471,7 @@ class WeightWatcher:
         #TODO: ? 
         #  if we want deltas, we can just add the delta="model" in 
         # 
-        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=base_model)     
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=self.base_model)     
         
         details = pd.DataFrame(columns=[])
 
@@ -3515,7 +3559,7 @@ class WeightWatcher:
                 
         return summary
 
-    def set_model_(self, model):
+    def set_model_(self, model, base_model=None):
         """Set the model if it has not been set for this object
         
         maybe we should read the config file here ?  maybe user should specify the config file ?"""
@@ -3524,17 +3568,35 @@ class WeightWatcher:
         if self.model is None:
             logger.fatal("unknown model, stopping")
                         
+        if model is not None and self.base_model is None:
+            self.base_model = base_model
+            
         if self.framework is None:
             self.framework = self.infer_framework(self.model) 
             if not WeightWatcher.valid_framework(self.framework):
                 logger.fatal(f"{self.framework} is not a valid framework, stopping")
-               
+      
+        
+        if self.base_model is not None:
+            base_framework = self.infer_framework(self.base_model) 
+            if not WeightWatcher.valid_framework(self.framework):
+                logger.fatal(f"{base_framework} is not a valid base_framework, stopping")
+                
+            if base_framework!=self.framework:
+                 logger.fatal(f" base_framework {base_framework} is different from model framework {self.framework}, stopping")
+                 
         #issue #243
         if self.framework==FRAMEWORK.PYSTATEDICT:
             if 'state_dict' in self.model:
-                self.model = model['state_dict']
+                self.model = self.model['state_dict']
                 
+            if self.base_model is not None:
+                if 'state_dict' in self.base_model:
+                    self.model = self.base_model['state_dict']
+                 
         return 
+    
+    
                 
     # test with https://github.com/osmr/imgclsmob/blob/master/README.md
     def describe(self, model=None, layers=[], min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
@@ -3553,8 +3615,8 @@ class WeightWatcher:
         
         """
 
-        self.set_model_(model)  
- 
+        self.set_model_(model, base_model)    
+        
         if min_size or max_size:
             logger.warning("min_size and max_size options changed to min_evals, max_evals, ignored for now")     
 
@@ -3598,7 +3660,7 @@ class WeightWatcher:
             raise Exception(msg)
         params = self.normalize_params(params)
 
-        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=base_model)     
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=self.base_model)     
         details = pd.DataFrame(columns=[])
            
         num_all_evals = 0

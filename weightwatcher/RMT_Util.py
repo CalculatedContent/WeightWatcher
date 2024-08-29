@@ -1137,9 +1137,12 @@ def detX_constraint(evals, rescale=True):
     
     
     if rescale:
-        Wnorm = np.sqrt(np.sum(evals))
-        Wscale = np.sqrt(num_evals)/Wnorm 
-        evals = (Wscale*Wscale)*evals
+        # BAD CODE
+        #Wnorm = np.sqrt(np.sum(evals))
+        #Wscale = np.sqrt(num_evals)/Wnorm 
+        #evals = (Wscale*Wscale)*evals
+        evals, _ = rescale_eigenvalues(evals)
+
 
     for idx in range(len(evals)-1, 0, -1):
         detX = np.prod(evals[idx:])

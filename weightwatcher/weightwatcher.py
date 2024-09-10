@@ -390,7 +390,7 @@ class PyStateDictLayer(FrameworkLayer):
     """Similar to the PyTorch iterator, but the layer ids may be different"""
     
     def __init__(self, model, layer_id, name):
-    
+            
         self.model = model  # model_state_dict
         self.layer = name
 
@@ -413,7 +413,9 @@ class PyStateDictLayer(FrameworkLayer):
           
         has_weights, weights, has_biases, biases = self.get_weights_and_biases()
         
-        if len(weights.shape)==2:
+        if len(weights)<2:
+            pass
+        elif len(weights.shape)==2:
             the_type = LAYER_TYPE.DENSE
         elif len(weights.shape)==4:
             the_type = LAYER_TYPE.CONV2D
@@ -443,9 +445,9 @@ class PyStateDictLayer(FrameworkLayer):
                 layer_names = [f"{x}.weight" for x in layer_map]
             else:
                 layer_names = layer_map
-                
+                 
             for key in layer_names:
-                    
+                
                 # Check if the key corresponds to a weight matrix
                 if key.endswith('.weight'):
                     # Extract the weight matrix and layer name
@@ -469,6 +471,7 @@ class PyStateDictLayer(FrameworkLayer):
                     # because we want al the layers for describe
                     if weights is not None:
                         the_layer = PyStateDictLayer(model_state_dict, layer_id, layer_name)
+
                         layer_id += 1 # because we always start at 1 , we increment this after, not before
                         yield the_layer
 
@@ -552,6 +555,7 @@ class PyStateDictDir(PyStateDictLayer):
 
         # Assumes there is 1 filename
         layer_map = []
+
         layer_map_filename = None
         filenames = glob.glob(fileglob.replace("safetensors", "layer_map"))
         if len(filenames)==1:
@@ -648,7 +652,6 @@ class PyStateDictDir(PyStateDictLayer):
             else:
                 logger.info(f"Using specified layer map")
                             
-
             # loop over stat dict files in sort order
             
             # TODO: open all safetensors files at once
@@ -1171,8 +1174,11 @@ class WWLayer:
         
         #TODO: add Bibirectional Layer here
         
+        elif isinstance(self.framework_layer, PyStateDictLayer):
+            pass
+        
         else:
-            logger.info("Layer id {}  unknown type {} layer  {}".format(self.layer_id, the_type, type(self.framework_layer)))
+            logger.info("Layer Type Unknown: id {}  unknown type {} layer  {}".format(self.layer_id, the_type, type(self.framework_layer)))
     
         self.N = N
         self.M = M
@@ -1180,9 +1186,13 @@ class WWLayer:
         self.Wmats = Wmats
         self.num_components = n_comp
         
-        self.weight_dims = self.weights.shape
-        self.num_params = np.prod(self.weight_dims)
-        
+        if len(self.weights)>0:
+            self.weight_dims = self.weights.shape
+            self.num_params = np.prod(self.weight_dims)
+        else:
+            self.weight_dims = 0
+            self.num_params = 0
+            
         return 
         
         
@@ -1502,9 +1512,10 @@ class WWLayerIterator(ModelIterator):
 
     def __init__(self, model, framework, params=None, filters=[], layer_map=None):
         """ 
-        This is the base LayerIterator, used for most caclulations
+        This is the base LayerIterator, used for most calculations
         
         layer_map is only used by models where layers can be  accessed by name from a dict (i.e SafeTensors)
+        
         
         """
         
@@ -1518,6 +1529,10 @@ class WWLayerIterator(ModelIterator):
         self.filter_names = []
         
         self.layer_map = layer_map
+        
+        #issue 312 in progress 
+        #$if self.layer_map is not None and params[SAFETENSORS]==True:
+        #    return
         
         if type(filters) is not list:
             filters = [filters]
@@ -1537,12 +1552,13 @@ class WWLayerIterator(ModelIterator):
             else:
                 logger.warning("unknown filter type {} detected and ignored".format(tf))
                 
+        return
         
                 
     def apply_filters(self, ww_layer):
         """Apply filters.  Set skipped False  if filter is applied to this layer, keeping the layer (or no filters, meaning all layers kept)"""
         ww_layer.skipped = False
-          
+
         if self.filter_types is not None and len(self.filter_types) > 0:
             if ww_layer.the_type in self.filter_types:
                 logger.debug("keeping layer {} {} with type {} ".format(ww_layer.layer_id, ww_layer.name , str(ww_layer.the_type)))
@@ -1630,6 +1646,7 @@ class WWLayerIterator(ModelIterator):
         return self.ww_layer_iter_()
     
     
+  
     def make_layer_map(self):
         """ Make a copy of the iterator, iterate over all layers, and make the layer_map
            
@@ -1639,8 +1656,7 @@ class WWLayerIterator(ModelIterator):
         if self.layer_map is None:
             cls = type(self)
             iter_copy = cls(self.model, self.framework, params=self.params, filters=self.filters, layer_map=None)
-            self.layer_map = [ww_layer.name for ww_layer in   iter_copy.make_layer_iter_()]
-            
+            self.layer_map = [ww_layer.name for ww_layer in iter_copy.make_layer_iter_()]
     
         return self.layer_map
     
@@ -1665,7 +1681,6 @@ class WWLayerIterator(ModelIterator):
         N = ww_layer.N
         M = ww_layer.M
         rf = ww_layer.rf
-        
         
         min_evals = self.params.get(MIN_EVALS)
         max_evals = self.params.get(MAX_EVALS)
@@ -2095,6 +2110,8 @@ class WWDeltaLayerIterator(WWLayerIterator):
         ALSO:  need layer_id map for correlation flow
         
         ALSO:  can we 'force' the framework ?
+        
+        NOTE: filters don't work here with safetensors:  see  git issue #312
     
     """
     
@@ -2114,66 +2131,147 @@ class WWDeltaLayerIterator(WWLayerIterator):
         
         super().__init__(model, framework=framework, filters=filters, params=params, layer_map=layer_map)   
 
-
+    #
+    # # TODO: deal with case when base does not contain a layer
+    # # layers may be added wnen FTing
+    # def ww_layer_iter_(self):   
+    #     from copy import deepcopy
+    #
+    #     for left_layer, right_layer in zip(self.iter_left, self.iter_right):
+    #
+    #             logger.info(f"{left_layer.name} <-> {right_layer.name}")
+    #             base_name = left_layer.name
+    #             model_name = right_layer.name
+    #
+    #             # TODO: check longnames first
+    #             # 
+    #
+    #             # sometimes we need to skip the first (and last) layer 
+    #             if base_name not in model_name:
+    #                 logger.warning(f"Skipping base model layer {base_name}")
+    #
+    #                 left_layer = self.iter_left.next()
+    #                 base_name = left_layer.name
+    #                 logger.info(f"{left_layer.name} <-> {right_layer.name}")       
+    #
+    #             ww_layer = deepcopy(left_layer)
+    #
+    #             if ww_layer.has_weights:
+    #                 left_Wmats = left_layer.Wmats
+    #                 right_Wmats = right_layer.Wmats
+    #                 if len(right_Wmats) > 0:   
+    #                     Wmats = []
+    #                     for W_left,  W_right in zip(left_Wmats, right_Wmats):
+    #                         if W_left is not None:
+    #                             if W_left.shape == W_right.shape:
+    #                                 Wmats.append(W_left -  W_right )
+    #                             elif W_left.shape == W_right.T.shape:
+    #                                  Wmats.append(W_left -  W_right.T )
+    #                             else: 
+    #                                 logger.warning(f"W_left.shape, W_right.shape not compatable {W_left.shape } != {W_right.shape }")
+    #                                 W_zero = np.zeros_like(W_left)
+    #                                 Wmats.append(W_zero)
+    #                         else:
+    #                             Wmats.append(None)
+    #                     ww_layer.Wmats = Wmats 
+    #                 else:
+    #                     logger.warning(f"skiping base model layer left_layer. name, not removing")
+    #
+    #             #  its possible the fine tuned model did not update the biases...may need to treat this case too
+    #             if ww_layer.has_biases:
+    #                 left_biases = left_layer.biases
+    #                 right_biases = right_layer.biases
+    #                 biases = []
+    #                 for B_left,  B_right in zip(left_biases, right_biases):
+    #                     if B_left is not None:
+    #                         biases.append(B_left -  B_right )
+    #                     else:
+    #                         biases.append(None)
+    #                 ww_layer.biases = biases 
+    #
+    #             yield ww_layer    
+    #
+    #
+    #
+    #     return self.ww_layer_iter_()
+    
+    def ww_layer_iter_(self):
+        """
+        Iterate over layers from two models (`iter_left` and `iter_right`), processing them in pairs when possible. 
+        If a layer from `iter_left` does not have a corresponding layer in `iter_right`, it is processed independently.
         
-    def ww_layer_iter_(self):   
+        Yields:
+            ww_layer: A processed layer from the `iter_left` model with any differences computed against the corresponding
+                      `iter_right` model layer if available.
+        """
+    
         from copy import deepcopy
-        
-        for left_layer, right_layer in zip(self.iter_left, self.iter_right):
+    
+        # Create an iterator for the right layers
+        right_iter = iter(self.iter_right)
+        right_layer = next(right_iter, None)
             
-                logger.info(f"{left_layer.name} <-> {right_layer.name}")
-                base_name = left_layer.name
-                model_name = right_layer.name
-                
-                # TODO: check longnames first
-                # 
-                
-                # sometimes we need to skip the first (and last) layer 
-                if base_name not in model_name:
-                    logger.info(f"Skipping base model {base_name}")
+        for left_layer in self.iter_left:
+            base_name = left_layer.name
+            logger.info(f"processing {base_name}")
 
-                    left_layer = self.iter_left.next()
-                    base_name = left_layer.name
-                    logger.info(f"{left_layer.name} <-> {right_layer.name}")                
-                         
+            # Check if there is a corresponding right layer
+            if right_layer is not None and base_name in right_layer.name:
+                # Matching layer found
+                logger.info(f"{left_layer.name} <-> {right_layer.name}")
+                model_name = right_layer.name
+    
                 ww_layer = deepcopy(left_layer)
-                
+    
                 if ww_layer.has_weights:
                     left_Wmats = left_layer.Wmats
                     right_Wmats = right_layer.Wmats
                     Wmats = []
-                    for W_left,  W_right in zip(left_Wmats, right_Wmats):
+                    for W_left, W_right in zip(left_Wmats, right_Wmats):
                         if W_left is not None:
                             if W_left.shape == W_right.shape:
-                                Wmats.append(W_left -  W_right )
+                                Wmats.append(W_left - W_right)
                             elif W_left.shape == W_right.T.shape:
-                                 Wmats.append(W_left -  W_right.T )
-                            else: 
-                                logger.warning(f"W_left.shape, W_right.shape not compatable {W_left.shape } != {W_right.shape }")
+                                Wmats.append(W_left - W_right.T)
+                            else:
+                                logger.warning(f"W_left.shape, W_right.shape not compatible {W_left.shape} != {W_right.shape}")
                                 W_zero = np.zeros_like(W_left)
                                 Wmats.append(W_zero)
                         else:
                             Wmats.append(None)
-                    ww_layer.Wmats = Wmats 
-
-                #  its possible the fine tuned model did not update the biases...may need to treat this case too
+                    ww_layer.Wmats = Wmats
+    
+                # Handle biases
                 if ww_layer.has_biases:
                     left_biases = left_layer.biases
                     right_biases = right_layer.biases
                     biases = []
-                    for B_left,  B_right in zip(left_biases, right_biases):
+                    for B_left, B_right in zip(left_biases, right_biases):
                         if B_left is not None:
-                            biases.append(B_left -  B_right )
+                            biases.append(B_left - B_right)
                         else:
                             biases.append(None)
-                    ww_layer.biases = biases 
-
-                yield ww_layer    
-             
-                
-                
-        return self.ww_layer_iter_()
+                    ww_layer.biases = biases
     
+                # Move to the next right layer
+                right_layer = next(right_iter, None)
+    
+            else:
+                # No matching right layer, process the left layer independently
+                logger.info(f"Processing left layer {left_layer.name} independently")
+                ww_layer = deepcopy(left_layer)
+    
+                if ww_layer.has_weights:
+                    ww_layer.Wmats = left_layer.Wmats
+    
+                if ww_layer.has_biases:
+                    ww_layer.biases = left_layer.biases
+    
+            # Yield the processed layer
+            yield ww_layer
+    
+        return self.ww_layer_iter_()
+
 
     
 class WeightWatcher:
@@ -2186,6 +2284,9 @@ class WeightWatcher:
             valid frameworks = 'keras' | 'pytorch' | 'onnx' | ww.KERAS | ww.PYTORCH | ww.ONNX
         
             log_level can be set may not currently work """
+        
+        logger.info(f" __init__: {model}, {base_model}")
+
         
         if log_level:
             logger.setLevel(log_level)
@@ -2219,7 +2320,7 @@ class WeightWatcher:
                 banner += "\n"+ self.load_framework_imports(base_framework)
         
             if base_framework!=self.framework:
-                 logger.fatal(f" base_framework {base_framework} is different from model framework {self.framework}, stopping")
+                 logger.fatal(f"base_framework {base_framework} is different from model framework {self.framework}, stopping")
                  
         logger.info(banner)
         
@@ -3564,6 +3665,7 @@ class WeightWatcher:
         
         maybe we should read the config file here ?  maybe user should specify the config file ?"""
         
+        logger.info(f"SET MODEL: {model}, {base_model}")
         self.model = model or self.model
         if self.model is None:
             logger.fatal("unknown model, stopping")
@@ -3583,7 +3685,7 @@ class WeightWatcher:
                 logger.fatal(f"{base_framework} is not a valid base_framework, stopping")
                 
             if base_framework!=self.framework:
-                 logger.fatal(f" base_framework {base_framework} is different from model framework {self.framework}, stopping")
+                 logger.fatal(f"base_framework {base_framework} is different from model framework {self.framework}, stopping")
                  
         #issue #243
         if self.framework==FRAMEWORK.PYSTATEDICT:
@@ -4555,7 +4657,22 @@ class WeightWatcher:
         N, M = ww_layer.N, ww_layer.M
         rf = ww_layer.rf
 
-        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max,  Wscale =  self.mp_fit(evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale, orig_evals)
+       # Initialize variables
+        num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale = -1, -1, -1, -1, -1, -1
+        
+        try:
+            # Attempt to fit using mp_fit method
+            num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale = self.mp_fit(
+                evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale, orig_evals
+            )
+        except Exception as e:
+            # Handle any exception and check for specific types
+            if isinstance(e, ValueError):
+                logger.warning("A ValueError occurred during mp_fit.")
+            elif isinstance(e, RuntimeError):
+                logger.warning("A RuntimeError occurred during mp_fit.")
+            else:
+                logger.warning(f"An error occurred during mp_fit: {e}")
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
@@ -5702,9 +5819,13 @@ class SafeTensorDict(dict):
             logging.error(f"Failed to initialize SafetensorDict with files: {fileglob}")
             raise e
         
+        
         for handle in self.handles:
             for key in handle.keys():
                 self[key] = None  # Populate with keys, values are lazy-loaded
+                
+        return
+    
     
     @staticmethod
     def open_safetensor_handles(fileglob):
@@ -5713,6 +5834,7 @@ class SafeTensorDict(dict):
             logging.info(f"Opening safetensor handles for files: {fileglob}")
             handles = []
             for state_dict_filename in sorted(glob.glob(fileglob)):
+                logging.info(f"Opening : {state_dict_filename}")
                 f = safe_open(state_dict_filename, framework="pt", device='cpu')
                 handles.append(f)
             return handles
@@ -5749,10 +5871,12 @@ class SafeTensorDict(dict):
                 if key in f.keys():
                     value = f.get_tensor(key)
                     return value
-            else:
-                raise KeyError(f"Key {key} not found in safetensors files.")
+            if value is None:
+                logger.info(f"Key {key} not found in safetensors files, returning []")
+                return []
+                #raise KeyError(f"Key {key} not found in safetensors files.")
         except Exception as e:
-            logging.error(f"Error occurred while getting value for key: {key}")
+            logging.error(f"Error occurred while getting value for key")
             raise e
     
     def __getitem__(self, key):

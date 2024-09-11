@@ -100,7 +100,7 @@ def has_mac_accelerate():
 
 
 if has_mac_accelerate():
-    logger.info("Using Numoy with MAC M1/2 Accelerate for SVD")
+    logger.info("Using Numpy with MAC M1/2 Accelerate for SVD")
     _eig_full_accurate = lambda W: np.linalg.eig(W)
     _svd_full_accurate = lambda W: np.linalg.svd(W, compute_uv=True)
     _svd_vals_accurate = lambda W: np.linalg.svd(W, compute_uv=False)
@@ -1131,10 +1131,16 @@ def detX_constraint(evals, rescale=True):
     
     """
 
-    assert(evals[0]<evals[-1])
+    if evals is None or len(evals)<2:
+        logger.warning("No or not enough evals found")
+        return 0, 0
+    
+    if not (evals[0]<evals[-1]):
+        logger.warning(f"evals[0] >= evals[-1]: {evals[0]} {evals[1]}")
+        return 0, 0
+
     num_evals = len(evals)
     idx = 0
-    
     
     if rescale:
         # BAD CODE

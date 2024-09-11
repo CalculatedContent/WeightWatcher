@@ -219,6 +219,7 @@ LAYER_TYPES_SUPPORTED = [LAYER_TYPE.CONV2D, LAYER_TYPE.CONV1D, LAYER_TYPE.DENSE,
 KERAS = 'keras'
 KERAS_H5_FILE = 'keras_h5_file'
 
+SOURCE = 'source'
 PYTORCH = 'pytorch'
 PYSTATEDICT = 'pystatedict'
 ONNX = 'onnx'

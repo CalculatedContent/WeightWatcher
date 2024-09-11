@@ -1337,7 +1337,7 @@ class Test_PyStateDictDir(Test_WWFlatFiles):
 
         fileglob = f"{self.model_dir}*model*bin"
         layer_map = ww.weightwatcher.PyStateDictDir.get_layer_map(fileglob)
-        
+    
         self.assertIsNotNone(layer_map)
         self.assertEqual(0, len(layer_map))
 
@@ -1615,7 +1615,6 @@ class Test_SafeTensorsDir(Test_WWFlatFiles):
         layer_map = ww.weightwatcher.PyStateDictDir.get_layer_map(fileglob)
         self.assertIsNotNone(layer_map)
         self.assertEqual(122, len(layer_map))
-        
         return
         
         
@@ -1685,7 +1684,7 @@ class Test_SafeTensorsDirNoLayerMap(Test_SafeTensorsDir):
         layer_map = ww.weightwatcher.PyStateDictDir.get_layer_map(fileglob)
         self.assertIsNotNone(layer_map)
         self.assertEqual(0, len(layer_map))
-        
+
         return
     
     
@@ -2934,10 +2933,7 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
     
         
     def test_deltas_layer_id_filters(self):
-        """Save model to safetensors
-           save a copy with all W->W+I
-           check deltas
-        """
+     
         
         details = self.watcher.describe(base_model=self.model, model=self.model)
         self.assertEqual(10, len(details))
@@ -2964,6 +2960,54 @@ class Test_Albert_DeltaLayerIterator(Test_Base):
 
         return
     
+ 
+    
+    
+    # WHY DOES THIS FAIL?
+    def test_safetensors_deltas_with_filter_by_names(self):
+        """This should work but it does not; see issue 312
+        # https://github.com/CalculatedContent/WeightWatcher/issues/312
+        
+         # to check ids, change  
+        filters = ['Embedding'] to  [3,8]
+        
+        """
+        
+        # BEFORE FILTERS
+        self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+        details = self.watcher.describe()
+        self.assertIsNotNone(details)
+        expected_num_layers = 10
+        self.assertEqual(len(details),expected_num_layers)
+        print(details)
+        
+        # AFTER FILTERS
+        # to check ids, change to 
+        filters = ['Embedding']  # [3,8]
+        details = self.watcher.describe(layers=filters)
+        self.assertIsNotNone(details)
+        expected_num_layers = 2
+        self.assertEqual(len(details),expected_num_layers)
+        print(details)
+
+        
+        state_dict = self.model.state_dict()          
+
+        with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as model_dir:  
+            with TemporaryDirectory(dir=TEST_TMP_DIR, prefix="ww_") as base_model_dir:   
+ 
+                state_dict_filename = os.path.join(model_dir, "model.safetensors")
+                safe_save(state_dict, state_dict_filename)
+                
+                state_dict_filename = os.path.join(base_model_dir, "model.safetensors")
+                safe_save(state_dict, state_dict_filename)
+     
+                self.watcher = ww.WeightWatcher(log_level=logging.WARNING)
+                details = self.watcher.describe(model=model_dir,  base_model=base_model_dir, layers=filters)
+                self.assertIsNotNone(details)
+                self.assertEqual(expected_num_layers, len(details))
+                    
+        return      
         
                 
     # state_dict_filename = os.path.join(model_dir, "pytorch_model.bin")

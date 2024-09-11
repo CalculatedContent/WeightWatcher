@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.5.5]
+Fixed bug in reading large safetensors files
+
+## [0.7.5.4]
+skipped during debugging
+
 ## [0.7.5.3]
 Added base_model to constructor
 Fixed bugs in unit tests

@@ -325,6 +325,11 @@ class PyTorchLayer(FrameworkLayer):
         
         if hasattr(self.layer, 'weight'): 
             #w = [np.array(self.layer.weight.data.clone().cpu())]
+            
+            if self.layer.weight == None:
+                print(f"layer.layer.weight is None for {self.name}")
+                return False, None, False, None
+                            
             w = [torch_T_to_np(self.layer.weight.data)]
             
             if self.the_type==LAYER_TYPE.CONV2D:

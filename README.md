@@ -545,7 +545,10 @@ WeightWatcher has been featured in top journals like JMLR and Nature:
 </summary>
 #### Latest papers and talks
 
-- [SETOL: A Semi-Empirical Theory of (Deep) Learning] (in progress)
+- [Grokking and Generalization Collapse: Insights from
+HTSR theory(available upon request]
+
+- [SETOL: A Semi-Empirical Theory of (Deep) Learning (draft)] (https://github.com/CalculatedContent/setol_paper/blob/main/setol_draft.pdf)
 
 - [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
 
@@ -591,7 +594,11 @@ and has been presented at Stanford, UC Berkeley, KDD, etc:
 - [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
   Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
 
-- [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+- [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)
+
+#### NeurIPS 2023 
+- [Heavy-Tailed Self-Regularization in Deep Neural Networks](https://neurips.cc/virtual/2023/83033)
+
 	
 </details>
 
@@ -600,7 +607,7 @@ and has been presented at Stanford, UC Berkeley, KDD, etc:
 WeightWatcher has also been featured at local meetups and many popular podcasts
 </summary>
 	
-#### Popular Popdcasts and Blogs
+#### Popular Podcasts and Blogs
 
 - [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
  
@@ -622,11 +629,17 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Latest Results](https://www.youtube.com/watch?v=rojbXvK9mJg)
 
+
+
+
 #### 2021 Short Presentations
 
 - [MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
 
 - [PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
+
+#### TEDx Talk
+- [The Emergence of Signatures of Artificial General Intelligence ](https://www.youtube.com/watch?v=5dBEzqTlq-Y)
 
 #### Recent talk(s) by Mike Mahoney, UC Berekely
 

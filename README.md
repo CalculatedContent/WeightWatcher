@@ -637,7 +637,9 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Cohere for AI 2025](https://www.youtube.com/watch?v=NXqO4nDNIwo)
 
+- [The FreeStyle Podcast](https://www.youtube.com/watch?v=hb0YrwQ3K2Q)
 
+  and many more 
 
 
 

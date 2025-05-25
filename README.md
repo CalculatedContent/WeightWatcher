@@ -550,6 +550,8 @@ WeightWatcher has been featured in top journals like JMLR and Nature:
 
 - [SETOL: A Semi-Empirical Theory of (Deep) Learning (draft)] (https://github.com/CalculatedContent/setol_paper/blob/main/setol_draft.pdf)
 
+- [Temperature Balancing, Layer-wise Weight Analysis, and Neural Network Training (NeurIPS 2023 Spotlight Paper)(https://arxiv.org/abs/2312.00359)
+
 - [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
 
 - [Evaluating natural language processing models with robust generalization metrics that do not need access to any training or testing data](https://arxiv.org/abs/2202.02842)

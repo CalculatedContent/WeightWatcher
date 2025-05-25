@@ -543,10 +543,10 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 <summary>
 WeightWatcher has been featured in top journals like JMLR and Nature:	
 </summary>
-#### Latest papers and talks
+	
+### Latest papers and talks
 
-- [Grokking and Generalization Collapse: Insights from
-HTSR theory(available upon request]
+- [Grokking and Generalization Collapse: Insights from HTSR theory (available upon request)]
 
 - [SETOL: A Semi-Empirical Theory of (Deep) Learning (draft)] (https://github.com/CalculatedContent/setol_paper/blob/main/setol_draft.pdf)
 
@@ -625,9 +625,18 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 
+- [UCL Financial Computing (2022)](https://www.youtube.com/watch?v=sOXROWJ70Pg)
+
 - [Practical AI](https://changelog.com/practicalai/194)
 
-- [Latest Results](https://www.youtube.com/watch?v=rojbXvK9mJg)
+- [AI Nation 2023](https://www.youtube.com/watch?v=rojbXvK9mJg)
+
+- [ICCF 2024](https://youtu.be/_c0-_ru0sZc)
+
+- [Data Science at Home (2025)](https://www.youtube.com/watch?v=iv7Pv3StHms)
+
+- [Cohere for AI 2025](https://www.youtube.com/watch?v=NXqO4nDNIwo)
+
 
 
 

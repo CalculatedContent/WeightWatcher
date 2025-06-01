@@ -25,7 +25,7 @@ It can be used to:
 
 ## Quick Links 
 
-- Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+- Please see [our latest talk from the Silicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
 - Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 
@@ -108,11 +108,11 @@ watcher.distances(model_1, model_2)
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.
 
- - peft = True:  Forms the BA low rank matric and analyzes the delta layers, with 'lora_BA" tag in name
+ - peft = True:  Forms the BA low rank metric and analyzes the delta layers, with 'lora_BA" tag in name
  
    ```details = watcher.analyze(peft='peft_only')```
 
- - peft = 'with_base':  Analyes the base_model, the delta, and the combined layer weight matrices.  
+ - peft = 'with_base':  Analyze the base_model, the delta, and the combined layer weight matrices.  
  
    ```details = watcher.analyze(peft=True)```
    
@@ -150,7 +150,7 @@ The goal of the WeightWatcher project is find generalization metrics that most a
 </summary>
 	
 
-[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be signficantly different from the MP (Marchenko-Pastur) random bulk, and specifically to be heavy tailed. There are different layer metrics in WeightWatcher for this, including:
+[Our HTSR theory](https://jmlr.org/papers/volume22/20-410/20-410.pdf) says that well trained, well correlated layers should be significantly different from the MP (Marchenko-Pastur) random bulk, and specifically to be heavy tailed. There are different layer metrics in WeightWatcher for this, including:
 
 - `rand_distance` : the  distance in distribution from the randomized layer
 - `alpha` : the slope of the tail of the ESD, on a log-log scale
@@ -191,7 +191,7 @@ All of these attempt to measure how on-random and/or non-heavy-tailed the layer 
 
 #### Direct Correlation Metrics 
 
-The random distance metric is a new, non-parameteric approach that appears to work well in early testing.
+The random distance metric is a new, non-parametric approach that appears to work well in early testing.
  [See this recent blog post](https://calculatedcontent.com/2021/10/17/fantastic-measures-of-generalization-that-actually-work-part-1/)
 
 - `rand_distance` : <img src="https://render.githubusercontent.com/render/math?math=div(\mathbf{W},rand(\mathbf{W}))">   Distance of layer ESD from the ideal RMT MP ESD
@@ -225,9 +225,9 @@ summary = watcher.get_summary()
 
 The summary statistics can be used to gauge the test error of a series of pre/trained models, without needing access to training or test data.
 
-- average `alpha` can be used to compare one or more DNN models with different hyperparemeter settings **&theta;**, when depth is not a driving factor (i.e transformer models)
+- average `alpha` can be used to compare one or more DNN models with different hyperparameter settings **&theta;**, when depth is not a driving factor (i.e transformer models)
 - average `log_spectral_norm` is useful to compare models of different depths **L** at a coarse grain level
-- average `alpha_weighted` and `log_alpha_norm` are suitable for DNNs of differing hyperparemeters **&theta;** and depths **L** simultaneously. (i.e CV models like VGG and ResNet)
+- average `alpha_weighted` and `log_alpha_norm` are suitable for DNNs of differing hyperparameters **&theta;** and depths **L** simultaneously. (i.e CV models like VGG and ResNet)
 
 
 #### Predicting the Generalization Error
@@ -268,9 +268,9 @@ details = watcher.analyze(randomize=True, plot=True)
 
 Fig (a) is well trained; Fig (b) may be over-fit.
 	
-That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  
+That orange spike on the far right is the tell-tale clue; it's called a **Correlation Trap**.  
 
-A **Correlation Trap** is characterized by Fig (b); here the actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0). And random (red) ESD, the largest eigenvalue (orange) is far to the right of and seperated from the bulk of the ESD.
+A **Correlation Trap** is characterized by Fig (b); here the actual (green) and random (red) ESDs look almost identical, except for a small shelf of correlation (just right of 0). And random (red) ESD, the largest eigenvalue (orange) is far to the right of and separated from the bulk of the ESD.
 	
 ![Correlation Traps](./img/correlation_trap.jpeg)
 	
@@ -281,7 +281,7 @@ Moreover, the metric `num_rand_spikes` (in the `details` dataframe) contains the
 The `SVDSharpness` transform can be used to remove Correlation Traps during training (after each epoch) or after training using 
 	
 ```python
-sharpemed_model = watcher.SVDSharpness(model=...)
+sharpened_model = watcher.SVDSharpness(model=...)
 ```
 	
 Sharpening a model is similar to clipping the layer weight matrices, but uses Random Matrix Theory to do this in a more principle way than simple clipping.
@@ -294,7 +294,7 @@ Sharpening a model is similar to clipping the layer weight matrices, but uses Ra
 	 <b>Note:</b> This is experimental but we have seen some success here
  </summary>
 	
-The WeightWatcher `alpha` metric may be used to detect when to apply early stopping.  When the average `alpha` (summary statistic) drops below `2.0`, this indicates that the model may be over-trained and early stopping is necesary.
+The WeightWatcher `alpha` metric may be used to detect when to apply early stopping.  When the average `alpha` (summary statistic) drops below `2.0`, this indicates that the model may be over-trained and early stopping is necessary.
 
 Below is an example of this, showing training loss and test lost curves for a small Transformer model, trained from scratch, along with the average `alpha` summary statistic.
 
@@ -356,7 +356,7 @@ Setting max is useful for a quick debugging.
 details = watcher.analyze(min_evals=50, max_evals=500)
 ```
 
-#### specify the Power Law fitting proceedure
+#### specify the Power Law fitting procedure
 
 To replicate results using TPL or E_TPL fits, use:
 
@@ -394,7 +394,7 @@ ww.layer#.esd4.png
 
 **Note:** additional plots will be saved when `randomize` option is used
 							       
-#### fit ESDs to a Marchenko-Pastur (MP) distrbution
+#### fit ESDs to a Marchenko-Pastur (MP) distribution
 
 The `mp_fit` option tells WW to fit each layer ESD as a Random Matrix as a Marchenko-Pastur (MP) distribution, as described in our papers on HT-SR.
 
@@ -435,15 +435,15 @@ The new distances method reports the distances between two models, such as the n
 details = watcher.distances(initial_model, trained_model)
 ```
 
-### Compatability
+### Compatibility
 
 ---
 
-#### compatability with version 0.2.x
+#### compatibility with version 0.2.x
 
 The new 0.4.x version of WeightWatcher treats each layer as a single, unified set of eigenvalues.
 In contrast, the 0.2.x versions split the Conv2D layers into n slices, one for each receptive field.
-The `pool=False` option provides results which are back-compatable with the 0.2.x version of WeightWatcher,
+The `pool=False` option provides results which are back-compatible with the 0.2.x version of WeightWatcher,
 (which used to be called `ww2x=True`) with details provide for each slice for each layer.
 Otherwise, the eigenvalues from each slice of th3 Conv2D layer are pooled into one ESD.
 
@@ -476,7 +476,7 @@ Note:  the current version requires both tensorflow and torch; if there is deman
 
 <details>
 <summary>
-On using WeighWtatcher for the first time.  I recommend selecting at least one trained model, and running `weightwatcher` with all analyze options enabled, including the plots.  From this, look for:
+On using WeightWatcher for the first time.  I recommend selecting at least one trained model, and running `weightwatcher` with all analyze options enabled, including the plots.  From this, look for:
 </summary>
 
 - if the layers ESDs are well formed and heavy tailed
@@ -503,7 +503,7 @@ Publishing to the PyPI repository:
 
 ```sh
 # 1. Check in the latest code with the correct revision number (__version__ in __init__.py)
-vi weightwatcher/__init__.py # Increse release number, remove -dev to revision number
+vi weightwatcher/__init__.py # Increase release number, remove -dev to revision number
 git commit
 # 2. Check out latest version from the repo in a fresh directory
 cd ~/temp/
@@ -623,7 +623,7 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [LightOn AI Meetup](https://www.youtube.com/watch?v=tciq7t3rj98)
 
-- [The Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+- [The Silicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
 
 - [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 

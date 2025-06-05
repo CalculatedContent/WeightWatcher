@@ -439,7 +439,7 @@ details = watcher.distances(initial_model, trained_model)
 
 ---
 
-#### compatability with version 0.2.x
+#### Compatibility with version 0.2.x
 
 The new 0.4.x version of WeightWatcher treats each layer as a single, unified set of eigenvalues.
 In contrast, the 0.2.x versions split the Conv2D layers into n slices, one for each receptive field.
@@ -640,6 +640,9 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 - [Cohere for AI 2025](https://www.youtube.com/watch?v=NXqO4nDNIwo)
 
 - [The FreeStyle Podcast](https://www.youtube.com/watch?v=hb0YrwQ3K2Q)
+
+- [This Week in ML AI Podcast](https://twimlai.com/podcast/twimlai/grokking-generalization-collapse-and-the-dynamics-of-training-deep-neural-networks/)
+
 
   and many more 
 

@@ -1,5 +1,6 @@
 [![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/project/weightwatcher)
 [![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal&label=release)](https://pypi.org/project/weightwatcher/)
+[![Conda](https://img.shields.io/conda/v/conda-forge/weightwatcher?color=green)](https://anaconda.org/conda-forge/weightwatcher)
 [![GitHub](https://img.shields.io/github/license/calculatedcontent/weightwatcher?color=blue)](./LICENSE.txt)
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)
 [![Video Tutorial](https://img.shields.io/badge/Video-Tutorial-blue)](https://www.youtube.com/watch?v=Tnafo6JVoJs)

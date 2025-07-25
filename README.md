@@ -45,6 +45,10 @@ And in the notebooks provided in the [examples](https://github.com/CalculatedCon
 ```sh
 pip install weightwatcher
 ```
+Or, via conda:
+```sh
+conda install conda-forge::weightwatcher
+```
 
 if this fails try
 

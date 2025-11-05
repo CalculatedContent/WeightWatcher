@@ -108,7 +108,7 @@ watcher.distances(model_1, model_2)
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.
 
- - peft = True:  Forms the BA low rank matric and analyzes the delta layers, with 'lora_BA" tag in name
+ - peft = True:  Forms the BA low rank matrix and analyzes the delta layers, with 'lora_BA" tag in name
  
    ```details = watcher.analyze(peft='peft_only')```
 

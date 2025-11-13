@@ -23,6 +23,7 @@ supported_distributions = {
     'lognormal_positive':       powerlaw.Lognormal_Positive,
 }
 
+SMALL_N_CUTOFF = 20
 
 import logging
 logger = logging.getLogger(WW_NAME) 
@@ -65,6 +66,15 @@ class WWFit(object):
         return f"WWFit({self.distribution} xmin: {self.xmin:0.04f}, alpha: {self.alpha:0.04f}, sigma: {self.sigma:0.04f}, data: {len(self.data)})"
 
     def fit_power_law(self):
+        if self.N < SMALL_N_CUTOFF:
+            print("SMALL N PL FIT")
+            logger.info("SMALL N PL FIT")
+            self.fit_powerlaw_smallN()
+            return 
+        
+        return self.fit_power_law_standard()
+
+    def fit_power_law_standard(self):
         log_data    = np. log(self.data, dtype=np.float64)
         self.alphas = np.zeros(self.N-1, dtype=np.float64)
         self.Ds     = np. ones(self.N-1, dtype=np.float64)
@@ -80,6 +90,108 @@ class WWFit(object):
                 ))
 
         self.sigmas = (self.alphas - 1) / np.sqrt(self.N - np.arange(self.N-1))
+        
+            
+    
+    def fit_powerlaw_smallN(self, k_min: int = 8, lambda_prior: float = 0.0):
+        """
+        Small-N continuous power-law fit:
+
+          - Bias-corrected MLE: alpha_bc = 1 + (n - 1) / sum_j log(x_j / xmin)
+          - Objective for xmin selection:
+                J = D_ks - 0.868 / sqrt(n_tail) + lambda_prior * prior_pen
+            where prior_pen = (alpha_bc - 2)^2  (ultra-local prior, off if lambda_prior=0)
+
+        No trace-log gate, no eigenvalue rescaling, no lock-to-2.
+        """
+
+        log_data = np.log(self.data, dtype=np.float64)
+
+        # Arrays similar to fit_power_law
+        self.alphas = np.zeros(self.N - 1, dtype=np.float64)
+        self.Ds     = np.ones(self.N - 1, dtype=np.float64)
+        # Objective values (for internal selection)
+        self.Js     = np.full(self.N - 1, np.inf, dtype=np.float64)
+
+        for i, xmin in enumerate(self.data[:-1]):
+            n_int = self.N - i        # tail size as int
+            if n_int < k_min:
+                continue
+            n = float(n_int)
+
+            # sum_j log(x_j / xmin) for j >= i
+            s = np.sum(log_data[i:]) - n * log_data[i]
+            if s <= 1e-12:
+                # degenerate tail; skip
+                continue
+
+            # --- bias-corrected MLE (n-1 correction) ---
+            alpha_bc = 1.0 + (n - 1.0) / s
+            self.alphas[i] = alpha_bc
+
+            if alpha_bc <= 1.0:
+                # invalid exponent for continuous power law; skip
+                continue
+
+            # Tail data for this xmin
+            tail = self.data[i:]
+
+            # Theoretical CDF for continuous power law on [xmin, ∞):
+            # F_fit(x) = 1 - (x/xmin)^(1 - alpha), x >= xmin
+            F_fit = 1.0 - (tail / xmin) ** (1.0 - alpha_bc)
+
+            # Empirical CDF: 0, 1/n, ..., (n-1)/n  (matches your original style)
+            F_emp = np.arange(n_int, dtype=np.float64) / n
+            Dks = float(np.max(np.abs(F_emp - F_fit)))
+            self.Ds[i] = Dks
+
+            # --- Objective 1A: KS-scaled tail-size encouragement ---
+            prior_pen = (alpha_bc - 2.0) ** 2   # ultra-local prior (if lambda_prior > 0)
+            J = Dks - 0.868 / np.sqrt(n) + lambda_prior * prior_pen
+            self.Js[i] = J
+
+        # Sigma like the original code (for reporting)
+        self.sigmas = (self.alphas - 1.0) / np.sqrt(self.N - np.arange(self.N - 1))
+
+        # ----- Choose best xmin by J; no fallback to fit_power_law -----
+        if np.isfinite(self.Js).any():
+            j_best = int(np.nanargmin(self.Js))
+        else:
+            # If k_min was too strict and no candidate survived, use all data as tail (i=0)
+            j_best = 0
+            xmin = self.data[0]
+            n_int = self.N
+            n = float(n_int)
+            s = np.sum(log_data) - n * log_data[0]
+            if s <= 1e-12:
+                # pathological case; keep trivial defaults
+                self.xmin  = xmin
+                self.alpha = 1.0
+                self.sigma = 0.0
+                self.D     = 1.0
+                self.data  = self.data[self.data >= self.xmin]
+                return
+
+            alpha_bc = 1.0 + (n - 1.0) / s
+            self.alphas[j_best] = alpha_bc
+
+            tail = self.data
+            F_fit = 1.0 - (tail / xmin) ** (1.0 - alpha_bc)
+            F_emp = np.arange(n_int, dtype=np.float64) / n
+            Dks = float(np.max(np.abs(F_emp - F_fit)))
+            self.Ds[j_best] = Dks
+
+            prior_pen = (alpha_bc - 2.0) ** 2
+            self.Js[j_best] = Dks - 0.868 / np.sqrt(n) + lambda_prior * prior_pen
+
+        # Commit winner (similar to what __init__ does after fit_power_law)
+        self.xmin  = self.data[j_best]
+        self.alpha = self.alphas[j_best]
+        self.sigma = self.sigmas[j_best]
+        self.D     = self.Ds[j_best]
+
+        # Match powerlaw package behavior: restrict data to data >= xmin
+        self.data = self.data[self.data >= self.xmin]
 
     def __getattr__(self, item):
         """ Needed for replicating the behavior of the powerlaw.Fit class"""

@@ -141,8 +141,8 @@ AUTO = 'auto' # smoothing
 
 
 MIN_EVALS = 'min_evals'
-DEFAULT_MIN_EVALS = 10
-MIN_NUM_EVALS = 10
+DEFAULT_MIN_EVALS = 8
+MIN_NUM_EVALS = 8
 
 MAX_EVALS = 'max_evals'
 DEFAULT_MAX_EVALS = 15000

@@ -4539,8 +4539,7 @@ class Test_VGG11_Alpha_w_WWFit(Test_Base):
         self.assertAlmostEqual(a[1],1.66595, places=3)
         self.assertAlmostEqual(a[3],1.43459, places=3)
 
-        
-        
+    
     #
     # TODO: check if xmax='force' does anything ?
     #
@@ -5593,6 +5592,79 @@ class TestSmoothWNumpy(unittest.TestCase):
 
 
 
+
+from weightwatcher.WW_powerlaw import WWFit
+
+
+def sample_pareto(alpha: float, xmin: float, n: int, seed: int = 123) -> np.ndarray:
+    """
+    Sample n values from a continuous Pareto distribution with exponent alpha
+    and minimum value xmin, using inverse-CDF sampling.
+    """
+    rng = np.random.default_rng(seed)
+    u = rng.random(n)
+    # Pareto(xmin, alpha): X = xmin * U^(-1 / (alpha - 1))
+    return xmin * (u ** (-1.0 / (alpha - 1.0)))
+
+
+class TestSmallNPowerLaw(unittest.TestCase):
+    """
+    Unit tests for the small-N power-law fitter (fit_powerlaw_smallN).
+    """
+
+    def test_smalln_path_is_used(self):
+        """
+        Ensure that for small N, WWFit routes through fit_powerlaw_smallN.
+        """
+        # small-N sample, should be below SMALL_N_CUTOFF in WWFit
+        data = sample_pareto(alpha=2.2, xmin=1.0, n=10, seed=42)
+
+        called = {"hit": False}
+
+        # Monkeypatch fit_powerlaw_smallN to detect that it was called
+        original_smallN = WWFit.fit_powerlaw_smallN
+
+        def wrapped_smallN(self, *args, **kwargs):
+            called["hit"] = True
+            return original_smallN(self, *args, **kwargs)
+
+        WWFit.fit_powerlaw_smallN = wrapped_smallN
+        try:
+            _ = WWFit(data, distribution="power_law")
+        finally:
+            # Always restore the original method
+            WWFit.fit_powerlaw_smallN = original_smallN
+
+        self.assertTrue(called["hit"], "fit_powerlaw_smallN was not called for small N")
+
+    def test_smalln_alpha_reasonable_on_pareto(self):
+        """
+        For a small-N Pareto sample with known alpha, the fitted alpha
+        should be in the right ballpark (within a loose tolerance).
+        """
+        true_alpha = 2.2
+        xmin = 1.0
+        n = 10  # small-N regime
+
+        data = sample_pareto(true_alpha, xmin, n, seed=123)
+        fit = WWFit(data, distribution="power_law")  # will use small-N path
+
+        est_alpha = fit.alpha
+        est_xmin = fit.xmin
+        
+        print(f" estimated small N alpha {est_alpha:0.2f}")
+
+        # Sanity checks
+        self.assertTrue(np.isfinite(est_alpha), "Estimated alpha is not finite")
+        self.assertGreater(est_alpha, 1.0, "Estimated alpha must be > 1 for a valid power law")
+        self.assertTrue(np.isfinite(est_xmin), "Estimated xmin is not finite")
+
+        # Loose accuracy check: small N is noisy, so don't demand perfection
+        self.assertLess(
+            abs(est_alpha - true_alpha),
+            0.4,
+            f"Estimated alpha {est_alpha:.3f} too far from true alpha {true_alpha:.3f}",
+        )
 
     
 

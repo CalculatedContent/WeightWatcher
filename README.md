@@ -29,16 +29,20 @@ It can be used to:
 
 - Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 
-- For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4)
+- For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4) and the recent [SETOL monograph] (https://arxiv.org/abs/2507.17912)
 
 - and some of the most recent Podcasts:
 
   - [Practical AI](https://changelog.com/practicalai/194)
   - [The Prompt Desk](https://smartlink.ausha.co/the-prompt-desk/data-free-quality-analysis-of-deep-neural-nets-with-charles-h-martin)
 
-- More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/)
+- 
+- More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/) and
+- [weightwatcher.ai] (https://weightwatcher.ai)
 
-And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher/tree/master/examples) directory
+And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher-examples) repo
+
+(the examples folder here is quite old )
 
 ## Installation:  Version 0.7.6
 

@@ -29,20 +29,24 @@ It can be used to:
 
 - Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 
-- For a deeper dive into the theory, see [our latest talk at ENS](https://youtu.be/xEuBwBj_Ov4) and the recent [SETOL monograph] (https://arxiv.org/abs/2507.17912)
+- For a deeper dive into the theory,
+  - [the talk at NeurIPS 2023](https://youtu.be/xEuBwBj_Ov4)
+  - the recent [SETOL monograph] (https://arxiv.org/abs/2507.17912)
+  - the most recent [Grokking paper] (https://arxiv.org/abs/2506.04434)
 
 - and some of the most recent Podcasts:
 
   - [Practical AI](https://changelog.com/practicalai/194)
   - [The Prompt Desk](https://smartlink.ausha.co/the-prompt-desk/data-free-quality-analysis-of-deep-neural-nets-with-charles-h-martin)
+  - [The TWIML AI Podcast with Sam Charrington](https://www.youtube.com/watch?v=pxPCKR6ED4s)
 
-- 
 - More details and demos can be found on the [Calculated Content Blog](https://calculatedcontent.com/) and
-- [weightwatcher.ai] (https://weightwatcher.ai)
+- and on the open-souce landing page [weightwatcher.ai] (https://weightwatcher.ai)
 
-And in the notebooks provided in the [examples](https://github.com/CalculatedContent/WeightWatcher-examples) repo
-
+And in the notebooks provided in the [WeightWatcher-examples github repo](https://github.com/CalculatedContent/WeightWatcher-examples) 
 (the examples folder here is quite old )
+
+If you have some models you would like to analyze and get feedback on, check out  [WeightWatcher-Pro](https://weightwatcher-ai.com).  It's currently in beta and free.
 
 ## Installation:  Version 0.7.6
 

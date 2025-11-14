@@ -30,8 +30,8 @@ It can be used to:
 - Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 
 - For a deeper dive into the theory,
-  - [the talk at NeurIPS 2023](https://youtu.be/xEuBwBj_Ov4)
-  - the recent [SETOL monograph] (https://arxiv.org/abs/2507.17912)
+  - Dr. Martin's [invited talk at NeurIPS 2023](https://youtu.be/xEuBwBj_Ov4)
+  - the deep theory [SETOL monograph] (https://arxiv.org/abs/2507.17912)
   - the most recent [Grokking paper] (https://arxiv.org/abs/2506.04434)
 
 - and some of the most recent Podcasts:

@@ -644,20 +644,6 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 <hr>
 
-## Experimental / Most Recent version    (not ready yet)
-
-You may install the latest / Trunk from testpypi
-
-	python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
-
-The testpypi version usually has the most recent updates, including experimental methods and bug fixes.
-But pypi has changed the way it handles testpypi requiring non-testpypi dependencies.
-e.g., torch and tensorflow fail on testpypi
-
-If you have them installed already in your env, you're fine.
-Otherwise, you need to install them first
-<hr>
-
 ## Contributors
 
 [Charles H Martin, PhD](https://www.linkedin.com/in/charlesmartin14)

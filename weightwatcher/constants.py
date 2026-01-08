@@ -154,6 +154,48 @@ DEFAULT_MAX_N = 50000
 PLOT = 'plot'
 STACKED = 'stacked'
 
+# constants used to indicate which plots should be generated
+WW_PLOT_DETX            = 'detX'
+
+WW_PLOT_VECTOR_METRICS  = 'vectors'
+WW_PLOT_VECTOR_HIST     = 'vector_hist'
+
+WW_PLOT_LOG_DELTAES     = 'log_deltaEs'
+WW_PLOT_DELTAES_LEVELS  = 'deltaEs_levels'
+
+WW_PLOT_MPFIT           = 'mpfit'
+WW_PLOT_MPDENSITY       = 'mpdensity'
+
+WW_PLOT_LOGLOG_ESD      = 'loglog_esd'
+WW_PLOT_LINLIN_ESD      = 'linlin_esd'
+WW_PLOT_LOGLIN_ESD      = 'loglin_esd'
+WW_PLOT_DKS             = 'DKS'
+WW_PLOT_XMIN_ALPHA      = 'xmin_alpha'
+
+WW_PLOT_RANDESD         = 'rand_esd'
+WW_PLOT_LOG_RANDESD     = 'log_rand_esd'
+
+WW_ALL_PLOTS = [
+    WW_PLOT_DETX,
+    WW_PLOT_VECTOR_METRICS, WW_PLOT_VECTOR_HIST,
+    WW_PLOT_LOG_DELTAES, WW_PLOT_DELTAES_LEVELS,
+    WW_PLOT_MPFIT, WW_PLOT_MPDENSITY,
+    WW_PLOT_LOGLOG_ESD, WW_PLOT_LINLIN_ESD, WW_PLOT_LOGLIN_ESD, WW_PLOT_DKS, WW_PLOT_XMIN_ALPHA,
+    WW_PLOT_RANDESD, WW_PLOT_LOG_RANDESD,
+]
+
+WW_FIT_PL_PLOTS = [
+    WW_PLOT_LOGLOG_ESD, WW_PLOT_LINLIN_ESD, WW_PLOT_LOGLIN_ESD, WW_PLOT_DKS, WW_PLOT_XMIN_ALPHA,
+]
+
+WW_RANDESD_PLOTS = [
+    WW_PLOT_RANDESD, WW_PLOT_LOG_RANDESD,
+]
+
+WW_DELTAES_PLOTS = [
+    WW_PLOT_LOG_DELTAES, WW_PLOT_DELTAES_LEVELS,
+]
+
 CHANNELS_STR = 'channels'
 FIRST = 'first'
 LAST = 'last'   

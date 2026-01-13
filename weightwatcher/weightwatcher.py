@@ -2988,7 +2988,7 @@ class WeightWatcher:
             value = np.max(evals)-np.max(rand_evals)
             ww_layer.add_column("ww_maxdist", value)
 
-        if params[PLOT]:
+        if set(WW_RANDESD_PLOTS) & set(params[PLOT]):
             self.plot_random_esd(ww_layer, params)
             
         return ww_layer
@@ -3062,7 +3062,7 @@ class WeightWatcher:
         detX_val = evals[detX_idx]
 
 
-        if plot:
+        if WW_PLOT_DETX in plot:
             name = ww_layer.name
             # fix rescaling to plot xmin
 
@@ -3509,6 +3509,9 @@ class WeightWatcher:
             logger.warning("WW2X option deprecated, reverting too POOL=False")
             ww2x=False
             pool=False
+
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
             
         params=DEFAULT_PARAMS.copy()          
         
@@ -3597,7 +3600,7 @@ class WeightWatcher:
                         logger.debug("MP Fitting Layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=False, params=params)
 
-                    if params[DELTA_ES] and params[PLOT]:
+                    if params[DELTA_ES] and set(WW_DELTAES_PLOTS) & set(params[PLOT]):
                         logger.debug("Computing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_plot_deltaEs(ww_layer, random=False, params=params)
                     
@@ -3612,7 +3615,7 @@ class WeightWatcher:
                         logger.debug("MP Fitting Random layer: {} {} ".format(ww_layer.layer_id, ww_layer.name)) 
                         self.apply_mp_fit(ww_layer, random=True, params=params)
 
-                        if params[DELTA_ES] and params[PLOT]:
+                        if params[DELTA_ES] and set(WW_DELTAES_PLOTS) & set(params[PLOT]):
                             logger.debug("Computing and Plotting Deltas: {} {} ".format(ww_layer.layer_id, ww_layer.name))
                             self.apply_plot_deltaEs(ww_layer, random=True, params=params)
                         
@@ -3878,7 +3881,17 @@ class WeightWatcher:
             params[SAVEDIR] = savefig
             logger.info("Saving all images to {}".format(savedir))
         elif not isinstance(savefig,str) and not isinstance(savefig,bool):
-            valid = False      
+            valid = False
+
+
+        if params[PLOT] is True: params[PLOT] = WW_ALL_PLOTS
+        if params[PLOT] is False: params[PLOT] = []
+        plot = params[PLOT]
+
+        invalid_plots = set(plot) - set(WW_ALL_PLOTS)
+        if invalid_plots:
+            logger.warning(f"Invalid plot types detected: {invalid_plots}. See WW_ALL_PLOTS in constants.py")
+            valid = False
             
             
         fix_fingers =  params[FIX_FINGERS]
@@ -4086,7 +4099,8 @@ class WeightWatcher:
         """Plot histogram and log histogram of ESD and randomized ESD"""
           
         if params is None: params = DEFAULT_PARAMS.copy()
-        
+
+        plot = params[PLOT]
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
@@ -4094,37 +4108,39 @@ class WeightWatcher:
         plot_id = ww_layer.plot_id
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
-        title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-          
+
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
         max_rand_eval = np.max(rand_evals)
 
-        plt.hist((nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
-        plt.title(title)   
-        plt.xlabel(r" Eigenvalues $(\lambda)$")               
-        plt.legend()
-        if savefig:
-            #plt.savefig("ww.layer{}.esd.png".format(layer_id))
-            save_fig(plt, "randesd1", plot_id, savedir)
-        plt.show(); plt.clf()
+        if WW_PLOT_RANDESD in plot:
+            plt.hist((nonzero_evals), bins=100, density=True, color='g', label='original')
+            plt.hist((nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+            plt.axvline(x=(max_rand_eval), color='orange', label='max rand')
+            title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
+            plt.title(title)
+            plt.xlabel(r" Eigenvalues $(\lambda)$")
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.esd.png".format(layer_id))
+                save_fig(plt, "randesd1", plot_id, savedir)
+            plt.show(); plt.clf()
 
-        plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
-        plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
-        plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
-        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-        plt.title(title)   
-        plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
-        plt.legend()
-        if savefig:
-            #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
-            save_fig(plt, "randesd2", plot_id, savedir)
-        plt.show(); plt.clf()
+        if WW_PLOT_LOG_RANDESD in plot:
+            plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
+            plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
+            plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
+            title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
+            plt.title(title)
+            plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.randesd.2.png".format(layer_id))
+                save_fig(plt, "randesd2", plot_id, savedir)
+            plt.show(); plt.clf()
         
 
-    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=True, layer_name="", layer_id=0, plot_id=0, \
+    def fit_powerlaw(self, evals, xmin=None, xmax=None, plot=WW_ALL_PLOTS, layer_name="", layer_id=0, plot_id=0, \
                      sample=False, sample_size=None,  savedir=DEF_SAVE_DIR, savefig=True, \
                      thresh=EVALS_THRESH,\
                      fix_fingers=False, finger_thresh=DEFAULT_FINGER_THRESH, xmin_max=None, max_fingers=DEFAULT_MAX_FINGERS, \
@@ -4305,26 +4321,26 @@ class WeightWatcher:
             
             #fit_entropy = line_entropy(fit.Ds)
 
-        if plot:
-            
+        if set(WW_FIT_PL_PLOTS) & set(plot):
             if status==SUCCESS:
                 min_evals_to_plot = (xmin/100)
-                
-                fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
-                fig2 = fit.plot_pdf(color='r', linewidth=2)
-                if fit_type==POWER_LAW:
-                    if pl_package == WW_POWERLAW_PACKAGE:
-                        fit.plot_power_law_pdf(color='r', linestyle='--', ax=fig2)
-                    else:
-                        fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
-                
-                else:
-                    fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
             else:
                 xmin = -1
                 min_evals_to_plot = (0.4*np.max(evals)/100)
-
             evals_to_plot = evals[evals>min_evals_to_plot]
+
+        if WW_PLOT_LOGLOG_ESD in plot:
+            fig2 = fit.plot_pdf(color='b', linewidth=0) # invisbile
+            fig2 = fit.plot_pdf(color='r', linewidth=2)
+            if fit_type==POWER_LAW:
+                if pl_package == WW_POWERLAW_PACKAGE:
+                    fit.plot_power_law_pdf(color='r', linestyle='--', ax=fig2)
+                else:
+                    fit.power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+            
+            else:
+                fit.truncated_power_law.plot_pdf(color='r', linestyle='--', ax=fig2)
+
             plot_loghist(evals_to_plot, bins=100, xmin=xmin)
             title = "Log-Log ESD for {}\n".format(layer_name) 
             
@@ -4342,8 +4358,9 @@ class WeightWatcher:
                 #plt.savefig("ww.layer{}.esd.png".format(layer_id))
                 save_fig(plt, "esd", plot_id, savedir)
             plt.show(); plt.clf()
-                
-    
+
+
+        if WW_PLOT_LINLIN_ESD in plot:
             # plot eigenvalue histogram
             num_bins = 100  # np.min([100,len(evals)])
             plt.hist(evals_to_plot, bins=num_bins, density=True)
@@ -4356,6 +4373,7 @@ class WeightWatcher:
                 save_fig(plt, "esd2", plot_id, savedir)
             plt.show(); plt.clf()
 
+        if WW_PLOT_LOGLIN_ESD in plot:
             # plot log eigenvalue histogram
             nonzero_evals = evals_to_plot[evals_to_plot > 0.0]
             plt.hist(np.log10(nonzero_evals), bins=100, density=True)
@@ -4370,7 +4388,8 @@ class WeightWatcher:
             plt.show(); plt.clf()
     
             # plot xmins vs D
-            
+
+        if WW_PLOT_DKS in plot:
             plt.plot(fit.xmins, fit.Ds, label=r'$D_{KS}$')
             plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             #plt.plot(fit.xmins, fit.sigmas / fit.alphas, label=r'$\sigma /\alpha$', linestyle='--')
@@ -4388,9 +4407,10 @@ class WeightWatcher:
             if savefig:
                 save_fig(plt, "esd4", plot_id, savedir)
                 #plt.savefig("ww.layer{}.esd4.png".format(layer_id))
-            plt.show(); plt.clf() 
-            
-            
+            plt.show(); plt.clf()
+
+
+        if WW_PLOT_XMIN_ALPHA in plot:
             plt.plot(fit.xmins, fit.alphas, label=r'$\alpha(xmin)$')
             plt.axvline(x=fit.xmin, color='red', label=r'$\lambda_{xmin}$')
             plt.xlabel(r'$x_{min}$')
@@ -4401,9 +4421,7 @@ class WeightWatcher:
             if savefig:
                 save_fig(plt, "esd5", plot_id, savedir)
                 #plt.savefig("ww.layer{}.esd5.png".format(layer_id))
-                
-                                
-            plt.show(); plt.clf() 
+            plt.show(); plt.clf()
 
         raw_alpha = -1
         if raw_fit is not None:
@@ -4574,54 +4592,58 @@ class WeightWatcher:
         plot_id = ww_layer.plot_id
         name = ww_layer.name or ""
         layer_name = "{} {}".format(plot_id, name)
-        
+
+        plot = params[PLOT]
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
+        if not set(WW_DELTAES_PLOTS) & set(plot): return
+
         if random:
             layer_name = "{} Randomized".format(layer_name)
-            title = "Layer {} W".format(layer_name)
             evals = ww_layer.rand_evals
             color='mediumorchid'
-            bulk_max = ww_layer.rand_bulk_max
         else:
-            title = "Layer {} W".format(layer_name)
             evals = ww_layer.evals
             color='blue'
 
-        # sequence of deltas    
         deltaEs = np.diff(evals)
         logDeltaEs = np.log10(deltaEs)
         x = np.arange(len(deltaEs))
         eqn = r"$\log_{10}\Delta(\lambda)$"
-        plt.scatter(x,logDeltaEs, color=color, marker='.')
-        
-        if not random:
-            idx = np.searchsorted(evals, ww_layer.xmin, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{xmin}$')
-        else:
-            idx = np.searchsorted(evals, bulk_max, side="left")        
-            plt.axvline(x=idx, color='red', label=r'$\lambda_{+}$')
 
-        plt.title("Log Delta Es for Layer {}".format(layer_name))
-        plt.ylabel("Log Delta Es: "+eqn)
-        plt.legend()
-        if savefig:  
-            #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))         
-            save_fig(plt, "deltaEs", plot_id, savedir)
-        plt.show(); plt.clf()
+        # sequence of deltas
+        if WW_PLOT_LOG_DELTAES in plot:
+            plt.scatter(x,logDeltaEs, color=color, marker='.')
 
-        
+            if random:
+                bulk_max = ww_layer.rand_bulk_max
+                idx = np.searchsorted(evals, bulk_max, side="left")
+                label=r'$\lambda_{+}$'
+            else:
+                idx = np.searchsorted(evals, ww_layer.xmin, side="left")
+                label=r'$\lambda_{xmin}$'
+            plt.axvline(x=idx, color='red', label=label)
+
+            plt.title("Log Delta Es for Layer {}".format(layer_name))
+            plt.ylabel("Log Delta Es: "+eqn)
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.deltaEs.png".format(layer_id))
+                save_fig(plt, "deltaEs", plot_id, savedir)
+            plt.show(); plt.clf()
+
         # level statistics (not mean adjusted because plotting log)
-        plt.hist(logDeltaEs, bins=100, color=color, density=True)
-        plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
-        plt.ylabel("density")
-        plt.xlabel(eqn)
-        plt.legend()
-        if savefig:  
-            #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))         
-            save_fig(plt, "level-stats", plot_id, savedir)
-        plt.show(); plt.clf()
+        if WW_PLOT_DELTAES_LEVELS in plot:
+            plt.hist(logDeltaEs, bins=100, color=color, density=True)
+            plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
+            plt.ylabel("density")
+            plt.xlabel(eqn)
+            plt.legend()
+            if savefig:
+                #plt.savefig("ww.layer{}.level-stats.png".format(layer_id))
+                save_fig(plt, "level-stats", plot_id, savedir)
+            plt.show(); plt.clf()
 
     def apply_mp_fit(self, ww_layer, random=True, params=None):
         """Perform MP fit on random or actual random eigenvalues
@@ -4741,7 +4763,7 @@ class WeightWatcher:
             
             #TODO: set cutoff 
             #Even if the quarter circle applies, still plot the MP_fit
-            if plot:
+            if WW_PLOT_MPFIT in plot:
                 plot_density(to_plot, Q=Q, sigma=s1, method="MP", color=color, cutoff=bulk_max_TW)#, scale=Wscale)
                 plt.legend([r'$\rho_{emp}(\lambda)$', 'MP fit'])
                 plt.title("MP ESD, sigma auto-fit for {}".format(layer_name))
@@ -4757,7 +4779,7 @@ class WeightWatcher:
         sigma_mp, x, mp = plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
                               Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
         
-        if plot:
+        if WW_PLOT_MPDENSITY in plot:
             title = fit_law +" for layer "+layer_name+"\n Q={:0.3} ".format(Q)
             title = title + r"$\sigma_{mp}=$"+"{:0.3} ".format(sigma_mp)
             title = title + r"$\mathcal{R}_{mp}=$"+"{:0.3} ".format(mp_softrank)
@@ -4771,6 +4793,7 @@ class WeightWatcher:
         
             # TODO: replot on log scale, along with randomized evals
             # we might add this back in later
+            # REMEMBER TO ADD a WW_PLOT_MPFIT_XXX constant
             
             # plt.hist(to_plot, bins=100, density=True)
             # plt.hist(to_plot, bins=100, density=True, color='red')
@@ -4851,14 +4874,17 @@ class WeightWatcher:
         
         """
         
-        self.set_model_(model)          
+        self.set_model_(model)
+
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
          
         params = DEFAULT_PARAMS.copy()
         
         params[POOL] = pool
         params[LAYERS] = layers
         params[FIT] = fit # only useful for method=LAMBDA_MINa
-        params[PLOT] = False
+        params[PLOT] = []
         params[START_IDS] = start_ids
 
         params[SVD_METHOD] = svd_method
@@ -5071,6 +5097,9 @@ class WeightWatcher:
         """
         
         self.set_model_(model)          
+        
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
          
         params=DEFAULT_PARAMS.copy()
         params[POOL] = pool
@@ -5138,7 +5167,10 @@ class WeightWatcher:
                 plot=True,  savefig=DEF_SAVE_DIR, channels=None):
         """Seperate method to analyze the eigenvectors of each layer"""
         
-        self.set_model_(model)          
+        self.set_model_(model)
+
+        if plot is True: plot = WW_ALL_PLOTS
+        if plot is False: plot = []
         
         params=DEFAULT_PARAMS.copy()
         params[SAVEFIG] = savefig
@@ -5223,7 +5255,7 @@ class WeightWatcher:
         
         sort_ids = np.argsort(all_evals)
                 
-        if params[PLOT]:
+        if WW_PLOT_VECTOR_METRICS in params[PLOT]:
             fig, axs = plt.subplots(4, figsize=(8, 12))
             
             fig.suptitle("Vector Localization Metrics for {}".format(layer_name))   
@@ -5301,7 +5333,7 @@ class WeightWatcher:
                 ww_layer.add_column("tail_var_{}".format(name), tail_var)
                     
 
-            if params[PLOT]:
+            if WW_PLOT_VECTOR_HIST in params[PLOT]:
                 fig, axs = plt.subplots(3)
                 fig.suptitle("Vector Bulk/Tail Metrics for {}".format(layer_name))   
                 
@@ -5315,8 +5347,7 @@ class WeightWatcher:
                     data = np.array(arr)[sort_ids]        
                     bulk_data = data[bulk_ids]
                     tail_data = data[tail_ids]
-                    
-                    
+
                     # should never happen
                     if len(bulk_data)>0:
                         ax.hist(bulk_data, bins=100, color='blue', alpha=0.5, label='bulk', density=True)
@@ -5328,9 +5359,7 @@ class WeightWatcher:
                     ax.set_ylabel(title) 
                     ax.label_outer() 
                     ax.legend()
-                    
-                    
-                
+
                 if savefig:
                     save_fig(plt, "vector_histograms", ww_layer.plot_id, savedir)
                 plt.show(); plt.clf()

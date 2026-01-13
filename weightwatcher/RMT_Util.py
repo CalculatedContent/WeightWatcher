@@ -452,6 +452,9 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
     
     # if eigenvalues is None:
     #    eigenvalues = get_eigenvalues(model, weightfile, layer)
+
+    if plot is True:  plot = [WW_PLOT_MPDENSITY]
+    if plot is False: plot = []
    
     if Q == 1:
         to_fit = np.sqrt(eigenvalues)
@@ -463,7 +466,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         label = r'$\rho_{emp}(\lambda)$'
         title = " W{} ESD, MP Sigma={:0.3}f" 
         
-    if plot:
+    if WW_PLOT_MPDENSITY in plot:
         plt.hist(to_fit, bins=100, alpha=alpha, color=color, density=True, label=label);
         plt.legend()
         
@@ -491,7 +494,7 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
     else:
         x, mp = marchenko_pastur_pdf(x_min, x_max, Q, sigma)
 
-    if plot:
+    if WW_PLOT_MPDENSITY in plot:
         plt.title(title.format(layer_name, sigma))
         plt.plot(x, mp, linewidth=1, color='r', label="MP fit")
         

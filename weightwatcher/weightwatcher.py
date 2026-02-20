@@ -4659,13 +4659,15 @@ class WeightWatcher:
             evals = ww_layer.rand_evals
             orig_evals = ww_layer.evals
 
-            color='mediumorchid'
+            color='darkorchid'
+            hist_alpha = 0.55
         else:
             title = "Layer {} W".format(layer_name)
             evals = ww_layer.evals
             orig_evals = ww_layer.evals
 
-            color='blue'
+            color='royalblue'
+            hist_alpha = 0.60
 
         N, M = ww_layer.N, ww_layer.M
         rf = ww_layer.rf
@@ -4676,7 +4678,7 @@ class WeightWatcher:
         try:
             # Attempt to fit using mp_fit method
             num_spikes, sigma_mp, mp_softrank, bulk_min, bulk_max, Wscale = self.mp_fit(
-                evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale, orig_evals
+                evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, hist_alpha, rescale, orig_evals
             )
         except Exception as e:
             # Handle any exception and check for specific types
@@ -4704,7 +4706,7 @@ class WeightWatcher:
             ww_layer.add_column('bulk_min', bulk_min)
         return 
 
-    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, rescale, orig_evals):
+    def mp_fit(self, evals, N, M, rf, layer_name, layer_id, plot_id, plot, savefig, savedir, color, hist_alpha, rescale, orig_evals):
         """Automatic MP fit to evals, compute numner of spikes and mp_softrank"""
         
         Q = N/M        
@@ -4769,7 +4771,7 @@ class WeightWatcher:
 #        
         #logger.info("MP fit min_esd={:0.2f}, max_esd={:0.2f}, Q={}, s1={:0.2f} Wsc ale={:0.2f}".format(np.min(to_plot), np.max(to_plot), Q, s1, Wscale))
         sigma_mp, x, mp = plot_density_and_fit(model=None, eigenvalues=to_plot, layer_name=layer_name, layer_id=0,
-                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
+                              Q=Q, num_spikes=0, sigma=s1, verbose = False, plot=plot, alpha=hist_alpha, color=color, cutoff=bulk_max_TW)#, scale=Wscale)
         
         if plot:
             title = fit_law +" for layer "+layer_name+"\n Q={:0.3} ".format(Q)

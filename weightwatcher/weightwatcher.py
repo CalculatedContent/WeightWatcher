@@ -3084,6 +3084,12 @@ class WeightWatcher:
             plt.show(); plt.clf()
 
         ww_layer.add_column('detX_num', detX_num)
+        ww_layer.add_column('num_ERG_spikes', detX_num)
+
+        ERG_gap = np.nan
+        if ww_layer.has_column('num_pl_spikes'):
+            ERG_gap = detX_num - ww_layer.num_pl_spikes
+        ww_layer.add_column('ERG_gap', ERG_gap)
 
         detX_val_unrescaled = evals[detX_idx]
 

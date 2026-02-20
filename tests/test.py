@@ -5307,7 +5307,7 @@ class Test_Pandas(Test_Base):
 
     def test_column_names_analyze_detX(self):
         expected_columns = ['layer_id', 'name', 'D',  'M', 'N', 'Q', 'alpha',
-                            'alpha_weighted',  'detX_num', 'detX_val',
+                            'alpha_weighted',  'detX_num', 'num_ERG_spikes', 'ERG_gap', 'detX_val',
                             'detX_val_unrescaled', 'entropy',  'has_esd',
                             'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
                             'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
@@ -5324,7 +5324,7 @@ class Test_Pandas(Test_Base):
 
     def test_column_names_analyze_ERG_alias(self):
         expected_columns = ['layer_id', 'name', 'D',  'M', 'N', 'Q', 'alpha',
-                            'alpha_weighted',  'detX_num', 'detX_val',
+                            'alpha_weighted',  'detX_num', 'num_ERG_spikes', 'ERG_gap', 'detX_val',
                             'detX_val_unrescaled', 'entropy',  'has_esd',
                             'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
                             'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',

@@ -3347,6 +3347,7 @@ class WeightWatcher:
                 fix_fingers=False, xmin_max = None,  max_fingers=DEFAULT_MAX_FINGERS, finger_thresh=DEFAULT_FINGER_THRESH,
                 fit=PL, sparsify=True, 
                 detX=False,
+                ERG=False,
                 svd_method=FAST_SVD,
                 tolerance=WEAK_RANK_LOSS_TOLERANCE,
                 start_ids=DEFAULT_START_ID,
@@ -3464,6 +3465,9 @@ class WeightWatcher:
         detX:  bool, default: False 
             compute the Trace Log Norm / DetX=1 constraint, and plot if plot True
 
+        ERG: bool, default: False
+            Alias for detX. If ERG=True, detX is set to True.
+
         svd_method:  string, default: 'fast'
             Must be one of "fast" or "accurate". Determines the method by which eigenvalues are calcualted.
             
@@ -3510,6 +3514,9 @@ class WeightWatcher:
             ww2x=False
             pool=False
             
+        if ERG:
+            detX = True
+
         params=DEFAULT_PARAMS.copy()          
         
         params[MIN_EVALS] = min_evals 

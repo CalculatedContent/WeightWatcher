@@ -5322,6 +5322,21 @@ class Test_Pandas(Test_Base):
         self.assertEqual(len(expected_columns), len(details.columns))
         self.assertEqual(expected_columns, list(details.columns))
 
+    def test_column_names_analyze_ERG_alias(self):
+        expected_columns = ['layer_id', 'name', 'D',  'M', 'N', 'Q', 'alpha',
+                            'alpha_weighted',  'detX_num', 'detX_val',
+                            'detX_val_unrescaled', 'entropy',  'has_esd',
+                            'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
+                            'log_spectral_norm', 'longname', 'matrix_rank', 'norm', 'num_evals',
+                            'num_pl_spikes', 'rank_loss', 'rf', 'sigma',
+                            'spectral_norm', 'stable_rank', 'status', 'sv_max','sv_min', 'warning', 'weak_rank_loss',
+                            'xmax', 'xmin']
+
+        details = self.watcher.analyze(layers=[67], detX=False, ERG=True)
+        self.assertTrue(isinstance(details, pd.DataFrame), "details is a pandas DataFrame")
+        self.assertEqual(len(expected_columns), len(details.columns))
+        self.assertEqual(expected_columns, list(details.columns))
+
     def test_column_names_analyze_randomize(self):
         expected_columns = ['layer_id', 'name', 'D', 'M', 'N', 'Q', 'alpha',
                             'alpha_weighted',  'entropy', 'has_esd',

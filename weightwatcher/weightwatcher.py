@@ -4676,6 +4676,7 @@ class WeightWatcher:
         
         if random:
             ww_layer.add_column('rand_num_spikes', num_spikes)
+            ww_layer.add_column('num_traps', num_spikes)
             ww_layer.add_column('rand_sigma_mp', sigma_mp)
             ww_layer.add_column('rand_mp_softrank', mp_softrank)
             ww_layer.add_column('rand_W_scale', Wscale)
@@ -5900,4 +5901,3 @@ class SafeTensorDict(dict):
     #     for ww_layer in  layer_iterator:
     #         print(ww_layer)
         
-

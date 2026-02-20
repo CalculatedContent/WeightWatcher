@@ -2082,7 +2082,7 @@ class Test_VGG11_noModel(Test_Base):
         
         rand_columns = ['max_rand_eval', 'rand_W_scale', 'rand_bulk_max',
                      'rand_bulk_min', 'rand_distance', 'rand_mp_softrank', 
-                     'rand_num_spikes', 'rand_sigma_mp']
+                     'rand_num_spikes', 'rand_sigma_mp', 'num_traps']
        
         details = self.watcher.analyze(model=self.model, layers = self.fc2_layer, randomize=False)  
         for column in rand_columns:
@@ -3520,7 +3520,7 @@ class Test_VGG11_Base(Test_Base):
         
         rand_columns = ['max_rand_eval', 'rand_W_scale', 'rand_bulk_max',
                      'rand_bulk_min', 'rand_distance', 'rand_mp_softrank', 
-                     'rand_num_spikes', 'rand_sigma_mp']
+                     'rand_num_spikes', 'rand_sigma_mp', 'num_traps']
        
         details = self.watcher.analyze(layers = [self.fc2_layer], randomize=False)  
         for column in rand_columns:
@@ -5327,7 +5327,7 @@ class Test_Pandas(Test_Base):
                             'alpha_weighted',  'entropy', 'has_esd',
                             'lambda_max', 'layer_type', 'log_alpha_norm', 'log_norm',
                             'log_spectral_norm', 'longname', 'matrix_rank', 'max_rand_eval', 'norm',
-                            'num_evals', 'num_pl_spikes', 'rand_W_scale',
+                            'num_evals', 'num_pl_spikes', 'num_traps', 'rand_W_scale',
                             'rand_bulk_max', 'rand_bulk_min', 'rand_distance', 'rand_mp_softrank',
                             'rand_num_spikes', 'rand_sigma_mp', 'rank_loss', 'rf', 'sigma',
                             'spectral_norm', 'stable_rank', 'status', 'sv_max', 'sv_min', 'warning', 'weak_rank_loss',

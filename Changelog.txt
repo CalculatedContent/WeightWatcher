@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.7]
+Multiple OpenAI Codex updates
+Changed mp_fit plot colors
+Added ERG_gap, num_ERG_spikes, and num_traps columns
+Better longname detection
+setup.py updated
+pyproject.toml added
+
 ## [0.7.6]
 Added small_N power law estimator
 

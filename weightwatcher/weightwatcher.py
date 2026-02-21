@@ -3149,7 +3149,10 @@ class WeightWatcher:
         max_fingers =  params[MAX_FINGERS]
         finger_thresh = params[FINGER_THRESH]
         
-        layer_name = "Layer {}".format(plot_id)
+        longname = ww_layer.longname or ""
+        layer_name = f"Layer {plot_id}"
+        if longname:
+            layer_name = f"{layer_name} ({longname})"
         
         fit_type =  params[FIT]
         pl_package = params[PL_PACKAGE]
@@ -4107,7 +4110,10 @@ class WeightWatcher:
         plot_id = ww_layer.plot_id
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
+        longname = ww_layer.longname or ""
         title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
+        if longname:
+            title = "Layer {} {} ({}): ESD & Random ESD".format(ww_layer.layer_id, ww_layer.name, longname)
           
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
@@ -4128,6 +4134,8 @@ class WeightWatcher:
         plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
         title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
+        if longname:
+            title = "Layer {} {} ({}): Log10 ESD & Random ESD".format(ww_layer.layer_id, ww_layer.name, longname)
         plt.title(title)   
         plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         plt.legend()

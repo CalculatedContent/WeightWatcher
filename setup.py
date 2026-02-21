@@ -1,4 +1,4 @@
-from os import path
+from pathlib import Path
 
 from setuptools import setup
 
@@ -11,9 +11,8 @@ from setuptools import setup
 #except OSError as e:
 #    # pypandoc failed, use the short description as long description
 #    readme = ww.__description__
-this_directory = path.abspath(path.dirname(__file__))
-with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
-    readme = f.read()
+this_directory = Path(__file__).resolve().parent
+readme = (this_directory / 'README.md').read_text(encoding='utf-8')
 
 class _metadata(object):
     def __init__(self):

@@ -111,7 +111,7 @@ class FrameworkLayer:
         if _is_empty_string(self.longname) and hasattr(self.layer, 'longname') and not _is_empty_string(self.layer.longname):
             self.longname = self.layer.longname
         elif _is_empty_string(self.longname):
-            self.longname = name
+            self.longname = self.name
             
             
     def layer_type(self, layer):

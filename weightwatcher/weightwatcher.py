@@ -58,6 +58,10 @@ mpl_logger = logging.getLogger("matplotlib")
 mpl_logger.setLevel(logging.WARNING)
 
 
+def _is_empty_string(value):
+    return value is None or (isinstance(value, str) and len(value.strip()) == 0)
+
+
 
 def main():
     """
@@ -104,9 +108,9 @@ class FrameworkLayer:
             self.name = str(self.layer)
             self.name = re.sub(r'\(.*', '', self.name)
             
-        if self.longname is None and hasattr(self.layer, 'longname'):
+        if _is_empty_string(self.longname) and hasattr(self.layer, 'longname') and not _is_empty_string(self.layer.longname):
             self.longname = self.layer.longname
-        elif self.longname is None:
+        elif _is_empty_string(self.longname):
             self.longname = name
             
             
@@ -375,8 +379,11 @@ class PyTorchLayer(FrameworkLayer):
             #for layer in model.modules():
             layer_id = start_id
             for longname, layer in model.named_modules():
-                setattr(layer, 'longname', longname)
+                if not _is_empty_string(longname) and (not hasattr(layer, 'longname') or _is_empty_string(layer.longname)):
+                    setattr(layer, 'longname', longname)
                 pytorch_layer = PyTorchLayer(layer, layer_id, longname=longname)  
+                if _is_empty_string(pytorch_layer.longname) and not _is_empty_string(longname):
+                    pytorch_layer.longname = longname
                 layer_id += 1 
                 yield pytorch_layer                 
         return layer_iter_()     
@@ -2353,6 +2360,15 @@ class WeightWatcher:
         """is a valid FRAMEWORK constant """
         valid = framework in [ FRAMEWORK.KERAS, FRAMEWORK.PYTORCH, FRAMEWORK.PYSTATEDICT, FRAMEWORK.PYSTATEDICT_DIR, FRAMEWORK.ONNX,  FRAMEWORK.WW_FLATFILES]
         return valid
+
+    @staticmethod
+    def _append_longname(label, longname):
+        if _is_empty_string(longname):
+            return label
+        suffix = f"({longname})"
+        if suffix in label:
+            return label
+        return f"{label} {suffix}"
         
     
     @staticmethod
@@ -3150,9 +3166,7 @@ class WeightWatcher:
         finger_thresh = params[FINGER_THRESH]
         
         longname = ww_layer.longname or ""
-        layer_name = f"Layer {plot_id}"
-        if longname:
-            layer_name = f"{layer_name} ({longname})"
+        layer_name = self._append_longname(f"Layer {plot_id}", longname)
         
         fit_type =  params[FIT]
         pl_package = params[PL_PACKAGE]
@@ -4111,9 +4125,8 @@ class WeightWatcher:
         evals = ww_layer.evals
         rand_evals = ww_layer.rand_evals
         longname = ww_layer.longname or ""
-        title = "Layer {} {}: ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-        if longname:
-            title = "Layer {} {} ({}): ESD & Random ESD".format(ww_layer.layer_id, ww_layer.name, longname)
+        layer_label = self._append_longname("Layer {} {}".format(ww_layer.layer_id, ww_layer.name), longname)
+        title = f"{layer_label}: ESD & Random ESD"
           
         nonzero_evals = evals[evals > 0.0]
         nonzero_rand_evals = rand_evals[rand_evals > 0.0]
@@ -4133,9 +4146,7 @@ class WeightWatcher:
         plt.hist(np.log10(nonzero_evals), bins=100, density=True, color='g', label='original')
         plt.hist(np.log10(nonzero_rand_evals), bins=100, density=True, color='r', label='random', alpha=0.5)
         plt.axvline(x=np.log10(max_rand_eval), color='orange', label='max rand')
-        title = "Layer {} {}: Log10 ESD & Random ESD".format(ww_layer.layer_id,ww_layer.name)
-        if longname:
-            title = "Layer {} {} ({}): Log10 ESD & Random ESD".format(ww_layer.layer_id, ww_layer.name, longname)
+        title = f"{layer_label}: Log10 ESD & Random ESD"
         plt.title(title)   
         plt.xlabel(r"Log10 Eigenvalues $(log_{10}\lambda)$")               
         plt.legend()

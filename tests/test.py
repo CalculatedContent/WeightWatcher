@@ -2472,8 +2472,8 @@ class Test_DeltaLayerIterator(Test_Base):
         self.params = DEFAULT_PARAMS.copy()
         self.watcher = ww.WeightWatcher(log_level=logging.INFO)
         return
-        
-        
+
+
     def test_delta_layer_iterator_0(self):
         """Make a fake model and test diff are zero"""
         
@@ -2531,6 +2531,33 @@ class Test_DeltaLayerIterator(Test_Base):
         return
     
     
+class Test_PyTorchLongnames(Test_Base):
+
+    class DummyMLP(nn.Module):
+        def __init__(self, input_dim=100, hidden1=64, hidden2=32, output_dim=10):
+            super().__init__()
+            self.fc1 = nn.Linear(input_dim, hidden1)
+            self.fc2 = nn.Linear(hidden1, hidden2)
+            self.fc3 = nn.Linear(hidden2, output_dim)
+            self.relu = nn.ReLU()
+
+        def forward(self, x):
+            x = self.relu(self.fc1(x))
+            x = self.relu(self.fc2(x))
+            return self.fc3(x)
+
+    def setUp(self):
+        print("\n-------------------------------------\nIn Test_PyTorchLongnames:", self._testMethodName)
+        self.model = self.DummyMLP()
+        self.watcher = ww.WeightWatcher(model=self.model, log_level=logging.WARNING)
+
+    def test_dummy_mlp_fc_layers_keep_module_longnames(self):
+        iterator = self.watcher.make_layer_iterator(model=self.model, layers=[1, 2, 3])
+        actual = {ww_layer.plot_id: ww_layer.longname for ww_layer in iterator}
+        expected = {"1": "fc1", "2": "fc2", "3": "fc3"}
+        self.assertEqual(expected, actual)
+
+
 class Test_PeftLayerIterator(Test_Base):
     """Test the PEFT / LoRA options
     

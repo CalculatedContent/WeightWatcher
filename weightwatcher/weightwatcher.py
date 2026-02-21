@@ -287,7 +287,10 @@ class PyTorchLayer(FrameworkLayer):
         the_type = self.layer_type(layer)
         channels = CHANNELS.LAST
         FrameworkLayer.__init__(self, layer, layer_id, name, longname=longname, the_type=the_type, 
-                                framework=FRAMEWORK.PYTORCH, channels=channels)        
+                                framework=FRAMEWORK.PYTORCH, channels=channels)
+
+        if name is None and not _is_empty_string(self.longname):
+            self.name = self.longname.split('.')[-1]
     
     def layer_type(self, layer):
         """Given a framework layer, determine the weightwatcher LAYER_TYPE
@@ -2369,6 +2372,14 @@ class WeightWatcher:
         if suffix in label:
             return label
         return f"{label} {suffix}"
+
+    @staticmethod
+    def _preferred_layer_name(ww_layer):
+        if not _is_empty_string(getattr(ww_layer, 'longname', None)):
+            return ww_layer.longname
+        if not _is_empty_string(getattr(ww_layer, 'name', None)):
+            return ww_layer.name
+        return ""
         
     
     @staticmethod
@@ -3165,8 +3176,8 @@ class WeightWatcher:
         max_fingers =  params[MAX_FINGERS]
         finger_thresh = params[FINGER_THRESH]
         
-        longname = ww_layer.longname or ""
-        layer_name = self._append_longname(f"Layer {plot_id}", longname)
+        layer_alias = self._preferred_layer_name(ww_layer)
+        layer_name = self._append_longname(f"Layer {plot_id}", layer_alias)
         
         fit_type =  params[FIT]
         pl_package = params[PL_PACKAGE]
@@ -4602,10 +4613,10 @@ class WeightWatcher:
         
         if params is None: params = DEFAULT_PARAMS.copy()
         
-        layer_id = ww_layer.layer_i
+        layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
-        name = ww_layer.name or ""
-        layer_name = "{} {}".format(plot_id, name)
+        layer_alias = self._preferred_layer_name(ww_layer)
+        layer_name = self._append_longname(f"Layer {plot_id}", layer_alias)
         
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
@@ -4635,7 +4646,7 @@ class WeightWatcher:
             idx = np.searchsorted(evals, bulk_max, side="left")        
             plt.axvline(x=idx, color='red', label=r'$\lambda_{+}$')
 
-        plt.title("Log Delta Es for Layer {}".format(layer_name))
+        plt.title("Log Delta Es for {}".format(layer_name))
         plt.ylabel("Log Delta Es: "+eqn)
         plt.legend()
         if savefig:  
@@ -4646,7 +4657,7 @@ class WeightWatcher:
         
         # level statistics (not mean adjusted because plotting log)
         plt.hist(logDeltaEs, bins=100, color=color, density=True)
-        plt.title("Log Level Statisitcs for Layer {}".format(layer_name))
+        plt.title("Log Level Statisitcs for {}".format(layer_name))
         plt.ylabel("density")
         plt.xlabel(eqn)
         plt.legend()
@@ -4663,8 +4674,8 @@ class WeightWatcher:
 
         layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
-        name = ww_layer.name or ""
-        layer_name = "{} {}".format(plot_id, name)
+        layer_alias = self._preferred_layer_name(ww_layer)
+        layer_name = self._append_longname(f"Layer {plot_id}", layer_alias)
         
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
@@ -5215,8 +5226,8 @@ class WeightWatcher:
         
         layer_id = ww_layer.layer_id
         plot_id = ww_layer.plot_id
-        name = ww_layer.name or ""
-        layer_name = "{} {}".format(plot_id, name)
+        layer_alias = self._preferred_layer_name(ww_layer)
+        layer_name = self._append_longname(f"Layer {plot_id}", layer_alias)
 
         M = ww_layer.M
         N = ww_layer.N    

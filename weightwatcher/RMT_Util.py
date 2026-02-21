@@ -444,7 +444,8 @@ def get_shuffled_eigenvalues(W, layer=7, num=100, method=ACCURATE_SVD):
 
 def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0,
                      Q=1.0, num_spikes=0, sigma=None,
-                     alpha=0.25, color='blue', skip=False, verbose=True, plot=True, cutoff=0.0):
+                     alpha=0.25, color='blue', skip=False, verbose=True, plot=True, cutoff=0.0,
+                     randomize=False):
     """Plot histogram of eigenvalues, for Q, and fit Marchenk Pastur.  
     If no sigma, calculates from maximum eigenvalue (minus spikes)
     
@@ -460,7 +461,10 @@ def plot_density_and_fit(eigenvalues=None, model=None, layer_name="", layer_id=0
         title = " W{} SSD, QC Sigma={:0.3}" 
     else:
         to_fit = eigenvalues
-        label = r'$\rho_{emp}(\lambda)$'
+        if randomize:
+            label = r'$\rho^{rand}_{emp}(\lambda)$'
+        else:
+            label = r'$\rho_{emp}(\lambda)$'
         title = " W{} ESD, MP Sigma={:0.3}f" 
         
     if plot:
@@ -1171,6 +1175,5 @@ def combine_weights_and_biases(W,b):
             Wb = np.vstack([W.T,b]).T
             
     return Wb
-
 
 

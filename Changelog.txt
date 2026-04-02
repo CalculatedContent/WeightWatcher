@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0]
+Added `analyze_traps(...)` for randomized correlation-trap analysis
+Added per-trap vector and order-invariant trap metrics
+Added trap diffuseness/risk heuristic (`trap_diffuseness_score`, `trap_risk_score`, `trap_assessment`)
+Added trap-analysis unit tests
+
 ## [0.7.7]
 Multiple OpenAI Codex updates
 Changed mp_fit plot colors

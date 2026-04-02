@@ -48,7 +48,7 @@ And in the notebooks provided in the [WeightWatcher-examples github repo](https:
 
 If you have some models you would like to analyze and get feedback on, check out  [WeightWatcher-Pro](https://weightwatcher-ai.com).  It's currently in beta and free.
 
-## Installation:  Version 0.7.6
+## Installation:  Version 0.8.0
 
 ```sh
 pip install weightwatcher
@@ -56,7 +56,7 @@ pip install weightwatcher
 
 if this fails try
 
-### Current TestPyPI  Version 0.7.5.5
+### Current TestPyPI  Version 0.8.0
 
 ```sh
  python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple weightwatcher
@@ -111,6 +111,12 @@ watcher.get_summary(details) or get_summary()
 watcher.get_ESD()
 ...
 watcher.distances(model_1, model_2)
+```
+
+New in v0.8.0: trap-level randomized diagnostics:
+
+```python
+trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
 
 ## PEFT / LORA models  (experimental)

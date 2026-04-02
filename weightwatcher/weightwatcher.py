@@ -3774,6 +3774,10 @@ class WeightWatcher:
             details = pd.DataFrame.from_records(trap_rows)
         else:
             details = pd.DataFrame(columns=self._trap_result_columns())
+
+        trap_cols = self._trap_result_columns()
+        details = details.reindex(columns=trap_cols + [c for c in details.columns if c not in trap_cols])
+
         if len(details) > 0:
             lead_cols = ["layer_id", "name"]
             details = details[lead_cols + [c for c in details.columns if c not in lead_cols]]

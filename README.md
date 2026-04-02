@@ -274,6 +274,13 @@ This is good way to visualize the correlations in the true ESD, and detect signa
 details = watcher.analyze(randomize=True, plot=True)
 ```
 
+Trap analysis example:
+
+```python
+watcher = ww.WeightWatcher(model=my_model)
+trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
+```
+
 Fig (a) is well trained; Fig (b) may be over-fit.
 	
 That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  

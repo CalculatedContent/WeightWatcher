@@ -3770,13 +3770,34 @@ class WeightWatcher:
                 if layer_rows:
                     trap_rows.extend(layer_rows)
 
-        details = pd.DataFrame.from_records(trap_rows) if len(trap_rows) > 0 else pd.DataFrame(columns=[])
+        if len(trap_rows) > 0:
+            details = pd.DataFrame.from_records(trap_rows)
+        else:
+            details = pd.DataFrame(columns=self._trap_result_columns())
         if len(details) > 0:
             lead_cols = ["layer_id", "name"]
             details = details[lead_cols + [c for c in details.columns if c not in lead_cols]]
 
         self.details = details
         return details
+
+    def _trap_result_columns(self):
+        return [
+            "layer_id", "name", "longname", "layer_type", "N", "M", "rf", "Q",
+            "trap_index", "perm_mode_index", "sigma_perm", "eval_perm",
+            "mp_bulk_max", "mp_bulk_min", "sigma_mp", "num_spikes",
+            "rank1_mass_after_unpermute", "sigma_trap_top",
+            "left_top_mode", "right_top_mode", "left_top_mass", "right_top_mass",
+            "left_overlap_entropy", "right_overlap_entropy", "left_overlap_ipr", "right_overlap_ipr",
+            "u_length", "u_entropy", "u_discrete_entropy", "u_localization_ratio", "u_participation_ratio",
+            "v_length", "v_entropy", "v_discrete_entropy", "v_localization_ratio", "v_participation_ratio",
+            "u_l2_fourth_moment", "u_l2_sixth_moment", "u_effective_support", "u_gini_abs",
+            "u_top1_mass", "u_top5_mass", "u_top10_mass", "u_squared_amp_entropy", "u_stable_rank_surrogate",
+            "v_l2_fourth_moment", "v_l2_sixth_moment", "v_effective_support", "v_gini_abs",
+            "v_top1_mass", "v_top5_mass", "v_top10_mass", "v_squared_amp_entropy", "v_stable_rank_surrogate",
+            "trap_balance_ratio", "trap_detected", "trap_eval_minus_bulk",
+            "trap_diffuseness_score", "trap_risk_score", "trap_assessment",
+        ]
 
 
     def apply_analyze_traps(self, ww_layer, params=None):

@@ -4099,10 +4099,26 @@ class WeightWatcher:
             save_fig(plt, "trap.left_vec", plot_id, savedir)
         plt.show(); plt.clf()
 
+        plt.hist(np.abs(u_trap), bins=50, alpha=0.8)
+        plt.title(f"Left trap |coeff| histogram L{ww_layer.layer_id} trap {mode_idx}")
+        plt.xlabel("|coefficient|")
+        plt.ylabel("count")
+        if savefig:
+            save_fig(plt, "trap.left_vec_hist", plot_id, savedir)
+        plt.show(); plt.clf()
+
         plt.plot(np.arange(len(v_trap)), v_trap)
         plt.title(f"Right trap vector L{ww_layer.layer_id} trap {mode_idx}")
         if savefig:
             save_fig(plt, "trap.right_vec", plot_id, savedir)
+        plt.show(); plt.clf()
+
+        plt.hist(np.abs(v_trap), bins=50, alpha=0.8)
+        plt.title(f"Right trap |coeff| histogram L{ww_layer.layer_id} trap {mode_idx}")
+        plt.xlabel("|coefficient|")
+        plt.ylabel("count")
+        if savefig:
+            save_fig(plt, "trap.right_vec_hist", plot_id, savedir)
         plt.show(); plt.clf()
 
 

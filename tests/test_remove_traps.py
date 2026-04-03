@@ -179,3 +179,29 @@ def test_remove_traps_two_trap_index_selective_behavior():
     assert np.isclose(np.linalg.norm(ww_1.framework_layer._W, "fro"), np.linalg.norm(W, "fro"), rtol=0.08)
     assert np.isclose(np.linalg.norm(ww_2.framework_layer._W, "fro"), np.linalg.norm(W, "fro"), rtol=0.08)
     assert np.isclose(np.linalg.norm(ww_both.framework_layer._W, "fro"), np.linalg.norm(W, "fro"), rtol=0.10)
+
+
+def test_remove_traps_public_api_direct_call(monkeypatch):
+    W, _, _, _ = _single_trap_setup(seed=202)
+    ww_layer = make_ww_layer(W)
+    watcher = WeightWatcher(model={"dummy_weight": np.array([1.0])})
+
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    out_model = watcher.remove_traps(
+        model={"dummy_weight": np.array([1.0])},
+        layers=[],
+        trap_indices=[1],
+        seed=77,
+        pool=True,
+        plot=False,
+    )
+    assert isinstance(out_model, dict)
+
+    W_new = ww_layer.framework_layer._W
+    post_artifacts = watcher._collect_trap_artifacts(make_ww_layer(W_new), params=make_test_params(), seed=101)
+    assert len(post_artifacts) == 0

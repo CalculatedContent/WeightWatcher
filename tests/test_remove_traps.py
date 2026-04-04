@@ -4,6 +4,12 @@ import pytest
 from weightwatcher.constants import CHANNELS, FRAMEWORK, LAYER_TYPE, DEFAULT_PARAMS
 from weightwatcher.RMT_Util import svd_full
 from weightwatcher.weightwatcher import FrameworkLayer, WWLayer, WeightWatcher
+from weightwatcher.weightwatcher import PyTorchLayer
+
+try:
+    import torch
+except ImportError:  # pragma: no cover
+    torch = None
 
 
 class FakeDenseFrameworkLayer(FrameworkLayer):
@@ -205,3 +211,94 @@ def test_remove_traps_public_api_direct_call(monkeypatch):
     W_new = ww_layer.framework_layer._W
     post_artifacts = watcher._collect_trap_artifacts(make_ww_layer(W_new), params=make_test_params(), seed=101)
     assert len(post_artifacts) == 0
+
+
+@pytest.mark.skipif(torch is None, reason="PyTorch not installed")
+def test_replace_layer_weights_preserves_dtype_device_directly():
+    layer = torch.nn.Linear(8, 8, bias=True).to(dtype=torch.float32, device="cpu")
+    wrapped = PyTorchLayer(layer, layer_id=0, name="linear")
+
+    orig_weight_dtype = layer.weight.dtype
+    orig_weight_device = layer.weight.device
+    orig_bias_dtype = layer.bias.dtype
+    orig_bias_device = layer.bias.device
+
+    W64 = np.random.default_rng(0).normal(size=(8, 8)).astype(np.float64)
+    B64 = np.random.default_rng(1).normal(size=(8,)).astype(np.float64)
+    wrapped.replace_layer_weights(W64, B64)
+
+    assert layer.weight.dtype == orig_weight_dtype == torch.float32
+    assert layer.weight.device == orig_weight_device
+    assert layer.bias.dtype == orig_bias_dtype == torch.float32
+    assert layer.bias.device == orig_bias_device
+
+
+@pytest.mark.skipif(torch is None, reason="PyTorch not installed")
+def test_remove_traps_preserves_pytorch_layer_dtype_and_forward_pass():
+    rng = np.random.default_rng(55)
+    model = torch.nn.Sequential(
+        torch.nn.Flatten(),
+        torch.nn.Linear(96, 96, bias=True),
+        torch.nn.ReLU(),
+        torch.nn.Linear(96, 10, bias=True),
+    ).to(dtype=torch.float32)
+
+    first_linear = model[1]
+    orig_weight_dtype = first_linear.weight.dtype
+    orig_weight_device = first_linear.weight.device
+    orig_bias_dtype = first_linear.bias.dtype
+    orig_bias_device = first_linear.bias.device
+
+    W_base = rng.normal(0.0, 0.03, size=(96, 96)).astype(np.float32)
+    u = np.zeros(96, dtype=np.float32)
+    v = np.zeros(96, dtype=np.float32)
+    u[3] = 1.0
+    v[77] = 1.0
+    T1 = (10.0 * np.outer(u, v)).astype(np.float32)
+    W = (W_base + T1).astype(np.float32)
+
+    with torch.no_grad():
+        first_linear.weight.copy_(torch.from_numpy(W))
+        first_linear.bias.zero_()
+
+    watcher = WeightWatcher(model=model)
+    details = watcher.describe(model=model, pool=True)
+    dense_rows = details[details["layer_type"].astype(str).str.contains("dense", case=False)]
+    target_layer_id = int(dense_rows.iloc[0]["layer_id"])
+
+    watcher.remove_traps(model=model, layers=[target_layer_id], trap_indices=[1], seed=99, pool=True, plot=False)
+
+    assert first_linear.weight.dtype == orig_weight_dtype == torch.float32
+    assert first_linear.weight.device == orig_weight_device
+    assert first_linear.bias.dtype == orig_bias_dtype == torch.float32
+    assert first_linear.bias.device == orig_bias_device
+
+    x = torch.randn(4, 96, dtype=torch.float32, device=orig_weight_device)
+    y = model(x)
+    assert y.shape == (4, 10)
+    assert y.dtype == torch.float32
+
+    if torch.backends.mps.is_available():
+        mps_device = torch.device("mps")
+        model_mps = torch.nn.Sequential(
+            torch.nn.Flatten(),
+            torch.nn.Linear(96, 96, bias=True),
+            torch.nn.ReLU(),
+            torch.nn.Linear(96, 10, bias=True),
+        ).to(device=mps_device, dtype=torch.float32)
+
+        with torch.no_grad():
+            model_mps[1].weight.copy_(torch.from_numpy(W).to(device=mps_device, dtype=torch.float32))
+            model_mps[1].bias.zero_()
+
+        watcher_mps = WeightWatcher(model=model_mps)
+        details_mps = watcher_mps.describe(model=model_mps, pool=True)
+        dense_rows_mps = details_mps[details_mps["layer_type"].astype(str).str.contains("dense", case=False)]
+        target_layer_id_mps = int(dense_rows_mps.iloc[0]["layer_id"])
+        watcher_mps.remove_traps(model=model_mps, layers=[target_layer_id_mps], trap_indices=[1], seed=99, pool=True, plot=False)
+
+        assert model_mps[1].weight.dtype == torch.float32
+        assert model_mps[1].weight.device.type == "mps"
+        x_mps = torch.randn(4, 96, dtype=torch.float32, device=mps_device)
+        y_mps = model_mps(x_mps)
+        assert y_mps.shape == (4, 10)

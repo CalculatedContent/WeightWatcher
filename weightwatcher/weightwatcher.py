@@ -368,10 +368,13 @@ class PyTorchLayer(FrameworkLayer):
     
     
     def replace_layer_weights(self, W, B=None):
-            
-        self.layer.weight.data = torch.from_numpy(W)
+        weight_dtype = self.layer.weight.data.dtype
+        weight_device = self.layer.weight.data.device
+        self.layer.weight.data = torch.from_numpy(W).to(device=weight_device, dtype=weight_dtype)
         if self.has_biases() and B is not None:
-            self.layer.bias.data = torch.from_numpy(B)
+            bias_dtype = self.layer.bias.data.dtype
+            bias_device = self.layer.bias.data.device
+            self.layer.bias.data = torch.from_numpy(B).to(device=bias_device, dtype=bias_dtype)
         
         
     

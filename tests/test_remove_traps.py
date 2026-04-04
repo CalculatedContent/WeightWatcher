@@ -179,8 +179,9 @@ def test_remove_traps_two_trap_index_selective_behavior():
     assert len(art_both) == 0
 
     ww_bad = make_ww_layer(W)
-    with pytest.raises(ValueError):
-        watcher.apply_remove_traps(ww_bad, trap_indices=[1, 2, 3], params=make_test_params(), seed=12)
+    watcher.apply_remove_traps(ww_bad, trap_indices=[1, 2, 3], params=make_test_params(), seed=12)
+    art_bad = watcher._collect_trap_artifacts(make_ww_layer(ww_bad.framework_layer._W), params=make_test_params(), seed=88)
+    assert len(art_bad) == 0
 
     assert np.isclose(np.linalg.norm(ww_1.framework_layer._W, "fro"), np.linalg.norm(W, "fro"), rtol=0.08)
     assert np.isclose(np.linalg.norm(ww_2.framework_layer._W, "fro"), np.linalg.norm(W, "fro"), rtol=0.08)
@@ -209,6 +210,36 @@ def test_remove_traps_public_api_direct_call(monkeypatch):
     assert isinstance(out_model, dict)
 
     W_new = ww_layer.framework_layer._W
+    post_artifacts = watcher._collect_trap_artifacts(make_ww_layer(W_new), params=make_test_params(), seed=101)
+    assert len(post_artifacts) == 0
+
+
+def test_remove_traps_invalid_indices_warns_and_skips(monkeypatch, caplog):
+    W, _, _, _ = _single_trap_setup(seed=404)
+    ww_layer = make_ww_layer(W)
+    original_shape = ww_layer.framework_layer._W.shape
+    watcher = WeightWatcher(model={"dummy_weight": np.array([1.0])})
+
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    caplog.set_level("WARNING")
+    watcher.remove_traps(
+        model={"dummy_weight": np.array([1.0])},
+        layers=[],
+        trap_indices=[1, 2, 3],
+        seed=77,
+        pool=True,
+        plot=False,
+    )
+
+    assert any("Skipping invalid trap indices" in rec.message for rec in caplog.records)
+    W_new = ww_layer.framework_layer._W
+    assert W_new.shape == original_shape
+
     post_artifacts = watcher._collect_trap_artifacts(make_ww_layer(W_new), params=make_test_params(), seed=101)
     assert len(post_artifacts) == 0
 

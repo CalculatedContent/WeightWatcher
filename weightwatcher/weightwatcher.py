@@ -5275,8 +5275,16 @@ class WeightWatcher:
 
         rng = np.random.default_rng(seed)
         artifacts = self._collect_trap_artifacts(ww_layer, params=params, rng=rng)
-        if any(idx > len(artifacts) for idx in requested):
-            raise ValueError("requested trap index exceeds the number of detected traps")
+        valid_indices = [idx for idx in requested if idx <= len(artifacts)]
+        if len(valid_indices) < len(requested):
+            logger.warning(
+                f"Skipping invalid trap indices {set(requested) - set(valid_indices)}; "
+                f"only {len(artifacts)} traps detected"
+            )
+        if len(valid_indices) == 0:
+            logger.warning("No valid traps to remove for this layer; skipping")
+            return ww_layer
+        requested = valid_indices
 
         old_W = ww_layer.Wmats[0]
         new_W = old_W.copy()

@@ -3947,8 +3947,8 @@ class WeightWatcher:
     def assess_trap_diffuseness(self, trap_result):
         """Heuristic classifier for trap severity in original weight space.
 
-        Localized traps are treated as higher risk, while diffuse traps are treated as
-        potentially benign overfitting. This is intentionally a separate function so it
+        Trap risk is computed from normalized trap strength and then explicitly
+        downweighted by diffuseness. This is intentionally a separate function so it
         can be unit-tested and adjusted independently.
         """
         eps = 1e-12
@@ -3979,13 +3979,14 @@ class WeightWatcher:
 
         trap_strength = float(trap_result.get("trap_eval_minus_bulk", 0.0))
         bulk = abs(float(trap_result.get("mp_bulk_max", 0.0))) + eps
-        normalized_strength = trap_strength / bulk
-        risk_score = float(np.clip((1.0 - diffuseness_score) * max(normalized_strength, 0.0), 0.0, 1.0))
+        base_strength = max(trap_strength, 0.0) / bulk
+        diffuseness_score = float(np.clip(diffuseness_score, 0.0, 1.0))
+        risk_score = float(np.clip(base_strength * (1.0 - diffuseness_score), 0.0, 1.0))
 
-        if diffuseness_score >= 0.55 and risk_score < 0.30:
-            assessment = "benign_diffuse"
-        elif diffuseness_score <= 0.35 or risk_score >= 0.50:
+        if risk_score >= 0.50:
             assessment = "localized_risky"
+        elif diffuseness_score >= 0.55:
+            assessment = "benign_diffuse"
         else:
             assessment = "mixed"
 

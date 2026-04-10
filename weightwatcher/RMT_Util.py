@@ -893,12 +893,15 @@ def plot_loghist(x, bins=100, xmin=None):
     plt.xscale('log')
     
     
-def permute_matrix(W):
+def permute_matrix(W, rng=None):
     """permute a matrix in a reversible way"""
     
     num_params = np.prod(W.shape)
     vec = W.reshape(num_params)
-    p_ids = np.random.permutation(np.arange(num_params))
+    if rng is None:
+        p_ids = np.random.permutation(np.arange(num_params))
+    else:
+        p_ids = rng.permutation(np.arange(num_params))
     p_vec = vec[p_ids]
     p_W = p_vec.reshape(W.shape)
             
@@ -1175,4 +1178,3 @@ def combine_weights_and_biases(W,b):
             Wb = np.vstack([W.T,b]).T
             
     return Wb
-

@@ -5227,6 +5227,8 @@ class WeightWatcher:
         """Collect trap artifacts for a single layer using permute + MP/TW workflow."""
         if params is None: params = DEFAULT_PARAMS.copy()
 
+        if seed is None and isinstance(params, dict):
+            seed = params.get("seed", None)
         if rng is None:
             rng = np.random.default_rng(seed) if seed is not None else None
 
@@ -5273,8 +5275,15 @@ class WeightWatcher:
         if any(idx < 1 for idx in requested):
             raise ValueError("trap indices are 1-based and must be >= 1")
 
-        rng = np.random.default_rng(seed)
-        artifacts = self._collect_trap_artifacts(ww_layer, params=params, rng=rng)
+        layer_seed = seed
+        if layer_seed is None and isinstance(params, dict):
+            layer_seed = params.get("seed", None)
+
+        permute_seed = layer_seed
+        replacement_seed = None if layer_seed is None else layer_seed + 1
+        replacement_rng = np.random.default_rng(replacement_seed)
+
+        artifacts = self._collect_trap_artifacts(ww_layer, params=params, seed=permute_seed)
         valid_indices = [idx for idx in requested if idx <= len(artifacts)]
         if len(valid_indices) < len(requested):
             logger.warning(
@@ -5290,7 +5299,7 @@ class WeightWatcher:
         new_W = old_W.copy()
         for idx in requested:
             T_orig_raw = artifacts[idx - 1]["T_orig_raw"]
-            R_orig = self._make_stat_matched_random_matrix(T_orig_raw, rng)
+            R_orig = self._make_stat_matched_random_matrix(T_orig_raw, replacement_rng)
             new_W = new_W - T_orig_raw + R_orig
 
         self.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
@@ -5311,6 +5320,7 @@ class WeightWatcher:
         params[START_IDS] = start_ids
         params[SVD_METHOD] = svd_method
         params[PEFT] = peft
+        params["seed"] = seed
 
         if not WeightWatcher.valid_params(params):
             raise Exception(f"Error, params not valid: \n {params}")

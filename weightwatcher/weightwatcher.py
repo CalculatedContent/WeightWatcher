@@ -5648,12 +5648,12 @@ class WeightWatcher:
         """Run ESD and MP fit in the trap workflow."""
         return remove_traps_ops.apply_trap_mp_fit(self, ww_layer, params=params)
 
-    def identify_trap_mode_indices(self, ww_layer):
-        """Identify outlier mode indices using MP + Tracy-Widom corrected edge."""
+    def identify_remove_trap_mode_indices(self, ww_layer):
+        """Backward-compatible wrapper for remove_traps helper mode detection."""
         return remove_traps_ops.identify_trap_mode_indices(self, ww_layer)
 
-    def analyze_single_trap(self, ww_layer, trap_mode_index):
-        """Extract a single rank-1 trap artifact from a permuted WWLayer."""
+    def analyze_single_remove_trap(self, ww_layer, trap_mode_index):
+        """Backward-compatible wrapper for remove_traps single-trap artifact extraction."""
         return remove_traps_ops.analyze_single_trap(self, ww_layer, trap_mode_index)
 
     def _collect_trap_artifacts(self, ww_layer, params=None, seed=None, rng=None):

@@ -3035,9 +3035,10 @@ class WeightWatcher:
         logger.debug("apply permute W  on Layer {} {} ".format(layer_id, name))                        
         logger.debug("params {} ".format(params))
     
+        rng = params.get("rng", None)
         Wmats, permute_ids = [], []
         for W in ww_layer.Wmats:
-            W, p_ids = permute_matrix(W)
+            W, p_ids = permute_matrix(W, rng=rng)
             Wmats.append(W)
             permute_ids.append(p_ids)
                            
@@ -3695,7 +3696,8 @@ class WeightWatcher:
                 svd_method=FAST_SVD,
                 start_ids=DEFAULT_START_ID,
                 base_model=None,
-                peft=DEFAULT_PEFT):
+                peft=DEFAULT_PEFT,
+                rng=None):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3708,6 +3710,12 @@ class WeightWatcher:
 
         Returns a pandas DataFrame containing one row per detected trap.
         This routine does not run any power-law fitting.
+
+        Parameters
+        ----------
+        rng : None, int, numpy.random.RandomState, or numpy.random.Generator
+            Optional random source used for reversible trap permutations.
+            Passing the same seed/object makes trap detection reproducible across runs.
         """
 
         self.set_model_(model, base_model)
@@ -3748,6 +3756,11 @@ class WeightWatcher:
         params[SAVEFIG] = savefig
         params[PEFT] = peft
         params[INVERSE] = False
+        if isinstance(rng, numbers.Integral):
+            rng = np.random.RandomState(int(rng))
+        if rng is not None and not hasattr(rng, "permutation"):
+            raise ValueError("rng must be None, an int seed, or a numpy RNG with a permutation method")
+        params["rng"] = rng
 
         logger.debug("params {}".format(params))
         if not WeightWatcher.valid_params(params):

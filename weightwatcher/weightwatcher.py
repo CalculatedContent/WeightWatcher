@@ -3039,7 +3039,11 @@ class WeightWatcher:
         logger.debug("apply permute W  on Layer {} {} ".format(layer_id, name))                        
         logger.debug("params {} ".format(params))
     
-        rng = params.get("rng", None)
+        # Prefer an explicit RNG passed by caller; otherwise fall back to params.
+        # This is important for remove_traps(), which may construct a layer-local RNG
+        # and pass it directly.
+        if rng is None:
+            rng = params.get("rng", None)
         Wmats, permute_ids = [], []
         for W in ww_layer.Wmats:
             W, p_ids = permute_matrix(W, rng=rng)

@@ -43,6 +43,7 @@ from safetensors import safe_open
 from .RMT_Util import *
 from .constants import *
 from .WW_powerlaw import *
+from . import remove_traps as remove_traps_ops
 
 
 # WW_NAME moved to constants.py
@@ -368,10 +369,13 @@ class PyTorchLayer(FrameworkLayer):
     
     
     def replace_layer_weights(self, W, B=None):
-            
-        self.layer.weight.data = torch.from_numpy(W)
+        weight_dtype = self.layer.weight.data.dtype
+        weight_device = self.layer.weight.data.device
+        self.layer.weight.data = torch.from_numpy(W).to(device=weight_device, dtype=weight_dtype)
         if self.has_biases() and B is not None:
-            self.layer.bias.data = torch.from_numpy(B)
+            bias_dtype = self.layer.bias.data.dtype
+            bias_device = self.layer.bias.data.device
+            self.layer.bias.data = torch.from_numpy(B).to(device=bias_device, dtype=bias_dtype)
         
         
     
@@ -3021,7 +3025,7 @@ class WeightWatcher:
         return ww_layer
     
     
-    def apply_permute_W(self, ww_layer, params=None):
+    def apply_permute_W(self, ww_layer, params=None, rng=None):
         """Randomize the layer weight matrices by using a deterministic permutation
         This will replace the Wmats ; they can be recovered by apply_unpermute_W()
          """
@@ -3037,7 +3041,7 @@ class WeightWatcher:
     
         Wmats, permute_ids = [], []
         for W in ww_layer.Wmats:
-            W, p_ids = permute_matrix(W)
+            W, p_ids = permute_matrix(W, rng=rng)
             Wmats.append(W)
             permute_ids.append(p_ids)
                            
@@ -5170,6 +5174,38 @@ class WeightWatcher:
         self.apply_unpermute_W(ww_layer, params)
 
         return ww_layer
+
+    def apply_trap_mp_fit(self, ww_layer, params=None):
+        """Run ESD and MP fit in the trap workflow."""
+        return remove_traps_ops.apply_trap_mp_fit(self, ww_layer, params=params)
+
+    def identify_trap_mode_indices(self, ww_layer):
+        """Identify outlier mode indices using MP + Tracy-Widom corrected edge."""
+        return remove_traps_ops.identify_trap_mode_indices(self, ww_layer)
+
+    def analyze_single_trap(self, ww_layer, trap_mode_index):
+        """Extract a single rank-1 trap artifact from a permuted WWLayer."""
+        return remove_traps_ops.analyze_single_trap(self, ww_layer, trap_mode_index)
+
+    def _collect_trap_artifacts(self, ww_layer, params=None, seed=None, rng=None):
+        """Collect trap artifacts for a single layer using permute + MP/TW workflow."""
+        return remove_traps_ops.collect_trap_artifacts(self, ww_layer, params=params, seed=seed, rng=rng)
+
+    def _make_stat_matched_random_matrix(self, T, rng):
+        """Build a random matrix with matched shape, mean, and variance."""
+        return remove_traps_ops.make_stat_matched_random_matrix(T, rng)
+
+    def apply_remove_traps(self, ww_layer, trap_indices, params=None, seed=None):
+        """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
+        return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed)
+
+    def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, pool=True, plot=False,
+                     start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
+        """Remove selected randomized MP/TW traps from dense layers."""
+        return remove_traps_ops.remove_traps(
+            self, model=model, layers=layers, trap_indices=trap_indices, seed=seed,
+            pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
+        )
 
 
     

@@ -43,6 +43,7 @@ from safetensors import safe_open
 from .RMT_Util import *
 from .constants import *
 from .WW_powerlaw import *
+from . import remove_traps as remove_traps_ops
 
 
 # WW_NAME moved to constants.py
@@ -5176,162 +5177,35 @@ class WeightWatcher:
 
     def apply_trap_mp_fit(self, ww_layer, params=None):
         """Run ESD and MP fit in the trap workflow."""
-        if params is None: params = DEFAULT_PARAMS.copy()
-        self.apply_esd(ww_layer, params)
-        self.apply_mp_fit(ww_layer, random=False, params=params)
-        return ww_layer
+        return remove_traps_ops.apply_trap_mp_fit(self, ww_layer, params=params)
 
     def identify_trap_mode_indices(self, ww_layer):
         """Identify outlier mode indices using MP + Tracy-Widom corrected edge."""
-        W = ww_layer.Wmats[0]
-        _, svals, _ = svd_full(W)
-        evals_desc = svals * svals
-
-        Q = ww_layer.N / ww_layer.M
-        M = ww_layer.M
-        sigma_mp = ww_layer.sigma_mp
-        Wscale = ww_layer.W_scale
-
-        bulk_max = (sigma_mp * (1 + 1 / np.sqrt(Q))) ** 2
-        TW = 1 / np.sqrt(Q) * np.power(bulk_max, 2 / 3) * np.power(M, -2 / 3)
-        bulk_max_TW = bulk_max + np.sqrt(TW)
-        threshold = bulk_max_TW / (Wscale * Wscale)
-
-        trap_mode_indices = np.where(evals_desc > threshold)[0]
-        return trap_mode_indices.tolist()
+        return remove_traps_ops.identify_trap_mode_indices(self, ww_layer)
 
     def analyze_single_trap(self, ww_layer, trap_mode_index):
         """Extract a single rank-1 trap artifact from a permuted WWLayer."""
-        W_perm = ww_layer.Wmats[0]
-        U_perm, S_perm, Vh_perm = svd_full(W_perm)
-
-        sigma_perm = S_perm[trap_mode_index]
-        u_trap = U_perm[:, trap_mode_index]
-        v_trap = Vh_perm[trap_mode_index, :]
-        T_perm = sigma_perm * np.outer(u_trap, v_trap)
-        T_orig_norm = unpermute_matrix(T_perm, ww_layer.permute_ids[0])
-        U_orig, _, Vh_orig = svd_full(T_orig_norm)
-
-        return {
-            "trap_mode_index": trap_mode_index,
-            "sigma_perm": sigma_perm,
-            "u_trap_perm": u_trap,
-            "v_trap_perm": v_trap,
-            "u_trap": U_orig[:, 0],
-            "v_trap": Vh_orig[0, :],
-            "T_perm": T_perm,
-            "T_orig_norm": T_orig_norm,
-        }
+        return remove_traps_ops.analyze_single_trap(self, ww_layer, trap_mode_index)
 
     def _collect_trap_artifacts(self, ww_layer, params=None, seed=None, rng=None):
         """Collect trap artifacts for a single layer using permute + MP/TW workflow."""
-        if params is None: params = DEFAULT_PARAMS.copy()
-
-        if seed is None and isinstance(params, dict):
-            seed = params.get("seed", None)
-        if rng is None:
-            rng = np.random.default_rng(seed) if seed is not None else None
-
-        analysis_layer = ww_layer.copy()
-        analysis_layer.Wmats = [ww_layer.Wmats[0].copy()]
-        analysis_layer.w_norm = 1.0
-        analysis_layer.permute_ids = []
-
-        self.apply_normalize_Wmats(analysis_layer, params)
-        self.apply_permute_W(analysis_layer, params, rng=rng)
-        self.apply_trap_mp_fit(analysis_layer, params)
-        trap_mode_indices = self.identify_trap_mode_indices(analysis_layer)
-
-        artifacts = []
-        for i, trap_mode_index in enumerate(trap_mode_indices, start=1):
-            artifact = self.analyze_single_trap(analysis_layer, trap_mode_index)
-            artifact["trap_index"] = i
-            artifact["T_orig_raw"] = artifact["T_orig_norm"] / analysis_layer.w_norm
-            artifacts.append(artifact)
-
-        return artifacts
+        return remove_traps_ops.collect_trap_artifacts(self, ww_layer, params=params, seed=seed, rng=rng)
 
     def _make_stat_matched_random_matrix(self, T, rng):
         """Build a random matrix with matched shape, mean, and variance."""
-        G = rng.standard_normal(T.shape)
-        G = G - np.mean(G)
-        g_std = np.std(G)
-        if g_std > 0:
-            G = G / g_std
-        else:
-            G = np.zeros_like(T)
-        return np.mean(T) + np.std(T) * G
+        return remove_traps_ops.make_stat_matched_random_matrix(T, rng)
 
     def apply_remove_traps(self, ww_layer, trap_indices, params=None, seed=None):
         """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
-        if params is None: params = DEFAULT_PARAMS.copy()
-        if trap_indices is None or len(trap_indices) == 0:
-            raise ValueError("trap_indices must be a non-empty list of 1-based indices")
-
-        if ww_layer.the_type != LAYER_TYPE.DENSE or len(ww_layer.Wmats) != 1 or ww_layer.Wmats[0].ndim != 2:
-            raise NotImplementedError("remove_traps currently supports single 2D dense matrices only")
-
-        requested = sorted(set(trap_indices))
-        if any(idx < 1 for idx in requested):
-            raise ValueError("trap indices are 1-based and must be >= 1")
-
-        layer_seed = seed
-        if layer_seed is None and isinstance(params, dict):
-            layer_seed = params.get("seed", None)
-
-        permute_seed = layer_seed
-        replacement_seed = None if layer_seed is None else layer_seed + 1
-        replacement_rng = np.random.default_rng(replacement_seed)
-
-        artifacts = self._collect_trap_artifacts(ww_layer, params=params, seed=permute_seed)
-        valid_indices = [idx for idx in requested if idx <= len(artifacts)]
-        if len(valid_indices) < len(requested):
-            logger.warning(
-                f"Skipping invalid trap indices {set(requested) - set(valid_indices)}; "
-                f"only {len(artifacts)} traps detected"
-            )
-        if len(valid_indices) == 0:
-            logger.warning("No valid traps to remove for this layer; skipping")
-            return ww_layer
-        requested = valid_indices
-
-        old_W = ww_layer.Wmats[0]
-        new_W = old_W.copy()
-        for idx in requested:
-            T_orig_raw = artifacts[idx - 1]["T_orig_raw"]
-            R_orig = self._make_stat_matched_random_matrix(T_orig_raw, replacement_rng)
-            new_W = new_W - T_orig_raw + R_orig
-
-        self.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
-        ww_layer.Wmats = [new_W]
-        return ww_layer
+        return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed)
 
     def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, pool=True, plot=False,
                      start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
         """Remove selected randomized MP/TW traps from dense layers."""
-        if trap_indices is None or len(trap_indices) == 0:
-            raise ValueError("trap_indices must be provided and non-empty")
-
-        self.set_model_(model)
-        params = DEFAULT_PARAMS.copy()
-        params[POOL] = pool
-        params[LAYERS] = layers
-        params[PLOT] = plot
-        params[START_IDS] = start_ids
-        params[SVD_METHOD] = svd_method
-        params[PEFT] = peft
-        params["seed"] = seed
-
-        if not WeightWatcher.valid_params(params):
-            raise Exception(f"Error, params not valid: \n {params}")
-        params = self.normalize_params(params)
-
-        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=base_model)
-        for ww_layer in layer_iterator:
-            if not ww_layer.skipped and ww_layer.has_weights:
-                self.apply_remove_traps(ww_layer, trap_indices=trap_indices, params=params, seed=seed)
-
-        return model
+        return remove_traps_ops.remove_traps(
+            self, model=model, layers=layers, trap_indices=trap_indices, seed=seed,
+            pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
+        )
 
 
     

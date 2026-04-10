@@ -66,7 +66,9 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
     if seed is None and isinstance(params, dict):
         seed = params.get("seed", None)
     if rng is None:
-        rng = np.random.default_rng(seed) if seed is not None else None
+        # Match analyze_traps(seed=int) behavior, which normalizes int seeds to
+        # numpy.random.RandomState for permutation reproducibility.
+        rng = np.random.RandomState(int(seed)) if seed is not None else None
 
     analysis_layer = ww_layer.copy()
     analysis_layer.Wmats = [ww_layer.Wmats[0].copy()]

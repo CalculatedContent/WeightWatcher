@@ -245,6 +245,68 @@ def test_remove_traps_invalid_indices_warns_and_skips(monkeypatch, caplog):
 
 
 @pytest.mark.skipif(torch is None, reason="PyTorch not installed")
+def test_trap_rng_consistency_analyze_vs_collect_single_and_multi_layer():
+    model = torch.nn.Sequential(
+        torch.nn.Linear(16, 12, bias=False),
+        torch.nn.ReLU(),
+        torch.nn.Linear(12, 10, bias=False),
+    )
+    with torch.no_grad():
+        u1 = torch.linspace(1.0, 2.0, steps=12)
+        v1 = torch.linspace(-2.0, 1.0, steps=16)
+        model[0].weight.copy_(35.0 * torch.outer(u1, v1))
+
+        u2 = torch.linspace(1.0, 1.5, steps=10)
+        v2 = torch.linspace(-1.0, 2.0, steps=12)
+        model[2].weight.copy_(20.0 * torch.outer(u2, v2))
+
+    watcher = WeightWatcher(model=model)
+    details = watcher.describe(model=model, pool=True)
+    dense_layer_ids = details[details["layer_type"].astype(str).str.contains("dense", case=False)]["layer_id"].astype(int).tolist()
+    assert len(dense_layer_ids) >= 2
+
+    for layer_id in dense_layer_ids:
+        trap_df = watcher.analyze_traps(model=model, layers=[layer_id], rng=123, plot=False, savefig=False, pool=True)
+        expected_mode_indices = trap_df["perm_mode_index"].astype(int).tolist()
+
+        params = DEFAULT_PARAMS.copy()
+        params["pool"] = True
+        params["plot"] = False
+        params["layers"] = [layer_id]
+        params = watcher.normalize_params(params)
+        ww_layer = list(watcher.make_layer_iterator(model=watcher.model, layers=[layer_id], params=params))[0]
+        artifacts = watcher._collect_trap_artifacts(ww_layer, params=params, seed=123)
+        artifact_mode_indices = [int(a["trap_mode_index"]) for a in artifacts]
+
+        assert len(expected_mode_indices) == len(artifact_mode_indices)
+        assert expected_mode_indices == artifact_mode_indices
+
+
+@pytest.mark.skipif(torch is None, reason="PyTorch not installed")
+def test_analyze_traps_rejects_default_rng_generator():
+    model = torch.nn.Sequential(torch.nn.Linear(8, 8, bias=False))
+    watcher = WeightWatcher(model=model)
+    details = watcher.describe(model=model, pool=True)
+    layer_id = int(details[details["layer_type"].astype(str).str.contains("dense", case=False)].iloc[0]["layer_id"])
+    with pytest.raises(ValueError, match="RandomState|default_rng|Generator"):
+        watcher.analyze_traps(model=model, layers=[layer_id], rng=np.random.default_rng(123), plot=False, savefig=False)
+
+
+@pytest.mark.skipif(torch is None, reason="PyTorch not installed")
+def test_analyze_traps_accepts_randomstate_and_int_seed():
+    model = torch.nn.Sequential(torch.nn.Linear(8, 8, bias=False))
+    with torch.no_grad():
+        model[0].weight.copy_(torch.eye(8))
+    watcher = WeightWatcher(model=model)
+    details = watcher.describe(model=model, pool=True)
+    layer_id = int(details[details["layer_type"].astype(str).str.contains("dense", case=False)].iloc[0]["layer_id"])
+
+    df_seed = watcher.analyze_traps(model=model, layers=[layer_id], rng=123, plot=False, savefig=False)
+    df_state = watcher.analyze_traps(model=model, layers=[layer_id], rng=np.random.RandomState(123), plot=False, savefig=False)
+    assert list(df_seed["perm_mode_index"]) == list(df_state["perm_mode_index"])
+
+
+@pytest.mark.skipif(torch is None, reason="PyTorch not installed")
 def test_replace_layer_weights_preserves_dtype_device_directly():
     layer = torch.nn.Linear(8, 8, bias=True).to(dtype=torch.float32, device="cpu")
     wrapped = PyTorchLayer(layer, layer_id=0, name="linear")

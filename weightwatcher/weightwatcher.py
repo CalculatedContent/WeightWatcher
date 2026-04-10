@@ -3721,7 +3721,7 @@ class WeightWatcher:
 
         Parameters
         ----------
-        rng : None, int, numpy.random.RandomState, or numpy.random.Generator
+        rng : None, int, or numpy.random.RandomState
             Optional random source used for reversible trap permutations.
             Passing the same seed/object makes trap detection reproducible across runs.
         """
@@ -5652,15 +5652,15 @@ class WeightWatcher:
         """Build a random matrix with matched shape, mean, and variance."""
         return remove_traps_ops.make_stat_matched_random_matrix(T, rng)
 
-    def apply_remove_traps(self, ww_layer, trap_indices, params=None, seed=None):
+    def apply_remove_traps(self, ww_layer, trap_indices, params=None, seed=None, rng=None):
         """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
-        return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed)
+        return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
-    def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, pool=True, plot=False,
+    def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=False,
                      start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
-            self, model=model, layers=layers, trap_indices=trap_indices, seed=seed,
+            self, model=model, layers=layers, trap_indices=trap_indices, seed=seed, rng=rng,
             pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
         )
 

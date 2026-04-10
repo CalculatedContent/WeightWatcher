@@ -3697,7 +3697,7 @@ class WeightWatcher:
                 start_ids=DEFAULT_START_ID,
                 base_model=None,
                 peft=DEFAULT_PEFT,
-                rng=None):
+                seed=None):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3713,9 +3713,9 @@ class WeightWatcher:
 
         Parameters
         ----------
-        rng : None, int, numpy.random.RandomState, or numpy.random.Generator
-            Optional random source used for reversible trap permutations.
-            Passing the same seed/object makes trap detection reproducible across runs.
+        seed : None or int
+            Optional seed used for reversible trap permutations.
+            Passing the same seed makes trap detection reproducible across runs.
         """
 
         self.set_model_(model, base_model)
@@ -3756,10 +3756,9 @@ class WeightWatcher:
         params[SAVEFIG] = savefig
         params[PEFT] = peft
         params[INVERSE] = False
-        if isinstance(rng, numbers.Integral):
-            rng = np.random.RandomState(int(rng))
-        if rng is not None and not hasattr(rng, "permutation"):
-            raise ValueError("rng must be None, an int seed, or a numpy RNG with a permutation method")
+        if seed is not None and not isinstance(seed, numbers.Integral):
+            raise ValueError("seed must be None or an integer")
+        rng = np.random.RandomState(int(seed)) if seed is not None else None
         params["rng"] = rng
 
         logger.debug("params {}".format(params))

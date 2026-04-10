@@ -73,9 +73,9 @@ class TestAnalyzeTraps(unittest.TestCase):
         self.assertListEqual(df1["layer_id"].tolist(), df2["layer_id"].tolist())
         self.assertListEqual(df1["perm_mode_index"].tolist(), df2["perm_mode_index"].tolist())
 
-    def test_analyze_traps_reproducible_with_rng_seed(self):
-        df1 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
-        df2 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+    def test_analyze_traps_reproducible_with_seed_arg(self):
+        df1 = self.watcher.analyze_traps(plot=False, savefig=False, seed=1337)
+        df2 = self.watcher.analyze_traps(plot=False, savefig=False, seed=1337)
 
         self.assertEqual(len(df1), len(df2))
         self.assertListEqual(df1["layer_id"].tolist(), df2["layer_id"].tolist())

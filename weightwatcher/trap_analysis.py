@@ -1,8 +1,6 @@
-import numbers
-
-import numpy as np
 import pandas as pd
 
+from . import remove_traps as remove_traps_ops
 from . import weightwatcher as wwcore
 
 
@@ -72,11 +70,7 @@ def analyze_traps(
     params[wwcore.SAVEFIG] = savefig
     params[wwcore.PEFT] = peft
     params[wwcore.INVERSE] = False
-    if isinstance(rng, numbers.Integral):
-        rng = np.random.RandomState(int(rng))
-    if rng is not None and not hasattr(rng, "permutation"):
-        raise ValueError("rng must be None, an int seed, or a numpy RNG with a permutation method")
-    params["rng"] = rng
+    params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng)
 
     wwcore.logger.debug("params {}".format(params))
     if not watcher.valid_params(params):

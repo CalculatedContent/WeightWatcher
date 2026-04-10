@@ -1,4 +1,5 @@
 import logging
+import numbers
 import numpy as np
 
 from .RMT_Util import svd_full, unpermute_matrix
@@ -7,6 +8,32 @@ from .constants import LAYERS
 from .constants import WW_NAME
 
 logger = logging.getLogger(WW_NAME)
+
+
+def _normalize_trap_rng(rng=None, seed=None):
+    """Normalize trap permutation RNG to a reproducible numpy RandomState."""
+    if rng is not None and seed is not None:
+        raise ValueError("Pass either rng or seed, not both, for trap permutation reproducibility.")
+
+    if rng is None and seed is None:
+        return None
+
+    if isinstance(rng, np.random.RandomState):
+        return rng
+
+    if isinstance(rng, np.random.Generator):
+        raise ValueError(
+            "Trap reproducibility requires numpy.random.RandomState or an int seed; "
+            "numpy.random.Generator (e.g., np.random.default_rng()) is not supported."
+        )
+
+    if isinstance(rng, numbers.Integral):
+        return np.random.RandomState(int(rng))
+
+    if isinstance(seed, numbers.Integral):
+        return np.random.RandomState(int(seed))
+
+    raise ValueError("rng/seed must be None, an int seed, or a numpy.random.RandomState.")
 
 
 def apply_trap_mp_fit(ww, ww_layer, params=None):
@@ -65,10 +92,7 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
 
     if seed is None and isinstance(params, dict):
         seed = params.get("seed", None)
-    if rng is None:
-        # Match analyze_traps(seed=int) behavior, which normalizes int seeds to
-        # numpy.random.RandomState for permutation reproducibility.
-        rng = np.random.RandomState(int(seed)) if seed is not None else None
+    rng = _normalize_trap_rng(rng=rng, seed=seed)
 
     analysis_layer = ww_layer.copy()
     analysis_layer.Wmats = [ww_layer.Wmats[0].copy()]
@@ -101,7 +125,7 @@ def make_stat_matched_random_matrix(T, rng):
     return np.mean(T) + np.std(T) * G
 
 
-def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None):
+def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=None):
     if params is None:
         params = DEFAULT_PARAMS.copy()
     if trap_indices is None or len(trap_indices) == 0:
@@ -118,11 +142,19 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None):
     if layer_seed is None and isinstance(params, dict):
         layer_seed = params.get("seed", None)
 
+    permute_rng = _normalize_trap_rng(rng=rng, seed=layer_seed)
+
     permute_seed = layer_seed
     replacement_seed = None if layer_seed is None else layer_seed + 1
     replacement_rng = np.random.default_rng(replacement_seed)
 
-    artifacts = collect_trap_artifacts(ww, ww_layer, params=params, seed=permute_seed)
+    artifacts = collect_trap_artifacts(
+        ww,
+        ww_layer,
+        params=params,
+        seed=None if permute_rng is not None else permute_seed,
+        rng=permute_rng,
+    )
     valid_indices = [idx for idx in requested if idx <= len(artifacts)]
     if len(valid_indices) < len(requested):
         logger.warning(
@@ -146,7 +178,7 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None):
     return ww_layer
 
 
-def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, pool=True, plot=False,
+def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=False,
                  start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
     if trap_indices is None or len(trap_indices) == 0:
         raise ValueError("trap_indices must be provided and non-empty")
@@ -160,6 +192,7 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, pool=T
     params[SVD_METHOD] = svd_method
     params[PEFT] = peft
     params["seed"] = seed
+    params["rng"] = _normalize_trap_rng(rng=rng, seed=seed)
 
     if not ww.__class__.valid_params(params):
         raise Exception(f"Error, params not valid: \n {params}")
@@ -168,6 +201,6 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, pool=T
     layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
-            apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed)
+            apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"])
 
     return model

@@ -3810,26 +3810,10 @@ class WeightWatcher:
 
     def identify_trap_mode_indices(self, ww_layer, params=None):
         if params is None: params = DEFAULT_PARAMS.copy()
-
-        evals = np.array(ww_layer.evals)
-        if evals is None or len(evals) == 0:
-            return []
-
-        Q = ww_layer.N / ww_layer.M if ww_layer.M > 0 else 1.0
-        Wscale = ww_layer.W_scale if ww_layer.has_column('W_scale') else 1.0
-        sigma_mp = ww_layer.sigma_mp if ww_layer.has_column('sigma_mp') else None
-
-        if sigma_mp is None or sigma_mp <= 0:
-            threshold = ww_layer.bulk_max if ww_layer.has_column('bulk_max') else np.inf
-        else:
-            bulk_max_scaled = (sigma_mp * (1 + 1 / np.sqrt(Q))) ** 2
-            TW = 1 / np.sqrt(Q) * np.power(bulk_max_scaled, 2 / 3) * np.power(ww_layer.M, -2 / 3)
-            bulk_max_tw_scaled = bulk_max_scaled + np.sqrt(TW)
-            threshold = bulk_max_tw_scaled / (Wscale * Wscale)
-
-        evals_desc = evals[::-1]
-        trap_ids = [i for i, e in enumerate(evals_desc) if e > threshold]
-        return trap_ids
+        # Keep trap-mode detection exactly aligned with remove_traps() artifact
+        # collection so analyze_traps() and remove_traps() report the same trap
+        # counts/indices for a given layer and seed.
+        return remove_traps_ops.identify_trap_mode_indices(self, ww_layer)
 
 
     def compute_original_basis_for_traps(self, ww_layer, params=None):

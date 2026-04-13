@@ -89,3 +89,13 @@ clean_summary = clean_watcher.get_summary(clean_details)
 ```
 
 If you find edge cases, please open an issue with model type, layer selection, and seed used.
+
+## Targeted unit tests
+
+Use this exact command for the trap-analysis/trap-removal tests:
+
+```bash
+pytest -q tests/test_analyze_traps.py tests/test_remove_traps.py
+```
+
+> Note: the second path is `test_remove_traps.py` (not `.pyz`).

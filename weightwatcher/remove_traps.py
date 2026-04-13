@@ -90,7 +90,7 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
     if params is None:
         params = DEFAULT_PARAMS.copy()
 
-    if seed is None and isinstance(params, dict):
+    if rng is None and seed is None and isinstance(params, dict):
         seed = params.get("seed", None)
     rng = _normalize_trap_rng(rng=rng, seed=seed)
 
@@ -142,7 +142,9 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     if layer_seed is None and isinstance(params, dict):
         layer_seed = params.get("seed", None)
 
-    permute_rng = _normalize_trap_rng(rng=rng, seed=layer_seed)
+    # If an RNG object is already provided, do not also pass seed into
+    # normalization (that helper enforces exactly one of rng/seed).
+    permute_rng = _normalize_trap_rng(rng=rng, seed=None if rng is not None else layer_seed)
 
     permute_seed = layer_seed
     replacement_seed = None if layer_seed is None else layer_seed + 1

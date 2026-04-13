@@ -119,6 +119,8 @@ New in v0.8.0: trap-level randomized diagnostics:
 trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
 
+See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
+
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.
 
@@ -286,6 +288,8 @@ Trap analysis example:
 watcher = ww.WeightWatcher(model=my_model)
 trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
+
+For a complete walkthrough (including `remove_traps`), see: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
 Fig (a) is well trained; Fig (b) may be over-fit.
 	

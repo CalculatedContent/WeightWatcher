@@ -209,7 +209,7 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     return ww_layer
 
 
-def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=False,
+def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=True,
                  start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
     if trap_indices is None or len(trap_indices) == 0:
         raise ValueError("trap_indices must be provided and non-empty")

@@ -2,6 +2,7 @@ import pandas as pd
 
 from . import remove_traps as remove_traps_ops
 from . import weightwatcher as wwcore
+from .trap_histograms import plot_layer_trap_weight_histogram
 
 
 def analyze_traps(
@@ -92,6 +93,37 @@ def analyze_traps(
             layer_rows = watcher.apply_analyze_traps(ww_layer, params=params)
             if layer_rows:
                 trap_rows.extend(layer_rows)
+
+                if params.get(wwcore.PLOT, False):
+                    artifacts = remove_traps_ops.collect_trap_artifacts(
+                        watcher,
+                        ww_layer,
+                        params=params,
+                        rng=params.get("rng", None),
+                    )
+                    rows_by_trap_index = {
+                        int(row.get("trap_index", -1)) + 1: row
+                        for row in layer_rows
+                        if row.get("trap_index", None) is not None
+                    }
+                    trap_infos = []
+                    for artifact in artifacts:
+                        trap_idx = int(artifact["trap_index"])
+                        row = rows_by_trap_index.get(trap_idx, {})
+                        trap_infos.append(
+                            {
+                                "trap_index": trap_idx,
+                                "trap_matrix": artifact["T_orig_raw"],
+                                "trap_assessment": row.get("trap_assessment", "mixed"),
+                                "trap_risk_score": row.get("trap_risk_score", 0.0),
+                            }
+                        )
+                    plot_layer_trap_weight_histogram(
+                        ww_layer,
+                        trap_infos,
+                        params=params,
+                        method_tag="analyze_traps",
+                    )
 
     if len(trap_rows) > 0:
         details = pd.DataFrame.from_records(trap_rows)

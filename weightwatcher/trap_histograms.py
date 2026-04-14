@@ -58,6 +58,10 @@ def _largest_trap_elements(trap_matrix, atol=1e-12):
     return trap_matrix[mask]
 
 
+def _format_hist_value_label(value):
+    return f"{float(value):.4g}"
+
+
 def plot_layer_trap_weight_histogram(ww_layer, trap_infos, params=None, method_tag="analyze_traps"):
     """Plot per-layer weight histograms with dashed vertical trap marker lines.
 
@@ -94,8 +98,22 @@ def plot_layer_trap_weight_histogram(ww_layer, trap_infos, params=None, method_t
 
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.hist(flat_weights, bins=100, density=True, alpha=0.55, color="steelblue")
+    y_max = float(ax.get_ylim()[1])
+
+    min_w = float(np.min(flat_weights))
+    max_w = float(np.max(flat_weights))
+    indicator_height = max(y_max * 0.08, 1e-12)
+    ax.vlines(
+        [min_w, max_w],
+        ymin=0.0,
+        ymax=indicator_height,
+        colors="black",
+        linewidth=1.4,
+        alpha=0.85,
+    )
 
     drawn_labels = set()
+    trap_label_count = 0
     for trap_info in trap_infos:
         trap_index = int(trap_info["trap_index"])
         assessment = _resolve_trap_assessment(trap_info)
@@ -120,6 +138,19 @@ def plot_layer_trap_weight_histogram(ww_layer, trap_infos, params=None, method_t
                 alpha=0.95,
                 label=label,
             )
+            text_y = y_max * max(0.42, 0.98 - 0.07 * (trap_label_count % 7))
+            ax.text(
+                float(value),
+                text_y,
+                _format_hist_value_label(value),
+                color=line_color,
+                rotation=90,
+                va="top",
+                ha="right",
+                fontsize=7,
+                alpha=0.95,
+            )
+            trap_label_count += 1
 
     ax.set_xlabel("Weight value")
     ax.set_ylabel("Density")

@@ -1,6 +1,6 @@
 import numpy as np
 
-from weightwatcher.trap_histograms import _largest_trap_elements, _trap_color
+from weightwatcher.trap_histograms import _format_hist_value_label, _largest_trap_elements, _trap_color
 
 
 def test_largest_trap_elements_single_peak():
@@ -29,3 +29,8 @@ def test_trap_color_varies_by_assessment():
     # risky should be darker than mixed; benign should be lighter than mixed.
     assert np.mean(risky) < np.mean(mixed)
     assert np.mean(benign) > np.mean(mixed)
+
+
+def test_format_hist_value_label_compact_precision():
+    assert _format_hist_value_label(0.123456) == "0.1235"
+    assert _format_hist_value_label(12.3456) == "12.35"

@@ -3697,7 +3697,7 @@ class WeightWatcher:
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
                 glorot_fix=False,
-                plot=False, savefig=DEF_SAVE_DIR,
+                plot=True, savefig=DEF_SAVE_DIR,
                 conv2d_norm=True,
                 ww2x=DEFAULT_WW2X, pool=DEFAULT_POOL,
                 conv2d_fft=False, fft=False, channels=None,
@@ -5657,7 +5657,7 @@ class WeightWatcher:
         """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
-    def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=False,
+    def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=True,
                      start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(

@@ -19,7 +19,7 @@ from .weightwatcher import WeightWatcher
 
 __name__ = "weightwatcher"
 
-__version__ = "0.8.1"
+__version__ = "0.8.2"
 
 __license__ = "Apache License, Version 2.0"
 __description__ = "Diagnostic Tool for Deep Neural Networks"
@@ -30,5 +30,4 @@ __copyright__ = "Calculation Consulting"
 
 __all__ = ["__name__", "__version__", "__license__", "__description__",
           "__url__", "__author__", "__email__", "__copyright__"]
-
 

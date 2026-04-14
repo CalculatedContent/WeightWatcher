@@ -90,40 +90,37 @@ def analyze_traps(
             if params[wwcore.FFT]:
                 watcher.apply_FFT(ww_layer, params)
 
-            layer_rows = watcher.apply_analyze_traps(ww_layer, params=params)
+            layer_params = dict(params)
+            layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
+            layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if layer_rows:
-                trap_rows.extend(layer_rows)
-
                 if params.get(wwcore.PLOT, False):
-                    artifacts = remove_traps_ops.collect_trap_artifacts(
-                        watcher,
-                        ww_layer,
-                        params=params,
-                        rng=params.get("rng", None),
-                    )
-                    rows_by_trap_index = {
-                        int(row.get("trap_index", -1)) + 1: row
-                        for row in layer_rows
-                        if row.get("trap_index", None) is not None
-                    }
                     trap_infos = []
-                    for artifact in artifacts:
-                        trap_idx = int(artifact["trap_index"])
-                        row = rows_by_trap_index.get(trap_idx, {})
+                    for row in layer_rows:
+                        trap_idx_zero_based = int(row.get("trap_index", -1))
+                        trap_matrix = row.get("T_orig", None)
+                        if trap_idx_zero_based < 0 or trap_matrix is None:
+                            continue
+
                         trap_infos.append(
                             {
-                                "trap_index": trap_idx,
-                                "trap_matrix": artifact["T_orig_raw"],
+                                "trap_index": trap_idx_zero_based + 1,
+                                "trap_matrix": trap_matrix,
                                 "trap_assessment": row.get("trap_assessment", "mixed"),
                                 "trap_risk_score": row.get("trap_risk_score", 0.0),
                             }
                         )
+
                     plot_layer_trap_weight_histogram(
                         ww_layer,
                         trap_infos,
                         params=params,
                         method_tag="analyze_traps",
                     )
+
+                for row in layer_rows:
+                    row.pop("T_orig", None)
+                trap_rows.extend(layer_rows)
 
     if len(trap_rows) > 0:
         details = pd.DataFrame.from_records(trap_rows)

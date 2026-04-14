@@ -3938,7 +3938,8 @@ class WeightWatcher:
         trap_result.pop("right_overlaps", None)
         trap_result.pop("u_trap", None)
         trap_result.pop("v_trap", None)
-        trap_result.pop("T_orig", None)
+        if not params.get("_keep_trap_matrix", False):
+            trap_result.pop("T_orig", None)
         trap_result.pop("perm_evals_sorted", None)
 
         return trap_result

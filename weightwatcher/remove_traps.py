@@ -6,6 +6,7 @@ from .RMT_Util import svd_full, unpermute_matrix
 from .constants import DEFAULT_PARAMS, DEFAULT_START_ID, FAST_SVD, LAYER_TYPE, PEFT, PLOT, POOL, START_IDS, SVD_METHOD, DEFAULT_PEFT
 from .constants import LAYERS
 from .constants import WW_NAME
+from .trap_histograms import plot_layer_trap_weight_histogram
 
 logger = logging.getLogger(WW_NAME)
 
@@ -167,6 +168,34 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
         logger.warning("No valid traps to remove for this layer; skipping")
         return ww_layer
     requested = valid_indices
+
+    if params.get(PLOT, False):
+        max_sigma = max(float(a.get("sigma_perm", 0.0)) for a in artifacts) if len(artifacts) > 0 else 0.0
+        trap_infos = []
+        for idx in requested:
+            artifact = artifacts[idx - 1]
+            rel_sigma = float(artifact.get("sigma_perm", 0.0)) / (max_sigma + 1e-12)
+            if rel_sigma >= 0.8:
+                assessment = "localized_risky"
+            elif rel_sigma <= 0.35:
+                assessment = "benign_diffuse"
+            else:
+                assessment = "mixed"
+            trap_infos.append(
+                {
+                    "trap_index": idx,
+                    "trap_matrix": artifact["T_orig_raw"],
+                    "trap_assessment": assessment,
+                    "trap_risk_score": rel_sigma,
+                }
+            )
+
+        plot_layer_trap_weight_histogram(
+            ww_layer,
+            trap_infos,
+            params=params,
+            method_tag="remove_traps",
+        )
 
     old_W = ww_layer.Wmats[0]
     new_W = old_W.copy()

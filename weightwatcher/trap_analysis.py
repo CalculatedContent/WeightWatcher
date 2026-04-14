@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from . import remove_traps as remove_traps_ops
 from . import weightwatcher as wwcore
@@ -82,6 +83,7 @@ def analyze_traps(
 
     layer_iterator = watcher.make_layer_iterator(model=watcher.model, layers=layers, params=params, base_model=watcher.base_model)
     trap_rows = []
+    trap_component_rows = []
 
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
@@ -110,6 +112,13 @@ def analyze_traps(
                                 "trap_risk_score": row.get("trap_risk_score", 0.0),
                             }
                         )
+                        trap_component_rows.append(
+                            _top_trap_component_row(
+                                row=row,
+                                weight_matrix=ww_layer.Wmats[0],
+                                top_k=10,
+                            )
+                        )
 
                     plot_layer_trap_weight_histogram(
                         ww_layer,
@@ -135,4 +144,50 @@ def analyze_traps(
         details = details[lead_cols + [c for c in details.columns if c not in lead_cols]]
 
     watcher.details = details
+
+    if len(trap_component_rows) > 0:
+        trap_component_df = pd.DataFrame.from_records(trap_component_rows)
+        fixed_cols = ["layer_id", "name", "trap_index", "trap_assessment", "trap_risk_score"]
+        pair_cols = [col for i in range(1, 11) for col in (f"Wij_{i}", f"Cij_{i}")]
+        ordered_cols = [c for c in (fixed_cols + pair_cols) if c in trap_component_df.columns]
+        trap_component_df = trap_component_df.reindex(columns=ordered_cols)
+        watcher.trap_component_summary = trap_component_df
+        print(trap_component_df.to_string(index=False))
+    else:
+        watcher.trap_component_summary = pd.DataFrame()
+
     return details
+
+
+def _top_trap_component_row(row, weight_matrix, top_k=10):
+    trap_matrix = np.asarray(row.get("T_orig", np.array([])), dtype=float)
+    weight_matrix = np.asarray(weight_matrix, dtype=float)
+
+    out = {
+        "layer_id": row.get("layer_id"),
+        "name": row.get("name"),
+        "trap_index": int(row.get("trap_index", -1)) + 1,
+        "trap_assessment": row.get("trap_assessment", "mixed"),
+        "trap_risk_score": float(row.get("trap_risk_score", 0.0)),
+    }
+
+    for i in range(1, top_k + 1):
+        out[f"Wij_{i}"] = np.nan
+        out[f"Cij_{i}"] = np.nan
+
+    if trap_matrix.size == 0 or trap_matrix.shape != weight_matrix.shape:
+        return out
+
+    flat_trap = trap_matrix.ravel()
+    flat_weight = weight_matrix.ravel()
+    abs_coeff = np.abs(flat_trap)
+    max_abs = float(np.max(abs_coeff)) if abs_coeff.size else 0.0
+    if max_abs <= 0.0:
+        return out
+
+    order = np.argsort(abs_coeff)[::-1][:top_k]
+    for rank, idx in enumerate(order, start=1):
+        out[f"Wij_{rank}"] = float(flat_weight[idx])
+        out[f"Cij_{rank}"] = float(flat_trap[idx] / max_abs)
+
+    return out

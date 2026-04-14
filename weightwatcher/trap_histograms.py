@@ -46,6 +46,12 @@ def _trap_color(trap_index, assessment):
 
 
 def _largest_trap_elements(trap_matrix, atol=1e-12):
+    """Return entries of a trap component at its max-|value| locations.
+
+    Note: a rank-1 trap component is only one additive term in the full matrix
+    decomposition. Its entries can exceed the observed min/max of W because
+    other components can cancel it when summed back into W.
+    """
     abs_vals = np.abs(trap_matrix)
     if abs_vals.size == 0:
         return np.array([], dtype=float)
@@ -58,8 +64,58 @@ def _largest_trap_elements(trap_matrix, atol=1e-12):
     return trap_matrix[mask]
 
 
+def _largest_trap_weight_values(trap_matrix, weight_matrix, atol=1e-12):
+    """Map trap peak locations into the actual weight-matrix value space."""
+    trap_matrix = np.asarray(trap_matrix, dtype=float)
+    weight_matrix = np.asarray(weight_matrix, dtype=float)
+
+    if trap_matrix.shape != weight_matrix.shape:
+        return _largest_trap_elements(trap_matrix, atol=atol)
+
+    abs_vals = np.abs(trap_matrix)
+    if abs_vals.size == 0:
+        return np.array([], dtype=float)
+
+    max_abs = np.max(abs_vals)
+    if max_abs <= 0.0:
+        return np.array([], dtype=float)
+
+    mask = np.isclose(abs_vals, max_abs, atol=atol, rtol=0.0)
+    return weight_matrix[mask]
+
+
 def _format_hist_value_label(value):
     return f"{float(value):.4g}"
+
+
+def _significant_trap_components(trap_matrix, weight_matrix, min_rel_coeff=0.25, max_components=300):
+    trap_flat = np.asarray(trap_matrix, dtype=float).ravel()
+    weight_flat = np.asarray(weight_matrix, dtype=float).ravel()
+
+    if trap_flat.size == 0 or weight_flat.size == 0 or trap_flat.size != weight_flat.size:
+        return np.array([], dtype=float), np.array([], dtype=float), np.array([], dtype=float)
+
+    abs_coeff = np.abs(trap_flat)
+    max_abs = float(np.max(abs_coeff))
+    if max_abs <= 0.0:
+        return np.array([], dtype=float), np.array([], dtype=float), np.array([], dtype=float)
+
+    rel_coeff = abs_coeff / max_abs
+    mask = rel_coeff >= float(min_rel_coeff)
+    if not np.any(mask):
+        return np.array([], dtype=float), np.array([], dtype=float), np.array([], dtype=float)
+
+    x_vals = weight_flat[mask]
+    rel_vals = rel_coeff[mask]
+    signed_coeff = trap_flat[mask]
+
+    if x_vals.size > max_components:
+        order = np.argsort(rel_vals)[::-1][:max_components]
+        x_vals = x_vals[order]
+        rel_vals = rel_vals[order]
+        signed_coeff = signed_coeff[order]
+
+    return x_vals, rel_vals, signed_coeff
 
 
 def plot_layer_trap_weight_histogram(ww_layer, trap_infos, params=None, method_tag="analyze_traps"):
@@ -99,6 +155,7 @@ def plot_layer_trap_weight_histogram(ww_layer, trap_infos, params=None, method_t
     fig, ax = plt.subplots(figsize=(9, 6))
     ax.hist(flat_weights, bins=100, density=True, alpha=0.55, color="steelblue")
     y_max = float(ax.get_ylim()[1])
+    trap_bar_threshold = 0.30
 
     min_w = float(np.min(flat_weights))
     max_w = float(np.max(flat_weights))
@@ -119,38 +176,45 @@ def plot_layer_trap_weight_histogram(ww_layer, trap_infos, params=None, method_t
         assessment = _resolve_trap_assessment(trap_info)
         line_color = _trap_color(trap_index, assessment)
 
-        peak_values = np.asarray(_largest_trap_elements(np.asarray(trap_info["trap_matrix"], dtype=float))).ravel()
-        if peak_values.size == 0:
+        x_vals, rel_vals, signed_coeff = _significant_trap_components(
+            np.asarray(trap_info["trap_matrix"], dtype=float),
+            np.asarray(weights, dtype=float),
+            min_rel_coeff=trap_bar_threshold,
+        )
+        if x_vals.size == 0:
             continue
 
-        peak_values = np.unique(np.round(peak_values.astype(float), 12))
-        for value in peak_values:
-            label = None
-            if trap_index not in drawn_labels:
-                label = f"trap {trap_index}"
-                drawn_labels.add(trap_index)
+        label = None
+        if trap_index not in drawn_labels:
+            label = f"trap {trap_index}"
+            drawn_labels.add(trap_index)
 
-            ax.axvline(
-                x=float(value),
-                color=line_color,
-                linestyle="--",
-                linewidth=1.6,
-                alpha=0.95,
-                label=label,
-            )
-            text_y = y_max * max(0.42, 0.98 - 0.07 * (trap_label_count % 7))
-            ax.text(
-                float(value),
-                text_y,
-                _format_hist_value_label(value),
-                color=line_color,
-                rotation=90,
-                va="top",
-                ha="right",
-                fontsize=7,
-                alpha=0.95,
-            )
-            trap_label_count += 1
+        ax.vlines(
+            x_vals,
+            ymin=0.0,
+            ymax=rel_vals * y_max,
+            colors=[line_color],
+            linewidth=1.0,
+            alpha=0.35,
+            label=label,
+        )
+
+        top_idx = int(np.argmax(rel_vals))
+        top_x = float(x_vals[top_idx])
+        top_coeff = float(signed_coeff[top_idx])
+        text_y = y_max * max(0.42, 0.98 - 0.07 * (trap_label_count % 7))
+        ax.text(
+            top_x,
+            text_y,
+            _format_hist_value_label(top_coeff),
+            color=line_color,
+            rotation=90,
+            va="top",
+            ha="right",
+            fontsize=7,
+            alpha=0.95,
+        )
+        trap_label_count += 1
 
     ax.set_xlabel("Weight value")
     ax.set_ylabel("Density")

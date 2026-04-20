@@ -7,6 +7,86 @@ from scipy import stats
 from .constants import *
 
 LAPLACE = "laplace"
+MIN_LOGNORMAL_SIDE_SAMPLES = 64
+LOGNORMAL_KS_PVALUE_THRESHOLD = 0.05
+LOGNORMAL_NSA_TOL = 0.25
+
+
+def _side_column_name(side_name):
+    return "right" if side_name == "right" else "left"
+
+
+def _default_lognormal_side_stats(side_name):
+    side = _side_column_name(side_name)
+    return {
+        f"lognormal_{side}_detected": False,
+        f"lognormal_{side}_mu": np.nan,
+        f"lognormal_{side}_sigma2": np.nan,
+        f"lognormal_{side}_n": np.nan,
+        f"lognormal_{side}_log_n": np.nan,
+        f"lognormal_{side}_sa_ratio": np.nan,
+        f"lognormal_{side}_nsa_margin": np.nan,
+        f"lognormal_{side}_sa_regime": "undetermined",
+        f"lognormal_{side}_non_self_averaging": np.nan,
+    }
+
+
+def compute_lognormal_self_averaging_stats(values, side_name, min_samples, tol, classified_as_lognormal=True):
+    side = _side_column_name(side_name)
+    stats_row = _default_lognormal_side_stats(side_name)
+
+    vals = np.asarray(values).ravel().astype(float)
+    vals = vals[np.isfinite(vals)]
+    if side == "right":
+        x = vals[vals > 0]
+    else:
+        x = np.abs(vals[vals < 0])
+        x = x[x > 0]
+
+    if len(x) < min_samples or not classified_as_lognormal:
+        return stats_row
+
+    try:
+        ln_params = stats.lognorm.fit(x, floc=0)
+        _, ks_p, _ = _ks_metrics(x, LOG_NORMAL, ln_params)
+    except Exception:
+        return stats_row
+
+    plausible = np.isfinite(ks_p) and ks_p >= LOGNORMAL_KS_PVALUE_THRESHOLD
+    if not plausible:
+        return stats_row
+
+    log_x = np.log(x)
+    mu_hat = float(np.mean(log_x))
+    sigma2_hat = float(np.var(log_x))
+    n_side = int(len(x))
+    log_n = float(np.log(n_side))
+    sa_ratio = float(np.exp(sigma2_hat) / n_side)
+    nsa_margin = float(sigma2_hat - log_n)
+
+    if sigma2_hat < log_n - tol:
+        regime = "self_averaging"
+        nsa_bool = False
+    elif sigma2_hat > log_n + tol:
+        regime = "non_self_averaging"
+        nsa_bool = True
+    else:
+        regime = "marginal"
+        nsa_bool = False
+
+    stats_row.update({
+        f"lognormal_{side}_detected": True,
+        f"lognormal_{side}_mu": mu_hat,
+        f"lognormal_{side}_sigma2": sigma2_hat,
+        f"lognormal_{side}_n": n_side,
+        f"lognormal_{side}_log_n": log_n,
+        f"lognormal_{side}_sa_ratio": sa_ratio,
+        f"lognormal_{side}_nsa_margin": nsa_margin,
+        f"lognormal_{side}_sa_regime": regime,
+        f"lognormal_{side}_non_self_averaging": nsa_bool,
+    })
+
+    return stats_row
 
 
 def _ks_metrics(data, dist_name, params):
@@ -206,17 +286,44 @@ def analyze_weights(
             ids = rng.choice(len(layer_values), size=sample_size, replace=False)
             layer_values = layer_values[ids]
 
+        layer_rows = []
+        side_best = {}
         for side in ("left", "right"):
             side_rows = _fit_side_models(layer_values, side_label=side)
+            side_best[side] = np.nan
             for row in side_rows:
                 row["layer_id"] = ww_layer.layer_id
                 row["name"] = ww_layer.name
                 row["longname"] = ww_layer.longname
                 row["layer_type"] = str(ww_layer.the_type)
-                rows.append(row)
+                layer_rows.append(row)
+                if row.get("is_best_fit", False):
+                    side_best[side] = row.get("distribution")
 
             if plot:
                 _plot_side_distribution(layer_values, side, ww_layer.layer_id, ww_layer.name, savefig=savefig)
+
+        right_sa = compute_lognormal_self_averaging_stats(
+            layer_values,
+            side_name="right",
+            min_samples=MIN_LOGNORMAL_SIDE_SAMPLES,
+            tol=LOGNORMAL_NSA_TOL,
+            classified_as_lognormal=(side_best.get("right") == LOG_NORMAL),
+        )
+        left_sa = compute_lognormal_self_averaging_stats(
+            layer_values,
+            side_name="left",
+            min_samples=MIN_LOGNORMAL_SIDE_SAMPLES,
+            tol=LOGNORMAL_NSA_TOL,
+            classified_as_lognormal=(side_best.get("left") == LOG_NORMAL),
+        )
+
+        layer_diag = {}
+        layer_diag.update(right_sa)
+        layer_diag.update(left_sa)
+        for row in layer_rows:
+            row.update(layer_diag)
+            rows.append(row)
 
     details = pd.DataFrame(rows)
     if len(details) > 0:

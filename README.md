@@ -26,6 +26,8 @@ It can be used to:
 ## Quick Links 
 
 - Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+- Docs: [analyze_weights Log-Normal Self-Averaging Diagnostic](./docs/analyze_weights_lognormal_self_averaging.html)
+- Docs: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
 - Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 
@@ -120,6 +122,11 @@ trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
 
 See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
+
+### `analyze_weights()` output docs
+
+For the additive finite-sample log-normal self-averaging fields emitted by `analyze_weights()`, see:
+[analyze_weights Log-Normal Self-Averaging Diagnostic](./docs/analyze_weights_lognormal_self_averaging.html)
 
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.

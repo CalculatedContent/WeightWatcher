@@ -119,6 +119,15 @@ New in v0.8.0: trap-level randomized diagnostics:
 trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
 
+`analyze_traps()` now reports paper-aligned trap metrics from the NeurIPS trap workflow,
+including normalized spectral excess (`trap_delta`), localization (`trap_q` / `trap_ipr`),
+top-sector overlap (`trap_top_sector_overlap` with configurable `top_sector_l`), and
+the primary paper scalar `trap_variance_burden`.
+
+The legacy heuristic diagnostics are still returned for backward compatibility
+(`trap_diffuseness_score`, `trap_risk_score`, `trap_assessment`, plus legacy overlap/excess
+fields), but the paper-facing metrics above are the primary outputs for trap interpretation.
+
 See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
 ## PEFT / LORA models  (experimental)
@@ -288,6 +297,18 @@ Trap analysis example:
 watcher = ww.WeightWatcher(model=my_model)
 trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
+
+The implementation is designed to follow the trap definitions in the NeurIPS paper first,
+while preserving older diagnostic fields for compatibility with existing scripts/notebooks.
+If you want the paper metrics directly, use:
+
+- `trap_delta`
+- `trap_ipr`
+- `trap_q`
+- `trap_diffuseness` (`1 - trap_q`)
+- `trap_top_sector_overlap` (cumulative overlap over first `top_sector_l` modes)
+- `trap_variance_burden`
+- `layer_trap_variance_burden`
 
 For a complete walkthrough (including `remove_traps`), see: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 

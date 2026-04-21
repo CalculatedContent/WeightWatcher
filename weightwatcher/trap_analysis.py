@@ -29,6 +29,7 @@ def analyze_traps(
     base_model=None,
     peft=wwcore.DEFAULT_PEFT,
     rng=None,
+    top_sector_l=1,
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
     if layers is None:
@@ -73,6 +74,9 @@ def analyze_traps(
     params[wwcore.PEFT] = peft
     params[wwcore.INVERSE] = False
     params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng)
+    params["top_sector_l"] = int(top_sector_l)
+    if int(top_sector_l) < 1:
+        raise ValueError("top_sector_l must be >= 1")
 
     wwcore.logger.debug("params {}".format(params))
     if not watcher.valid_params(params):
@@ -138,6 +142,10 @@ def analyze_traps(
 
     trap_cols = watcher._trap_result_columns()
     details = details.reindex(columns=trap_cols + [c for c in details.columns if c not in trap_cols])
+    if len(details) > 0 and "trap_variance_burden" in details.columns:
+        details["layer_trap_variance_burden"] = (
+            details.groupby("layer_id")["trap_variance_burden"].transform("sum")
+        )
 
     if len(details) > 0:
         lead_cols = ["layer_id", "name"]

@@ -3705,7 +3705,8 @@ class WeightWatcher:
                 start_ids=DEFAULT_START_ID,
                 base_model=None,
                 peft=DEFAULT_PEFT,
-                rng=None):
+                rng=None,
+                top_sector_l=1):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3750,6 +3751,7 @@ class WeightWatcher:
             base_model=base_model,
             peft=peft,
             rng=rng,
+            top_sector_l=top_sector_l,
         )
 
     def _trap_result_columns(self):
@@ -3767,6 +3769,9 @@ class WeightWatcher:
             "v_l2_fourth_moment", "v_l2_sixth_moment", "v_effective_support", "v_gini_abs",
             "v_top1_mass", "v_top5_mass", "v_top10_mass", "v_squared_amp_entropy", "v_stable_rank_surrogate",
             "trap_balance_ratio", "trap_detected", "trap_eval_minus_bulk",
+            "trap_delta", "trap_ipr", "trap_q", "trap_diffuseness",
+            "top_sector_l", "top_sector_l_effective", "trap_top_sector_overlap",
+            "trap_variance_burden", "layer_trap_variance_burden",
             "trap_diffuseness_score", "trap_risk_score", "trap_assessment",
         ]
 
@@ -3879,6 +3884,18 @@ class WeightWatcher:
         v_oi = self._trap_vector_order_invariant_stats(v_trap)
 
         eval_perm = sigma_perm ** 2
+        top_sector_l = int(params.get("top_sector_l", 1))
+        trap_delta = self.compute_trap_delta(eval_perm=eval_perm, mp_bulk_max=ww_layer.bulk_max)
+        trap_ipr, trap_q = self.compute_trap_ipr_q(v_perm)
+        trap_top_sector_overlap, top_sector_l_effective = self.compute_top_sector_overlap(
+            right_overlaps,
+            top_sector_l=top_sector_l,
+        )
+        trap_variance_burden = self.compute_trap_variance_burden(
+            trap_delta=trap_delta,
+            trap_q=trap_q,
+            trap_top_sector_overlap=trap_top_sector_overlap,
+        )
         trap_result = {
             "layer_id": ww_layer.layer_id,
             "name": ww_layer.name,
@@ -3908,6 +3925,15 @@ class WeightWatcher:
             "right_overlap_ipr": right_overlap_ipr,
             "trap_detected": True,
             "trap_eval_minus_bulk": float(eval_perm - ww_layer.bulk_max),
+            # Paper-aligned trap metrics (NeurIPS trap paper definitions).
+            "trap_delta": trap_delta,
+            "trap_ipr": trap_ipr,
+            "trap_q": trap_q,
+            "trap_diffuseness": float(1.0 - trap_q) if np.isfinite(trap_q) else np.nan,
+            "top_sector_l": top_sector_l,
+            "top_sector_l_effective": top_sector_l_effective,
+            "trap_top_sector_overlap": trap_top_sector_overlap,
+            "trap_variance_burden": trap_variance_burden,
         }
 
         for k, v in u_metrics.items():
@@ -3944,6 +3970,50 @@ class WeightWatcher:
 
         return trap_result
 
+    def compute_trap_delta(self, eval_perm, mp_bulk_max):
+        eval_perm = float(eval_perm)
+        mp_bulk_max = float(mp_bulk_max)
+        if (not np.isfinite(eval_perm)) or (not np.isfinite(mp_bulk_max)) or mp_bulk_max <= 0.0:
+            return float(np.nan)
+        return float(max(eval_perm - mp_bulk_max, 0.0) / mp_bulk_max)
+
+    def compute_trap_ipr_q(self, vec):
+        v = np.asarray(vec, dtype=float).ravel()
+        if v.size == 0:
+            return float(np.nan), float(np.nan)
+        norm = np.linalg.norm(v)
+        if (not np.isfinite(norm)) or norm <= 0.0:
+            return float(np.nan), float(np.nan)
+
+        v = v / norm
+        ipr = float(np.sum(v ** 4))
+        m = int(len(v))
+        if m <= 1:
+            q = 1.0
+        else:
+            q = (m * ipr - 1.0) / (m - 1.0)
+            q = float(np.clip(q, 0.0, 1.0))
+        return ipr, float(q)
+
+    def compute_top_sector_overlap(self, overlaps, top_sector_l=1):
+        ell = int(top_sector_l)
+        if ell < 1:
+            raise ValueError("top_sector_l must be >= 1")
+
+        overlap_vec = np.asarray(overlaps, dtype=float).ravel()
+        if overlap_vec.size == 0:
+            return float(np.nan), 0
+
+        ell_eff = min(ell, int(len(overlap_vec)))
+        return float(np.sum(overlap_vec[:ell_eff])), int(ell_eff)
+
+    def compute_trap_variance_burden(self, trap_delta, trap_q, trap_top_sector_overlap):
+        trap_delta = float(trap_delta)
+        trap_q = float(trap_q)
+        trap_top_sector_overlap = float(trap_top_sector_overlap)
+        if (not np.isfinite(trap_delta)) or (not np.isfinite(trap_q)) or (not np.isfinite(trap_top_sector_overlap)):
+            return float(np.nan)
+        return float((trap_delta ** 2) * trap_q * (trap_top_sector_overlap ** 2))
 
     def assess_trap_diffuseness(self, trap_result):
         """Heuristic classifier for trap severity in original weight space.
@@ -3951,6 +4021,10 @@ class WeightWatcher:
         Trap risk is computed from normalized trap strength and then explicitly
         downweighted by diffuseness. This is intentionally a separate function so it
         can be unit-tested and adjusted independently.
+
+        NOTE: trap_diffuseness_score/trap_risk_score/trap_assessment are heuristic
+        diagnostics retained for backward compatibility; they are not the paper-aligned
+        trap_delta/trap_q/trap_top_sector_overlap/trap_variance_burden metrics.
         """
         eps = 1e-12
 

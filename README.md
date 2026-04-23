@@ -128,6 +128,16 @@ The legacy heuristic diagnostics are still returned for backward compatibility
 (`trap_diffuseness_score`, `trap_risk_score`, `trap_assessment`, plus legacy overlap/excess
 fields), but the paper-facing metrics above are the primary outputs for trap interpretation.
 
+For burden-variant experiments (e.g., comparing Porter-Thomas vs uniform localization or
+different spectral normalizations), `analyze_traps` also supports:
+
+- `burden_variants=None` (default): keep current PR-358 burden behavior.
+- `burden_variants="default"`: add a standard sweep of variant columns
+  (`trap_variance_burden__*`).
+- `return_burden_components=True`: expose scalar burden components for notebook analysis.
+- `return_burden_raw=True`: expose raw vectors/overlaps (`u_perm`, `v_perm`, `u_trap`,
+  `v_trap`, `left_overlaps`, `right_overlaps`, `perm_evals_sorted`).
+
 See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
 ## PEFT / LORA models  (experimental)

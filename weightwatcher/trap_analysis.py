@@ -30,6 +30,9 @@ def analyze_traps(
     peft=wwcore.DEFAULT_PEFT,
     rng=None,
     top_sector_l=1,
+    burden_variants=None,
+    return_burden_components=False,
+    return_burden_raw=False,
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
     if layers is None:
@@ -75,6 +78,9 @@ def analyze_traps(
     params[wwcore.INVERSE] = False
     params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng)
     params["top_sector_l"] = int(top_sector_l)
+    params["burden_variants"] = burden_variants
+    params["return_burden_components"] = bool(return_burden_components)
+    params["return_burden_raw"] = bool(return_burden_raw)
     if int(top_sector_l) < 1:
         raise ValueError("top_sector_l must be >= 1")
 
@@ -139,6 +145,12 @@ def analyze_traps(
         details = pd.DataFrame.from_records(trap_rows)
     else:
         details = pd.DataFrame(columns=watcher._trap_result_columns())
+        from .trap_burden_variants import resolve_burden_variant_configs
+        variant_configs = resolve_burden_variant_configs(burden_variants)
+        if variant_configs is not None:
+            for cfg in variant_configs:
+                details[f"trap_variance_burden__{cfg['name']}"] = pd.Series(dtype=float)
+                details[f"layer_trap_variance_burden__{cfg['name']}"] = pd.Series(dtype=float)
 
     trap_cols = watcher._trap_result_columns()
     details = details.reindex(columns=trap_cols + [c for c in details.columns if c not in trap_cols])
@@ -146,6 +158,11 @@ def analyze_traps(
         details["layer_trap_variance_burden"] = (
             details.groupby("layer_id")["trap_variance_burden"].transform("sum")
         )
+        variant_cols = [c for c in details.columns if c.startswith("trap_variance_burden__")]
+        for col in variant_cols:
+            suffix = col.replace("trap_variance_burden__", "", 1)
+            layer_col = f"layer_trap_variance_burden__{suffix}"
+            details[layer_col] = details.groupby("layer_id")[col].transform("sum")
 
     if len(details) > 0:
         lead_cols = ["layer_id", "name"]
@@ -282,6 +299,9 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
 
     eval_perm = sigma_perm ** 2
     top_sector_l = int(params.get("top_sector_l", 1))
+    burden_variants = params.get("burden_variants", None)
+    return_burden_components = bool(params.get("return_burden_components", False))
+    return_burden_raw = bool(params.get("return_burden_raw", False))
     trap_delta = compute_trap_delta(eval_perm=eval_perm, mp_bulk_max=ww_layer.bulk_max)
     trap_ipr, trap_q = compute_trap_ipr_q(v_perm)
     trap_top_sector_overlap, top_sector_l_effective = compute_top_sector_overlap(
@@ -347,23 +367,57 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
     )
     trap_result.update(watcher.assess_trap_diffuseness(trap_result))
 
+    variant_configs = None
+    components = None
+    if (burden_variants is not None) or return_burden_components:
+        from .trap_burden_variants import (
+            compute_burden_components,
+            compute_burden_variants,
+            resolve_burden_variant_configs,
+        )
+
+        perm_total_variance = float(np.sum(S_perm ** 2))
+        components = compute_burden_components(
+            eval_perm=eval_perm,
+            mp_bulk_max=ww_layer.bulk_max,
+            perm_total_variance=perm_total_variance,
+            u_perm=u_perm,
+            v_perm=v_perm,
+            u_trap=u_trap,
+            v_trap=v_trap,
+            left_overlaps=left_overlaps,
+            right_overlaps=right_overlaps,
+            top_sector_l=top_sector_l,
+        )
+        variant_configs = resolve_burden_variant_configs(burden_variants)
+        if return_burden_components:
+            trap_result.update(components)
+        if variant_configs is not None:
+            trap_result.update(compute_burden_variants(components, variant_configs))
+
     trap_result["left_overlaps"] = left_overlaps
     trap_result["right_overlaps"] = right_overlaps
     trap_result["u_trap"] = u_trap
     trap_result["v_trap"] = v_trap
+    trap_result["u_perm"] = u_perm
+    trap_result["v_perm"] = v_perm
     trap_result["T_orig"] = T_orig
     trap_result["perm_evals_sorted"] = np.array(ww_layer.evals).copy()
 
     if params[wwcore.PLOT]:
         watcher.plot_trap_analysis(ww_layer, trap_result, params=params)
 
-    trap_result.pop("left_overlaps", None)
-    trap_result.pop("right_overlaps", None)
-    trap_result.pop("u_trap", None)
-    trap_result.pop("v_trap", None)
+    if not return_burden_raw:
+        trap_result.pop("left_overlaps", None)
+        trap_result.pop("right_overlaps", None)
+        trap_result.pop("u_trap", None)
+        trap_result.pop("v_trap", None)
+        trap_result.pop("u_perm", None)
+        trap_result.pop("v_perm", None)
     if not params.get("_keep_trap_matrix", False):
         trap_result.pop("T_orig", None)
-    trap_result.pop("perm_evals_sorted", None)
+    if not return_burden_raw:
+        trap_result.pop("perm_evals_sorted", None)
 
     return trap_result
 

@@ -3706,7 +3706,10 @@ class WeightWatcher:
                 base_model=None,
                 peft=DEFAULT_PEFT,
                 rng=None,
-                top_sector_l=1):
+                top_sector_l=1,
+                burden_variants=None,
+                return_burden_components=False,
+                return_burden_raw=False):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3752,6 +3755,9 @@ class WeightWatcher:
             peft=peft,
             rng=rng,
             top_sector_l=top_sector_l,
+            burden_variants=burden_variants,
+            return_burden_components=return_burden_components,
+            return_burden_raw=return_burden_raw,
         )
 
     def _trap_result_columns(self):

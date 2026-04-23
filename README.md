@@ -124,7 +124,7 @@ including normalized spectral excess (`trap_delta`), localization (`trap_q` / `t
 top-sector overlap (`trap_top_sector_overlap` with configurable `top_sector_l`), and
 the primary paper scalar `trap_variance_burden`.
 
-`trap_q` is now Porter-Thomas-centered (relative to a random-vector baseline,
+`trap_q` is now Porter-Thomas-centered (Porter Thomas centered) relative to a random-vector baseline,
 `E[IPR] ≈ 3/(m+2)` for real vectors), and `trap_variance_burden` uses this
 Porter-Thomas-centered `trap_q`.
 

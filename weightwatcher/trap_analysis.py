@@ -208,7 +208,7 @@ def compute_trap_delta(eval_perm, mp_bulk_max):
     return float(max(eval_perm - mp_bulk_max, 0.0) / mp_bulk_max)
 
 
-def compute_trap_ipr_q(vec):
+def compute_trap_ipr_q_uniform(vec):
     v = np.asarray(vec, dtype=float).ravel()
     if v.size == 0:
         return float(np.nan), float(np.nan)
@@ -225,6 +225,31 @@ def compute_trap_ipr_q(vec):
         q = (m * ipr - 1.0) / (m - 1.0)
         q = float(np.clip(q, 0.0, 1.0))
     return ipr, float(q)
+
+
+def compute_trap_ipr_q_porter_thomas(vec):
+    v = np.asarray(vec, dtype=float).ravel()
+    if v.size == 0:
+        return float(np.nan), float(np.nan)
+    norm = np.linalg.norm(v)
+    if (not np.isfinite(norm)) or norm <= 0.0:
+        return float(np.nan), float(np.nan)
+
+    v = v / norm
+    ipr = float(np.sum(v ** 4))
+    m = int(len(v))
+    if m <= 1:
+        q = 1.0
+    else:
+        expected_ipr_pt = 3.0 / (m + 2.0)
+        q = (ipr - expected_ipr_pt) / (1.0 - expected_ipr_pt)
+        q = float(np.clip(q, 0.0, 1.0))
+    return ipr, float(q)
+
+
+def compute_trap_ipr_q(vec):
+    """Default paper-facing localization (Porter-Thomas-centered)."""
+    return compute_trap_ipr_q_porter_thomas(vec)
 
 
 def compute_top_sector_overlap(overlaps, top_sector_l=1):
@@ -303,7 +328,8 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
     return_burden_components = bool(params.get("return_burden_components", False))
     return_burden_raw = bool(params.get("return_burden_raw", False))
     trap_delta = compute_trap_delta(eval_perm=eval_perm, mp_bulk_max=ww_layer.bulk_max)
-    trap_ipr, trap_q = compute_trap_ipr_q(v_perm)
+    trap_ipr, trap_q = compute_trap_ipr_q_porter_thomas(v_perm)
+    _, trap_q_uniform = compute_trap_ipr_q_uniform(v_perm)
     trap_top_sector_overlap, top_sector_l_effective = compute_top_sector_overlap(
         right_overlaps,
         top_sector_l=top_sector_l,
@@ -346,7 +372,11 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
         "trap_delta": trap_delta,
         "trap_ipr": trap_ipr,
         "trap_q": trap_q,
+        # paper-facing diffuseness complement of PT-centered localization
         "trap_diffuseness": float(1.0 - trap_q) if np.isfinite(trap_q) else np.nan,
+        # explicit legacy/uniform-centered localization retained for comparison
+        "trap_q_uniform": trap_q_uniform,
+        "trap_diffuseness_uniform": float(1.0 - trap_q_uniform) if np.isfinite(trap_q_uniform) else np.nan,
         "top_sector_l": top_sector_l,
         "top_sector_l_effective": top_sector_l_effective,
         "trap_top_sector_overlap": trap_top_sector_overlap,

@@ -21,7 +21,14 @@ class TestTrapMetricHelpers(unittest.TestCase):
         self.assertAlmostEqual(self.watcher.compute_trap_delta(8.0, 10.0), 0.0)
         self.assertTrue(np.isnan(self.watcher.compute_trap_delta(12.0, 0.0)))
 
-    def test_compute_trap_ipr_q_uniform_vector(self):
+    def test_compute_trap_ipr_q_porter_thomas_baseline_vector(self):
+        # m=10 => E_PT[IPR]=3/(m+2)=0.25
+        v = np.array([0.5, 0.5, 0.5, 0.5] + [0.0] * 6)
+        ipr, q = self.watcher.compute_trap_ipr_q(v)
+        self.assertAlmostEqual(ipr, 0.25)
+        self.assertAlmostEqual(q, 0.0, places=7)
+
+    def test_compute_trap_ipr_q_uniform_vector_clips_to_zero_under_pt(self):
         v = np.ones(10) / np.sqrt(10)
         ipr, q = self.watcher.compute_trap_ipr_q(v)
         self.assertAlmostEqual(ipr, 0.1)
@@ -31,6 +38,18 @@ class TestTrapMetricHelpers(unittest.TestCase):
         v = np.zeros(10)
         v[0] = 1.0
         ipr, q = self.watcher.compute_trap_ipr_q(v)
+        self.assertAlmostEqual(ipr, 1.0)
+        self.assertAlmostEqual(q, 1.0)
+
+    def test_compute_trap_ipr_q_uniform_legacy_field_behavior(self):
+        v = np.ones(10) / np.sqrt(10)
+        ipr, q = self.watcher.compute_trap_ipr_q_uniform(v)
+        self.assertAlmostEqual(ipr, 0.1)
+        self.assertAlmostEqual(q, 0.0)
+
+        onehot = np.zeros(10)
+        onehot[0] = 1.0
+        ipr, q = self.watcher.compute_trap_ipr_q_uniform(onehot)
         self.assertAlmostEqual(ipr, 1.0)
         self.assertAlmostEqual(q, 1.0)
 
@@ -189,6 +208,8 @@ class TestAnalyzeTraps(unittest.TestCase):
             "trap_ipr",
             "trap_q",
             "trap_diffuseness",
+            "trap_q_uniform",
+            "trap_diffuseness_uniform",
             "trap_top_sector_overlap",
             "trap_variance_burden",
             "layer_trap_variance_burden",

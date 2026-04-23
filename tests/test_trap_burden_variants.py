@@ -16,7 +16,7 @@ class TestTrapBurdenVariantMath(unittest.TestCase):
     def test_current_pr358_variant_formula(self):
         components = {
             "trap_spectral_edge_ratio_current": 0.2,
-            "trap_q_uniform_right_perm": 0.5,
+            "trap_q_pt_right_perm": 0.5,
             "trap_top_sector_overlap_right": 0.3,
         }
         cfg = [c for c in tbv.DEFAULT_BURDEN_VARIANTS if c["name"] == "current_pr358"][0]

@@ -124,6 +124,14 @@ including normalized spectral excess (`trap_delta`), localization (`trap_q` / `t
 top-sector overlap (`trap_top_sector_overlap` with configurable `top_sector_l`), and
 the primary paper scalar `trap_variance_burden`.
 
+`trap_q` is now Porter-Thomas-centered (relative to a random-vector baseline,
+`E[IPR] ≈ 3/(m+2)` for real vectors), and `trap_variance_burden` uses this
+Porter-Thomas-centered `trap_q`.
+
+For backward comparison, uniform-centered localization is still available as
+`trap_q_uniform` (and `trap_diffuseness_uniform`), while
+`trap_diffuseness_score` remains the separate heuristic diagnostic.
+
 The legacy heuristic diagnostics are still returned for backward compatibility
 (`trap_diffuseness_score`, `trap_risk_score`, `trap_assessment`, plus legacy overlap/excess
 fields), but the paper-facing metrics above are the primary outputs for trap interpretation.

@@ -3776,6 +3776,7 @@ class WeightWatcher:
             "v_top1_mass", "v_top5_mass", "v_top10_mass", "v_squared_amp_entropy", "v_stable_rank_surrogate",
             "trap_balance_ratio", "trap_detected", "trap_eval_minus_bulk",
             "trap_delta", "trap_ipr", "trap_q", "trap_diffuseness",
+            "trap_q_uniform", "trap_diffuseness_uniform",
             "top_sector_l", "top_sector_l_effective", "trap_top_sector_overlap",
             "trap_variance_burden", "layer_trap_variance_burden",
             "trap_diffuseness_score", "trap_risk_score", "trap_assessment",
@@ -3851,6 +3852,10 @@ class WeightWatcher:
         from . import trap_analysis
         return trap_analysis.compute_trap_ipr_q(vec)
 
+    def compute_trap_ipr_q_uniform(self, vec):
+        from . import trap_analysis
+        return trap_analysis.compute_trap_ipr_q_uniform(vec)
+
     def compute_top_sector_overlap(self, overlaps, top_sector_l=1):
         from . import trap_analysis
         return trap_analysis.compute_top_sector_overlap(overlaps, top_sector_l=top_sector_l)
@@ -3870,9 +3875,10 @@ class WeightWatcher:
         downweighted by diffuseness. This is intentionally a separate function so it
         can be unit-tested and adjusted independently.
 
-        NOTE: trap_diffuseness_score/trap_risk_score/trap_assessment are heuristic
-        diagnostics retained for backward compatibility; they are not the paper-aligned
-        trap_delta/trap_q/trap_top_sector_overlap/trap_variance_burden metrics.
+        NOTE: trap_q/trap_diffuseness are Porter-Thomas-centered paper-facing localization
+        metrics. trap_q_uniform/trap_diffuseness_uniform preserve the older
+        uniform-centered localization. trap_diffuseness_score/trap_risk_score/trap_assessment
+        remain heuristic diagnostics retained for backward compatibility.
         """
         eps = 1e-12
 

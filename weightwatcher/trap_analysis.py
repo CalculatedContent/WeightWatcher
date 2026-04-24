@@ -6,6 +6,17 @@ from . import weightwatcher as wwcore
 from .trap_histograms import plot_layer_trap_weight_histogram
 
 
+def _coerce_plot_flag(plot):
+    """Normalize user plot flags so analyze_traps(plot=False) is always respected."""
+    if isinstance(plot, str):
+        p = plot.strip().lower()
+        if p in {"false", "0", "no", "off", ""}:
+            return False
+        if p in {"true", "1", "yes", "on"}:
+            return True
+    return bool(plot)
+
+
 def analyze_traps(
     watcher,
     model=None,
@@ -53,7 +64,7 @@ def analyze_traps(
     params[wwcore.MAX_EVALS] = max_evals
     params[wwcore.MAX_N] = max_N
 
-    params[wwcore.PLOT] = plot
+    params[wwcore.PLOT] = _coerce_plot_flag(plot)
     params[wwcore.RANDOMIZE] = True
     params[wwcore.MP_FIT] = True
     params[wwcore.GLOROT_FIT] = glorot_fix
@@ -106,7 +117,7 @@ def analyze_traps(
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
             layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if layer_rows:
-                if params.get(wwcore.PLOT, False):
+                if bool(params.get(wwcore.PLOT, False)):
                     trap_infos = []
                     for row in layer_rows:
                         trap_idx_zero_based = int(row.get("trap_index", -1))
@@ -434,7 +445,7 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
     trap_result["T_orig"] = T_orig
     trap_result["perm_evals_sorted"] = np.array(ww_layer.evals).copy()
 
-    if params[wwcore.PLOT]:
+    if bool(params.get(wwcore.PLOT, False)):
         watcher.plot_trap_analysis(ww_layer, trap_result, params=params)
 
     if not return_burden_raw:

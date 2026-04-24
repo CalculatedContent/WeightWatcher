@@ -9,6 +9,7 @@ except Exception:
     TORCH_AVAILABLE = False
 
 import weightwatcher as ww
+import weightwatcher.trap_analysis as trap_analysis
 
 
 class TestTrapMetricHelpers(unittest.TestCase):
@@ -71,6 +72,13 @@ class TestTrapMetricHelpers(unittest.TestCase):
             trap_top_sector_overlap=0.3,
         )
         self.assertAlmostEqual(burden, 0.2**2 * 0.5 * 0.3**2)
+
+    def test_plot_flag_coercion(self):
+        self.assertFalse(trap_analysis._coerce_plot_flag(False))
+        self.assertFalse(trap_analysis._coerce_plot_flag("False"))
+        self.assertFalse(trap_analysis._coerce_plot_flag("0"))
+        self.assertTrue(trap_analysis._coerce_plot_flag(True))
+        self.assertTrue(trap_analysis._coerce_plot_flag("True"))
 
 
 if TORCH_AVAILABLE:

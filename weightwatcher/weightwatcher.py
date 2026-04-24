@@ -2915,7 +2915,7 @@ class WeightWatcher:
         layer_id = ww_layer.layer_id
         name = ww_layer.name
        
-        if not ww_layer.skippe:
+        if not getattr(ww_layer, "skipped", False):
             logger.info("applying 2D FFT on to {} {} ".format(layer_id, name))
             
             Wmats = ww_layer.Wmats

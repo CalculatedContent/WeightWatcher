@@ -146,6 +146,43 @@ different spectral normalizations), `analyze_traps` also supports:
 - `return_burden_raw=True`: expose raw vectors/overlaps (`u_perm`, `v_perm`, `u_trap`,
   `v_trap`, `left_overlaps`, `right_overlaps`, `perm_evals_sorted`).
 
+Fourier/FFT diagnostics are also available:
+
+- `fft=False` (default): keeps standard-basis behavior unchanged.
+- `fft=True`: adds Fourier-space localization and Fourier-frequency mass diagnostics for trap vectors.
+- `fft_config={...}`: optional FFT diagnostics config (partial dicts are supported).
+
+Recommended `fft_config` fields:
+
+```python
+{
+    "sides": "both",                 # "left" | "right" | "both"
+    "vectors": "both",               # "perm" | "trap" | "both"
+    "fold_conjugates": True,         # combine +k/-k bins for real vectors
+    "exclude_dc": False,             # exclude freq-0 from effective mass diagnostics
+    "top_frequency_l": 1,            # top-k frequencies for top-frequency mass
+    "selected_frequencies": None,    # optional explicit frequency bins
+    "normalization": "ortho",        # np.fft.fft(..., norm="ortho")
+    "baseline": "uniform",           # "uniform" | "pt_real_mc" | "pt_complex"
+    "mc_samples": 2048,              # used by baseline="pt_real_mc"
+    "mc_seed": 123,
+    "modulus": None,                 # optional modular-arithmetic length hint
+    "apply_only_if_length_matches_modulus": False,
+    "layer_fft_map": None,
+}
+```
+
+When `burden_variants="default"` and `fft=True`, FFT burden variants are added
+(`trap_variance_burden__fft_*`), for example:
+
+- `trap_variance_burden__fft_uniform_right_current_spectral`
+- `trap_variance_burden__fft_uniform_lr_geom_fft_topmass`
+- `trap_variance_burden__fft_pt_lr_geom_fft_topmass`
+
+Note: Fourier overlap is intentionally based on Fourier-frequency mass concentration
+(`trap_fft_top_frequency_mass_*` / `trap_fft_selected_frequency_mass_*`), not
+unitary-transformed vector overlap.
+
 See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
 ## PEFT / LORA models  (experimental)

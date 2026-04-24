@@ -4,6 +4,7 @@ import numpy as np
 from . import remove_traps as remove_traps_ops
 from . import weightwatcher as wwcore
 from .trap_histograms import plot_layer_trap_weight_histogram
+from . import trap_fourier
 
 
 def _coerce_plot_flag(plot):
@@ -34,6 +35,8 @@ def analyze_traps(
     pool=wwcore.DEFAULT_POOL,
     conv2d_fft=False,
     fft=False,
+    trap_fft=False,
+    trap_fft_config=None,
     channels=None,
     svd_method=wwcore.FAST_SVD,
     start_ids=wwcore.DEFAULT_START_ID,
@@ -92,6 +95,8 @@ def analyze_traps(
     params["burden_variants"] = burden_variants
     params["return_burden_components"] = bool(return_burden_components)
     params["return_burden_raw"] = bool(return_burden_raw)
+    params["trap_fft"] = bool(trap_fft)
+    params["trap_fft_config"] = trap_fourier.resolve_trap_fft_config(trap_fft_config)
     if int(top_sector_l) < 1:
         raise ValueError("top_sector_l must be >= 1")
 
@@ -157,11 +162,16 @@ def analyze_traps(
     else:
         details = pd.DataFrame(columns=watcher._trap_result_columns())
         from .trap_burden_variants import resolve_burden_variant_configs
-        variant_configs = resolve_burden_variant_configs(burden_variants)
+        variant_configs = resolve_burden_variant_configs(
+            burden_variants, trap_fft=bool(params.get("trap_fft", False))
+        )
         if variant_configs is not None:
             for cfg in variant_configs:
                 details[f"trap_variance_burden__{cfg['name']}"] = pd.Series(dtype=float)
                 details[f"layer_trap_variance_burden__{cfg['name']}"] = pd.Series(dtype=float)
+        if bool(params.get("trap_fft", False)):
+            for col in _trap_fft_result_columns():
+                details[col] = pd.Series(dtype=float)
 
     trap_cols = watcher._trap_result_columns()
     details = details.reindex(columns=trap_cols + [c for c in details.columns if c not in trap_cols])
@@ -285,6 +295,33 @@ def compute_trap_variance_burden(trap_delta, trap_q, trap_top_sector_overlap):
     return float((trap_delta ** 2) * trap_q * (trap_top_sector_overlap ** 2))
 
 
+def _trap_fft_result_columns():
+    cols = []
+    for side in ("right", "left"):
+        for space in ("perm", "trap"):
+            cols.extend(
+                [
+                    f"trap_fft_ipr_{side}_{space}",
+                    f"trap_fft_q_uniform_{side}_{space}",
+                    f"trap_fft_q_pt_{side}_{space}",
+                    f"trap_fft_top_frequency_mass_{side}_{space}",
+                    f"trap_fft_peak_frequency_{side}_{space}",
+                    f"trap_fft_peak_mass_{side}_{space}",
+                ]
+            )
+    cols.extend(
+        [
+            "trap_fft_q_uniform_perm_lr_geom",
+            "trap_fft_q_uniform_perm_lr_min",
+            "trap_fft_q_pt_perm_lr_geom",
+            "trap_fft_q_pt_perm_lr_min",
+            "trap_fft_top_frequency_mass_perm_lr_geom",
+            "trap_fft_top_frequency_mass_perm_lr_min",
+        ]
+    )
+    return cols
+
+
 def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache=None, params=None, trap_index=0):
     if params is None:
         params = wwcore.DEFAULT_PARAMS.copy()
@@ -350,6 +387,64 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
         trap_q=trap_q,
         trap_top_sector_overlap=trap_top_sector_overlap,
     )
+    trap_fft = bool(params.get("trap_fft", False))
+    trap_fft_config = params.get("trap_fft_config", None)
+    fft_metrics = {}
+    if trap_fft:
+        from .trap_burden_variants import combine_lr
+
+        def add_fft(vec, side, space):
+            if not trap_fourier.length_matches_modulus(len(np.asarray(vec).ravel()), trap_fft_config):
+                fft_metrics[f"trap_fft_ipr_{side}_{space}"] = np.nan
+                fft_metrics[f"trap_fft_q_uniform_{side}_{space}"] = np.nan
+                fft_metrics[f"trap_fft_q_pt_{side}_{space}"] = np.nan
+                fft_metrics[f"trap_fft_top_frequency_mass_{side}_{space}"] = np.nan
+                fft_metrics[f"trap_fft_peak_frequency_{side}_{space}"] = np.nan
+                fft_metrics[f"trap_fft_peak_mass_{side}_{space}"] = np.nan
+                return
+            sm = trap_fourier.fourier_component_summary(vec, prefix="trap", trap_fft_config=trap_fft_config)
+            fft_metrics[f"trap_fft_ipr_{side}_{space}"] = sm.get("trap_fft_ipr", np.nan)
+            fft_metrics[f"trap_fft_q_uniform_{side}_{space}"] = sm.get("trap_fft_q_uniform", np.nan)
+            fft_metrics[f"trap_fft_q_pt_{side}_{space}"] = sm.get("trap_fft_q_pt", np.nan)
+            fft_metrics[f"trap_fft_top_frequency_mass_{side}_{space}"] = sm.get("trap_fft_top_frequency_mass", np.nan)
+            fft_metrics[f"trap_fft_peak_frequency_{side}_{space}"] = sm.get("trap_fft_peak_frequency", np.nan)
+            fft_metrics[f"trap_fft_peak_mass_{side}_{space}"] = sm.get("trap_fft_peak_mass", np.nan)
+
+        add_fft(v_perm, "right", "perm")
+        add_fft(u_perm, "left", "perm")
+        add_fft(v_trap, "right", "trap")
+        add_fft(u_trap, "left", "trap")
+
+        fft_metrics["trap_fft_q_uniform_perm_lr_geom"] = combine_lr(
+            fft_metrics.get("trap_fft_q_uniform_left_perm", np.nan),
+            fft_metrics.get("trap_fft_q_uniform_right_perm", np.nan),
+            "geom",
+        )
+        fft_metrics["trap_fft_q_uniform_perm_lr_min"] = combine_lr(
+            fft_metrics.get("trap_fft_q_uniform_left_perm", np.nan),
+            fft_metrics.get("trap_fft_q_uniform_right_perm", np.nan),
+            "min",
+        )
+        fft_metrics["trap_fft_q_pt_perm_lr_geom"] = combine_lr(
+            fft_metrics.get("trap_fft_q_pt_left_perm", np.nan),
+            fft_metrics.get("trap_fft_q_pt_right_perm", np.nan),
+            "geom",
+        )
+        fft_metrics["trap_fft_q_pt_perm_lr_min"] = combine_lr(
+            fft_metrics.get("trap_fft_q_pt_left_perm", np.nan),
+            fft_metrics.get("trap_fft_q_pt_right_perm", np.nan),
+            "min",
+        )
+        fft_metrics["trap_fft_top_frequency_mass_perm_lr_geom"] = combine_lr(
+            fft_metrics.get("trap_fft_top_frequency_mass_left_perm", np.nan),
+            fft_metrics.get("trap_fft_top_frequency_mass_right_perm", np.nan),
+            "geom",
+        )
+        fft_metrics["trap_fft_top_frequency_mass_perm_lr_min"] = combine_lr(
+            fft_metrics.get("trap_fft_top_frequency_mass_left_perm", np.nan),
+            fft_metrics.get("trap_fft_top_frequency_mass_right_perm", np.nan),
+            "min",
+        )
     trap_result = {
         "layer_id": ww_layer.layer_id,
         "name": ww_layer.name,
@@ -393,6 +488,8 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
         "trap_top_sector_overlap": trap_top_sector_overlap,
         "trap_variance_burden": trap_variance_burden,
     }
+    if trap_fft:
+        trap_result.update(fft_metrics)
 
     for k, v in u_metrics.items():
         trap_result[f"u_{k}"] = v
@@ -430,7 +527,9 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
             right_overlaps=right_overlaps,
             top_sector_l=top_sector_l,
         )
-        variant_configs = resolve_burden_variant_configs(burden_variants)
+        if trap_fft:
+            components.update(fft_metrics)
+        variant_configs = resolve_burden_variant_configs(burden_variants, trap_fft=trap_fft)
         if return_burden_components:
             trap_result.update(components)
         if variant_configs is not None:

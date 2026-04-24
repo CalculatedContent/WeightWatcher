@@ -227,7 +227,15 @@ def _localization_key(family: str, vectors: str, side: str):
     raise ValueError(f"Unknown localization side: {side}")
 
 
-def _get_localization_value(components, family="uniform", vectors="perm", side="right"):
+def _get_localization_value(components, family="uniform", vectors="perm", side="right", domain="standard"):
+    if domain == "fft":
+        fam = "q_pt" if family == "porter_thomas" else "q_uniform"
+        if side in {"left", "right"}:
+            return safe_float(components.get(f"trap_fft_{fam}_{side}_{vectors}", np.nan))
+        left = safe_float(components.get(f"trap_fft_{fam}_left_{vectors}", np.nan))
+        right = safe_float(components.get(f"trap_fft_{fam}_right_{vectors}", np.nan))
+        return combine_lr(left, right, side)
+
     key = _localization_key(family, vectors, side)
     if key is not None:
         return safe_float(components.get(key, np.nan))
@@ -236,7 +244,14 @@ def _get_localization_value(components, family="uniform", vectors="perm", side="
     return combine_lr(left, right, side)
 
 
-def _get_overlap_value(components, side="right"):
+def _get_overlap_value(components, side="right", domain="standard", fft_overlap_measure="top_frequency_mass", vectors="perm"):
+    if domain == "fft":
+        base = "trap_fft_top_frequency_mass" if fft_overlap_measure == "top_frequency_mass" else "trap_fft_selected_frequency_mass"
+        if side in {"left", "right"}:
+            return safe_float(components.get(f"{base}_{side}_{vectors}", np.nan))
+        left = safe_float(components.get(f"{base}_left_{vectors}", np.nan))
+        right = safe_float(components.get(f"{base}_right_{vectors}", np.nan))
+        return combine_lr(left, right, side)
     if side in {"left", "right"}:
         return safe_float(components.get(f"trap_top_sector_overlap_{side}", np.nan))
     if side in {"mean", "geom", "min", "max", "product"}:
@@ -253,6 +268,11 @@ def compute_burden_variant(components, config):
     localization_power = float(config.get("localization_power", 1.0))
     overlap_side = config.get("overlap_side", "right")
     overlap_power = float(config.get("overlap_power", 1.0))
+    localization_domain = config.get("localization_domain", "standard")
+    overlap_domain = config.get("overlap_domain", "standard")
+    fft_localization_family = config.get("fft_localization_family", "uniform")
+    fft_overlap_measure = config.get("fft_overlap_measure", "top_frequency_mass")
+    overlap_vectors = config.get("overlap_vectors", localization_vectors)
 
     spectral_key = {
         "edge_ratio_current": "trap_spectral_edge_ratio_current",
@@ -267,11 +287,18 @@ def compute_burden_variant(components, config):
     spectral_value = safe_float(components.get(spectral_key, np.nan))
     localization_value = _get_localization_value(
         components,
-        family=localization_family,
+        family=(fft_localization_family if localization_domain == "fft" else localization_family),
         vectors=localization_vectors,
         side=localization_side,
+        domain=localization_domain,
     )
-    overlap_value = _get_overlap_value(components, side=overlap_side)
+    overlap_value = _get_overlap_value(
+        components,
+        side=overlap_side,
+        domain=overlap_domain,
+        fft_overlap_measure=fft_overlap_measure,
+        vectors=overlap_vectors,
+    )
 
     values = [spectral_value, localization_value, overlap_value]
     if any(not np.isfinite(v) for v in values):
@@ -392,12 +419,98 @@ DEFAULT_BURDEN_VARIANTS: List[Dict] = [
     ),
 ]
 
+FFT_DEFAULT_BURDEN_VARIANTS: List[Dict] = [
+    dict(
+        name="fft_uniform_right_current_spectral",
+        spectral_mode="edge_ratio_current",
+        spectral_power=2,
+        localization_domain="fft",
+        fft_localization_family="uniform",
+        localization_vectors="perm",
+        localization_side="right",
+        overlap_domain="standard",
+        overlap_side="right",
+        overlap_power=2,
+    ),
+    dict(
+        name="fft_uniform_lr_geom_current_spectral",
+        spectral_mode="edge_ratio_current",
+        spectral_power=2,
+        localization_domain="fft",
+        fft_localization_family="uniform",
+        localization_vectors="perm",
+        localization_side="geom",
+        overlap_domain="standard",
+        overlap_side="right",
+        overlap_power=2,
+    ),
+    dict(
+        name="fft_uniform_lr_geom_fft_topmass",
+        spectral_mode="edge_ratio_current",
+        spectral_power=2,
+        localization_domain="fft",
+        fft_localization_family="uniform",
+        localization_vectors="perm",
+        localization_side="geom",
+        overlap_domain="fft",
+        fft_overlap_measure="top_frequency_mass",
+        overlap_vectors="perm",
+        overlap_side="geom",
+        overlap_power=1,
+    ),
+    dict(
+        name="fft_pt_lr_geom_fft_topmass",
+        spectral_mode="edge_ratio_current",
+        spectral_power=2,
+        localization_domain="fft",
+        fft_localization_family="porter_thomas",
+        localization_vectors="perm",
+        localization_side="geom",
+        overlap_domain="fft",
+        fft_overlap_measure="top_frequency_mass",
+        overlap_vectors="perm",
+        overlap_side="geom",
+        overlap_power=1,
+    ),
+    dict(
+        name="fft_uniform_total_fraction_lr_geom_fft_topmass",
+        spectral_mode="total_fraction",
+        spectral_power=1,
+        localization_domain="fft",
+        fft_localization_family="uniform",
+        localization_vectors="perm",
+        localization_side="geom",
+        overlap_domain="fft",
+        fft_overlap_measure="top_frequency_mass",
+        overlap_vectors="perm",
+        overlap_side="geom",
+        overlap_power=1,
+    ),
+    dict(
+        name="fft_pt_total_fraction_lr_geom_fft_topmass",
+        spectral_mode="total_fraction",
+        spectral_power=1,
+        localization_domain="fft",
+        fft_localization_family="porter_thomas",
+        localization_vectors="perm",
+        localization_side="geom",
+        overlap_domain="fft",
+        fft_overlap_measure="top_frequency_mass",
+        overlap_vectors="perm",
+        overlap_side="geom",
+        overlap_power=1,
+    ),
+]
 
-def resolve_burden_variant_configs(burden_variants):
+
+def resolve_burden_variant_configs(burden_variants, trap_fft=False):
     if burden_variants is None:
         return None
     if burden_variants == "default":
-        return copy.deepcopy(DEFAULT_BURDEN_VARIANTS)
+        out = copy.deepcopy(DEFAULT_BURDEN_VARIANTS)
+        if bool(trap_fft):
+            out.extend(copy.deepcopy(FFT_DEFAULT_BURDEN_VARIANTS))
+        return out
     if isinstance(burden_variants, list):
         return copy.deepcopy(burden_variants)
     raise ValueError("burden_variants must be None, 'default', or list[dict]")

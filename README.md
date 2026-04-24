@@ -149,10 +149,13 @@ different spectral normalizations), `analyze_traps` also supports:
 Fourier/FFT diagnostics are also available:
 
 - `fft=False` (default): keeps standard-basis behavior unchanged.
-- `fft=True`: adds Fourier-space localization and Fourier-frequency mass diagnostics for trap vectors.
-- `fft_config={...}`: optional FFT diagnostics config (partial dicts are supported).
+- `trap_fft=True`: adds Fourier-space localization and Fourier-frequency mass diagnostics for trap vectors.
+- `trap_fft_config={...}`: optional FFT diagnostics config (partial dicts are supported).
 
-Recommended `fft_config` fields:
+The legacy `fft=True` argument is still reserved for the older layer-matrix FFT path; use
+`trap_fft=True` for trap-vector Fourier diagnostics.
+
+Recommended `trap_fft_config` fields:
 
 ```python
 {
@@ -172,7 +175,7 @@ Recommended `fft_config` fields:
 }
 ```
 
-When `burden_variants="default"` and `fft=True`, FFT burden variants are added
+When `burden_variants="default"` and `trap_fft=True`, FFT burden variants are added
 (`trap_variance_burden__fft_*`), for example:
 
 - `trap_variance_burden__fft_uniform_right_current_spectral`

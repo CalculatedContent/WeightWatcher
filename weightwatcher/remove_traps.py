@@ -1,12 +1,14 @@
 import logging
 import numbers
 import numpy as np
+import pandas as pd
 
 from .RMT_Util import svd_full, unpermute_matrix
 from .constants import DEFAULT_PARAMS, DEFAULT_START_ID, FAST_SVD, LAYER_TYPE, PEFT, PLOT, POOL, START_IDS, SVD_METHOD, DEFAULT_PEFT
 from .constants import LAYERS
 from .constants import WW_NAME
 from .trap_histograms import plot_layer_trap_weight_histogram
+from . import trap_identity
 
 logger = logging.getLogger(WW_NAME)
 
@@ -104,11 +106,34 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
     ww.apply_permute_W(analysis_layer, params, rng=rng)
     apply_trap_mp_fit(ww, analysis_layer, params)
     trap_mode_indices = identify_trap_mode_indices(ww, analysis_layer)
+    n_traps = int(len(trap_mode_indices))
+    perm_ids = analysis_layer.permute_ids[0] if len(analysis_layer.permute_ids) > 0 else np.array([], dtype=int)
+    perm_sig = trap_identity.permutation_signature(perm_ids)
 
     artifacts = []
     for i, trap_mode_index in enumerate(trap_mode_indices, start=1):
         artifact = analyze_single_trap(ww, analysis_layer, trap_mode_index)
         artifact["trap_index"] = i
+        artifact["trap_seed"] = seed
+        artifact["n_traps"] = n_traps
+        artifact["perm_signature"] = perm_sig
+        artifact["permutation_n"] = int(len(np.asarray(perm_ids).ravel()))
+        artifact["permutation_mode"] = "index_permutation"
+        artifact["trap_identity_key"] = trap_identity.make_trap_identity_key(
+            layer_id=analysis_layer.layer_id,
+            seed=seed,
+            trap_index=i,
+            n_traps=n_traps,
+            perm_signature=perm_sig,
+        )
+        artifact["layer_id"] = analysis_layer.layer_id
+        artifact["eval_perm"] = float(artifact["sigma_perm"] ** 2)
+        artifact["mp_bulk_max"] = float(getattr(analysis_layer, "bulk_max", np.nan))
+        mp_bulk_max = float(getattr(analysis_layer, "bulk_max", np.nan))
+        if np.isfinite(mp_bulk_max) and mp_bulk_max > 0:
+            artifact["trap_delta"] = float(max(artifact["eval_perm"] - mp_bulk_max, 0.0) / mp_bulk_max)
+        else:
+            artifact["trap_delta"] = float(np.nan)
         artifact["T_orig_raw"] = artifact["T_orig_norm"] / analysis_layer.w_norm
         artifacts.append(artifact)
 
@@ -135,9 +160,12 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     if ww_layer.the_type != LAYER_TYPE.DENSE or len(ww_layer.Wmats) != 1 or ww_layer.Wmats[0].ndim != 2:
         raise NotImplementedError("remove_traps currently supports single 2D dense matrices only")
 
-    requested = sorted(set(trap_indices))
-    if any(idx < 1 for idx in requested):
-        raise ValueError("trap indices are 1-based and must be >= 1")
+    requested = sorted(set([int(i) for i in trap_indices]))
+    if any(idx < 0 for idx in requested):
+        raise ValueError("trap indices must be >= 0")
+    if any(idx == 0 for idx in requested):
+        logger.warning("Received 0-based trap_indices; converting to 1-based for backward compatibility")
+        requested = sorted(set([idx + 1 for idx in requested]))
 
     layer_seed = seed
     if layer_seed is None and isinstance(params, dict):
@@ -158,7 +186,8 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
         seed=None if permute_rng is not None else permute_seed,
         rng=permute_rng,
     )
-    valid_indices = [idx for idx in requested if idx <= len(artifacts)]
+    artifacts_by_index = {int(a.get("trap_index", -1)): a for a in artifacts}
+    valid_indices = [idx for idx in requested if idx in artifacts_by_index]
     if len(valid_indices) < len(requested):
         logger.warning(
             f"Skipping invalid trap indices {set(requested) - set(valid_indices)}; "
@@ -173,7 +202,7 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
         max_sigma = max(float(a.get("sigma_perm", 0.0)) for a in artifacts) if len(artifacts) > 0 else 0.0
         trap_infos = []
         for idx in requested:
-            artifact = artifacts[idx - 1]
+            artifact = artifacts_by_index[idx]
             rel_sigma = float(artifact.get("sigma_perm", 0.0)) / (max_sigma + 1e-12)
             if rel_sigma >= 0.8:
                 assessment = "localized_risky"
@@ -200,7 +229,7 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     old_W = ww_layer.Wmats[0]
     new_W = old_W.copy()
     for idx in requested:
-        T_orig_raw = artifacts[idx - 1]["T_orig_raw"]
+        T_orig_raw = artifacts_by_index[idx]["T_orig_raw"]
         R_orig = make_stat_matched_random_matrix(T_orig_raw, replacement_rng)
         new_W = new_W - T_orig_raw + R_orig
 
@@ -209,10 +238,38 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     return ww_layer
 
 
-def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=True,
-                 start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
+def remove_traps(
+    ww,
+    model=None,
+    layers=[],
+    trap_indices=None,
+    seed=None,
+    rng=None,
+    pool=True,
+    plot=True,
+    start_ids=DEFAULT_START_ID,
+    svd_method=FAST_SVD,
+    base_model=None,
+    peft=DEFAULT_PEFT,
+    verify_traps=False,
+    return_analyze=False,
+    traps=None,
+    rtol=1e-4,
+    atol=1e-6,
+    min_vector_cosine=0.999,
+):
+    traps_df = trap_identity.coerce_traps_dataframe(traps)
+    if traps_df is not None and len(traps_df) > 0 and (trap_indices is None or len(trap_indices) == 0):
+        trap_indices = [int(i) for i in traps_df["trap_index"].astype(int).tolist()]
+
     if trap_indices is None or len(trap_indices) == 0:
         raise ValueError("trap_indices must be provided and non-empty")
+    trap_indices = sorted(set([int(i) for i in trap_indices]))
+    if any(i < 0 for i in trap_indices):
+        raise ValueError("trap_indices must be >= 0")
+    if any(i == 0 for i in trap_indices):
+        logger.warning("Received 0-based trap_indices; converting to 1-based for backward compatibility")
+        trap_indices = sorted(set([i + 1 for i in trap_indices]))
 
     ww.set_model_(model)
     params = DEFAULT_PARAMS.copy()
@@ -229,9 +286,86 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, rng=No
         raise Exception(f"Error, params not valid: \n {params}")
     params = ww.normalize_params(params)
 
+    remove_rows = []
+    needs_verify = bool(verify_traps or return_analyze or traps_df is not None)
+
     layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
-            apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"])
+            layer_analyze_df = None
+            layer_remove_df = None
+            if needs_verify:
+                layer_remove_df = ww.analyze_traps(
+                    model=model,
+                    layers=[int(ww_layer.layer_id)],
+                    plot=False,
+                    savefig=False,
+                    pool=pool,
+                    start_ids=start_ids,
+                    peft=peft,
+                    seed=seed,
+                    rng=None,
+                    return_burden_raw=True,
+                )
+                if traps_df is not None and len(traps_df) > 0:
+                    layer_analyze_df = traps_df[traps_df["layer_id"].astype(int) == int(ww_layer.layer_id)].copy()
+                else:
+                    layer_analyze_df = layer_remove_df.copy()
 
+            layer_indices = sorted(set([int(i) for i in trap_indices]))
+            assert all(idx >= 1 for idx in layer_indices), "trap_indices must be 1-based during verification"
+            removed_flag = True
+            removal_error = None
+            if needs_verify:
+                for idx in layer_indices:
+                    if idx < 1:
+                        continue
+                    analyze_candidates = layer_analyze_df[layer_analyze_df["trap_index"].astype(int) == int(idx)]
+                    if len(analyze_candidates) == 0:
+                        analyze_row = pd.Series(dtype=float)
+                    else:
+                        analyze_row = analyze_candidates.iloc[0]
+
+                    analyze_seed = analyze_row.get("trap_seed", seed)
+                    analyze_n_traps = analyze_row.get("n_traps", np.nan)
+                    analyze_perm = analyze_row.get("perm_signature", "")
+
+                    remove_candidates = layer_remove_df[
+                        (layer_remove_df["layer_id"].astype(int) == int(ww_layer.layer_id))
+                        & (layer_remove_df["trap_index"].astype(int) == int(idx))
+                        & (layer_remove_df["trap_seed"].astype(str) == str(analyze_seed))
+                        & (layer_remove_df["n_traps"].astype(float) == float(analyze_n_traps))
+                        & (layer_remove_df["perm_signature"].astype(str) == str(analyze_perm))
+                    ]
+                    remove_row = remove_candidates.iloc[0] if len(remove_candidates) > 0 else pd.Series(dtype=float)
+
+                    verify = trap_identity.verify_trap_rows(
+                        analyze_row,
+                        remove_row,
+                        rtol=rtol,
+                        atol=atol,
+                        min_vector_cosine=min_vector_cosine,
+                    )
+                    vrow = trap_identity.build_trap_verification_row(
+                        analyze_row=analyze_row,
+                        remove_row=remove_row,
+                        verify_dict=verify,
+                        removed=False,
+                        removal_error=None,
+                    )
+                    remove_rows.append(vrow)
+                    if verify_traps and (not verify.get("trap_verified", False)):
+                        raise RuntimeError(
+                            f"Trap verification failed for layer {ww_layer.layer_id}, trap_index={idx}"
+                        )
+
+            apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"])
+            if needs_verify and len(remove_rows) > 0:
+                for i in range(len(remove_rows)):
+                    if int(remove_rows[i].get("layer_id", -1)) == int(ww_layer.layer_id):
+                        remove_rows[i]["removed"] = removed_flag
+                        remove_rows[i]["removal_error"] = removal_error
+    if needs_verify:
+        remove_meta_df = pd.DataFrame(remove_rows)
+        return model, remove_meta_df
     return model

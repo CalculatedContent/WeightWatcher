@@ -323,6 +323,37 @@ def test_remove_traps_accepts_analyze_dataframe_without_explicit_indices(monkeyp
     assert bool(verify_df.iloc[0]["trap_verified"])
 
 
+def test_remove_traps_verify_true_with_single_trap_row_subset(monkeypatch):
+    watcher = WeightWatcher(model=None)
+    seed = 24
+    W, _, _, _ = _single_trap_setup(seed=909)
+    ww_layer = make_ww_layer(W)
+
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    trap_df = watcher.analyze_traps(model=None, layers=[], seed=seed, plot=False, savefig=False, pool=True)
+    k = 0
+    model_out, verify_df = watcher.remove_traps(
+        model={"dummy_weight": np.array([1.0])},
+        layers=[],
+        traps=trap_df.iloc[[k]],
+        seed=seed,
+        pool=True,
+        plot=False,
+        verify_traps=True,
+        return_analyze=True,
+    )
+
+    assert isinstance(model_out, dict)
+    assert len(verify_df) == 1
+    assert bool(verify_df.iloc[0]["perm_match"])
+    assert bool(verify_df.iloc[0]["trap_verified"])
+
+
 def test_remove_traps_verification_regenerates_layer_local_trap_df(monkeypatch):
     watcher = WeightWatcher(model=None)
     W, _, _, _ = _single_trap_setup(seed=808)

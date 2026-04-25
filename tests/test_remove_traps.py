@@ -323,6 +323,38 @@ def test_remove_traps_accepts_analyze_dataframe_without_explicit_indices(monkeyp
     assert bool(verify_df.iloc[0]["trap_verified"])
 
 
+def test_remove_traps_verification_regenerates_layer_local_trap_df(monkeypatch):
+    watcher = WeightWatcher(model=None)
+    W, _, _, _ = _single_trap_setup(seed=808)
+    ww_layer = make_ww_layer(W)
+
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    original_analyze = watcher.analyze_traps
+    recorded_layers = []
+
+    def _recording_analyze(*args, **kwargs):
+        recorded_layers.append(tuple(kwargs.get("layers", [])))
+        return original_analyze(*args, **kwargs)
+
+    monkeypatch.setattr(watcher, "analyze_traps", _recording_analyze)
+    watcher.remove_traps(
+        model={"dummy_weight": np.array([1.0])},
+        layers=[],
+        trap_indices=[1],
+        seed=33,
+        pool=True,
+        plot=False,
+        return_analyze=True,
+    )
+
+    assert any(call == (int(ww_layer.layer_id),) for call in recorded_layers)
+
+
 @pytest.mark.skipif(torch is None, reason="PyTorch not installed")
 def test_trap_rng_consistency_analyze_vs_collect_single_and_multi_layer():
     model = torch.nn.Sequential(

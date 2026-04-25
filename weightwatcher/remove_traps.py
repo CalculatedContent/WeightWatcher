@@ -276,65 +276,58 @@ def remove_traps(
         raise Exception(f"Error, params not valid: \n {params}")
     params = ww.normalize_params(params)
 
-    analyze_df = None
     remove_rows = []
     needs_verify = bool(verify_traps or return_analyze or traps_df is not None)
-    if needs_verify:
-        analyze_df = ww.analyze_traps(
-            model=model,
-            layers=layers,
-            plot=False,
-            savefig=False,
-            pool=pool,
-            start_ids=start_ids,
-            peft=peft,
-            seed=seed,
-            rng=None,
-            return_burden_raw=True,
-        )
 
     layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
-            layer_artifacts = None
+            layer_analyze_df = None
+            layer_remove_df = None
             if needs_verify:
-                layer_artifacts = collect_trap_artifacts(
-                    ww,
-                    ww_layer,
-                    params=params,
+                layer_remove_df = ww.analyze_traps(
+                    model=model,
+                    layers=[int(ww_layer.layer_id)],
+                    plot=False,
+                    savefig=False,
+                    pool=pool,
+                    start_ids=start_ids,
+                    peft=peft,
                     seed=seed,
                     rng=None,
+                    return_burden_raw=True,
                 )
+                if traps_df is not None and len(traps_df) > 0:
+                    layer_analyze_df = traps_df[traps_df["layer_id"].astype(int) == int(ww_layer.layer_id)].copy()
+                else:
+                    layer_analyze_df = layer_remove_df.copy()
 
             layer_indices = sorted(set([int(i) for i in trap_indices]))
             removed_flag = True
             removal_error = None
             if needs_verify:
                 for idx in layer_indices:
-                    if layer_artifacts is None or idx < 1 or idx > len(layer_artifacts):
+                    if idx < 1:
                         continue
-                    remove_row = layer_artifacts[idx - 1]
-                    if traps_df is not None and len(traps_df) > 0:
-                        candidates = traps_df[
-                            (traps_df["layer_id"].astype(int) == int(ww_layer.layer_id))
-                            & (traps_df["trap_index"].astype(int) == int(idx - 1))
-                        ]
-                        if len(candidates) == 0:
-                            analyze_row = pd.Series(dtype=float)
-                        else:
-                            analyze_row = candidates.iloc[0]
+                    trap_index_zero = idx - 1
+                    analyze_candidates = layer_analyze_df[layer_analyze_df["trap_index"].astype(int) == int(trap_index_zero)]
+                    if len(analyze_candidates) == 0:
+                        analyze_row = pd.Series(dtype=float)
                     else:
-                        candidates = analyze_df[
-                            (analyze_df["layer_id"].astype(int) == int(ww_layer.layer_id))
-                            & (analyze_df["trap_index"].astype(int) == int(idx - 1))
-                        ]
-                        analyze_row = candidates.iloc[0] if len(candidates) > 0 else pd.Series(dtype=float)
-                    if "trap_q" not in remove_row:
-                        remove_row["trap_q"] = analyze_row.get("trap_q", np.nan)
-                    if "trap_top_sector_overlap" not in remove_row:
-                        remove_row["trap_top_sector_overlap"] = analyze_row.get("trap_top_sector_overlap", np.nan)
-                    if "v_trap" not in remove_row:
-                        remove_row["v_trap"] = analyze_row.get("v_trap", None)
+                        analyze_row = analyze_candidates.iloc[0]
+
+                    analyze_seed = analyze_row.get("trap_seed", seed)
+                    analyze_n_traps = analyze_row.get("n_traps", np.nan)
+                    analyze_perm = analyze_row.get("perm_signature", "")
+
+                    remove_candidates = layer_remove_df[
+                        (layer_remove_df["layer_id"].astype(int) == int(ww_layer.layer_id))
+                        & (layer_remove_df["trap_index"].astype(int) == int(trap_index_zero))
+                        & (layer_remove_df["trap_seed"].astype(str) == str(analyze_seed))
+                        & (layer_remove_df["n_traps"].astype(float) == float(analyze_n_traps))
+                        & (layer_remove_df["perm_signature"].astype(str) == str(analyze_perm))
+                    ]
+                    remove_row = remove_candidates.iloc[0] if len(remove_candidates) > 0 else pd.Series(dtype=float)
 
                     verify = trap_identity.verify_trap_rows(
                         analyze_row,

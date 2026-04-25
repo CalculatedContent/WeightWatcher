@@ -2915,7 +2915,7 @@ class WeightWatcher:
         layer_id = ww_layer.layer_id
         name = ww_layer.name
        
-        if not ww_layer.skippe:
+        if not ww_layer.skipped:
             logger.info("applying 2D FFT on to {} {} ".format(layer_id, name))
             
             Wmats = ww_layer.Wmats
@@ -3701,11 +3701,17 @@ class WeightWatcher:
                 conv2d_norm=True,
                 ww2x=DEFAULT_WW2X, pool=DEFAULT_POOL,
                 conv2d_fft=False, fft=False, channels=None,
+                trap_fft=False, trap_fft_config=None,
                 svd_method=FAST_SVD,
                 start_ids=DEFAULT_START_ID,
                 base_model=None,
                 peft=DEFAULT_PEFT,
-                rng=None):
+                seed=None,
+                rng=None,
+                top_sector_l=1,
+                burden_variants=None,
+                return_burden_components=False,
+                return_burden_raw=False):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3744,12 +3750,19 @@ class WeightWatcher:
             pool=pool,
             conv2d_fft=conv2d_fft,
             fft=fft,
+            trap_fft=trap_fft,
+            trap_fft_config=trap_fft_config,
             channels=channels,
             svd_method=svd_method,
             start_ids=start_ids,
             base_model=base_model,
             peft=peft,
+            seed=seed,
             rng=rng,
+            top_sector_l=top_sector_l,
+            burden_variants=burden_variants,
+            return_burden_components=return_burden_components,
+            return_burden_raw=return_burden_raw,
         )
 
     def _trap_result_columns(self):
@@ -3767,6 +3780,11 @@ class WeightWatcher:
             "v_l2_fourth_moment", "v_l2_sixth_moment", "v_effective_support", "v_gini_abs",
             "v_top1_mass", "v_top5_mass", "v_top10_mass", "v_squared_amp_entropy", "v_stable_rank_surrogate",
             "trap_balance_ratio", "trap_detected", "trap_eval_minus_bulk",
+            "trap_seed", "n_traps", "perm_signature", "permutation_n", "permutation_mode", "trap_identity_key",
+            "trap_delta", "trap_ipr", "trap_q", "trap_diffuseness",
+            "trap_q_uniform", "trap_diffuseness_uniform",
+            "top_sector_l", "top_sector_l_effective", "trap_top_sector_overlap",
+            "trap_variance_burden", "layer_trap_variance_burden",
             "trap_diffuseness_score", "trap_risk_score", "trap_assessment",
         ]
 
@@ -3785,6 +3803,7 @@ class WeightWatcher:
         self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params)
+        params["_layer_n_traps"] = int(len(trap_mode_indices))
 
         trap_rows = []
         for trap_index, mode_index in enumerate(trap_mode_indices):
@@ -3817,133 +3836,44 @@ class WeightWatcher:
 
 
     def compute_original_basis_for_traps(self, ww_layer, params=None):
-        if params is None: params = DEFAULT_PARAMS.copy()
-        if len(ww_layer.Wmats) != 1:
-            return None
-
-        W_true = ww_layer.Wmats[0].astype(float)
-        U0, S0, V0h = svd_full(W_true, method=params[SVD_METHOD])
-        return {
-            "W_true": W_true,
-            "U0": U0,
-            "S0": S0,
-            "V0": V0h.T,
-        }
+        from . import trap_analysis
+        return trap_analysis.compute_original_basis_for_traps(self, ww_layer, params=params)
 
 
     def analyze_single_trap(self, ww_layer, trap_mode_index, original_basis_cache=None, params=None, trap_index=0):
-        if params is None: params = DEFAULT_PARAMS.copy()
-        if original_basis_cache is None:
-            original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
-
-        W_perm = ww_layer.Wmats[0].astype(float)
-        p_ids = ww_layer.permute_ids[0]
-
-        U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
-        V_perm = Vh_perm.T
-
-        sigma_perm = float(S_perm[trap_mode_index])
-        u_perm = U_perm[:, trap_mode_index]
-        v_perm = V_perm[:, trap_mode_index]
-
-        T_perm = sigma_perm * np.outer(u_perm, v_perm)
-        T_orig = unpermute_matrix(T_perm, p_ids)
-
-        Ut, St, Vht = svd_full(T_orig, method=params[SVD_METHOD])
-        u_trap = Ut[:, 0]
-        v_trap = Vht.T[:, 0]
-
-        U0 = original_basis_cache["U0"]
-        V0 = original_basis_cache["V0"]
-
-        left_overlaps = np.abs(U0.T @ u_trap) ** 2
-        right_overlaps = np.abs(V0.T @ v_trap) ** 2
-
-        left_top_mode = int(np.argmax(left_overlaps))
-        right_top_mode = int(np.argmax(right_overlaps))
-        left_top_mass = float(np.max(left_overlaps))
-        right_top_mass = float(np.max(right_overlaps))
-
-        eps = 1e-12
-        left_overlap_entropy = float(-np.sum((left_overlaps + eps) * np.log(left_overlaps + eps)))
-        right_overlap_entropy = float(-np.sum((right_overlaps + eps) * np.log(right_overlaps + eps)))
-        left_overlap_ipr = float(np.sum(left_overlaps ** 2))
-        right_overlap_ipr = float(np.sum(right_overlaps ** 2))
-
-        st_sq = St * St
-        rank1_mass_after_unpermute = float(st_sq[0] / (np.sum(st_sq) + eps))
-
-        u_metrics = self._trap_vector_metrics(u_trap)
-        v_metrics = self._trap_vector_metrics(v_trap)
-        u_oi = self._trap_vector_order_invariant_stats(u_trap)
-        v_oi = self._trap_vector_order_invariant_stats(v_trap)
-
-        eval_perm = sigma_perm ** 2
-        trap_result = {
-            "layer_id": ww_layer.layer_id,
-            "name": ww_layer.name,
-            "longname": ww_layer.longname,
-            "layer_type": str(ww_layer.the_type),
-            "N": ww_layer.N,
-            "M": ww_layer.M,
-            "rf": ww_layer.rf,
-            "Q": ww_layer.N / ww_layer.M if ww_layer.M > 0 else np.nan,
-            "trap_index": int(trap_index),
-            "perm_mode_index": int(trap_mode_index),
-            "sigma_perm": sigma_perm,
-            "eval_perm": float(eval_perm),
-            "mp_bulk_max": float(ww_layer.bulk_max),
-            "mp_bulk_min": float(ww_layer.bulk_min),
-            "sigma_mp": float(ww_layer.sigma_mp),
-            "num_spikes": int(ww_layer.num_spikes),
-            "rank1_mass_after_unpermute": rank1_mass_after_unpermute,
-            "sigma_trap_top": float(St[0]),
-            "left_top_mode": left_top_mode,
-            "right_top_mode": right_top_mode,
-            "left_top_mass": left_top_mass,
-            "right_top_mass": right_top_mass,
-            "left_overlap_entropy": left_overlap_entropy,
-            "right_overlap_entropy": right_overlap_entropy,
-            "left_overlap_ipr": left_overlap_ipr,
-            "right_overlap_ipr": right_overlap_ipr,
-            "trap_detected": True,
-            "trap_eval_minus_bulk": float(eval_perm - ww_layer.bulk_max),
-        }
-
-        for k, v in u_metrics.items():
-            trap_result[f"u_{k}"] = v
-        for k, v in v_metrics.items():
-            trap_result[f"v_{k}"] = v
-        for k, v in u_oi.items():
-            trap_result[f"u_{k}"] = v
-        for k, v in v_oi.items():
-            trap_result[f"v_{k}"] = v
-
-        trap_result["trap_balance_ratio"] = float(
-            trap_result["u_effective_support"] / (trap_result["v_effective_support"] + 1e-12)
+        from . import trap_analysis
+        return trap_analysis.analyze_single_trap(
+            self,
+            ww_layer,
+            trap_mode_index=trap_mode_index,
+            original_basis_cache=original_basis_cache,
+            params=params,
+            trap_index=trap_index,
         )
-        trap_result.update(self.assess_trap_diffuseness(trap_result))
 
-        trap_result["left_overlaps"] = left_overlaps
-        trap_result["right_overlaps"] = right_overlaps
-        trap_result["u_trap"] = u_trap
-        trap_result["v_trap"] = v_trap
-        trap_result["T_orig"] = T_orig
-        trap_result["perm_evals_sorted"] = np.array(ww_layer.evals).copy()
+    def compute_trap_delta(self, eval_perm, mp_bulk_max):
+        from . import trap_analysis
+        return trap_analysis.compute_trap_delta(eval_perm=eval_perm, mp_bulk_max=mp_bulk_max)
 
-        if params[PLOT]:
-            self.plot_trap_analysis(ww_layer, trap_result, params=params)
+    def compute_trap_ipr_q(self, vec):
+        from . import trap_analysis
+        return trap_analysis.compute_trap_ipr_q(vec)
 
-        trap_result.pop("left_overlaps", None)
-        trap_result.pop("right_overlaps", None)
-        trap_result.pop("u_trap", None)
-        trap_result.pop("v_trap", None)
-        if not params.get("_keep_trap_matrix", False):
-            trap_result.pop("T_orig", None)
-        trap_result.pop("perm_evals_sorted", None)
+    def compute_trap_ipr_q_uniform(self, vec):
+        from . import trap_analysis
+        return trap_analysis.compute_trap_ipr_q_uniform(vec)
 
-        return trap_result
+    def compute_top_sector_overlap(self, overlaps, top_sector_l=1):
+        from . import trap_analysis
+        return trap_analysis.compute_top_sector_overlap(overlaps, top_sector_l=top_sector_l)
 
+    def compute_trap_variance_burden(self, trap_delta, trap_q, trap_top_sector_overlap):
+        from . import trap_analysis
+        return trap_analysis.compute_trap_variance_burden(
+            trap_delta=trap_delta,
+            trap_q=trap_q,
+            trap_top_sector_overlap=trap_top_sector_overlap,
+        )
 
     def assess_trap_diffuseness(self, trap_result):
         """Heuristic classifier for trap severity in original weight space.
@@ -3951,6 +3881,11 @@ class WeightWatcher:
         Trap risk is computed from normalized trap strength and then explicitly
         downweighted by diffuseness. This is intentionally a separate function so it
         can be unit-tested and adjusted independently.
+
+        NOTE: trap_q/trap_diffuseness are Porter-Thomas-centered paper-facing localization
+        metrics. trap_q_uniform/trap_diffuseness_uniform preserve the older
+        uniform-centered localization. trap_diffuseness_score/trap_risk_score/trap_assessment
+        remain heuristic diagnostics retained for backward compatibility.
         """
         eps = 1e-12
 
@@ -5659,11 +5594,15 @@ class WeightWatcher:
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
     def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=True,
-                     start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
+                     start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT,
+                     verify_traps=False, return_analyze=False, traps=None,
+                     rtol=1e-4, atol=1e-6, min_vector_cosine=0.999):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
             self, model=model, layers=layers, trap_indices=trap_indices, seed=seed, rng=rng,
-            pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
+            pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft,
+            verify_traps=verify_traps, return_analyze=return_analyze, traps=traps,
+            rtol=rtol, atol=atol, min_vector_cosine=min_vector_cosine,
         )
 
 

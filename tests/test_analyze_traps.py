@@ -9,6 +9,76 @@ except Exception:
     TORCH_AVAILABLE = False
 
 import weightwatcher as ww
+import weightwatcher.trap_analysis as trap_analysis
+
+
+class TestTrapMetricHelpers(unittest.TestCase):
+
+    def setUp(self):
+        self.watcher = ww.WeightWatcher()
+
+    def test_compute_trap_delta(self):
+        self.assertAlmostEqual(self.watcher.compute_trap_delta(12.0, 10.0), 0.2)
+        self.assertAlmostEqual(self.watcher.compute_trap_delta(8.0, 10.0), 0.0)
+        self.assertTrue(np.isnan(self.watcher.compute_trap_delta(12.0, 0.0)))
+
+    def test_compute_trap_ipr_q_porter_thomas_baseline_vector(self):
+        # m=10 => E_PT[IPR]=3/(m+2)=0.25
+        v = np.array([0.5, 0.5, 0.5, 0.5] + [0.0] * 6)
+        ipr, q = self.watcher.compute_trap_ipr_q(v)
+        self.assertAlmostEqual(ipr, 0.25)
+        self.assertAlmostEqual(q, 0.0, places=7)
+
+    def test_compute_trap_ipr_q_uniform_vector_clips_to_zero_under_pt(self):
+        v = np.ones(10) / np.sqrt(10)
+        ipr, q = self.watcher.compute_trap_ipr_q(v)
+        self.assertAlmostEqual(ipr, 0.1)
+        self.assertAlmostEqual(q, 0.0)
+
+    def test_compute_trap_ipr_q_one_hot_vector(self):
+        v = np.zeros(10)
+        v[0] = 1.0
+        ipr, q = self.watcher.compute_trap_ipr_q(v)
+        self.assertAlmostEqual(ipr, 1.0)
+        self.assertAlmostEqual(q, 1.0)
+
+    def test_compute_trap_ipr_q_uniform_legacy_field_behavior(self):
+        v = np.ones(10) / np.sqrt(10)
+        ipr, q = self.watcher.compute_trap_ipr_q_uniform(v)
+        self.assertAlmostEqual(ipr, 0.1)
+        self.assertAlmostEqual(q, 0.0)
+
+        onehot = np.zeros(10)
+        onehot[0] = 1.0
+        ipr, q = self.watcher.compute_trap_ipr_q_uniform(onehot)
+        self.assertAlmostEqual(ipr, 1.0)
+        self.assertAlmostEqual(q, 1.0)
+
+    def test_compute_top_sector_overlap(self):
+        overlaps = np.array([0.25, 0.10, 0.05, 0.60])
+
+        overlap_1, ell_eff = self.watcher.compute_top_sector_overlap(overlaps, 1)
+        self.assertAlmostEqual(overlap_1, 0.25)
+        self.assertEqual(ell_eff, 1)
+
+        overlap_2, ell_eff = self.watcher.compute_top_sector_overlap(overlaps, 2)
+        self.assertAlmostEqual(overlap_2, 0.35)
+        self.assertEqual(ell_eff, 2)
+
+    def test_compute_trap_variance_burden(self):
+        burden = self.watcher.compute_trap_variance_burden(
+            trap_delta=0.2,
+            trap_q=0.5,
+            trap_top_sector_overlap=0.3,
+        )
+        self.assertAlmostEqual(burden, 0.2**2 * 0.5 * 0.3**2)
+
+    def test_plot_flag_coercion(self):
+        self.assertFalse(trap_analysis._coerce_plot_flag(False))
+        self.assertFalse(trap_analysis._coerce_plot_flag("False"))
+        self.assertFalse(trap_analysis._coerce_plot_flag("0"))
+        self.assertTrue(trap_analysis._coerce_plot_flag(True))
+        self.assertTrue(trap_analysis._coerce_plot_flag("True"))
 
 
 if TORCH_AVAILABLE:
@@ -136,6 +206,64 @@ class TestAnalyzeTraps(unittest.TestCase):
             "trap_balance_ratio",
         ]:
             self.assertTrue(np.isfinite(row[col]))
+
+    def test_analyze_traps_contains_paper_metric_columns(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        required = {
+            "top_sector_l",
+            "top_sector_l_effective",
+            "trap_seed",
+            "n_traps",
+            "perm_signature",
+            "permutation_n",
+            "trap_identity_key",
+            "trap_delta",
+            "trap_ipr",
+            "trap_q",
+            "trap_diffuseness",
+            "trap_q_uniform",
+            "trap_diffuseness_uniform",
+            "trap_top_sector_overlap",
+            "trap_variance_burden",
+            "layer_trap_variance_burden",
+        }
+        self.assertTrue(required.issubset(set(df.columns)))
+
+    def test_analyze_traps_respects_top_sector_l_argument(self):
+        df1 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337, top_sector_l=1)
+        df2 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337, top_sector_l=2)
+
+        if len(df1) == 0 or len(df2) == 0:
+            self.skipTest("No traps detected in this environment")
+
+        self.assertTrue((df1["top_sector_l"] == 1).all())
+        self.assertTrue((df2["top_sector_l"] == 2).all())
+        self.assertTrue((df1["top_sector_l_effective"] >= 1).all())
+        self.assertTrue((df1["top_sector_l_effective"] <= df1["top_sector_l"]).all())
+        self.assertTrue((df2["top_sector_l_effective"] >= 1).all())
+        self.assertTrue((df2["top_sector_l_effective"] <= df2["top_sector_l"]).all())
+
+    def test_trap_variance_burden_formula_rowwise(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        if len(df) == 0:
+            self.skipTest("No traps detected in this environment")
+
+        for _, row in df.iterrows():
+            components = [row["trap_delta"], row["trap_q"], row["trap_top_sector_overlap"]]
+            if not np.all(np.isfinite(components)):
+                continue
+            expected = (row["trap_delta"] ** 2) * row["trap_q"] * (row["trap_top_sector_overlap"] ** 2)
+            self.assertAlmostEqual(row["trap_variance_burden"], expected)
+
+    def test_layer_trap_variance_burden_aggregate(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        if len(df) == 0:
+            self.skipTest("No traps detected in this environment")
+
+        for layer_id, subdf in df.groupby("layer_id"):
+            expected = subdf["trap_variance_burden"].sum()
+            observed = subdf["layer_trap_variance_burden"].iloc[0]
+            self.assertAlmostEqual(observed, expected)
 
 
 if __name__ == "__main__":

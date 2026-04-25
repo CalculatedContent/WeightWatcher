@@ -119,6 +119,73 @@ New in v0.8.0: trap-level randomized diagnostics:
 trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
 
+`analyze_traps()` now reports paper-aligned trap metrics from the NeurIPS trap workflow,
+including normalized spectral excess (`trap_delta`), localization (`trap_q` / `trap_ipr`),
+top-sector overlap (`trap_top_sector_overlap` with configurable `top_sector_l`), and
+the primary paper scalar `trap_variance_burden`.
+
+`trap_q` is now Porter-Thomas-centered (Porter Thomas centered) relative to a random-vector baseline,
+`E[IPR] ≈ 3/(m+2)` for real vectors), and `trap_variance_burden` uses this
+Porter-Thomas-centered `trap_q`.
+
+For backward comparison, uniform-centered localization is still available as
+`trap_q_uniform` (and `trap_diffuseness_uniform`), while
+`trap_diffuseness_score` remains the separate heuristic diagnostic.
+
+The legacy heuristic diagnostics are still returned for backward compatibility
+(`trap_diffuseness_score`, `trap_risk_score`, `trap_assessment`, plus legacy overlap/excess
+fields), but the paper-facing metrics above are the primary outputs for trap interpretation.
+
+For burden-variant experiments (e.g., comparing Porter-Thomas vs uniform localization or
+different spectral normalizations), `analyze_traps` also supports:
+
+- `burden_variants=None` (default): keep current PR-358 burden behavior.
+- `burden_variants="default"`: add a standard sweep of variant columns
+  (`trap_variance_burden__*`).
+- `return_burden_components=True`: expose scalar burden components for notebook analysis.
+- `return_burden_raw=True`: expose raw vectors/overlaps (`u_perm`, `v_perm`, `u_trap`,
+  `v_trap`, `left_overlaps`, `right_overlaps`, `perm_evals_sorted`).
+
+Fourier/FFT diagnostics are also available:
+
+- `fft=False` (default): keeps standard-basis behavior unchanged.
+- `trap_fft=True`: adds Fourier-space localization and Fourier-frequency mass diagnostics for trap vectors.
+- `trap_fft_config={...}`: optional FFT diagnostics config (partial dicts are supported).
+
+The legacy `fft=True` argument is still reserved for the older layer-matrix FFT path; use
+`trap_fft=True` for trap-vector Fourier diagnostics.
+
+Recommended `trap_fft_config` fields:
+
+```python
+{
+    "sides": "both",                 # "left" | "right" | "both"
+    "vectors": "both",               # "perm" | "trap" | "both"
+    "fold_conjugates": True,         # combine +k/-k bins for real vectors
+    "exclude_dc": False,             # exclude freq-0 from effective mass diagnostics
+    "top_frequency_l": 1,            # top-k frequencies for top-frequency mass
+    "selected_frequencies": None,    # optional explicit frequency bins
+    "normalization": "ortho",        # np.fft.fft(..., norm="ortho")
+    "baseline": "uniform",           # "uniform" | "pt_real_mc" | "pt_complex"
+    "mc_samples": 2048,              # used by baseline="pt_real_mc"
+    "mc_seed": 123,
+    "modulus": None,                 # optional modular-arithmetic length hint
+    "apply_only_if_length_matches_modulus": False,
+    "layer_fft_map": None,
+}
+```
+
+When `burden_variants="default"` and `trap_fft=True`, FFT burden variants are added
+(`trap_variance_burden__fft_*`), for example:
+
+- `trap_variance_burden__fft_uniform_right_current_spectral`
+- `trap_variance_burden__fft_uniform_lr_geom_fft_topmass`
+- `trap_variance_burden__fft_pt_lr_geom_fft_topmass`
+
+Note: Fourier overlap is intentionally based on Fourier-frequency mass concentration
+(`trap_fft_top_frequency_mass_*` / `trap_fft_selected_frequency_mass_*`), not
+unitary-transformed vector overlap.
+
 See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
 ## PEFT / LORA models  (experimental)
@@ -288,6 +355,18 @@ Trap analysis example:
 watcher = ww.WeightWatcher(model=my_model)
 trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 ```
+
+The implementation is designed to follow the trap definitions in the NeurIPS paper first,
+while preserving older diagnostic fields for compatibility with existing scripts/notebooks.
+If you want the paper metrics directly, use:
+
+- `trap_delta`
+- `trap_ipr`
+- `trap_q`
+- `trap_diffuseness` (`1 - trap_q`)
+- `trap_top_sector_overlap` (cumulative overlap over first `top_sector_l` modes)
+- `trap_variance_burden`
+- `layer_trap_variance_burden`
 
 For a complete walkthrough (including `remove_traps`), see: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 

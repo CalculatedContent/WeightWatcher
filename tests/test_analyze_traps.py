@@ -212,6 +212,11 @@ class TestAnalyzeTraps(unittest.TestCase):
         required = {
             "top_sector_l",
             "top_sector_l_effective",
+            "trap_seed",
+            "n_traps",
+            "perm_signature",
+            "permutation_n",
+            "trap_identity_key",
             "trap_delta",
             "trap_ipr",
             "trap_q",

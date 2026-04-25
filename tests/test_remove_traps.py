@@ -244,6 +244,85 @@ def test_remove_traps_invalid_indices_warns_and_skips(monkeypatch, caplog):
     assert len(post_artifacts) == 0
 
 
+def test_remove_traps_return_analyze_returns_verification_dataframe():
+    watcher = WeightWatcher(model=None)
+    W, _, _, _ = _single_trap_setup(seed=505)
+    ww_layer = make_ww_layer(W)
+
+    def _iterator(model=None, layers=None, params=None, base_model=None):
+        return [ww_layer]
+
+    watcher.make_layer_iterator = _iterator
+    model_out, verify_df = watcher.remove_traps(
+        model={"dummy_weight": np.array([1.0])},
+        layers=[],
+        trap_indices=[1],
+        seed=44,
+        pool=True,
+        plot=False,
+        return_analyze=True,
+    )
+    assert isinstance(model_out, dict)
+    assert len(verify_df) == 1
+    assert bool(verify_df.iloc[0]["trap_verified"])
+    assert bool(verify_df.iloc[0]["removed"])
+
+
+def test_remove_traps_verify_traps_true_raises_on_mismatch(monkeypatch):
+    watcher = WeightWatcher(model=None)
+    W, _, _, _ = _single_trap_setup(seed=606)
+    ww_layer = make_ww_layer(W)
+
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    traps_df = watcher.analyze_traps(model=None, layers=[], seed=11, plot=False, savefig=False, pool=True)
+    traps_df = traps_df.copy()
+    traps_df.loc[:, "perm_signature"] = "deadbeef"
+
+    with pytest.raises(RuntimeError, match="Trap verification failed"):
+        watcher.remove_traps(
+            model={"dummy_weight": np.array([1.0])},
+            layers=[],
+            trap_indices=[1],
+            seed=11,
+            pool=True,
+            plot=False,
+            verify_traps=True,
+            traps=traps_df,
+        )
+
+
+def test_remove_traps_accepts_analyze_dataframe_without_explicit_indices(monkeypatch):
+    watcher = WeightWatcher(model=None)
+    W, _, _, _ = _single_trap_setup(seed=707)
+    ww_layer = make_ww_layer(W)
+
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    traps_df = watcher.analyze_traps(model=None, layers=[], seed=22, plot=False, savefig=False, pool=True)
+    model_out, verify_df = watcher.remove_traps(
+        model={"dummy_weight": np.array([1.0])},
+        layers=[],
+        trap_indices=None,
+        seed=22,
+        pool=True,
+        plot=False,
+        return_analyze=True,
+        traps=traps_df,
+    )
+    assert isinstance(model_out, dict)
+    assert len(verify_df) == 1
+    assert bool(verify_df.iloc[0]["trap_verified"])
+
+
 @pytest.mark.skipif(torch is None, reason="PyTorch not installed")
 def test_trap_rng_consistency_analyze_vs_collect_single_and_multi_layer():
     model = torch.nn.Sequential(

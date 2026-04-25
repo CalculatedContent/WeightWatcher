@@ -3706,6 +3706,7 @@ class WeightWatcher:
                 start_ids=DEFAULT_START_ID,
                 base_model=None,
                 peft=DEFAULT_PEFT,
+                seed=None,
                 rng=None,
                 top_sector_l=1,
                 burden_variants=None,
@@ -3756,6 +3757,7 @@ class WeightWatcher:
             start_ids=start_ids,
             base_model=base_model,
             peft=peft,
+            seed=seed,
             rng=rng,
             top_sector_l=top_sector_l,
             burden_variants=burden_variants,
@@ -3778,6 +3780,7 @@ class WeightWatcher:
             "v_l2_fourth_moment", "v_l2_sixth_moment", "v_effective_support", "v_gini_abs",
             "v_top1_mass", "v_top5_mass", "v_top10_mass", "v_squared_amp_entropy", "v_stable_rank_surrogate",
             "trap_balance_ratio", "trap_detected", "trap_eval_minus_bulk",
+            "trap_seed", "n_traps", "perm_signature", "permutation_n", "permutation_mode", "trap_identity_key",
             "trap_delta", "trap_ipr", "trap_q", "trap_diffuseness",
             "trap_q_uniform", "trap_diffuseness_uniform",
             "top_sector_l", "top_sector_l_effective", "trap_top_sector_overlap",
@@ -3800,6 +3803,7 @@ class WeightWatcher:
         self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params)
+        params["_layer_n_traps"] = int(len(trap_mode_indices))
 
         trap_rows = []
         for trap_index, mode_index in enumerate(trap_mode_indices):
@@ -5590,11 +5594,15 @@ class WeightWatcher:
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
     def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=True,
-                     start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
+                     start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT,
+                     verify_traps=False, return_analyze=False, traps=None,
+                     rtol=1e-4, atol=1e-6, min_vector_cosine=0.999):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
             self, model=model, layers=layers, trap_indices=trap_indices, seed=seed, rng=rng,
-            pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
+            pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft,
+            verify_traps=verify_traps, return_analyze=return_analyze, traps=traps,
+            rtol=rtol, atol=atol, min_vector_cosine=min_vector_cosine,
         )
 
 

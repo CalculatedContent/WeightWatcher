@@ -5,6 +5,7 @@ from . import remove_traps as remove_traps_ops
 from . import weightwatcher as wwcore
 from .trap_histograms import plot_layer_trap_weight_histogram
 from . import trap_fourier
+from . import trap_identity
 
 
 def _coerce_plot_flag(plot):
@@ -42,6 +43,7 @@ def analyze_traps(
     start_ids=wwcore.DEFAULT_START_ID,
     base_model=None,
     peft=wwcore.DEFAULT_PEFT,
+    seed=None,
     rng=None,
     top_sector_l=1,
     burden_variants=None,
@@ -90,7 +92,8 @@ def analyze_traps(
     params[wwcore.SAVEFIG] = savefig
     params[wwcore.PEFT] = peft
     params[wwcore.INVERSE] = False
-    params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng)
+    params["seed"] = seed
+    params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng, seed=seed)
     params["top_sector_l"] = int(top_sector_l)
     params["burden_variants"] = burden_variants
     params["return_burden_components"] = bool(return_burden_components)
@@ -120,6 +123,7 @@ def analyze_traps(
 
             layer_params = dict(params)
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
+            layer_params["_layer_n_traps"] = 0
             layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if layer_rows:
                 if bool(params.get(wwcore.PLOT, False)):
@@ -387,6 +391,17 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
         trap_q=trap_q,
         trap_top_sector_overlap=trap_top_sector_overlap,
     )
+    trap_seed = params.get("seed", None)
+    perm_ids = ww_layer.permute_ids[0] if len(ww_layer.permute_ids) > 0 else np.array([], dtype=int)
+    perm_signature = trap_identity.permutation_signature(perm_ids)
+    n_traps = int(params.get("_layer_n_traps", np.nan)) if params.get("_layer_n_traps", None) is not None else np.nan
+    trap_identity_key = trap_identity.make_trap_identity_key(
+        layer_id=ww_layer.layer_id,
+        seed=trap_seed,
+        trap_index=int(trap_index),
+        n_traps=n_traps,
+        perm_signature=perm_signature,
+    )
     trap_fft = bool(params.get("trap_fft", False))
     trap_fft_config = params.get("trap_fft_config", None)
     fft_metrics = {}
@@ -473,7 +488,13 @@ def analyze_single_trap(watcher, ww_layer, trap_mode_index, original_basis_cache
         "left_overlap_ipr": left_overlap_ipr,
         "right_overlap_ipr": right_overlap_ipr,
         "trap_detected": True,
+        "trap_seed": trap_seed,
         "trap_eval_minus_bulk": float(eval_perm - ww_layer.bulk_max),
+        "n_traps": n_traps,
+        "perm_signature": perm_signature,
+        "permutation_n": int(len(np.asarray(perm_ids).ravel())),
+        "permutation_mode": "index_permutation",
+        "trap_identity_key": trap_identity_key,
         # Paper-aligned trap metrics (NeurIPS trap paper definitions).
         "trap_delta": trap_delta,
         "trap_ipr": trap_ipr,

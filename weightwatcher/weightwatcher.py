@@ -3760,6 +3760,11 @@ class WeightWatcher:
             "rank1_mass_after_unpermute", "sigma_trap_top",
             "left_top_mode", "right_top_mode", "left_top_mass", "right_top_mass",
             "left_overlap_entropy", "right_overlap_entropy", "left_overlap_ipr", "right_overlap_ipr",
+            "top_5_mass", "top_10_mass",
+            "bulk_mode_count",
+            "bulk_localization_mean", "bulk_localization_std",
+            "bulk_top_5_mass_mean", "bulk_top_5_mass_std",
+            "bulk_top_10_mass_mean", "bulk_top_10_mass_std",
             "u_length", "u_entropy", "u_discrete_entropy", "u_localization_ratio", "u_participation_ratio",
             "v_length", "v_entropy", "v_discrete_entropy", "v_localization_ratio", "v_participation_ratio",
             "u_l2_fourth_moment", "u_l2_sixth_moment", "u_effective_support", "u_gini_abs",
@@ -3785,6 +3790,7 @@ class WeightWatcher:
         self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params)
+        bulk_stats = self.compute_bulk_trap_reference_metrics(ww_layer, trap_mode_indices, params=params)
 
         trap_rows = []
         for trap_index, mode_index in enumerate(trap_mode_indices):
@@ -3795,6 +3801,7 @@ class WeightWatcher:
                 params=params,
                 trap_index=trap_index,
             )
+            trap_row.update(bulk_stats)
             trap_rows.append(trap_row)
 
         self.apply_unpermute_W(ww_layer, params)
@@ -3814,6 +3821,78 @@ class WeightWatcher:
         # collection so analyze_traps() and remove_traps() report the same trap
         # counts/indices for a given layer and seed.
         return remove_traps_ops.identify_trap_mode_indices(self, ww_layer)
+
+    def _top_percent_abs_mass(self, mat, percent):
+        flat = np.abs(np.asarray(mat, dtype=float)).ravel()
+        if flat.size == 0:
+            return 0.0
+        total = float(np.sum(flat))
+        if total <= 0.0:
+            return 0.0
+        k = int(np.ceil((float(percent) / 100.0) * flat.size))
+        k = max(1, min(k, flat.size))
+        top_sum = float(np.sum(np.partition(flat, -k)[-k:]))
+        return top_sum / total
+
+    def compute_bulk_trap_reference_metrics(self, ww_layer, trap_mode_indices, params=None):
+        if params is None: params = DEFAULT_PARAMS.copy()
+        if len(ww_layer.Wmats) != 1 or len(ww_layer.permute_ids) == 0:
+            return {
+                "bulk_mode_count": 0,
+                "bulk_localization_mean": np.nan,
+                "bulk_localization_std": np.nan,
+                "bulk_top_5_mass_mean": np.nan,
+                "bulk_top_5_mass_std": np.nan,
+                "bulk_top_10_mass_mean": np.nan,
+                "bulk_top_10_mass_std": np.nan,
+            }
+
+        W_perm = ww_layer.Wmats[0].astype(float)
+        p_ids = ww_layer.permute_ids[0]
+        U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
+        trap_set = set(int(i) for i in trap_mode_indices)
+        bulk_indices = [i for i in range(len(S_perm)) if i not in trap_set]
+
+        if len(bulk_indices) == 0:
+            return {
+                "bulk_mode_count": 0,
+                "bulk_localization_mean": np.nan,
+                "bulk_localization_std": np.nan,
+                "bulk_top_5_mass_mean": np.nan,
+                "bulk_top_5_mass_std": np.nan,
+                "bulk_top_10_mass_mean": np.nan,
+                "bulk_top_10_mass_std": np.nan,
+            }
+
+        bulk_localization = []
+        bulk_top_5_mass = []
+        bulk_top_10_mass = []
+
+        for mode_idx in bulk_indices:
+            u_mode = U_perm[:, mode_idx]
+            v_mode = Vh_perm[mode_idx, :]
+            u_metrics = self._trap_vector_metrics(u_mode)
+            v_metrics = self._trap_vector_metrics(v_mode)
+            loc = 0.5 * (
+                float(u_metrics.get("localization_ratio", np.nan)) +
+                float(v_metrics.get("localization_ratio", np.nan))
+            )
+
+            T_perm = float(S_perm[mode_idx]) * np.outer(u_mode, v_mode)
+            T_orig = unpermute_matrix(T_perm, p_ids)
+            bulk_localization.append(loc)
+            bulk_top_5_mass.append(self._top_percent_abs_mass(T_orig, 5.0))
+            bulk_top_10_mass.append(self._top_percent_abs_mass(T_orig, 10.0))
+
+        return {
+            "bulk_mode_count": int(len(bulk_indices)),
+            "bulk_localization_mean": float(np.nanmean(bulk_localization)),
+            "bulk_localization_std": float(np.nanstd(bulk_localization)),
+            "bulk_top_5_mass_mean": float(np.nanmean(bulk_top_5_mass)),
+            "bulk_top_5_mass_std": float(np.nanstd(bulk_top_5_mass)),
+            "bulk_top_10_mass_mean": float(np.nanmean(bulk_top_10_mass)),
+            "bulk_top_10_mass_std": float(np.nanstd(bulk_top_10_mass)),
+        }
 
 
     def compute_original_basis_for_traps(self, ww_layer, params=None):
@@ -3848,6 +3927,9 @@ class WeightWatcher:
 
         T_perm = sigma_perm * np.outer(u_perm, v_perm)
         T_orig = unpermute_matrix(T_perm, p_ids)
+
+        top_5_mass = self._top_percent_abs_mass(T_orig, 5.0)
+        top_10_mass = self._top_percent_abs_mass(T_orig, 10.0)
 
         Ut, St, Vht = svd_full(T_orig, method=params[SVD_METHOD])
         u_trap = Ut[:, 0]
@@ -3906,6 +3988,8 @@ class WeightWatcher:
             "right_overlap_entropy": right_overlap_entropy,
             "left_overlap_ipr": left_overlap_ipr,
             "right_overlap_ipr": right_overlap_ipr,
+            "top_5_mass": float(top_5_mass),
+            "top_10_mass": float(top_10_mass),
             "trap_detected": True,
             "trap_eval_minus_bulk": float(eval_perm - ww_layer.bulk_max),
         }
@@ -5658,12 +5742,14 @@ class WeightWatcher:
         """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
-    def remove_traps(self, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=True,
-                     start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
+    def remove_traps(self, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
+                     verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
+                     base_model=None, peft=DEFAULT_PEFT):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
-            self, model=model, layers=layers, trap_indices=trap_indices, seed=seed, rng=rng,
-            pool=pool, plot=plot, start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
+            self, model=model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
+            pool=pool, plot=plot, verify_traps=verify_traps, return_analyze=return_analyze,
+            start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
         )
 
 

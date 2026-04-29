@@ -1,6 +1,7 @@
 import logging
 import numbers
 import numpy as np
+import pandas as pd
 
 from .RMT_Util import svd_full, unpermute_matrix
 from .constants import DEFAULT_PARAMS, DEFAULT_START_ID, FAST_SVD, LAYER_TYPE, PEFT, PLOT, POOL, START_IDS, SVD_METHOD, DEFAULT_PEFT
@@ -65,6 +66,18 @@ def identify_trap_mode_indices(ww, ww_layer):
 
 
 def analyze_single_trap(ww, ww_layer, trap_mode_index):
+    def _top_percent_abs_mass(mat, percent):
+        flat = np.abs(np.asarray(mat, dtype=float)).ravel()
+        if flat.size == 0:
+            return 0.0
+        total = float(np.sum(flat))
+        if total <= 0.0:
+            return 0.0
+        k = int(np.ceil((float(percent) / 100.0) * flat.size))
+        k = max(1, min(k, flat.size))
+        top_sum = float(np.sum(np.partition(flat, -k)[-k:]))
+        return top_sum / total
+
     W_perm = ww_layer.Wmats[0]
     U_perm, S_perm, Vh_perm = svd_full(W_perm)
 
@@ -74,6 +87,8 @@ def analyze_single_trap(ww, ww_layer, trap_mode_index):
     T_perm = sigma_perm * np.outer(u_trap, v_trap)
     T_orig_norm = unpermute_matrix(T_perm, ww_layer.permute_ids[0])
     U_orig, _, Vh_orig = svd_full(T_orig_norm)
+    top_5_mass = _top_percent_abs_mass(T_orig_norm, 5.0)
+    top_10_mass = _top_percent_abs_mass(T_orig_norm, 10.0)
 
     return {
         "trap_mode_index": trap_mode_index,
@@ -84,6 +99,8 @@ def analyze_single_trap(ww, ww_layer, trap_mode_index):
         "v_trap": Vh_orig[0, :],
         "T_perm": T_perm,
         "T_orig_norm": T_orig_norm,
+        "top_5_mass": float(top_5_mass),
+        "top_10_mass": float(top_10_mass),
     }
 
 
@@ -209,10 +226,32 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     return ww_layer
 
 
-def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, rng=None, pool=True, plot=True,
-                 start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
+def _trap_indices_from_traps_df(traps):
+    """Extract unique 1-based trap indices from a traps DataFrame-like input."""
+    if traps is None:
+        return None
+    if isinstance(traps, pd.DataFrame):
+        trap_df = traps
+    else:
+        trap_df = pd.DataFrame(traps)
+    if "trap_index" not in trap_df.columns:
+        raise ValueError("traps must include a 'trap_index' column")
+    indices = trap_df["trap_index"].dropna().astype(int).tolist()
+    indices = sorted(set(indices))
+    if len(indices) == 0:
+        raise ValueError("traps did not contain any valid trap_index values")
+    return indices
+
+
+def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
+                 verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
+                 base_model=None, peft=DEFAULT_PEFT):
+    # PR359 compatibility path: passing traps=<DataFrame> instead of trap_indices=[...]
+    if trap_indices is None and traps is not None:
+        trap_indices = _trap_indices_from_traps_df(traps)
+
     if trap_indices is None or len(trap_indices) == 0:
-        raise ValueError("trap_indices must be provided and non-empty")
+        raise ValueError("trap_indices must be provided and non-empty (or pass traps with trap_index column)")
 
     ww.set_model_(model)
     params = DEFAULT_PARAMS.copy()
@@ -230,8 +269,28 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, seed=None, rng=No
     params = ww.normalize_params(params)
 
     layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
+    verify_rows = []
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
             apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"])
+            if verify_traps:
+                remaining = collect_trap_artifacts(
+                    ww,
+                    ww_layer,
+                    params=params,
+                    seed=None if params["rng"] is not None else seed,
+                    rng=params["rng"],
+                )
+                verify_rows.append(
+                    {
+                        "layer_id": int(ww_layer.layer_id),
+                        "requested_trap_indices": list(trap_indices),
+                        "remaining_traps": len(remaining),
+                        "verify_passed": len(remaining) == 0,
+                    }
+                )
 
+    if return_analyze:
+        verify_df = pd.DataFrame.from_records(verify_rows)
+        return model, verify_df
     return model

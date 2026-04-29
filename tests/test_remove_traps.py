@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from weightwatcher.constants import CHANNELS, FRAMEWORK, LAYER_TYPE, DEFAULT_PARAMS
@@ -212,6 +213,32 @@ def test_remove_traps_public_api_direct_call(monkeypatch):
     W_new = ww_layer.framework_layer._W
     post_artifacts = watcher._collect_trap_artifacts(make_ww_layer(W_new), params=make_test_params(), seed=101)
     assert len(post_artifacts) == 0
+
+
+def test_remove_traps_accepts_traps_dataframe_and_returns_verify_df(monkeypatch):
+    W, _, _, _ = _single_trap_setup(seed=505)
+    ww_layer = make_ww_layer(W)
+    watcher = WeightWatcher(model={"dummy_weight": np.array([1.0])})
+
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    out_model, verify_df = watcher.remove_traps(
+        model={"dummy_weight": np.array([1.0])},
+        layers=[],
+        traps=pd.DataFrame([{"layer_id": 0, "trap_index": 1}]),
+        seed=88,
+        pool=True,
+        plot=False,
+        verify_traps=True,
+        return_analyze=True,
+    )
+    assert isinstance(out_model, dict)
+    assert isinstance(verify_df, pd.DataFrame)
+    assert "verify_passed" in verify_df.columns
 
 
 def test_remove_traps_invalid_indices_warns_and_skips(monkeypatch, caplog):

@@ -52,7 +52,11 @@ class TestAnalyzeTraps(unittest.TestCase):
         df = self.watcher.analyze_traps(plot=False, savefig=False)
         expected_cols = {
             "layer_id", "name", "trap_index", "perm_mode_index",
-            "sigma_perm", "mp_bulk_max", "left_top_mass", "right_top_mass"
+            "sigma_perm", "mp_bulk_max", "left_top_mass", "right_top_mass",
+            "top_5_mass", "top_10_mass",
+            "bulk_localization_mean", "bulk_localization_std",
+            "bulk_top_5_mass_mean", "bulk_top_5_mass_std",
+            "bulk_top_10_mass_mean", "bulk_top_10_mass_std",
         }
         self.assertTrue(expected_cols.issubset(set(df.columns)))
 

@@ -137,6 +137,45 @@ class TestAnalyzeTraps(unittest.TestCase):
         ]:
             self.assertTrue(np.isfinite(row[col]))
 
+    def test_trap_burden_backward_compat(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=False)
+        self.assertIsInstance(df, pd.DataFrame)
+        self.assertIn("top_5_mass", df.columns)
+        self.assertIn("bulk_top_5_mass_mean", df.columns)
+
+    def test_trap_burden_columns_appear(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True)
+        required = {
+            "spectral_excess_abs", "spectral_excess_rel", "trap_ipr", "bulk_ipr_mean",
+            "ipr_lift_excess_pos", "top_5_lift", "log1p_top_5_lift", "ov_lam_weighted_var",
+            "ov_rank_mean", "trap_variance_burden_ipr", "trap_variance_burden_top5",
+            "trap_variance_burden",
+        }
+        self.assertTrue(required.issubset(set(df.columns)))
+
+    def test_trap_burden_finite_values_if_traps(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True)
+        if len(df) == 0:
+            self.skipTest("No traps detected in this environment")
+        cols = ["spectral_excess_abs", "ov_lam_weighted_var", "ov_rank_mean", "trap_variance_burden"]
+        finite_mask = np.isfinite(df[cols]).all(axis=1)
+        self.assertTrue(bool(finite_mask.any()))
+
+    def test_trap_burden_variant_selection(self):
+        df_ipr = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="ipr")
+        mask_ipr = np.isfinite(df_ipr["trap_variance_burden"]) & np.isfinite(df_ipr["trap_variance_burden_ipr"])
+        if mask_ipr.any():
+            self.assertTrue(np.allclose(df_ipr.loc[mask_ipr, "trap_variance_burden"], df_ipr.loc[mask_ipr, "trap_variance_burden_ipr"]))
+
+        df_top5 = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="top5")
+        mask_top5 = np.isfinite(df_top5["trap_variance_burden"]) & np.isfinite(df_top5["trap_variance_burden_top5"])
+        if mask_top5.any():
+            self.assertTrue(np.allclose(df_top5.loc[mask_top5, "trap_variance_burden"], df_top5.loc[mask_top5, "trap_variance_burden_top5"]))
+
+    def test_trap_burden_variant_invalid(self):
+        with self.assertRaises(ValueError):
+            self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="bad")
+
 
 if __name__ == "__main__":
     unittest.main()

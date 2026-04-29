@@ -244,6 +244,63 @@ def test_remove_traps_invalid_indices_warns_and_skips(monkeypatch, caplog):
     assert len(post_artifacts) == 0
 
 
+def test_remove_traps_can_remove_explicit_bulk_vector():
+    watcher = WeightWatcher(model=None)
+    rng = np.random.default_rng(123)
+    W = rng.normal(0.0, 0.1, size=(64, 64))
+    ww_layer = make_ww_layer(W)
+
+    # For a pure random matrix there should be no traps and many bulk modes.
+    trap_artifacts = watcher._collect_trap_artifacts(ww_layer, params=make_test_params(), seed=17)
+    assert len(trap_artifacts) == 0
+
+    W_before = ww_layer.framework_layer._W.copy()
+    watcher.apply_remove_traps(
+        ww_layer,
+        trap_indices=[],
+        bulk_indices=[1],
+        params=make_test_params(),
+        seed=17,
+    )
+    W_after = ww_layer.framework_layer._W
+    assert not np.allclose(W_before, W_after)
+    assert np.isclose(np.linalg.norm(W_after, "fro"), np.linalg.norm(W_before, "fro"), rtol=0.15)
+
+
+def test_remove_traps_can_remove_random_bulk_vector():
+    watcher = WeightWatcher(model=None)
+    rng = np.random.default_rng(321)
+    W = rng.normal(0.0, 0.1, size=(64, 64))
+    ww_a = make_ww_layer(W)
+    ww_b = make_ww_layer(W)
+    ww_c = make_ww_layer(W)
+
+    watcher.apply_remove_traps(
+        ww_a,
+        trap_indices=[],
+        num_random_bulk_vectors=1,
+        params=make_test_params(),
+        seed=55,
+    )
+    watcher.apply_remove_traps(
+        ww_b,
+        trap_indices=[],
+        num_random_bulk_vectors=1,
+        params=make_test_params(),
+        seed=55,
+    )
+    watcher.apply_remove_traps(
+        ww_c,
+        trap_indices=[],
+        num_random_bulk_vectors=1,
+        params=make_test_params(),
+        seed=56,
+    )
+
+    assert np.allclose(ww_a.framework_layer._W, ww_b.framework_layer._W)
+    assert not np.allclose(ww_a.framework_layer._W, ww_c.framework_layer._W)
+
+
 @pytest.mark.skipif(torch is None, reason="PyTorch not installed")
 def test_trap_rng_consistency_analyze_vs_collect_single_and_multi_layer():
     model = torch.nn.Sequential(

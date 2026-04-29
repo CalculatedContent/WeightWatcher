@@ -29,6 +29,8 @@ def analyze_traps(
     base_model=None,
     peft=wwcore.DEFAULT_PEFT,
     rng=None,
+    trap_burden=False,
+    trap_burden_variant="top5",
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
     if layers is None:
@@ -73,6 +75,8 @@ def analyze_traps(
     params[wwcore.PEFT] = peft
     params[wwcore.INVERSE] = False
     params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng)
+    params["trap_burden"] = bool(trap_burden)
+    params["trap_burden_variant"] = trap_burden_variant
 
     wwcore.logger.debug("params {}".format(params))
     if not watcher.valid_params(params):

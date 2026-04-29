@@ -226,7 +226,13 @@ def test_remove_traps_accepts_traps_dataframe_and_returns_verify_df(monkeypatch)
         lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
     )
 
-    trap_df = pd.DataFrame([{"layer_id": 0, "trap_index": 1}])
+    trap_df = pd.DataFrame([{
+        "layer_id": 0, "trap_index": 1,
+        "trap_variance_burden_old": 0.1,
+        "trap_variance_burden_ipr": 0.2,
+        "trap_variance_burden_top5": 0.3,
+        "trap_variance_burden": 0.4,
+    }])
     out_model, verify_df = watcher.remove_traps(
         model={"dummy_weight": np.array([1.0])},
         layers=[],

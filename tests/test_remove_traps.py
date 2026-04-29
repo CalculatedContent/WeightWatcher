@@ -226,10 +226,11 @@ def test_remove_traps_accepts_traps_dataframe_and_returns_verify_df(monkeypatch)
         lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
     )
 
+    trap_df = pd.DataFrame([{"layer_id": 0, "trap_index": 1}])
     out_model, verify_df = watcher.remove_traps(
         model={"dummy_weight": np.array([1.0])},
         layers=[],
-        traps=pd.DataFrame([{"layer_id": 0, "trap_index": 1}]),
+        traps=trap_df,
         seed=88,
         pool=True,
         plot=False,
@@ -239,6 +240,28 @@ def test_remove_traps_accepts_traps_dataframe_and_returns_verify_df(monkeypatch)
     assert isinstance(out_model, dict)
     assert isinstance(verify_df, pd.DataFrame)
     assert "verify_passed" in verify_df.columns
+    assert "identity_verified" in verify_df.columns
+
+
+def test_remove_traps_rejects_identity_mismatch(monkeypatch):
+    W, _, _, _ = _single_trap_setup(seed=506)
+    ww_layer = make_ww_layer(W)
+    watcher = WeightWatcher(model={"dummy_weight": np.array([1.0])})
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+
+    with pytest.raises(ValueError):
+        watcher.remove_traps(
+            model={"dummy_weight": np.array([1.0])},
+            layers=[],
+            traps=pd.DataFrame([{"layer_id": int(ww_layer.layer_id), "trap_index": 1, "trap_mode_index": 999999}]),
+            seed=88,
+            pool=True,
+            plot=False,
+        )
 
 
 def test_remove_traps_invalid_indices_warns_and_skips(monkeypatch, caplog):

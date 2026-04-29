@@ -291,6 +291,24 @@ trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 
 For a complete walkthrough (including `remove_traps`), see: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
+#### Trap variance burden
+
+`analyze_traps` can optionally compute trap burden metrics with `trap_burden=True`.
+
+IPR version:
+
+`trap_variance_burden_ipr = spectral_excess_abs * ipr_lift_excess_pos * ov_lam_weighted_var`
+
+Top5 version:
+
+`trap_variance_burden_top5 = spectral_excess_abs * log1p_top_5_lift * ov_rank_mean`
+
+- `spectral_excess_abs` measures trap strength above MP bulk.
+- `ipr_lift_excess_pos` measures localization relative to bulk.
+- `top_5_lift` measures concentration of the trap matrix relative to bulk modes.
+- `ov_lam_weighted_var` measures how broadly the trap overlaps eigenvalue scales of `X = W^T W`.
+- `ov_rank_mean` measures where the trap lives in the eigenbasis of `X`.
+
 Fig (a) is well trained; Fig (b) may be over-fit.
 	
 That orange spike on the far right is the tell-tale clue; it's caled a **Correlation Trap**.  

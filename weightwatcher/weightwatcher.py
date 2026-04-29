@@ -3708,7 +3708,8 @@ class WeightWatcher:
                 peft=DEFAULT_PEFT,
                 rng=None,
                 trap_burden=False,
-                trap_burden_variant="top5"):
+                trap_burden_variant="top5",
+                top_sector_l=1):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3755,6 +3756,7 @@ class WeightWatcher:
             rng=rng,
             trap_burden=trap_burden,
             trap_burden_variant=trap_burden_variant,
+            top_sector_l=top_sector_l,
         )
 
     def _trap_result_columns(self):
@@ -3786,6 +3788,11 @@ class WeightWatcher:
             "ov_rank_mean", "ov_rank_std",
             "ov_hhi", "ov_participation", "ov_entropy", "ov_max",
             "trap_variance_burden_ipr", "trap_variance_burden_top5", "trap_variance_burden",
+            "top_sector_l", "top_sector_l_effective",
+            "trap_delta", "trap_q", "trap_diffuseness",
+            "trap_q_uniform", "trap_diffuseness_uniform",
+            "trap_top_sector_overlap", "trap_variance_burden_old",
+            "layer_trap_variance_burden",
             "permute_fingerprint",
         ]
 
@@ -3818,9 +3825,70 @@ class WeightWatcher:
             )
             trap_row.update(bulk_stats)
             trap_rows.append(trap_row)
+        if trap_rows:
+            layer_trap_variance_burden = float(np.nansum([row.get("trap_variance_burden_old", np.nan) for row in trap_rows]))
+            for row in trap_rows:
+                row["layer_trap_variance_burden"] = layer_trap_variance_burden
 
         self.apply_unpermute_W(ww_layer, params)
         return trap_rows
+
+    def compute_trap_delta(self, eval_perm, mp_bulk_max):
+        if not (np.isfinite(eval_perm) and np.isfinite(mp_bulk_max)) or mp_bulk_max <= 0:
+            return np.nan
+        return float(max(eval_perm - mp_bulk_max, 0.0) / mp_bulk_max)
+
+    def compute_trap_ipr_q(self, v):
+        try:
+            v = np.asarray(v, dtype=float).ravel()
+            m = len(v)
+            if m == 0:
+                return np.nan, np.nan
+            norm = float(np.linalg.norm(v))
+            if not np.isfinite(norm) or norm <= 0:
+                return np.nan, np.nan
+            vu = v / norm
+            trap_ipr = float(np.sum(vu ** 4))
+            ipr_pt = 3.0 / (m + 2.0)
+            trap_q = (trap_ipr - ipr_pt) / (1.0 - ipr_pt)
+            trap_q = float(np.clip(max(trap_q, 0.0), 0.0, 1.0))
+            return trap_ipr, trap_q
+        except Exception:
+            return np.nan, np.nan
+
+    def compute_trap_ipr_q_uniform(self, v):
+        try:
+            v = np.asarray(v, dtype=float).ravel()
+            m = len(v)
+            if m == 0:
+                return np.nan, np.nan
+            norm = float(np.linalg.norm(v))
+            if not np.isfinite(norm) or norm <= 0:
+                return np.nan, np.nan
+            vu = v / norm
+            trap_ipr = float(np.sum(vu ** 4))
+            ipr_uniform = 1.0 / m
+            trap_q = (trap_ipr - ipr_uniform) / (1.0 - ipr_uniform)
+            trap_q = float(np.clip(max(trap_q, 0.0), 0.0, 1.0))
+            return trap_ipr, trap_q
+        except Exception:
+            return np.nan, np.nan
+
+    def compute_top_sector_overlap(self, overlaps, top_sector_l):
+        ov = np.asarray(overlaps, dtype=float).ravel()
+        if ov.size == 0:
+            return np.nan, 0
+        s = float(np.sum(ov))
+        if s > 0 and np.isfinite(s):
+            ov = ov / s
+        top_sector_l_effective = int(min(max(int(top_sector_l), 1), len(ov)))
+        return float(np.sum(ov[:top_sector_l_effective])), top_sector_l_effective
+
+    def compute_trap_variance_burden(self, trap_delta, trap_q, trap_top_sector_overlap):
+        vals = [trap_delta, trap_q, trap_top_sector_overlap]
+        if not np.all(np.isfinite(vals)):
+            return np.nan
+        return float((trap_delta ** 2) * trap_q * (trap_top_sector_overlap ** 2))
 
 
     def apply_trap_mp_fit(self, ww_layer, params=None):
@@ -3989,7 +4057,27 @@ class WeightWatcher:
         v_oi = self._trap_vector_order_invariant_stats(v_trap)
 
         eval_perm = sigma_perm ** 2
-        trap_ipr = 0.5 * (float(np.sum(u_trap ** 4)) + float(np.sum(v_trap ** 4)))
+        left_ipr, left_q = self.compute_trap_ipr_q(u_trap)
+        right_ipr, right_q = self.compute_trap_ipr_q(v_trap)
+        _, left_q_uniform = self.compute_trap_ipr_q_uniform(u_trap)
+        _, right_q_uniform = self.compute_trap_ipr_q_uniform(v_trap)
+        trap_ipr = float(np.nanmean([left_ipr, right_ipr])) if np.any(np.isfinite([left_ipr, right_ipr])) else np.nan
+        finite_q = [q for q in [left_q, right_q] if np.isfinite(q)]
+        if len(finite_q) == 2:
+            trap_q = float(np.sqrt(finite_q[0] * finite_q[1]))
+        else:
+            trap_q = finite_q[0] if finite_q else np.nan
+        finite_qu = [q for q in [left_q_uniform, right_q_uniform] if np.isfinite(q)]
+        if len(finite_qu) == 2:
+            trap_q_uniform = float(np.sqrt(finite_qu[0] * finite_qu[1]))
+        else:
+            trap_q_uniform = finite_qu[0] if finite_qu else np.nan
+        trap_diffuseness = float(1.0 - trap_q) if np.isfinite(trap_q) else np.nan
+        trap_diffuseness_uniform = float(1.0 - trap_q_uniform) if np.isfinite(trap_q_uniform) else np.nan
+        top_sector_l = int(params.get("top_sector_l", 1))
+        trap_top_sector_overlap, top_sector_l_effective = self.compute_top_sector_overlap(right_overlaps, top_sector_l)
+        trap_delta = self.compute_trap_delta(eval_perm, float(ww_layer.bulk_max))
+        trap_variance_burden_old = self.compute_trap_variance_burden(trap_delta, trap_q, trap_top_sector_overlap)
         trap_result = {
             "layer_id": ww_layer.layer_id,
             "name": ww_layer.name,
@@ -4020,6 +4108,16 @@ class WeightWatcher:
             "right_overlap_ipr": right_overlap_ipr,
             "top_5_mass": float(top_5_mass),
             "top_10_mass": float(top_10_mass),
+            "top_sector_l": top_sector_l,
+            "top_sector_l_effective": int(top_sector_l_effective),
+            "trap_delta": trap_delta,
+            "trap_ipr": trap_ipr,
+            "trap_q": trap_q,
+            "trap_diffuseness": trap_diffuseness,
+            "trap_q_uniform": trap_q_uniform,
+            "trap_diffuseness_uniform": trap_diffuseness_uniform,
+            "trap_top_sector_overlap": trap_top_sector_overlap,
+            "trap_variance_burden_old": trap_variance_burden_old,
             "trap_detected": True,
             "trap_eval_minus_bulk": float(eval_perm - ww_layer.bulk_max),
         }

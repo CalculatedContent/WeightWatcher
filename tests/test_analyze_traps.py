@@ -182,6 +182,51 @@ class TestAnalyzeTraps(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="bad")
 
+    def test_pr359_old_metrics_exist(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        required = {
+            "trap_delta", "trap_ipr", "trap_q", "trap_diffuseness",
+            "trap_q_uniform", "trap_diffuseness_uniform", "trap_top_sector_overlap",
+            "trap_variance_burden_old", "layer_trap_variance_burden",
+            "top_sector_l", "top_sector_l_effective",
+        }
+        self.assertTrue(required.issubset(set(df.columns)))
+
+    def test_pr359_old_formula_rowwise_and_layer_aggregate(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        if len(df) == 0:
+            self.skipTest("No traps detected in this environment")
+        mask = np.isfinite(df["trap_delta"]) & np.isfinite(df["trap_q"]) & np.isfinite(df["trap_top_sector_overlap"]) & np.isfinite(df["trap_variance_burden_old"])
+        if mask.any():
+            expected = (df.loc[mask, "trap_delta"] ** 2) * df.loc[mask, "trap_q"] * (df.loc[mask, "trap_top_sector_overlap"] ** 2)
+            self.assertTrue(np.allclose(df.loc[mask, "trap_variance_burden_old"], expected))
+        for _, g in df.groupby("layer_id"):
+            layer_val = g["layer_trap_variance_burden"].iloc[0]
+            expected_layer = np.nansum(g["trap_variance_burden_old"].to_numpy())
+            self.assertTrue(np.isclose(layer_val, expected_layer, equal_nan=True))
+
+    def test_top_sector_l_argument(self):
+        df1 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337, top_sector_l=1)
+        df2 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337, top_sector_l=2)
+        if len(df1) > 0:
+            self.assertTrue((df1["top_sector_l"] == 1).all())
+            self.assertTrue(((df1["top_sector_l_effective"] >= 1) & (df1["top_sector_l_effective"] <= 1)).all())
+        if len(df2) > 0:
+            self.assertTrue((df2["top_sector_l"] == 2).all())
+            self.assertTrue(((df2["top_sector_l_effective"] >= 1) & (df2["top_sector_l_effective"] <= 2)).all())
+
+    def test_old_and_new_burdens_coexist(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="top5")
+        for col in ["trap_variance_burden_old", "trap_variance_burden_ipr", "trap_variance_burden_top5", "trap_variance_burden"]:
+            self.assertIn(col, df.columns)
+
+    def test_no_trap_fft_api_or_columns(self):
+        with self.assertRaises(TypeError):
+            self.watcher.analyze_traps(plot=False, savefig=False, trap_fft=True)
+        df = self.watcher.analyze_traps(plot=False, savefig=False)
+        self.assertFalse(any(c.startswith("trap_fft") for c in df.columns))
+        self.assertFalse(any(c.startswith("trap_variance_burden__") for c in df.columns))
+
 
 if __name__ == "__main__":
     unittest.main()

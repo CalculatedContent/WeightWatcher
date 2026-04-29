@@ -293,12 +293,21 @@ For a complete walkthrough (including `remove_traps`), see: [Correlation Trap Wo
 
 #### Trap variance burden
 
-`analyze_traps` can optionally compute trap burden metrics with `trap_burden=True`.
+`analyze_traps` now exposes both the PR359 paper burden and the newer burden metrics.
 
-Two burden variants are available:
+PR359 paper burden:
+`trap_variance_burden_old = trap_delta^2 * trap_q * trap_top_sector_overlap^2`
 
-- IPR version: `trap_variance_burden_ipr = spectral_excess_abs * ipr_lift_excess_pos * ov_lam_weighted_var`
-- Top5 version: `trap_variance_burden_top5 = spectral_excess_abs * log1p_top_5_lift * ov_rank_mean`
+New IPR burden:
+`trap_variance_burden_ipr = spectral_excess_abs * ipr_lift_excess_pos * ov_lam_weighted_var`
+
+New Top5 burden:
+`trap_variance_burden_top5 = spectral_excess_abs * log1p_top_5_lift * ov_rank_mean`
+
+Canonical selected burden:
+`trap_variance_burden` is controlled by `trap_burden_variant`.
+
+`trap_variance_burden_old` is provided for PR359 compatibility and comparison against the newer burden formulations.
 
 Where:
 - `spectral_excess_abs` measures trap strength above the MP bulk edge.

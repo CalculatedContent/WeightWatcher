@@ -3705,7 +3705,9 @@ class WeightWatcher:
                 start_ids=DEFAULT_START_ID,
                 base_model=None,
                 peft=DEFAULT_PEFT,
-                rng=None):
+                rng=None,
+                trap_burden=False,
+                trap_burden_variant="top5"):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3750,6 +3752,8 @@ class WeightWatcher:
             base_model=base_model,
             peft=peft,
             rng=rng,
+            trap_burden=trap_burden,
+            trap_burden_variant=trap_burden_variant,
         )
 
     def _trap_result_columns(self):
@@ -3773,6 +3777,14 @@ class WeightWatcher:
             "v_top1_mass", "v_top5_mass", "v_top10_mass", "v_squared_amp_entropy", "v_stable_rank_surrogate",
             "trap_balance_ratio", "trap_detected", "trap_eval_minus_bulk",
             "trap_diffuseness_score", "trap_risk_score", "trap_assessment",
+            "spectral_excess_abs", "spectral_excess_rel",
+            "trap_ipr", "bulk_ipr_mean", "bulk_ipr_std",
+            "ipr_lift", "ipr_lift_excess_pos",
+            "top_5_lift", "top_5_lift_excess_pos", "log1p_top_5_lift",
+            "ov_lam_weighted_mean", "ov_lam_weighted_var",
+            "ov_rank_mean", "ov_rank_std",
+            "ov_hhi", "ov_participation", "ov_entropy", "ov_max",
+            "trap_variance_burden_ipr", "trap_variance_burden_top5", "trap_variance_burden",
         ]
 
 
@@ -3800,6 +3812,7 @@ class WeightWatcher:
                 original_basis_cache=original_basis_cache,
                 params=params,
                 trap_index=trap_index,
+                bulk_stats=bulk_stats,
             )
             trap_row.update(bulk_stats)
             trap_rows.append(trap_row)
@@ -3845,6 +3858,8 @@ class WeightWatcher:
                 "bulk_top_5_mass_std": np.nan,
                 "bulk_top_10_mass_mean": np.nan,
                 "bulk_top_10_mass_std": np.nan,
+                "bulk_ipr_mean": np.nan,
+                "bulk_ipr_std": np.nan,
             }
 
         W_perm = ww_layer.Wmats[0].astype(float)
@@ -3862,11 +3877,14 @@ class WeightWatcher:
                 "bulk_top_5_mass_std": np.nan,
                 "bulk_top_10_mass_mean": np.nan,
                 "bulk_top_10_mass_std": np.nan,
+                "bulk_ipr_mean": np.nan,
+                "bulk_ipr_std": np.nan,
             }
 
         bulk_localization = []
         bulk_top_5_mass = []
         bulk_top_10_mass = []
+        bulk_ipr = []
 
         for mode_idx in bulk_indices:
             u_mode = U_perm[:, mode_idx]
@@ -3880,9 +3898,13 @@ class WeightWatcher:
 
             T_perm = float(S_perm[mode_idx]) * np.outer(u_mode, v_mode)
             T_orig = unpermute_matrix(T_perm, p_ids)
+            Ut, _, Vht = svd_full(T_orig, method=params[SVD_METHOD])
+            u_trap = Ut[:, 0]
+            v_trap = Vht.T[:, 0]
             bulk_localization.append(loc)
             bulk_top_5_mass.append(self._top_percent_abs_mass(T_orig, 5.0))
             bulk_top_10_mass.append(self._top_percent_abs_mass(T_orig, 10.0))
+            bulk_ipr.append(0.5 * (float(np.sum(u_trap ** 4)) + float(np.sum(v_trap ** 4))))
 
         return {
             "bulk_mode_count": int(len(bulk_indices)),
@@ -3892,6 +3914,8 @@ class WeightWatcher:
             "bulk_top_5_mass_std": float(np.nanstd(bulk_top_5_mass)),
             "bulk_top_10_mass_mean": float(np.nanmean(bulk_top_10_mass)),
             "bulk_top_10_mass_std": float(np.nanstd(bulk_top_10_mass)),
+            "bulk_ipr_mean": float(np.nanmean(bulk_ipr)),
+            "bulk_ipr_std": float(np.nanstd(bulk_ipr)),
         }
 
 
@@ -3910,10 +3934,12 @@ class WeightWatcher:
         }
 
 
-    def analyze_single_trap(self, ww_layer, trap_mode_index, original_basis_cache=None, params=None, trap_index=0):
+    def analyze_single_trap(self, ww_layer, trap_mode_index, original_basis_cache=None, params=None, trap_index=0, bulk_stats=None):
         if params is None: params = DEFAULT_PARAMS.copy()
         if original_basis_cache is None:
             original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
+        if bulk_stats is None:
+            bulk_stats = {}
 
         W_perm = ww_layer.Wmats[0].astype(float)
         p_ids = ww_layer.permute_ids[0]
@@ -3961,6 +3987,7 @@ class WeightWatcher:
         v_oi = self._trap_vector_order_invariant_stats(v_trap)
 
         eval_perm = sigma_perm ** 2
+        trap_ipr = 0.5 * (float(np.sum(u_trap ** 4)) + float(np.sum(v_trap ** 4)))
         trap_result = {
             "layer_id": ww_layer.layer_id,
             "name": ww_layer.name,
@@ -3993,6 +4020,95 @@ class WeightWatcher:
             "trap_detected": True,
             "trap_eval_minus_bulk": float(eval_perm - ww_layer.bulk_max),
         }
+        if params.get("trap_burden", False):
+            variant = params.get("trap_burden_variant", "top5")
+            if variant not in {"ipr", "top5", "both"}:
+                raise ValueError("trap_burden_variant must be one of {'ipr','top5','both'}")
+
+            mp_bulk_max = trap_result.get("mp_bulk_max", np.nan)
+            spectral_excess_abs = float(max(eval_perm - mp_bulk_max, 0.0)) if np.isfinite(mp_bulk_max) else np.nan
+            spectral_excess_rel = np.nan
+            if np.isfinite(mp_bulk_max) and mp_bulk_max != 0.0:
+                spectral_excess_rel = float(spectral_excess_abs / mp_bulk_max)
+
+            bulk_ipr_mean = bulk_stats.get("bulk_ipr_mean", np.nan)
+            ipr_lift = np.nan
+            ipr_lift_excess_pos = np.nan
+            if np.isfinite(bulk_ipr_mean) and bulk_ipr_mean != 0.0:
+                ipr_lift = float(trap_ipr / bulk_ipr_mean)
+                ipr_lift_excess_pos = float(max(ipr_lift - 1.0, 0.0))
+
+            bulk_top_5_mass_mean = bulk_stats.get("bulk_top_5_mass_mean", np.nan)
+            top_5_lift = np.nan
+            top_5_lift_excess_pos = np.nan
+            log1p_top_5_lift = np.nan
+            if np.isfinite(bulk_top_5_mass_mean) and bulk_top_5_mass_mean != 0.0:
+                top_5_lift = float(top_5_mass / bulk_top_5_mass_mean)
+                top_5_lift_excess_pos = float(max(top_5_lift - 1.0, 0.0))
+                log1p_top_5_lift = float(np.log1p(top_5_lift))
+
+            W_orig = original_basis_cache["W_true"]
+            X = W_orig.T @ W_orig
+            evals_x, evecs_x = np.linalg.eigh(X)
+            order = np.argsort(evals_x)[::-1]
+            lam = evals_x[order]
+            phi = evecs_x[:, order]
+            v_norm = np.linalg.norm(v_trap)
+            if v_norm > 0:
+                v_unit = v_trap / v_norm
+                p = np.abs(phi.T @ v_unit) ** 2
+                p_sum = float(np.sum(p))
+                if p_sum > 0:
+                    p = p / p_sum
+                ov_lam_weighted_mean = float(np.sum(p * lam))
+                ov_lam_weighted_var = float(np.sum(p * (lam - ov_lam_weighted_mean) ** 2))
+                ranks = np.arange(1, len(lam) + 1, dtype=float)
+                ov_rank_mean = float(np.sum(p * ranks))
+                ov_rank_std = float(np.sqrt(np.sum(p * (ranks - ov_rank_mean) ** 2)))
+                ov_hhi = float(np.sum(p ** 2))
+                ov_participation = float(1.0 / ov_hhi) if ov_hhi > 0 else np.nan
+                p_safe = p[p > 0]
+                ov_entropy = float(-np.sum(p_safe * np.log(p_safe))) if p_safe.size else np.nan
+                ov_max = float(np.max(p)) if p.size else np.nan
+            else:
+                ov_lam_weighted_mean = np.nan
+                ov_lam_weighted_var = np.nan
+                ov_rank_mean = np.nan
+                ov_rank_std = np.nan
+                ov_hhi = np.nan
+                ov_participation = np.nan
+                ov_entropy = np.nan
+                ov_max = np.nan
+
+            trap_variance_burden_ipr = float(spectral_excess_abs * ipr_lift_excess_pos * ov_lam_weighted_var) if np.all(
+                np.isfinite([spectral_excess_abs, ipr_lift_excess_pos, ov_lam_weighted_var])
+            ) else np.nan
+            trap_variance_burden_top5 = float(spectral_excess_abs * log1p_top_5_lift * ov_rank_mean) if np.all(
+                np.isfinite([spectral_excess_abs, log1p_top_5_lift, ov_rank_mean])
+            ) else np.nan
+            trap_variance_burden = trap_variance_burden_top5 if variant in {"top5", "both"} else trap_variance_burden_ipr
+
+            trap_result.update({
+                "spectral_excess_abs": spectral_excess_abs,
+                "spectral_excess_rel": spectral_excess_rel,
+                "trap_ipr": float(trap_ipr),
+                "ipr_lift": ipr_lift,
+                "ipr_lift_excess_pos": ipr_lift_excess_pos,
+                "top_5_lift": top_5_lift,
+                "top_5_lift_excess_pos": top_5_lift_excess_pos,
+                "log1p_top_5_lift": log1p_top_5_lift,
+                "ov_lam_weighted_mean": ov_lam_weighted_mean,
+                "ov_lam_weighted_var": ov_lam_weighted_var,
+                "ov_rank_mean": ov_rank_mean,
+                "ov_rank_std": ov_rank_std,
+                "ov_hhi": ov_hhi,
+                "ov_participation": ov_participation,
+                "ov_entropy": ov_entropy,
+                "ov_max": ov_max,
+                "trap_variance_burden_ipr": trap_variance_burden_ipr,
+                "trap_variance_burden_top5": trap_variance_burden_top5,
+                "trap_variance_burden": trap_variance_burden,
+            })
 
         for k, v in u_metrics.items():
             trap_result[f"u_{k}"] = v

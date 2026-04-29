@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 from copy import deepcopy
 import importlib
 import numbers
+import hashlib
 
 import safetensors
 from safetensors import safe_open
@@ -3785,6 +3786,7 @@ class WeightWatcher:
             "ov_rank_mean", "ov_rank_std",
             "ov_hhi", "ov_participation", "ov_entropy", "ov_max",
             "trap_variance_burden_ipr", "trap_variance_burden_top5", "trap_variance_burden",
+            "permute_fingerprint",
         ]
 
 
@@ -3999,6 +4001,7 @@ class WeightWatcher:
             "Q": ww_layer.N / ww_layer.M if ww_layer.M > 0 else np.nan,
             "trap_index": int(trap_index),
             "perm_mode_index": int(trap_mode_index),
+            "trap_mode_index": int(trap_mode_index),
             "sigma_perm": sigma_perm,
             "eval_perm": float(eval_perm),
             "mp_bulk_max": float(ww_layer.bulk_max),
@@ -4022,8 +4025,8 @@ class WeightWatcher:
         }
         if params.get("trap_burden", False):
             variant = params.get("trap_burden_variant", "top5")
-            if variant not in {"ipr", "top5", "both"}:
-                raise ValueError("trap_burden_variant must be one of {'ipr','top5','both'}")
+            if variant not in {"ipr", "top5", "both", "top10", "mean"}:
+                raise ValueError("trap_burden_variant must be one of {'ipr','top5','both','top10','mean'}")
 
             mp_bulk_max = trap_result.get("mp_bulk_max", np.nan)
             spectral_excess_abs = float(max(eval_perm - mp_bulk_max, 0.0)) if np.isfinite(mp_bulk_max) else np.nan
@@ -4086,7 +4089,22 @@ class WeightWatcher:
             trap_variance_burden_top5 = float(spectral_excess_abs * log1p_top_5_lift * ov_rank_mean) if np.all(
                 np.isfinite([spectral_excess_abs, log1p_top_5_lift, ov_rank_mean])
             ) else np.nan
-            trap_variance_burden = trap_variance_burden_top5 if variant in {"top5", "both"} else trap_variance_burden_ipr
+            top_10_lift = np.nan
+            bulk_top_10 = bulk_stats.get("bulk_top_10_mass_mean", np.nan)
+            if np.isfinite(bulk_top_10) and bulk_top_10 != 0.0:
+                top_10_lift = float(top_10_mass / bulk_top_10)
+            trap_variance_burden_top10 = float(spectral_excess_abs * np.log1p(top_10_lift) * ov_rank_mean) if np.all(
+                np.isfinite([spectral_excess_abs, top_10_lift, ov_rank_mean])
+            ) else np.nan
+            if variant in {"top5", "both"}:
+                trap_variance_burden = trap_variance_burden_top5
+            elif variant == "top10":
+                trap_variance_burden = trap_variance_burden_top10
+            elif variant == "mean":
+                vals = [v for v in [trap_variance_burden_ipr, trap_variance_burden_top5] if np.isfinite(v)]
+                trap_variance_burden = float(np.mean(vals)) if vals else np.nan
+            else:
+                trap_variance_burden = trap_variance_burden_ipr
 
             trap_result.update({
                 "spectral_excess_abs": spectral_excess_abs,
@@ -4130,6 +4148,10 @@ class WeightWatcher:
         trap_result["v_trap"] = v_trap
         trap_result["T_orig"] = T_orig
         trap_result["perm_evals_sorted"] = np.array(ww_layer.evals).copy()
+        if len(ww_layer.permute_ids) > 0:
+            trap_result["permute_fingerprint"] = hashlib.sha1(np.asarray(ww_layer.permute_ids[0]).tobytes()).hexdigest()
+        else:
+            trap_result["permute_fingerprint"] = None
 
         if params[PLOT]:
             self.plot_trap_analysis(ww_layer, trap_result, params=params)

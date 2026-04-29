@@ -1,5 +1,6 @@
 import logging
 import numbers
+import hashlib
 import numpy as np
 import pandas as pd
 
@@ -119,6 +120,10 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
 
     ww.apply_normalize_Wmats(analysis_layer, params)
     ww.apply_permute_W(analysis_layer, params, rng=rng)
+    permute_fingerprint = None
+    if len(analysis_layer.permute_ids) > 0:
+        perm_arr = np.asarray(analysis_layer.permute_ids[0])
+        permute_fingerprint = hashlib.sha1(perm_arr.tobytes()).hexdigest()
     apply_trap_mp_fit(ww, analysis_layer, params)
     trap_mode_indices = identify_trap_mode_indices(ww, analysis_layer)
 
@@ -127,6 +132,7 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
         artifact = analyze_single_trap(ww, analysis_layer, trap_mode_index)
         artifact["trap_index"] = i
         artifact["T_orig_raw"] = artifact["T_orig_norm"] / analysis_layer.w_norm
+        artifact["permute_fingerprint"] = permute_fingerprint
         artifacts.append(artifact)
 
     return artifacts
@@ -270,8 +276,50 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
 
     layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
     verify_rows = []
+    traps_df = pd.DataFrame(traps) if traps is not None else None
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
+            layer_traps = None
+            if traps_df is not None and "layer_id" in traps_df.columns:
+                layer_traps = traps_df[traps_df["layer_id"].astype(int) == int(ww_layer.layer_id)].copy()
+                if len(layer_traps) > 0:
+                    if "trap_index" in layer_traps.columns:
+                        trap_indices = sorted(set(layer_traps["trap_index"].dropna().astype(int).tolist()))
+                    else:
+                        raise ValueError("traps DataFrame must include trap_index")
+
+            pre_artifacts = collect_trap_artifacts(
+                ww,
+                ww_layer,
+                params=params,
+                seed=None if params["rng"] is not None else seed,
+                rng=params["rng"],
+            )
+            pre_by_index = {int(a["trap_index"]): a for a in pre_artifacts}
+            identity_ok = True
+            identity_reason = "ok"
+            if layer_traps is not None and len(layer_traps) > 0:
+                for _, trow in layer_traps.iterrows():
+                    tidx = int(trow["trap_index"])
+                    art = pre_by_index.get(tidx)
+                    if art is None:
+                        identity_ok = False
+                        identity_reason = f"trap_index_{tidx}_missing"
+                        break
+                    if "trap_mode_index" in layer_traps.columns and not pd.isna(trow.get("trap_mode_index")):
+                        if int(trow["trap_mode_index"]) != int(art["trap_mode_index"]):
+                            identity_ok = False
+                            identity_reason = f"trap_mode_mismatch_{tidx}"
+                            break
+                    if "permute_fingerprint" in layer_traps.columns and pd.notna(trow.get("permute_fingerprint")):
+                        if str(trow["permute_fingerprint"]) != str(art.get("permute_fingerprint")):
+                            identity_ok = False
+                            identity_reason = f"permute_mismatch_{tidx}"
+                            break
+
+            if not identity_ok:
+                raise ValueError(f"Trap identity verification failed for layer {ww_layer.layer_id}: {identity_reason}")
+
             apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"])
             if verify_traps:
                 remaining = collect_trap_artifacts(
@@ -285,6 +333,8 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
                     {
                         "layer_id": int(ww_layer.layer_id),
                         "requested_trap_indices": list(trap_indices),
+                        "identity_verified": bool(identity_ok),
+                        "identity_reason": identity_reason,
                         "remaining_traps": len(remaining),
                         "verify_passed": len(remaining) == 0,
                     }

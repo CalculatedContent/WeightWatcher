@@ -174,6 +174,10 @@ class TestAnalyzeTraps(unittest.TestCase):
         if mask_top5.any():
             self.assertTrue(np.allclose(df_top5.loc[mask_top5, "trap_variance_burden"], df_top5.loc[mask_top5, "trap_variance_burden_top5"]))
 
+        df_top10 = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="top10")
+        self.assertIn("trap_variance_burden", df_top10.columns)
+        self.assertIn("permute_fingerprint", df_top10.columns)
+
     def test_analyze_traps_trap_burden_invalid_variant(self):
         with self.assertRaises(ValueError):
             self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="bad")

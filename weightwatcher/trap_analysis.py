@@ -32,6 +32,7 @@ def analyze_traps(
     trap_burden=False,
     trap_burden_variant="top5",
     top_sector_l=1,
+    bundle_collector=None,
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
     if layers is None:
@@ -136,6 +137,27 @@ def analyze_traps(
                 for row in layer_rows:
                     row.pop("T_orig", None)
                 trap_rows.extend(layer_rows)
+                if bundle_collector is not None and len(layer_rows) > 0:
+                    try:
+                        from .RMT_Util import svd_full
+                        W_perm = np.asarray(ww_layer.Wmats[0]).copy()
+                        U_perm, S_perm, Vh_perm = svd_full(W_perm)
+                        permute_ids = np.asarray(ww_layer.permute_ids[0]).copy() if len(ww_layer.permute_ids) > 0 else None
+                        bundle_collector[int(ww_layer.layer_id)] = {
+                            "layer_id": int(ww_layer.layer_id),
+                            "name": str(getattr(ww_layer, "name", "")),
+                            "longname": str(getattr(ww_layer, "longname", "")),
+                            "W_orig": np.asarray(getattr(ww_layer, "W_orig", ww_layer.Wmats[0])).copy(),
+                            "W_perm": W_perm,
+                            "permute_ids": permute_ids,
+                            "U_perm": U_perm,
+                            "S_perm": S_perm,
+                            "Vh_perm": Vh_perm,
+                            "mp_bulk_max": float(layer_rows[0].get("mp_bulk_max", np.nan)),
+                            "rows": [dict(r) for r in layer_rows],
+                        }
+                    except Exception:
+                        wwcore.logger.exception("Failed to collect trap bundle artifacts for layer %s", ww_layer.layer_id)
 
     if len(trap_rows) > 0:
         details = pd.DataFrame.from_records(trap_rows)

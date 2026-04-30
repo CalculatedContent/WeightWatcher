@@ -29,6 +29,7 @@ def analyze_traps(
     base_model=None,
     peft=wwcore.DEFAULT_PEFT,
     rng=None,
+    permuted_ids=None,
     trap_burden=False,
     trap_burden_variant="top5",
     top_sector_l=1,
@@ -99,6 +100,8 @@ def analyze_traps(
                 watcher.apply_FFT(ww_layer, params)
 
             layer_params = dict(params)
+            if permuted_ids is not None:
+                layer_params["permuted_ids"] = permuted_ids
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
             layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if layer_rows:

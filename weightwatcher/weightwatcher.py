@@ -3694,7 +3694,7 @@ class WeightWatcher:
         return self.details
 
 
-    def analyze_traps(self, model=None, layers=[],
+    def analyze_traps(self, model=None, randomized_model=None, permuted_ids=None, layers=[],
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
                 glorot_fix=False,
@@ -3733,7 +3733,7 @@ class WeightWatcher:
         from . import trap_analysis
         return trap_analysis.analyze_traps(
             self,
-            model=model,
+            model=randomized_model if randomized_model is not None else model,
             layers=layers,
             min_evals=min_evals,
             max_evals=max_evals,
@@ -3754,6 +3754,7 @@ class WeightWatcher:
             base_model=base_model,
             peft=peft,
             rng=rng,
+            permuted_ids=permuted_ids,
             trap_burden=trap_burden,
             trap_burden_variant=trap_burden_variant,
             top_sector_l=top_sector_l,
@@ -3808,7 +3809,12 @@ class WeightWatcher:
         self.apply_esd(ww_layer, params)
         original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
 
-        self.apply_permute_W(ww_layer, params)
+        if params.get("permuted_ids") is not None and int(ww_layer.layer_id) in params.get("permuted_ids", {}):
+            pids = np.asarray(params["permuted_ids"][int(ww_layer.layer_id)]).astype(int)
+            ww_layer.permute_ids = [pids]
+            ww_layer.Wmats = [ww_layer.Wmats[0].flatten()[pids].reshape(ww_layer.Wmats[0].shape)]
+        else:
+            self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params)
         bulk_stats = self.compute_bulk_trap_reference_metrics(ww_layer, trap_mode_indices, params=params)
@@ -5977,6 +5983,14 @@ class WeightWatcher:
     def apply_remove_traps(self, ww_layer, trap_indices, params=None, seed=None, rng=None):
         """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
+
+    def randomize_model(self, model=None, layers=[], pool=True, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
+                        base_model=None, peft=DEFAULT_PEFT, rng=None):
+        """Randomize model weights using reversible permutations and return permutation ids."""
+        return remove_traps_ops.randomize_model(
+            self, model=model, layers=layers, pool=pool, start_ids=start_ids,
+            svd_method=svd_method, base_model=base_model, peft=peft, rng=rng
+        )
 
     def remove_traps(self, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                      verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,

@@ -1,6 +1,7 @@
 import logging
 import numbers
 import hashlib
+import copy
 import numpy as np
 import pandas as pd
 
@@ -344,3 +345,35 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
         verify_df = pd.DataFrame.from_records(verify_rows)
         return model, verify_df
     return model
+
+
+def randomize_model(ww, model=None, layers=None, pool=True, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
+                    base_model=None, peft=DEFAULT_PEFT, rng=None):
+    """Return a randomized copy of model and per-layer permutation ids."""
+    if layers is None:
+        layers = []
+
+    randomized_model = copy.deepcopy(model if model is not None else ww.model)
+    ww.set_model_(randomized_model)
+
+    params = DEFAULT_PARAMS.copy()
+    params[POOL] = pool
+    params[LAYERS] = layers
+    params[START_IDS] = start_ids
+    params[SVD_METHOD] = svd_method
+    params[PEFT] = peft
+    params["rng"] = _normalize_trap_rng(rng=rng)
+
+    params = ww.normalize_params(params)
+    layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
+
+    permuted_ids = {}
+    for ww_layer in layer_iterator:
+        if not ww_layer.skipped and ww_layer.has_weights:
+            ww.apply_normalize_Wmats(ww_layer, params)
+            ww.apply_permute_W(ww_layer, params, rng=params["rng"])
+            if ww_layer.permute_ids:
+                permuted_ids[int(ww_layer.layer_id)] = np.asarray(ww_layer.permute_ids[0]).copy()
+            ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, ww_layer.Wmats[0])
+
+    return randomized_model, permuted_ids

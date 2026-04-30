@@ -3694,7 +3694,7 @@ class WeightWatcher:
         return self.details
 
 
-    def analyze_traps(self, model=None, randomized_model=None, permuted_ids=None, trap_state=None, already_randomized=False, return_artifacts=False, layers=[],
+    def analyze_traps(self, model=None, randomized_model=None, permuted_ids=None, trap_state=None, return_artifacts=False, layers=[],
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
                 glorot_fix=False,
@@ -3730,8 +3730,8 @@ class WeightWatcher:
             Passing the same seed/object makes trap detection reproducible across runs.
         """
 
-        if randomized_model is not None and permuted_ids is not None and not already_randomized:
-            raise ValueError("Ambiguous inputs: randomized_model with permuted_ids requires already_randomized=True")
+        if randomized_model is not None and model is not None:
+            raise ValueError("Pass either model or randomized_model, not both")
 
         from . import trap_analysis
         return trap_analysis.analyze_traps(
@@ -3759,7 +3759,7 @@ class WeightWatcher:
             rng=rng,
             permuted_ids=permuted_ids,
             trap_state=trap_state,
-            already_randomized=already_randomized,
+            already_randomized=(randomized_model is not None),
             return_artifacts=return_artifacts,
             trap_burden=trap_burden,
             trap_burden_variant=trap_burden_variant,
@@ -6006,15 +6006,20 @@ class WeightWatcher:
             svd_method=svd_method, base_model=base_model, peft=peft, rng=rng, return_state=return_state
         )
 
-    def remove_traps(self, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
+    def remove_traps(self, model=None, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                      verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                     base_model=None, peft=DEFAULT_PEFT, trap_artifacts=None, trap_state=None, already_randomized=False):
+                     base_model=None, peft=DEFAULT_PEFT, trap_artifacts=None, trap_state=None):
         """Remove selected randomized MP/TW traps from dense layers."""
+        if randomized_model is not None and model is not None:
+            raise ValueError("Pass either model or randomized_model, not both")
+        if trap_state is not None and randomized_model is None:
+            raise ValueError("trap_state-based remove_traps requires randomized_model")
+        active_model = randomized_model if randomized_model is not None else model
         return remove_traps_ops.remove_traps(
-            self, model=model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
+            self, model=active_model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
             pool=pool, plot=plot, verify_traps=verify_traps, return_analyze=return_analyze,
             start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft,
-            trap_artifacts=trap_artifacts, trap_state=trap_state, already_randomized=already_randomized
+            trap_artifacts=trap_artifacts, trap_state=trap_state, already_randomized=(randomized_model is not None)
         )
 
 

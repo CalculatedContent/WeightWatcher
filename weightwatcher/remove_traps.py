@@ -325,6 +325,13 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
                 layer_state = trap_state.get("layers", {}).get(int(ww_layer.layer_id), {})
                 pre_artifacts = layer_state.get("artifacts")
             if pre_artifacts is None:
+                layer_perm = None
+                if isinstance(layer_state, dict) and layer_state.get("permuted_ids") is not None:
+                    layer_perm = layer_state.get("permuted_ids")
+                elif isinstance(trap_state, dict):
+                    pid_map = trap_state.get("permuted_ids", {})
+                    if isinstance(pid_map, dict):
+                        layer_perm = pid_map.get(int(ww_layer.layer_id))
                 pre_artifacts = collect_trap_artifacts(
                     ww,
                     ww_layer,
@@ -332,8 +339,9 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
                     seed=None if params["rng"] is not None else seed,
                     rng=params["rng"],
                     already_randomized=bool(already_randomized),
-                    permuted_ids=((layer_state.get("permuted_ids") if isinstance(layer_state, dict) else None) or (trap_state.get("permuted_ids", {}).get(int(ww_layer.layer_id)) if isinstance(trap_state, dict) else None)), 
+                    permuted_ids=layer_perm,
                 )
+
             pre_by_index = {int(a["trap_index"]): a for a in pre_artifacts}
             identity_ok = True
             identity_reason = "ok"

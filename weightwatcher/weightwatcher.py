@@ -3694,6 +3694,51 @@ class WeightWatcher:
         return self.details
 
 
+    def analyze_weights(self, model=None, layers=[],
+                min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
+                min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
+                glorot_fix=False,
+                plot=False, savefig=DEF_SAVE_DIR,
+                conv2d_norm=True,
+                ww2x=DEFAULT_WW2X, pool=DEFAULT_POOL,
+                conv2d_fft=False, fft=False, channels=None,
+                start_ids=DEFAULT_START_ID,
+                base_model=None,
+                peft=DEFAULT_PEFT,
+                fast=False,
+                sample_size=100000,
+                random_state=123):
+        """Analyze per-layer weight-entry distributions for left/right tails."""
+
+        from . import analyze_weights as analyze_weights_ops
+
+        return analyze_weights_ops.analyze_weights(
+            self,
+            model=model,
+            layers=layers,
+            min_evals=min_evals,
+            max_evals=max_evals,
+            min_size=min_size,
+            max_size=max_size,
+            max_N=max_N,
+            glorot_fix=glorot_fix,
+            plot=plot,
+            savefig=savefig,
+            conv2d_norm=conv2d_norm,
+            ww2x=ww2x,
+            pool=pool,
+            conv2d_fft=conv2d_fft,
+            fft=fft,
+            channels=channels,
+            start_ids=start_ids,
+            base_model=base_model,
+            peft=peft,
+            fast=fast,
+            sample_size=sample_size,
+            random_state=random_state,
+        )
+
+
     def analyze_traps(self, model=None, layers=[],
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, max_N=DEFAULT_MAX_N,

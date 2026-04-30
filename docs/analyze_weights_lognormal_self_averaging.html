@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WeightWatcher analyze_weights Log-Normal Self-Averaging Diagnostic</title>
+</head>
+<body>
+  <h1>analyze_weights: finite-sample log-normal self-averaging diagnostic</h1>
+
+  <p>
+    This diagnostic applies <strong>only</strong> when a side of the weight-element distribution is plausibly log-normal.
+    Left and right sides are tested separately.
+  </p>
+
+  <h2>Per-side definitions</h2>
+  <ul>
+    <li>Right side: <code>w[w &gt; 0]</code></li>
+    <li>Left side: <code>abs(w[w &lt; 0])</code></li>
+  </ul>
+
+  <p>For a side with <code>N</code> samples and fitted log-normal parameters:</p>
+  <ul>
+    <li><code>mu_hat = mean(log x)</code></li>
+    <li><code>sigma^2_hat = var(log x)</code></li>
+    <li>finite-sample control parameter: <code>exp(sigma^2_hat) / N</code></li>
+    <li>warning threshold: <code>sigma^2_hat &gt;= log(N)</code></li>
+  </ul>
+
+  <h2>Regimes</h2>
+  <ul>
+    <li><strong>self_averaging</strong></li>
+    <li><strong>marginal</strong></li>
+    <li><strong>non_self_averaging</strong></li>
+  </ul>
+
+  <p>
+    Non-log-normal sides are marked <code>undetermined</code>, with numeric diagnostic fields left as <code>NaN</code>.
+  </p>
+
+  <h2>Output columns</h2>
+  <p>
+    The diagnostic adds per-layer columns to <code>analyze_weights()</code> output for right and left sides,
+    including detected flags, fitted moments, sample counts, finite-sample ratios, margins, regime labels,
+    and non-self-averaging booleans.
+  </p>
+
+  <h2>Disclaimer</h2>
+  <p>
+    This is a practical finite-sample diagnostic for weight-element distributions, not a universal theorem for all layer statistics.
+  </p>
+</body>
+</html>

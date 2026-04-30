@@ -3694,7 +3694,7 @@ class WeightWatcher:
         return self.details
 
 
-    def analyze_traps(self, model=None, randomized_model=None, permuted_ids=None, layers=[],
+    def analyze_traps(self, model=None, randomized_model=None, permuted_ids=None, trap_state=None, already_randomized=False, return_artifacts=False, layers=[],
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
                 glorot_fix=False,
@@ -3730,6 +3730,9 @@ class WeightWatcher:
             Passing the same seed/object makes trap detection reproducible across runs.
         """
 
+        if randomized_model is not None and permuted_ids is not None and not already_randomized:
+            raise ValueError("Ambiguous inputs: randomized_model with permuted_ids requires already_randomized=True")
+
         from . import trap_analysis
         return trap_analysis.analyze_traps(
             self,
@@ -3755,6 +3758,9 @@ class WeightWatcher:
             peft=peft,
             rng=rng,
             permuted_ids=permuted_ids,
+            trap_state=trap_state,
+            already_randomized=already_randomized,
+            return_artifacts=return_artifacts,
             trap_burden=trap_burden,
             trap_burden_variant=trap_burden_variant,
             top_sector_l=top_sector_l,
@@ -3809,7 +3815,11 @@ class WeightWatcher:
         self.apply_esd(ww_layer, params)
         original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
 
-        if params.get("permuted_ids") is not None and int(ww_layer.layer_id) in params.get("permuted_ids", {}):
+        if params.get("already_randomized", False):
+            pids_map = params.get("permuted_ids", {})
+            if int(ww_layer.layer_id) in pids_map:
+                ww_layer.permute_ids = [np.asarray(pids_map[int(ww_layer.layer_id)]).astype(int)]
+        elif params.get("permuted_ids") is not None and int(ww_layer.layer_id) in params.get("permuted_ids", {}):
             pids = np.asarray(params["permuted_ids"][int(ww_layer.layer_id)]).astype(int)
             ww_layer.permute_ids = [pids]
             ww_layer.Wmats = [ww_layer.Wmats[0].flatten()[pids].reshape(ww_layer.Wmats[0].shape)]
@@ -5985,11 +5995,11 @@ class WeightWatcher:
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
     def randomize_model(self, model=None, layers=[], pool=True, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                        base_model=None, peft=DEFAULT_PEFT, rng=None):
+                        base_model=None, peft=DEFAULT_PEFT, rng=None, return_state=False):
         """Randomize model weights using reversible permutations and return permutation ids."""
         return remove_traps_ops.randomize_model(
             self, model=model, layers=layers, pool=pool, start_ids=start_ids,
-            svd_method=svd_method, base_model=base_model, peft=peft, rng=rng
+            svd_method=svd_method, base_model=base_model, peft=peft, rng=rng, return_state=return_state
         )
 
     def remove_traps(self, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,

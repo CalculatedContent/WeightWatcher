@@ -30,6 +30,9 @@ def analyze_traps(
     peft=wwcore.DEFAULT_PEFT,
     rng=None,
     permuted_ids=None,
+    trap_state=None,
+    already_randomized=False,
+    return_artifacts=False,
     trap_burden=False,
     trap_burden_variant="top5",
     top_sector_l=1,
@@ -80,6 +83,7 @@ def analyze_traps(
     params["trap_burden"] = bool(trap_burden)
     params["trap_burden_variant"] = trap_burden_variant
     params["top_sector_l"] = int(top_sector_l)
+    params["already_randomized"] = bool(already_randomized)
 
     wwcore.logger.debug("params {}".format(params))
     if not watcher.valid_params(params):
@@ -100,8 +104,11 @@ def analyze_traps(
                 watcher.apply_FFT(ww_layer, params)
 
             layer_params = dict(params)
-            if permuted_ids is not None:
+            if trap_state is not None and isinstance(trap_state, dict) and "permuted_ids" in trap_state:
+                layer_params["permuted_ids"] = trap_state.get("permuted_ids", {})
+            elif permuted_ids is not None:
                 layer_params["permuted_ids"] = permuted_ids
+            layer_params["already_randomized"] = bool(already_randomized)
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
             layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if layer_rows:
@@ -165,6 +172,12 @@ def analyze_traps(
     else:
         watcher.trap_component_summary = pd.DataFrame()
 
+    if return_artifacts:
+        out_state = trap_state.copy() if isinstance(trap_state, dict) else {}
+        out_state.setdefault("permuted_ids", permuted_ids if permuted_ids is not None else {})
+        out_state["details_rows"] = details.to_dict(orient="records")
+        out_state["already_randomized"] = bool(already_randomized)
+        return details, out_state
     return details
 
 

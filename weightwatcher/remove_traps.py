@@ -332,7 +332,7 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
                     seed=None if params["rng"] is not None else seed,
                     rng=params["rng"],
                     already_randomized=bool(already_randomized),
-                    permuted_ids=(trap_state.get("permuted_ids", {}).get(int(ww_layer.layer_id)) if isinstance(trap_state, dict) else None),
+                    permuted_ids=((layer_state.get("permuted_ids") if isinstance(layer_state, dict) else None) or (trap_state.get("permuted_ids", {}).get(int(ww_layer.layer_id)) if isinstance(trap_state, dict) else None)), 
                 )
             pre_by_index = {int(a["trap_index"]): a for a in pre_artifacts}
             identity_ok = True

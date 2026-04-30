@@ -95,6 +95,7 @@ def analyze_traps(
     layer_iterator = watcher.make_layer_iterator(model=watcher.model, layers=layers, params=params, base_model=watcher.base_model)
     trap_rows = []
     trap_component_rows = []
+    state_layers = {}
 
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
@@ -111,6 +112,22 @@ def analyze_traps(
             layer_params["already_randomized"] = bool(already_randomized)
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
             layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
+
+            layer_id_int = int(ww_layer.layer_id)
+            if return_artifacts:
+                layer_perm = None
+                if "permuted_ids" in layer_params and isinstance(layer_params.get("permuted_ids"), dict):
+                    layer_perm = layer_params["permuted_ids"].get(layer_id_int)
+                art, lstate = remove_traps_ops.collect_trap_artifacts(
+                    watcher, ww_layer, params=layer_params, rng=layer_params.get("rng"),
+                    already_randomized=bool(already_randomized), permuted_ids=layer_perm, return_state=True
+                )
+                lstate["name"] = ww_layer.name
+                lstate["longname"] = ww_layer.longname
+                lstate["W_perm_shape"] = tuple(ww_layer.Wmats[0].shape)
+                lstate["mp_bulk_max"] = float(getattr(ww_layer, "bulk_max", np.nan))
+                lstate["trap_rows"] = [r for r in layer_rows if int(r.get("layer_id", -1)) == layer_id_int]
+                state_layers[layer_id_int] = lstate
             if layer_rows:
                 if params.get(wwcore.PLOT, False):
                     trap_infos = []
@@ -175,6 +192,9 @@ def analyze_traps(
     if return_artifacts:
         out_state = trap_state.copy() if isinstance(trap_state, dict) else {}
         out_state.setdefault("permuted_ids", permuted_ids if permuted_ids is not None else {})
+        if trap_state is not None and isinstance(trap_state, dict) and "permuted_ids" in trap_state:
+            out_state["permuted_ids"] = trap_state.get("permuted_ids", {})
+        out_state["layers"] = state_layers
         out_state["details_rows"] = details.to_dict(orient="records")
         out_state["already_randomized"] = bool(already_randomized)
         return details, out_state

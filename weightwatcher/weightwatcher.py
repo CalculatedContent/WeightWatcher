@@ -4240,6 +4240,10 @@ class WeightWatcher:
                 "trap_variance_burden_ipr": trap_variance_burden_ipr,
                 "trap_variance_burden_top5": trap_variance_burden_top5,
                 "trap_variance_burden": trap_variance_burden,
+                "B_absDelta_ipr_ovlamvar": trap_variance_burden_ipr,
+                "B_absDelta_logtop5_ovlamvar": float(spectral_excess_abs * log1p_top_5_lift * ov_lam_weighted_var) if np.all(np.isfinite([spectral_excess_abs, log1p_top_5_lift, ov_lam_weighted_var])) else np.nan,
+                "B_evalsq_logtop5_ovrank": trap_variance_burden_top5,
+                "B_old_pr359_paper": trap_variance_burden_old,
             })
 
         for k, v in u_metrics.items():
@@ -6004,12 +6008,13 @@ class WeightWatcher:
 
     def remove_traps(self, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                      verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                     base_model=None, peft=DEFAULT_PEFT):
+                     base_model=None, peft=DEFAULT_PEFT, trap_artifacts=None, trap_state=None, already_randomized=False):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
             self, model=model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
             pool=pool, plot=plot, verify_traps=verify_traps, return_analyze=return_analyze,
-            start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
+            start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft,
+            trap_artifacts=trap_artifacts, trap_state=trap_state, already_randomized=already_randomized
         )
 
 

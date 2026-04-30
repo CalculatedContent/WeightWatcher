@@ -451,3 +451,5 @@ def test_remove_traps_preserves_pytorch_layer_dtype_and_forward_pass():
         x_mps = torch.randn(4, 96, dtype=torch.float32, device=mps_device)
         y_mps = model_mps(x_mps)
         assert y_mps.shape == (4, 10)
+
+

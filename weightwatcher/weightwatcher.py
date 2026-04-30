@@ -3826,10 +3826,13 @@ class WeightWatcher:
         else:
             self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
-        trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params)
+        W_perm = ww_layer.Wmats[0].astype(float)
+        U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
+        trap_mode_indices = remove_traps_ops.identify_trap_mode_indices(self, ww_layer, svals=S_perm)
         bulk_stats = self.compute_bulk_trap_reference_metrics(ww_layer, trap_mode_indices, params=params)
 
         trap_rows = []
+        trap_artifacts = []
         for trap_index, mode_index in enumerate(trap_mode_indices):
             trap_row = self.analyze_single_trap(
                 ww_layer,
@@ -3841,12 +3844,36 @@ class WeightWatcher:
             )
             trap_row.update(bulk_stats)
             trap_rows.append(trap_row)
+            artifact = remove_traps_ops.analyze_single_trap(self, ww_layer, mode_index, U_perm=U_perm, S_perm=S_perm, Vh_perm=Vh_perm)
+            artifact["trap_index"] = trap_index + 1
+            artifact["layer_id"] = int(ww_layer.layer_id)
+            artifact["permute_fingerprint"] = trap_row.get("permute_fingerprint")
+            trap_artifacts.append(artifact)
         if trap_rows:
             layer_trap_variance_burden = float(np.nansum([row.get("trap_variance_burden_old", np.nan) for row in trap_rows]))
             for row in trap_rows:
                 row["layer_trap_variance_burden"] = layer_trap_variance_burden
 
+        layer_state = {
+            "layer_id": int(ww_layer.layer_id),
+            "name": ww_layer.name,
+            "longname": ww_layer.longname,
+            "permuted_ids": np.asarray(ww_layer.permute_ids[0]).copy() if len(ww_layer.permute_ids) > 0 else None,
+            "permute_fingerprint": trap_rows[0].get("permute_fingerprint") if trap_rows else None,
+            "W_perm_shape": tuple(W_perm.shape),
+            "U_perm": U_perm,
+            "S_perm": S_perm,
+            "Vh_perm": Vh_perm,
+            "trap_mode_indices": [int(i) for i in trap_mode_indices],
+            "artifacts": trap_artifacts,
+            "trap_rows": trap_rows,
+            "mp_bulk_max": float(getattr(ww_layer, "bulk_max", np.nan)),
+            "already_randomized": bool(params.get("already_randomized", False)),
+        }
+
         self.apply_unpermute_W(ww_layer, params)
+        if params.get("return_artifacts", False):
+            return trap_rows, layer_state
         return trap_rows
 
     def compute_trap_delta(self, eval_perm, mp_bulk_max):

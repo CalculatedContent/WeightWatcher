@@ -111,23 +111,13 @@ def analyze_traps(
                 layer_params["permuted_ids"] = permuted_ids
             layer_params["already_randomized"] = bool(already_randomized)
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
-            layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
-
-            layer_id_int = int(ww_layer.layer_id)
+            layer_params["return_artifacts"] = bool(return_artifacts)
+            result = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if return_artifacts:
-                layer_perm = None
-                if "permuted_ids" in layer_params and isinstance(layer_params.get("permuted_ids"), dict):
-                    layer_perm = layer_params["permuted_ids"].get(layer_id_int)
-                art, lstate = remove_traps_ops.collect_trap_artifacts(
-                    watcher, ww_layer, params=layer_params, rng=layer_params.get("rng"),
-                    already_randomized=bool(already_randomized), permuted_ids=layer_perm, return_state=True
-                )
-                lstate["name"] = ww_layer.name
-                lstate["longname"] = ww_layer.longname
-                lstate["W_perm_shape"] = tuple(ww_layer.Wmats[0].shape)
-                lstate["mp_bulk_max"] = float(getattr(ww_layer, "bulk_max", np.nan))
-                lstate["trap_rows"] = [r for r in layer_rows if int(r.get("layer_id", -1)) == layer_id_int]
-                state_layers[layer_id_int] = lstate
+                layer_rows, layer_state = result
+                state_layers[int(ww_layer.layer_id)] = layer_state
+            else:
+                layer_rows = result
             if layer_rows:
                 if params.get(wwcore.PLOT, False):
                     trap_infos = []

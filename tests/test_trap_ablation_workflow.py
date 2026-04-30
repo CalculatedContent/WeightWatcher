@@ -190,3 +190,28 @@ def test_remove_traps_requires_randomized_model_when_trap_state():
     watcher = WeightWatcher(model={"dummy_weight": np.array([1.0])})
     with pytest.raises(ValueError, match="requires randomized_model"):
         watcher.remove_traps(model={"dummy_weight": np.array([1.0])}, trap_state={"layers": {}}, traps=pd.DataFrame([{"trap_index": 1}]), plot=False)
+
+
+@unittest.skipUnless(TORCH_AVAILABLE, "torch is required")
+def test_analyze_traps_return_artifacts_does_not_recollect_artifacts(monkeypatch):
+    model, _ = _make_one_layer_trap_model()
+    watcher = WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True)
+
+    from weightwatcher import remove_traps as remove_traps_ops
+
+    def fail_collect(*args, **kwargs):
+        raise AssertionError("analyze_traps(return_artifacts=True) must not recollect artifacts or recompute SVD")
+
+    monkeypatch.setattr(remove_traps_ops, "collect_trap_artifacts", fail_collect)
+
+    trap_df, trap_state = watcher.analyze_traps(
+        randomized_model=randomized_model,
+        trap_state=trap_state,
+        return_artifacts=True,
+        trap_burden=True,
+        plot=False,
+        savefig=False,
+    )
+    assert len(trap_df) > 0
+    assert "layers" in trap_state and len(trap_state["layers"]) > 0

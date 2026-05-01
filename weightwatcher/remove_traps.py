@@ -47,9 +47,10 @@ def apply_trap_mp_fit(ww, ww_layer, params=None):
     return ww_layer
 
 
-def identify_trap_mode_indices(ww, ww_layer):
-    W = ww_layer.Wmats[0]
-    _, svals, _ = svd_full(W)
+def identify_trap_mode_indices(ww, ww_layer, svals=None):
+    if svals is None:
+        W = ww_layer.Wmats[0]
+        _, svals, _ = svd_full(W)
     evals_desc = svals * svals
 
     Q = ww_layer.N / ww_layer.M

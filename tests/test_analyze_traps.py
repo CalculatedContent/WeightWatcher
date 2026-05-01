@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 import pandas as pd
+from unittest.mock import patch
 try:
     import torch
     import torch.nn as nn
@@ -9,6 +10,7 @@ except Exception:
     TORCH_AVAILABLE = False
 
 import weightwatcher as ww
+from weightwatcher import remove_traps as remove_traps_ops
 
 
 if TORCH_AVAILABLE:
@@ -219,6 +221,30 @@ class TestAnalyzeTraps(unittest.TestCase):
         df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="top5")
         for col in ["trap_variance_burden_old", "trap_variance_burden_ipr", "trap_variance_burden_top5", "trap_variance_burden"]:
             self.assertIn(col, df.columns)
+
+    def test_analyze_traps_fast_mode_skips_original_basis(self):
+        with patch.object(ww.WeightWatcher, "compute_original_basis_for_traps", side_effect=AssertionError("should skip in fast mode")):
+            df = self.watcher.analyze_traps(
+                plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast", compute_original_basis=False
+            )
+        self.assertIsInstance(df, pd.DataFrame)
+
+    def test_analyze_traps_fast_mode_skips_full_bulk_reference(self):
+        with patch.object(ww.WeightWatcher, "compute_bulk_trap_reference_metrics", side_effect=AssertionError("should skip in fast mode")):
+            df = self.watcher.analyze_traps(
+                plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast", compute_full_bulk_reference=False
+            )
+        required = {"B_absDelta_ipr_ovlamvar", "spectral_excess_abs", "ipr_lift_excess_pos", "ov_lam_weighted_var", "trap_variance_burden_ipr", "trap_variance_burden"}
+        self.assertTrue(required.issubset(set(df.columns)))
+
+    def test_analyze_traps_full_mode_allows_full_diagnostics(self):
+        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="full")
+        self.assertIsInstance(df, pd.DataFrame)
+
+    def test_analyze_traps_fast_mode_does_not_call_collect_trap_artifacts(self):
+        with patch.object(remove_traps_ops, "collect_trap_artifacts", side_effect=AssertionError("should not be called")):
+            df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast")
+        self.assertIsInstance(df, pd.DataFrame)
 
     def test_no_trap_fft_api_or_columns(self):
         with self.assertRaises(TypeError):

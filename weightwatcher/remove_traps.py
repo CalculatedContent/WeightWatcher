@@ -1,6 +1,7 @@
 import logging
 import numbers
 import hashlib
+import copy
 import numpy as np
 import pandas as pd
 
@@ -47,10 +48,12 @@ def apply_trap_mp_fit(ww, ww_layer, params=None):
     return ww_layer
 
 
-def identify_trap_mode_indices(ww, ww_layer):
-    W = ww_layer.Wmats[0]
-    _, svals, _ = svd_full(W)
-    evals_desc = svals * svals
+def identify_trap_mode_indices(ww, ww_layer, svals=None, evals_desc=None):
+    if evals_desc is None:
+        if svals is None:
+            W = ww_layer.Wmats[0]
+            _, svals, _ = svd_full(W)
+        evals_desc = np.asarray(svals, dtype=float) * np.asarray(svals, dtype=float)
 
     Q = ww_layer.N / ww_layer.M
     M = ww_layer.M
@@ -66,7 +69,7 @@ def identify_trap_mode_indices(ww, ww_layer):
     return trap_mode_indices.tolist()
 
 
-def analyze_single_trap(ww, ww_layer, trap_mode_index):
+def analyze_single_trap(ww, ww_layer, trap_mode_index, U_perm=None, S_perm=None, Vh_perm=None):
     def _top_percent_abs_mass(mat, percent):
         flat = np.abs(np.asarray(mat, dtype=float)).ravel()
         if flat.size == 0:
@@ -79,8 +82,9 @@ def analyze_single_trap(ww, ww_layer, trap_mode_index):
         top_sum = float(np.sum(np.partition(flat, -k)[-k:]))
         return top_sum / total
 
-    W_perm = ww_layer.Wmats[0]
-    U_perm, S_perm, Vh_perm = svd_full(W_perm)
+    if U_perm is None or S_perm is None or Vh_perm is None:
+        W_perm = ww_layer.Wmats[0]
+        U_perm, S_perm, Vh_perm = svd_full(W_perm)
 
     sigma_perm = S_perm[trap_mode_index]
     u_trap = U_perm[:, trap_mode_index]
@@ -105,7 +109,7 @@ def analyze_single_trap(ww, ww_layer, trap_mode_index):
     }
 
 
-def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
+def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None, already_randomized=False, permuted_ids=None, return_state=False):
     if params is None:
         params = DEFAULT_PARAMS.copy()
 
@@ -119,22 +123,43 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
     analysis_layer.permute_ids = []
 
     ww.apply_normalize_Wmats(analysis_layer, params)
-    ww.apply_permute_W(analysis_layer, params, rng=rng)
+    if already_randomized:
+        if permuted_ids is not None:
+            analysis_layer.permute_ids = [np.asarray(permuted_ids).astype(int)]
+    elif permuted_ids is not None:
+        pids = np.asarray(permuted_ids).astype(int)
+        analysis_layer.permute_ids = [pids]
+        analysis_layer.Wmats = [analysis_layer.Wmats[0].flatten()[pids].reshape(analysis_layer.Wmats[0].shape)]
+    else:
+        ww.apply_permute_W(analysis_layer, params, rng=rng)
     permute_fingerprint = None
     if len(analysis_layer.permute_ids) > 0:
         perm_arr = np.asarray(analysis_layer.permute_ids[0])
         permute_fingerprint = hashlib.sha1(perm_arr.tobytes()).hexdigest()
     apply_trap_mp_fit(ww, analysis_layer, params)
-    trap_mode_indices = identify_trap_mode_indices(ww, analysis_layer)
+    W_perm = analysis_layer.Wmats[0]
+    U_perm, S_perm, Vh_perm = svd_full(W_perm)
+    trap_mode_indices = identify_trap_mode_indices(ww, analysis_layer, svals=S_perm)
 
     artifacts = []
     for i, trap_mode_index in enumerate(trap_mode_indices, start=1):
-        artifact = analyze_single_trap(ww, analysis_layer, trap_mode_index)
+        artifact = analyze_single_trap(ww, analysis_layer, trap_mode_index, U_perm=U_perm, S_perm=S_perm, Vh_perm=Vh_perm)
         artifact["trap_index"] = i
         artifact["T_orig_raw"] = artifact["T_orig_norm"] / analysis_layer.w_norm
         artifact["permute_fingerprint"] = permute_fingerprint
         artifacts.append(artifact)
 
+    if return_state:
+        state = {
+            "layer_id": int(getattr(ww_layer, "layer_id", -1)),
+            "permuted_ids": np.asarray(analysis_layer.permute_ids[0]).copy() if analysis_layer.permute_ids else None,
+            "permute_fingerprint": permute_fingerprint,
+            "U_perm": U_perm, "S_perm": S_perm, "Vh_perm": Vh_perm,
+            "trap_mode_indices": list(trap_mode_indices),
+            "artifacts": artifacts,
+            "already_randomized": bool(already_randomized),
+        }
+        return artifacts, state
     return artifacts
 
 
@@ -149,7 +174,7 @@ def make_stat_matched_random_matrix(T, rng):
     return np.mean(T) + np.std(T) * G
 
 
-def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=None):
+def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=None, trap_artifacts=None, trap_state=None):
     if params is None:
         params = DEFAULT_PARAMS.copy()
     if trap_indices is None or len(trap_indices) == 0:
@@ -174,13 +199,19 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     replacement_seed = None if layer_seed is None else layer_seed + 1
     replacement_rng = np.random.default_rng(replacement_seed)
 
-    artifacts = collect_trap_artifacts(
-        ww,
-        ww_layer,
-        params=params,
-        seed=None if permute_rng is not None else permute_seed,
-        rng=permute_rng,
-    )
+    artifacts = trap_artifacts
+    if artifacts is None and isinstance(trap_state, dict):
+        artifacts = trap_state.get("artifacts")
+    if artifacts is None:
+        artifacts = collect_trap_artifacts(
+            ww,
+            ww_layer,
+            params=params,
+            seed=None if permute_rng is not None else permute_seed,
+            rng=permute_rng,
+            already_randomized=bool(isinstance(trap_state, dict) and trap_state.get("already_randomized", False)),
+            permuted_ids=(trap_state.get("permuted_ids") if isinstance(trap_state, dict) else None),
+        )
     valid_indices = [idx for idx in requested if idx <= len(artifacts)]
     if len(valid_indices) < len(requested):
         logger.warning(
@@ -251,7 +282,7 @@ def _trap_indices_from_traps_df(traps):
 
 def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                  verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                 base_model=None, peft=DEFAULT_PEFT):
+                 base_model=None, peft=DEFAULT_PEFT, trap_artifacts=None, trap_state=None, already_randomized=False):
     # PR359 compatibility path: passing traps=<DataFrame> instead of trap_indices=[...]
     if trap_indices is None and traps is not None:
         trap_indices = _trap_indices_from_traps_df(traps)
@@ -269,6 +300,7 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
     params[PEFT] = peft
     params["seed"] = seed
     params["rng"] = _normalize_trap_rng(rng=rng, seed=seed)
+    params["already_randomized"] = bool(already_randomized)
 
     if not ww.__class__.valid_params(params):
         raise Exception(f"Error, params not valid: \n {params}")
@@ -288,13 +320,28 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
                     else:
                         raise ValueError("traps DataFrame must include trap_index")
 
-            pre_artifacts = collect_trap_artifacts(
-                ww,
-                ww_layer,
-                params=params,
-                seed=None if params["rng"] is not None else seed,
-                rng=params["rng"],
-            )
+            pre_artifacts = trap_artifacts
+            if pre_artifacts is None and isinstance(trap_state, dict):
+                layer_state = trap_state.get("layers", {}).get(int(ww_layer.layer_id), {})
+                pre_artifacts = layer_state.get("artifacts")
+            if pre_artifacts is None:
+                layer_perm = None
+                if isinstance(layer_state, dict) and layer_state.get("permuted_ids") is not None:
+                    layer_perm = layer_state.get("permuted_ids")
+                elif isinstance(trap_state, dict):
+                    pid_map = trap_state.get("permuted_ids", {})
+                    if isinstance(pid_map, dict):
+                        layer_perm = pid_map.get(int(ww_layer.layer_id))
+                pre_artifacts = collect_trap_artifacts(
+                    ww,
+                    ww_layer,
+                    params=params,
+                    seed=None if params["rng"] is not None else seed,
+                    rng=params["rng"],
+                    already_randomized=bool(already_randomized),
+                    permuted_ids=layer_perm,
+                )
+
             pre_by_index = {int(a["trap_index"]): a for a in pre_artifacts}
             identity_ok = True
             identity_reason = "ok"
@@ -320,7 +367,7 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
             if not identity_ok:
                 raise ValueError(f"Trap identity verification failed for layer {ww_layer.layer_id}: {identity_reason}")
 
-            apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"])
+            apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"], trap_artifacts=pre_artifacts, trap_state=(trap_state.get("layers", {}).get(int(ww_layer.layer_id), {}) if isinstance(trap_state, dict) else None))
             if verify_traps:
                 remaining = collect_trap_artifacts(
                     ww,
@@ -344,3 +391,41 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
         verify_df = pd.DataFrame.from_records(verify_rows)
         return model, verify_df
     return model
+
+
+def randomize_model(ww, model=None, layers=None, pool=True, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
+                    base_model=None, peft=DEFAULT_PEFT, rng=None, return_state=False):
+    """Return a randomized copy of model and per-layer permutation ids."""
+    if layers is None:
+        layers = []
+
+    randomized_model = copy.deepcopy(model if model is not None else ww.model)
+    ww.set_model_(randomized_model)
+
+    params = DEFAULT_PARAMS.copy()
+    params[POOL] = pool
+    params[LAYERS] = layers
+    params[START_IDS] = start_ids
+    params[SVD_METHOD] = svd_method
+    params[PEFT] = peft
+    params["rng"] = _normalize_trap_rng(rng=rng)
+
+    params = ww.normalize_params(params)
+    layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
+
+    permuted_ids = {}
+    layer_states = {}
+    for ww_layer in layer_iterator:
+        if not ww_layer.skipped and ww_layer.has_weights:
+            ww.apply_normalize_Wmats(ww_layer, params)
+            ww.apply_permute_W(ww_layer, params, rng=params["rng"])
+            if ww_layer.permute_ids:
+                pid = np.asarray(ww_layer.permute_ids[0]).copy()
+                lid = int(ww_layer.layer_id)
+                permuted_ids[lid] = pid
+                layer_states[lid] = {"layer_id": lid, "permuted_ids": pid, "permute_fingerprint": hashlib.sha1(pid.tobytes()).hexdigest(), "already_randomized": True}
+            ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, ww_layer.Wmats[0])
+
+    if return_state:
+        return randomized_model, {"permuted_ids": permuted_ids, "layers": layer_states, "already_randomized": True}
+    return randomized_model, permuted_ids

@@ -3904,11 +3904,11 @@ class WeightWatcher:
         trap_rows=[]; artifacts=[]
         pids = np.asarray(ww_layer.permute_ids[0]) if len(getattr(ww_layer,'permute_ids',[]))>0 else None
         fp = hashlib.sha1(pids.tobytes()).hexdigest() if pids is not None else None
-        for trap_index, mode_index in enumerate(trap_mode_indices):
+        for trap_index, mode_index in enumerate(trap_mode_indices, start=1):
             trap_row = self.analyze_single_trap(ww_layer, trap_mode_index=mode_index, original_basis_cache=original_basis_cache, params=params, trap_index=trap_index, bulk_stats=bulk_stats, precomputed_svd=(U_perm,S_perm,Vh_perm))
             trap_row.update(bulk_stats); trap_row['permute_fingerprint']=fp
             trap_rows.append(trap_row)
-            artifacts.append({"layer_id": int(ww_layer.layer_id), "trap_index": int(trap_index+1), "trap_mode_index": int(mode_index), "sigma_perm": float(S_perm[mode_index]), "permute_fingerprint": fp, "T_perm": trap_row.get("T_perm"), "T_orig_raw": trap_row.get("T_orig"), "u_trap_perm": U_perm[:, mode_index], "v_trap_perm": Vh_perm[mode_index, :]})
+            artifacts.append({"layer_id": int(ww_layer.layer_id), "trap_index": int(trap_index), "trap_mode_index": int(mode_index), "sigma_perm": float(S_perm[mode_index]), "permute_fingerprint": fp, "T_perm": trap_row.get("T_perm"), "T_orig_raw": trap_row.get("T_orig"), "u_trap_perm": U_perm[:, mode_index], "v_trap_perm": Vh_perm[mode_index, :]})
         if trap_rows:
             layer_trap_variance_burden = float(np.nansum([row.get("trap_variance_burden_old", np.nan) for row in trap_rows]))
             for row in trap_rows: row["layer_trap_variance_burden"] = layer_trap_variance_burden

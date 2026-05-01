@@ -165,7 +165,7 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
 
     requested = sorted(set(trap_indices))
     if any(idx < 1 for idx in requested):
-        raise ValueError("trap indices are 1-based and must be >= 1")
+        raise ValueError("trap_index values are 1-based; got 0")
 
     layer_seed = seed
     if layer_seed is None and isinstance(params, dict):
@@ -248,6 +248,8 @@ def _trap_indices_from_traps_df(traps):
     if "trap_index" not in trap_df.columns:
         raise ValueError("traps must include a 'trap_index' column")
     indices = trap_df["trap_index"].dropna().astype(int).tolist()
+    if any(i < 1 for i in indices):
+        raise ValueError("trap_index values are 1-based; got 0")
     indices = sorted(set(indices))
     if len(indices) == 0:
         raise ValueError("traps did not contain any valid trap_index values")
@@ -261,8 +263,8 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
     if trap_indices is None and traps is not None:
         trap_indices = _trap_indices_from_traps_df(traps)
 
-    if trap_indices is None or len(trap_indices) == 0:
-        raise ValueError("trap_indices must be provided and non-empty (or pass traps with trap_index column)")
+    if trap_indices is not None and len(trap_indices) == 0:
+        raise ValueError("trap_indices must be non-empty when provided")
 
     if randomized_model is None:
         raise ValueError("randomized_model must be provided")
@@ -284,6 +286,7 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
     layer_iterator = ww.make_layer_iterator(model=ww.model, layers=layers, params=params, base_model=base_model)
     verify_rows = []
     traps_df = pd.DataFrame(traps) if traps is not None else None
+    requested_trap_indices = trap_indices
     for ww_layer in layer_iterator:
         if not ww_layer.skipped and ww_layer.has_weights:
             layer_traps = None
@@ -291,19 +294,30 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
                 layer_traps = traps_df[traps_df["layer_id"].astype(int) == int(ww_layer.layer_id)].copy()
                 if len(layer_traps) > 0:
                     if "trap_index" in layer_traps.columns:
-                        trap_indices = sorted(set(layer_traps["trap_index"].dropna().astype(int).tolist()))
+                        selected_from_rows = sorted(set(layer_traps["trap_index"].dropna().astype(int).tolist()))
+                        if any(i < 1 for i in selected_from_rows):
+                            raise ValueError("trap_index values are 1-based; got 0")
                     else:
                         raise ValueError("traps DataFrame must include trap_index")
+                else:
+                    selected_from_rows = None
+            else:
+                selected_from_rows = None
+
+            layer_selected_trap_indices = selected_from_rows if selected_from_rows is not None else requested_trap_indices
 
             if trap_state is not None and int(ww_layer.layer_id) in trap_state.get("layers", {}):
-                trace_event("remove_traps_cached_start", phase="remove_traps", layer_id=int(ww_layer.layer_id), selected_trap_indices=list(trap_indices), cached=True)
                 layer_state = trap_state["layers"][int(ww_layer.layer_id)]
                 cached_artifacts = trap_artifacts if trap_artifacts is not None else layer_state.get("artifacts", [])
+                selected_trap_indices = layer_selected_trap_indices
+                if selected_trap_indices is None:
+                    selected_trap_indices = [int(a.get("trap_index", i + 1)) for i, a in enumerate(cached_artifacts)]
+                trace_event("remove_traps_cached_start", phase="remove_traps", layer_id=int(ww_layer.layer_id), selected_trap_indices=list(selected_trap_indices), cached=True)
                 old_W = ww_layer.Wmats[0]; new_W = old_W.copy()
                 selected_rows = layer_traps if layer_traps is not None and len(layer_traps) > 0 else None
                 used_t_perm = 0
                 rebuilt_t_perm = 0
-                for idx in trap_indices:
+                for idx in selected_trap_indices:
                     if idx < 1 or idx > len(cached_artifacts):
                         raise ValueError(f"trap_index {idx} out of range for cached artifacts in layer {ww_layer.layer_id}")
                     art = cached_artifacts[idx - 1]
@@ -335,7 +349,7 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
                     new_W = new_W - T_perm
                 ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
                 ww_layer.Wmats = [new_W]
-                trace_event("remove_traps_cached_end", phase="remove_traps", layer_id=int(ww_layer.layer_id), selected_trap_indices=list(trap_indices), cached_artifact_count=len(cached_artifacts), used_T_perm_count=used_t_perm, rebuilt_T_perm_count=rebuilt_t_perm, svd_calls_during_remove=0)
+                trace_event("remove_traps_cached_end", phase="remove_traps", layer_id=int(ww_layer.layer_id), selected_trap_indices=list(selected_trap_indices), cached_artifact_count=len(cached_artifacts), used_T_perm_count=used_t_perm, rebuilt_T_perm_count=rebuilt_t_perm, svd_calls_during_remove=0)
                 continue
 
             pre_artifacts = collect_trap_artifacts(
@@ -346,6 +360,7 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
                 rng=params["rng"],
             )
             pre_by_index = {int(a["trap_index"]): a for a in pre_artifacts}
+            selected_trap_indices = layer_selected_trap_indices if layer_selected_trap_indices is not None else sorted(pre_by_index.keys())
             identity_ok = True
             identity_reason = "ok"
             if layer_traps is not None and len(layer_traps) > 0:
@@ -370,7 +385,7 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
             if not identity_ok:
                 raise ValueError(f"Trap identity verification failed for layer {ww_layer.layer_id}: {identity_reason}")
 
-            apply_remove_traps(ww, ww_layer, trap_indices=trap_indices, params=params, seed=seed, rng=params["rng"])
+            apply_remove_traps(ww, ww_layer, trap_indices=selected_trap_indices, params=params, seed=seed, rng=params["rng"])
             if verify_traps:
                 remaining = collect_trap_artifacts(
                     ww,
@@ -382,7 +397,7 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
                 verify_rows.append(
                     {
                         "layer_id": int(ww_layer.layer_id),
-                        "requested_trap_indices": list(trap_indices),
+                        "requested_trap_indices": list(selected_trap_indices),
                         "identity_verified": bool(identity_ok),
                         "identity_reason": identity_reason,
                         "remaining_traps": len(remaining),

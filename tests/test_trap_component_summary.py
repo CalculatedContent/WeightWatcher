@@ -19,7 +19,7 @@ def test_top_trap_component_row_extracts_top_10_weight_and_coeff_pairs():
     row = {
         "layer_id": 7,
         "name": "dense",
-        "trap_index": 0,
+        "trap_index": 1,
         "trap_assessment": "mixed",
         "trap_risk_score": 0.4,
         "T_orig": trap,

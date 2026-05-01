@@ -228,6 +228,21 @@ class TestAnalyzeTraps(unittest.TestCase):
         self.assertFalse(any(c.startswith("trap_variance_burden__") for c in df.columns))
 
 
+
+    def test_analyze_traps_public_trap_indices_are_1_based(self):
+        df, trap_state = self.watcher.analyze_traps(plot=False, savefig=False, return_artifacts=True)
+        if len(df) == 0:
+            self.skipTest("No traps detected in this environment")
+        self.assertGreaterEqual(int(df["trap_index"].min()), 1)
+        for _, g in df.groupby("layer_id"):
+            vals = sorted(g["trap_index"].astype(int).tolist())
+            self.assertEqual(vals, list(range(1, len(vals) + 1)))
+        for lid, layer_state in trap_state.get("layers", {}).items():
+            arts = layer_state.get("artifacts", [])
+            if not arts:
+                continue
+            self.assertEqual([int(a["trap_index"]) for a in arts], list(range(1, len(arts) + 1)))
+
     def test_analyze_traps_fast_mode_skips_original_basis(self):
         from unittest.mock import patch
         with patch.object(ww.WeightWatcher, "compute_original_basis_for_traps", side_effect=AssertionError("should not call")):

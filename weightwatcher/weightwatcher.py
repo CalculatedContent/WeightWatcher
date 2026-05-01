@@ -3758,7 +3758,7 @@ class WeightWatcher:
                 top_sector_l=1,
                 randomized_model=None,
                 trap_state=None,
-                return_artifacts=False,
+                return_artifacts=True,
                 permuted_ids=None,
                 trap_burden_mode="fast",
                 compute_original_basis=None,

@@ -59,7 +59,7 @@ def analyze_traps(
     bulk_mode_sample=10,
     compute_original_trap_svd=None,
     trap_state=None,
-    return_artifacts=False,
+    return_artifacts=True,
     permuted_ids=None,
     already_randomized=False,
 ):

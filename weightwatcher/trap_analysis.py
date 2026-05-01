@@ -37,7 +37,7 @@ def analyze_traps(
     max_size=None,
     max_N=wwcore.DEFAULT_MAX_N,
     glorot_fix=False,
-    plot=True,
+    plot=False,
     savefig=wwcore.DEF_SAVE_DIR,
     conv2d_norm=True,
     ww2x=wwcore.DEFAULT_WW2X,

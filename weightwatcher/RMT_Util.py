@@ -2,6 +2,8 @@
 import logging
 from copy import deepcopy
 import pickle, time
+import inspect
+from .compute_trace import trace_event
 from shutil import copy
 import sys, os
 import warnings
@@ -278,9 +280,20 @@ def eig_full(W, method=ACCURATE_SVD):
     if method == FAST_SVD:     return _eig_full_fast(W)
 
 def svd_full(W, method=ACCURATE_SVD):
-    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 
-    if method == ACCURATE_SVD: return _svd_full_accurate(W)
-    if method == FAST_SVD:     return _svd_full_fast(W)
+    assert method.lower() in [ACCURATE_SVD, FAST_SVD], method
+    caller = inspect.stack()[1]
+    caller_module = caller.frame.f_globals.get("__name__", "")
+    caller_function = caller.function
+    shape = tuple(np.asarray(W).shape)
+    trace_event("svd_full_start", matrix_shape=shape, method=method, caller_module=caller_module, caller_function=caller_function)
+    t0 = time.perf_counter()
+    if method == ACCURATE_SVD:
+        out = _svd_full_accurate(W)
+    else:
+        out = _svd_full_fast(W)
+    elapsed_ms = 1000.0 * (time.perf_counter() - t0)
+    trace_event("svd_full_end", matrix_shape=shape, method=method, elapsed_ms=elapsed_ms, caller_module=caller_module, caller_function=caller_function)
+    return out
 
 def svd_vals(W, method=ACCURATE_SVD):
     assert method.lower() in [ACCURATE_SVD, FAST_SVD], method 

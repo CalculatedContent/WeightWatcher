@@ -9,6 +9,7 @@ from .constants import DEFAULT_PARAMS, DEFAULT_START_ID, FAST_SVD, LAYER_TYPE, P
 from .constants import LAYERS
 from .constants import WW_NAME
 from .trap_histograms import plot_layer_trap_weight_histogram
+from .compute_trace import trace_event
 
 logger = logging.getLogger(WW_NAME)
 
@@ -129,6 +130,7 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
     apply_trap_mp_fit(ww, analysis_layer, params)
     trap_mode_indices = identify_trap_mode_indices(ww, analysis_layer)
 
+    trace_event("collect_trap_artifacts_start", phase="analyze_traps", layer_id=int(ww_layer.layer_id))
     artifacts = []
     for i, trap_mode_index in enumerate(trap_mode_indices, start=1):
         artifact = analyze_single_trap(ww, analysis_layer, trap_mode_index)
@@ -137,6 +139,7 @@ def collect_trap_artifacts(ww, ww_layer, params=None, seed=None, rng=None):
         artifact["permute_fingerprint"] = permute_fingerprint
         artifacts.append(artifact)
 
+    trace_event("collect_trap_artifacts_end", phase="analyze_traps", layer_id=int(ww_layer.layer_id), trap_count=len(artifacts))
     return artifacts
 
 
@@ -296,10 +299,13 @@ def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=
                         raise ValueError("traps DataFrame must include trap_index")
 
             if trap_state is not None and int(ww_layer.layer_id) in trap_state.get("layers", {}):
+                trace_event("remove_traps_cached_start", phase="remove_traps", layer_id=int(ww_layer.layer_id), selected_trap_indices=list(trap_indices), cached=True)
                 layer_state = trap_state["layers"][int(ww_layer.layer_id)]
                 cached_artifacts = trap_artifacts if trap_artifacts is not None else layer_state.get("artifacts", [])
                 old_W = ww_layer.Wmats[0]; new_W = old_W.copy()
                 selected_rows = layer_traps if layer_traps is not None and len(layer_traps) > 0 else None
+                used_t_perm = 0
+                rebuilt_t_perm = 0
                 for idx in trap_indices:
                     if idx < 1 or idx > len(cached_artifacts):
                         raise ValueError(f"trap_index {idx} out of range for cached artifacts in layer {ww_layer.layer_id}")
@@ -321,14 +327,18 @@ def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=
                         v_trap_perm = art.get("v_trap_perm", None)
                         if sigma_perm is not None and u_trap_perm is not None and v_trap_perm is not None:
                             T_perm = float(sigma_perm) * np.outer(np.asarray(u_trap_perm), np.asarray(v_trap_perm))
+                            rebuilt_t_perm += 1
                         else:
                             raise ValueError(
                                 f"Missing trap artifact tensor for layer_id={ww_layer.layer_id}, trap_index={idx}: "
                                 "need T_perm or (sigma_perm, u_trap_perm, v_trap_perm)"
                             )
+                    else:
+                        used_t_perm += 1
                     new_W = new_W - T_perm
                 ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
                 ww_layer.Wmats = [new_W]
+                trace_event("remove_traps_cached_end", phase="remove_traps", layer_id=int(ww_layer.layer_id), selected_trap_indices=list(trap_indices), cached_artifact_count=len(cached_artifacts), used_T_perm_count=used_t_perm, rebuilt_T_perm_count=rebuilt_t_perm, svd_calls_during_remove=0)
                 continue
 
             pre_artifacts = collect_trap_artifacts(

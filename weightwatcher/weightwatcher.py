@@ -45,6 +45,7 @@ from .RMT_Util import *
 from .constants import *
 from .WW_powerlaw import *
 from . import remove_traps as remove_traps_ops
+from .compute_trace import trace_event
 
 
 # WW_NAME moved to constants.py
@@ -3733,6 +3734,7 @@ class WeightWatcher:
             fp = hashlib.sha1(pids.tobytes()).hexdigest()
             trap_state["layers"][lid] = {"layer_id": lid, "permuted_ids": pids, "permute_fingerprint": fp, "already_randomized": True}
             self.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, W_perm)
+            trace_event("randomize_model_layer", phase="randomize_model", layer_id=lid, layer_name=ww_layer.name, matrix_shape=tuple(W_perm.shape), dtype=str(W_perm.dtype))
 
         return (randomized_model, trap_state) if return_state else (randomized_model, permuted_ids)
 
@@ -3892,6 +3894,7 @@ class WeightWatcher:
                 f"Missing permute_ids for already-randomized layer_id={ww_layer.layer_id}. "
                 "Pass trap_state/permuted_ids and restrict analyze_traps() layers to randomized layers."
             )
+        trace_event("analyze_traps_layer_start", phase="analyze_traps", layer_id=int(ww_layer.layer_id), layer_name=ww_layer.name, trap_burden_mode=params.get("trap_burden_mode"), bulk_mode_sample=params.get("bulk_mode_sample"), cached=bool(params.get("already_randomized", False)))
         W_perm = ww_layer.Wmats[0].astype(float)
         U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params, svals=S_perm, evals_desc=S_perm*S_perm)
@@ -3909,6 +3912,8 @@ class WeightWatcher:
             for row in trap_rows: row["layer_trap_variance_burden"] = layer_trap_variance_burden
 
         layer_state={"layer_id": int(ww_layer.layer_id), "name": ww_layer.name, "longname": ww_layer.longname, "permuted_ids": pids, "permute_fingerprint": fp, "W_perm_shape": tuple(W_perm.shape), "U_perm": U_perm, "S_perm": S_perm, "Vh_perm": Vh_perm, "trap_mode_indices": [int(i) for i in trap_mode_indices], "artifacts": artifacts, "trap_rows": trap_rows, "bulk_stats": bulk_stats, "already_randomized": bool(params.get('already_randomized',False))}
+        trace_event("trap_artifacts_cached", phase="analyze_traps", layer_id=int(ww_layer.layer_id), trap_count=len(artifacts), cached=True)
+        trace_event("analyze_traps_layer_end", phase="analyze_traps", layer_id=int(ww_layer.layer_id), trap_count=len(trap_rows))
         if not params.get("already_randomized", False): self.apply_unpermute_W(ww_layer, params)
         return (trap_rows, layer_state) if params.get("return_artifacts") else trap_rows
 
@@ -4011,6 +4016,8 @@ class WeightWatcher:
                 "bulk_ipr_std": np.nan,
             }
 
+        trace_event("analyze_traps_layer_start", phase="analyze_traps", layer_id=int(ww_layer.layer_id), layer_name=ww_layer.name, trap_burden_mode=params.get("trap_burden_mode"), bulk_mode_sample=params.get("bulk_mode_sample"), cached=bool(params.get("already_randomized", False)))
+        trace_event("full_bulk_metrics", phase="analyze_traps", layer_id=int(ww_layer.layer_id), mode="full")
         W_perm = ww_layer.Wmats[0].astype(float)
         p_ids = ww_layer.permute_ids[0]
         U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
@@ -4081,7 +4088,8 @@ class WeightWatcher:
             bulk_indices = sorted(rng.choice(bulk_indices, size=int(sample), replace=False).tolist())
 
         if len(bulk_indices) == 0:
-            return {"bulk_mode_count": bulk_mode_count, "bulk_mode_sample_used": 0, "bulk_localization_mean": np.nan, "bulk_localization_std": np.nan, "bulk_top_5_mass_mean": np.nan, "bulk_top_5_mass_std": np.nan, "bulk_top_10_mass_mean": np.nan, "bulk_top_10_mass_std": np.nan, "bulk_ipr_mean": np.nan, "bulk_ipr_std": np.nan}
+            trace_event("fast_bulk_metrics", phase="analyze_traps", layer_id=int(ww_layer.layer_id), mode="fast", available_bulk_modes=bulk_mode_count, sampled_bulk_modes=0, bulk_mode_sample=sample)
+            return {"bulk_mode_count": bulk_mode_count, "bulk_mode_sample_used": 0, "available_bulk_modes": bulk_mode_count, "sampled_bulk_modes": 0, "bulk_mode_sample": sample, "bulk_localization_mean": np.nan, "bulk_localization_std": np.nan, "bulk_top_5_mass_mean": np.nan, "bulk_top_5_mass_std": np.nan, "bulk_top_10_mass_mean": np.nan, "bulk_top_10_mass_std": np.nan, "bulk_ipr_mean": np.nan, "bulk_ipr_std": np.nan}
         loc=[]; top5=[]; top10=[]; ipr=[]
         for mode_idx in bulk_indices:
             u_mode = U_perm[:, mode_idx]; v_mode = Vh_perm[mode_idx, :]
@@ -4091,13 +4099,16 @@ class WeightWatcher:
             top5.append(0.5*(float(np.sum(np.partition(ua,-max(1,int(np.ceil(0.05*ua.size))))[-max(1,int(np.ceil(0.05*ua.size))):]))/(np.sum(ua)+1e-12)+float(np.sum(np.partition(va,-max(1,int(np.ceil(0.05*va.size))))[-max(1,int(np.ceil(0.05*va.size))):]))/(np.sum(va)+1e-12)))
             top10.append(0.5*(float(np.sum(np.partition(ua,-max(1,int(np.ceil(0.1*ua.size))))[-max(1,int(np.ceil(0.1*ua.size))):]))/(np.sum(ua)+1e-12)+float(np.sum(np.partition(va,-max(1,int(np.ceil(0.1*va.size))))[-max(1,int(np.ceil(0.1*va.size))):]))/(np.sum(va)+1e-12)))
             ipr.append(0.5*(float(np.sum(u_mode**4))+float(np.sum(v_mode**4))))
-        return {"bulk_mode_count": bulk_mode_count, "bulk_mode_sample_used": int(len(bulk_indices)), "bulk_localization_mean": float(np.nanmean(loc)), "bulk_localization_std": float(np.nanstd(loc)), "bulk_top_5_mass_mean": float(np.nanmean(top5)), "bulk_top_5_mass_std": float(np.nanstd(top5)), "bulk_top_10_mass_mean": float(np.nanmean(top10)), "bulk_top_10_mass_std": float(np.nanstd(top10)), "bulk_ipr_mean": float(np.nanmean(ipr)), "bulk_ipr_std": float(np.nanstd(ipr))}
+        sampled = int(len(bulk_indices))
+        trace_event("fast_bulk_metrics", phase="analyze_traps", layer_id=int(ww_layer.layer_id), mode="fast", available_bulk_modes=bulk_mode_count, sampled_bulk_modes=sampled, bulk_mode_sample=sample)
+        return {"bulk_mode_count": bulk_mode_count, "bulk_mode_sample_used": sampled, "available_bulk_modes": bulk_mode_count, "sampled_bulk_modes": sampled, "bulk_mode_sample": sample, "bulk_localization_mean": float(np.nanmean(loc)), "bulk_localization_std": float(np.nanstd(loc)), "bulk_top_5_mass_mean": float(np.nanmean(top5)), "bulk_top_5_mass_std": float(np.nanstd(top5)), "bulk_top_10_mass_mean": float(np.nanmean(top10)), "bulk_top_10_mass_std": float(np.nanstd(top10)), "bulk_ipr_mean": float(np.nanmean(ipr)), "bulk_ipr_std": float(np.nanstd(ipr))}
 
     def compute_original_basis_for_traps(self, ww_layer, params=None):
         if params is None: params = DEFAULT_PARAMS.copy()
         if len(ww_layer.Wmats) != 1:
             return None
 
+        trace_event("original_basis_metrics", phase="analyze_traps", layer_id=int(ww_layer.layer_id))
         W_true = ww_layer.Wmats[0].astype(float)
         U0, S0, V0h = svd_full(W_true, method=params[SVD_METHOD])
         return {
@@ -4115,6 +4126,8 @@ class WeightWatcher:
         if bulk_stats is None:
             bulk_stats = {}
 
+        trace_event("analyze_traps_layer_start", phase="analyze_traps", layer_id=int(ww_layer.layer_id), layer_name=ww_layer.name, trap_burden_mode=params.get("trap_burden_mode"), bulk_mode_sample=params.get("bulk_mode_sample"), cached=bool(params.get("already_randomized", False)))
+        trace_event("full_bulk_metrics", phase="analyze_traps", layer_id=int(ww_layer.layer_id), mode="full")
         W_perm = ww_layer.Wmats[0].astype(float)
         p_ids = ww_layer.permute_ids[0]
 
@@ -4135,6 +4148,7 @@ class WeightWatcher:
         top_10_mass = self._top_percent_abs_mass(T_orig, 10.0)
 
         if params.get("compute_original_trap_svd", True):
+            trace_event("original_trap_svd", phase="analyze_traps", layer_id=int(ww_layer.layer_id))
             Ut, St, Vht = svd_full(T_orig, method=params[SVD_METHOD])
             u_trap = Ut[:, 0]
             v_trap = Vht.T[:, 0]

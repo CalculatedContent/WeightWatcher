@@ -262,7 +262,10 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
         trap_indices = _trap_indices_from_traps_df(traps)
 
     if trap_indices is None or len(trap_indices) == 0:
-        raise ValueError("trap_indices must be provided and non-empty (or pass traps with trap_index column)")
+        hint = "trap_indices must be provided and non-empty (or pass traps with trap_index column)"
+        if trap_state is not None:
+            hint += "; trap_state caches artifacts/permutations but does not select which traps to remove"
+        raise ValueError(hint)
 
     if randomized_model is None:
         raise ValueError("randomized_model must be provided")

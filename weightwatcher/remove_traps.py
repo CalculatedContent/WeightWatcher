@@ -314,7 +314,18 @@ def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=
                                 raise ValueError(f"Trap identity mismatch layer_id={ww_layer.layer_id}, trap_index={idx}: sigma_perm")
                             if "permute_fingerprint" in trow and pd.notna(trow.get("permute_fingerprint")) and str(trow["permute_fingerprint"]) != str(art.get("permute_fingerprint")):
                                 raise ValueError(f"Trap identity mismatch layer_id={ww_layer.layer_id}, trap_index={idx}: permute_fingerprint")
-                    T_perm = art["T_perm"]
+                    T_perm = art.get("T_perm", None)
+                    if T_perm is None:
+                        sigma_perm = art.get("sigma_perm", None)
+                        u_trap_perm = art.get("u_trap_perm", None)
+                        v_trap_perm = art.get("v_trap_perm", None)
+                        if sigma_perm is not None and u_trap_perm is not None and v_trap_perm is not None:
+                            T_perm = float(sigma_perm) * np.outer(np.asarray(u_trap_perm), np.asarray(v_trap_perm))
+                        else:
+                            raise ValueError(
+                                f"Missing trap artifact tensor for layer_id={ww_layer.layer_id}, trap_index={idx}: "
+                                "need T_perm or (sigma_perm, u_trap_perm, v_trap_perm)"
+                            )
                     new_W = new_W - T_perm
                 ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
                 ww_layer.Wmats = [new_W]

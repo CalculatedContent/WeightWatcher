@@ -3868,6 +3868,11 @@ class WeightWatcher:
         else:
             self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
+        if params.get("already_randomized", False) and len(getattr(ww_layer, "permute_ids", [])) == 0:
+            raise ValueError(
+                f"Missing permute_ids for already-randomized layer_id={ww_layer.layer_id}. "
+                "Pass trap_state/permuted_ids and restrict analyze_traps() layers to randomized layers."
+            )
         W_perm = ww_layer.Wmats[0].astype(float)
         U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params, svals=S_perm, evals_desc=S_perm*S_perm)

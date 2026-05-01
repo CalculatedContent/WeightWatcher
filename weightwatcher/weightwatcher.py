@@ -3880,8 +3880,17 @@ class WeightWatcher:
         if sample_n is None:
             sample_n = 10
         if sample_n is not None and len(bulk_indices) > int(sample_n):
-            idx = np.linspace(0, len(bulk_indices) - 1, int(sample_n), dtype=int)
-            bulk_indices = [bulk_indices[i] for i in idx]
+            sample_n = int(sample_n)
+            seed = params.get("seed", 12345) if isinstance(params, dict) else 12345
+            rs = np.random.RandomState(int(seed) if seed is not None else 12345)
+            edges = np.linspace(0, len(bulk_indices), sample_n + 1, dtype=int)
+            sampled = []
+            for i in range(sample_n):
+                lo, hi = edges[i], edges[i + 1]
+                if hi <= lo:
+                    continue
+                sampled.append(bulk_indices[rs.randint(lo, hi)])
+            bulk_indices = sampled if len(sampled) > 0 else bulk_indices[:sample_n]
         bulk_ipr_vals = []
         bulk_loc_vals = []
         top5_vals = []

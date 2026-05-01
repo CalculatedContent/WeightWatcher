@@ -171,14 +171,14 @@ def analyze_traps(
                 if params.get(wwcore.PLOT, False):
                     trap_infos = []
                     for row in layer_rows:
-                        trap_idx_zero_based = int(row.get("trap_index", -1))
+                        trap_idx_one_based = int(row.get("trap_index", -1))
                         trap_matrix = row.get("T_orig", None)
-                        if trap_idx_zero_based < 0 or trap_matrix is None:
+                        if trap_idx_one_based < 1 or trap_matrix is None:
                             continue
 
                         trap_infos.append(
                             {
-                                "trap_index": trap_idx_zero_based + 1,
+                                "trap_index": trap_idx_one_based,
                                 "trap_matrix": trap_matrix,
                                 "trap_assessment": row.get("trap_assessment", "mixed"),
                                 "trap_risk_score": row.get("trap_risk_score", 0.0),
@@ -238,7 +238,7 @@ def _top_trap_component_row(row, weight_matrix, top_k=10):
     out = {
         "layer_id": row.get("layer_id"),
         "name": row.get("name"),
-        "trap_index": int(row.get("trap_index", -1)) + 1,
+        "trap_index": int(row.get("trap_index", -1)),
         "trap_assessment": row.get("trap_assessment", "mixed"),
         "trap_risk_score": float(row.get("trap_risk_score", 0.0)),
     }

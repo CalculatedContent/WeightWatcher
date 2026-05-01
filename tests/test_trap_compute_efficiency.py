@@ -45,10 +45,7 @@ class SVDCallCounter:
 
 
 def _normalize_selected(df):
-    selected = df.copy()
-    if "trap_index" in selected.columns and selected["trap_index"].min() == 0:
-        selected["trap_index"] = selected["trap_index"].astype(int) + 1
-    return selected
+    return df.copy()
 
 
 def _workflow(monkeypatch):

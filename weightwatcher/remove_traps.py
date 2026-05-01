@@ -307,7 +307,11 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
                 cached_artifacts = trap_artifacts if trap_artifacts is not None else layer_state.get("artifacts", [])
                 selected_trap_indices = layer_selected_trap_indices
                 if selected_trap_indices is None:
-                    selected_trap_indices = [int(a.get("trap_index", i + 1)) for i, a in enumerate(cached_artifacts)]
+                    if any("trap_index" not in a for a in cached_artifacts):
+                        raise ValueError(
+                            f"cached trap artifacts for layer {ww_layer.layer_id} are missing required one-based trap_index values"
+                        )
+                    selected_trap_indices = [int(a["trap_index"]) for a in cached_artifacts]
                 trace_event("remove_traps_cached_start", phase="remove_traps", layer_id=int(ww_layer.layer_id), selected_trap_indices=list(selected_trap_indices), cached=True)
                 old_W = ww_layer.Wmats[0]; new_W = old_W.copy()
                 selected_rows = layer_traps if layer_traps is not None and len(layer_traps) > 0 else None

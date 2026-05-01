@@ -1,6 +1,7 @@
 import inspect
 import pytest
 import numpy as np
+import pandas as pd
 torch = pytest.importorskip("torch")
 import weightwatcher as ww
 from weightwatcher.RMT_Util import permute_matrix, unpermute_matrix
@@ -142,3 +143,17 @@ def test_rmt_util_unpermutes_randomized_layer_weight():
     assert np.allclose(W_recon, original)
     W_perm2, pids2 = permute_matrix(original, rng=123)
     assert np.allclose(unpermute_matrix(W_perm2, pids2), original)
+
+
+def test_remove_traps_rejects_zero_based_public_trap_index():
+    model = torch.nn.Sequential(torch.nn.Linear(16, 12, bias=False))
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True, pool=False)
+    with pytest.raises(ValueError, match="trap_index values are 1-based; got 0"):
+        watcher.remove_traps(
+            randomized_model=randomized_model,
+            traps=pd.DataFrame([{"layer_id": int(sorted(trap_state["permuted_ids"].keys())[0]), "trap_index": 0}]),
+            trap_state=trap_state,
+            plot=False,
+            pool=False,
+        )

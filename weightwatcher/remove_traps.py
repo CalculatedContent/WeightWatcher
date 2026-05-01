@@ -165,7 +165,7 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
 
     requested = sorted(set(trap_indices))
     if any(idx < 1 for idx in requested):
-        raise ValueError("trap indices are 1-based and must be >= 1")
+        raise ValueError("trap_index values are 1-based; got 0")
 
     layer_seed = seed
     if layer_seed is None and isinstance(params, dict):
@@ -248,6 +248,8 @@ def _trap_indices_from_traps_df(traps):
     if "trap_index" not in trap_df.columns:
         raise ValueError("traps must include a 'trap_index' column")
     indices = trap_df["trap_index"].dropna().astype(int).tolist()
+    if any(i < 1 for i in indices):
+        raise ValueError("trap_index values are 1-based; got 0")
     indices = sorted(set(indices))
     if len(indices) == 0:
         raise ValueError("traps did not contain any valid trap_index values")

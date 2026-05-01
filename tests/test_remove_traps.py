@@ -201,7 +201,7 @@ def test_remove_traps_public_api_direct_call(monkeypatch):
     )
 
     out_model = watcher.remove_traps(
-        model={"dummy_weight": np.array([1.0])},
+        randomized_model={"dummy_weight": np.array([1.0])},
         layers=[],
         trap_indices=[1],
         seed=77,
@@ -234,7 +234,7 @@ def test_remove_traps_accepts_traps_dataframe_and_returns_verify_df(monkeypatch)
         "trap_variance_burden": 0.4,
     }])
     out_model, verify_df = watcher.remove_traps(
-        model={"dummy_weight": np.array([1.0])},
+        randomized_model={"dummy_weight": np.array([1.0])},
         layers=[],
         traps=trap_df,
         seed=88,
@@ -261,7 +261,7 @@ def test_remove_traps_rejects_identity_mismatch(monkeypatch):
 
     with pytest.raises(ValueError):
         watcher.remove_traps(
-            model={"dummy_weight": np.array([1.0])},
+        randomized_model={"dummy_weight": np.array([1.0])},
             layers=[],
             traps=pd.DataFrame([{"layer_id": int(ww_layer.layer_id), "trap_index": 1, "trap_mode_index": 999999}]),
             seed=88,
@@ -284,7 +284,7 @@ def test_remove_traps_invalid_indices_warns_and_skips(monkeypatch, caplog):
 
     caplog.set_level("WARNING")
     watcher.remove_traps(
-        model={"dummy_weight": np.array([1.0])},
+        randomized_model={"dummy_weight": np.array([1.0])},
         layers=[],
         trap_indices=[1, 2, 3],
         seed=77,
@@ -415,7 +415,8 @@ def test_remove_traps_preserves_pytorch_layer_dtype_and_forward_pass():
     dense_rows = details[details["layer_type"].astype(str).str.contains("dense", case=False)]
     target_layer_id = int(dense_rows.iloc[0]["layer_id"])
 
-    watcher.remove_traps(model=model, layers=[target_layer_id], trap_indices=[1], seed=99, pool=True, plot=False)
+    randomized_model = watcher.randomize_model(model=model, layers=[target_layer_id], rng=99, pool=True)
+    watcher.remove_traps(randomized_model=randomized_model, layers=[target_layer_id], trap_indices=[1], seed=99, pool=True, plot=False)
 
     assert first_linear.weight.dtype == orig_weight_dtype == torch.float32
     assert first_linear.weight.device == orig_weight_device
@@ -444,7 +445,8 @@ def test_remove_traps_preserves_pytorch_layer_dtype_and_forward_pass():
         details_mps = watcher_mps.describe(model=model_mps, pool=True)
         dense_rows_mps = details_mps[details_mps["layer_type"].astype(str).str.contains("dense", case=False)]
         target_layer_id_mps = int(dense_rows_mps.iloc[0]["layer_id"])
-        watcher_mps.remove_traps(model=model_mps, layers=[target_layer_id_mps], trap_indices=[1], seed=99, pool=True, plot=False)
+        randomized_model_mps = watcher_mps.randomize_model(model=model_mps, layers=[target_layer_id_mps], rng=99, pool=True)
+        watcher_mps.remove_traps(randomized_model=randomized_model_mps, layers=[target_layer_id_mps], trap_indices=[1], seed=99, pool=True, plot=False)
 
         assert model_mps[1].weight.dtype == torch.float32
         assert model_mps[1].weight.device.type == "mps"

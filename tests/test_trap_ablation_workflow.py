@@ -34,7 +34,7 @@ def test_randomized_model_analyze_then_remove_full_workflow_fast_mode():
     ablated_model = watcher.remove_traps(randomized_model=randomized_model, traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
     assert not torch.allclose(old, ablated_model.fc.weight.detach())
     with pytest.raises(ValueError):
-        watcher.remove_traps(model=model, traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
+        watcher.remove_traps(traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
 
 def test_public_api_signatures():
     rz = inspect.signature(ww.WeightWatcher.randomize_model)

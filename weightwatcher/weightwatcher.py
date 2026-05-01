@@ -6110,12 +6110,12 @@ class WeightWatcher:
         """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
-    def remove_traps(self, model=None, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
+    def remove_traps(self, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                      verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
                      base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
-            self, model=model, randomized_model=randomized_model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
+            self, randomized_model=randomized_model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
             pool=pool, plot=plot, verify_traps=verify_traps, return_analyze=return_analyze,
             start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft, trap_state=trap_state, trap_artifacts=trap_artifacts
         )

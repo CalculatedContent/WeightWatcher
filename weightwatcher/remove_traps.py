@@ -254,7 +254,7 @@ def _trap_indices_from_traps_df(traps):
     return indices
 
 
-def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
+def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                  verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
                  base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None):
     # PR359 compatibility path: passing traps=<DataFrame> instead of trap_indices=[...]
@@ -264,12 +264,9 @@ def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=
     if trap_indices is None or len(trap_indices) == 0:
         raise ValueError("trap_indices must be provided and non-empty (or pass traps with trap_index column)")
 
-    if model is not None and randomized_model is not None:
-        raise ValueError("Pass either model or randomized_model, not both")
-    if trap_state is not None and randomized_model is None:
-        raise ValueError("trap_state-based remove_traps requires randomized_model")
-    active_model = randomized_model if randomized_model is not None else model
-    ww.set_model_(active_model)
+    if randomized_model is None:
+        raise ValueError("randomized_model must be provided")
+    ww.set_model_(randomized_model)
     params = DEFAULT_PARAMS.copy()
     params[POOL] = pool
     params[LAYERS] = layers
@@ -395,5 +392,5 @@ def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=
 
     if return_analyze:
         verify_df = pd.DataFrame.from_records(verify_rows)
-        return active_model, verify_df
-    return active_model
+        return randomized_model, verify_df
+    return randomized_model

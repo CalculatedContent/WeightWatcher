@@ -76,7 +76,25 @@ def analyze_traps_bundle(model_or_watcher, layers=None, save_bundle=False, bundl
     params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng, seed=seed)
     params = watcher.normalize_params(params)
 
-    trap_df = watcher.analyze_traps(model=model, layers=layers or [], plot=plot, pool=pool, rng=rng if rng is not None else seed)
+    randomized_model, trap_state = watcher.randomize_model(
+        model=model,
+        layers=layers or [],
+        rng=rng if rng is not None else seed,
+        return_state=True,
+        pool=pool,
+    )
+    trap_df, trap_state = watcher.analyze_traps(
+        randomized_model=randomized_model,
+        layers=layers or [],
+        trap_state=trap_state,
+        return_artifacts=True,
+        trap_burden=True,
+        trap_burden_mode="fast",
+        bulk_mode_sample=10,
+        plot=plot,
+        pool=pool,
+        rng=rng if rng is not None else seed,
+    )
     bundles = {}
     rows = []
     layer_iterator = watcher.make_layer_iterator(model=watcher.model, layers=layers or [], params=params, base_model=watcher.base_model)
@@ -86,16 +104,13 @@ def analyze_traps_bundle(model_or_watcher, layers=None, save_bundle=False, bundl
         layer_traps = trap_df[trap_df["layer_id"].astype(int) == int(ww_layer.layer_id)].copy()
         if len(layer_traps) == 0:
             continue
-        analysis_layer = ww_layer.copy()
-        analysis_layer.Wmats = [ww_layer.Wmats[0].copy()]
-        analysis_layer.w_norm = 1.0
-        analysis_layer.permute_ids = []
-        watcher.apply_normalize_Wmats(analysis_layer, params)
-        watcher.apply_permute_W(analysis_layer, params, rng=params["rng"])
-        W_perm = analysis_layer.Wmats[0].copy()
-        permute_ids = np.asarray(analysis_layer.permute_ids[0]).copy()
-        fp = _fingerprint_perm(permute_ids)
-        U, S, Vh = remove_traps_ops.svd_full(W_perm)
+        layer_state = (trap_state or {}).get("layers", {}).get(int(ww_layer.layer_id), {})
+        W_perm = np.asarray(layer_state.get("W_perm", ww_layer.Wmats[0])).copy()
+        permute_ids = np.asarray(layer_state.get("permuted_ids")) if layer_state.get("permuted_ids") is not None else None
+        fp = layer_state.get("permute_fingerprint") or (_fingerprint_perm(permute_ids) if permute_ids is not None else "")
+        U = np.asarray(layer_state.get("U_perm"))
+        S = np.asarray(layer_state.get("S_perm"))
+        Vh = np.asarray(layer_state.get("Vh_perm"))
 
         layer_traps["permute_fingerprint"] = fp
         layer_traps["bundle_id"] = f"{checkpoint_id}:{ww_layer.layer_id}:{fp}"

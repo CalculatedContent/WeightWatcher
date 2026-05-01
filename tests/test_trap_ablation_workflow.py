@@ -35,6 +35,9 @@ def test_randomized_model_analyze_then_remove_full_workflow_fast_mode():
         watcher.remove_traps(model=model, traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
 
 def test_public_api_signatures():
+    rz = inspect.signature(ww.WeightWatcher.randomize_model)
+    for name in ["model","layers","rng","return_state","pool","start_ids","svd_method","base_model","peft"]:
+        assert name in rz.parameters
     a = inspect.signature(ww.WeightWatcher.analyze_traps)
     for name in ["randomized_model","trap_state","return_artifacts","trap_burden_mode","bulk_mode_sample","compute_original_basis","compute_full_bulk_reference","compute_original_trap_svd"]:
         assert name in a.parameters

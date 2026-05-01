@@ -3694,6 +3694,37 @@ class WeightWatcher:
         return self.details
 
 
+
+    def randomize_model(self, model=None, layers=[], rng=None, return_state=False, pool=True,
+                        start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
+        import copy, hashlib
+        randomized_model = copy.deepcopy(model)
+        self.set_model_(randomized_model, base_model)
+        params = DEFAULT_PARAMS.copy()
+        params[POOL] = pool
+        params[LAYERS] = layers
+        params[START_IDS] = start_ids
+        params[SVD_METHOD] = svd_method
+        params[PEFT] = peft
+        params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng)
+        params = self.normalize_params(params)
+
+        permuted_ids = {}
+        trap_state = {"already_randomized": True, "permuted_ids": permuted_ids, "layers": {}}
+        layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=self.base_model)
+        for ww_layer in layer_iterator:
+            if ww_layer.skipped or not ww_layer.has_weights or len(ww_layer.Wmats) != 1:
+                continue
+            self.apply_normalize_Wmats(ww_layer, params)
+            self.apply_permute_W(ww_layer, params, rng=params.get("rng"))
+            pids = np.asarray(ww_layer.permute_ids[0]).copy()
+            permuted_ids[int(ww_layer.layer_id)] = pids
+            fp = hashlib.sha1(pids.tobytes()).hexdigest()
+            trap_state["layers"][int(ww_layer.layer_id)] = {"layer_id": int(ww_layer.layer_id), "permuted_ids": pids, "permute_fingerprint": fp, "already_randomized": True}
+            self.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, ww_layer.Wmats[0])
+
+        return (randomized_model, trap_state) if return_state else (randomized_model, permuted_ids)
+
     def analyze_traps(self, model=None, layers=[],
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
@@ -3769,6 +3800,10 @@ class WeightWatcher:
             trap_burden=trap_burden,
             trap_burden_variant=trap_burden_variant,
             top_sector_l=top_sector_l,
+            trap_state=trap_state,
+            return_artifacts=return_artifacts,
+            permuted_ids=permuted_ids,
+            already_randomized=(randomized_model is not None),
             trap_burden_mode=trap_burden_mode,
             compute_original_basis=compute_original_basis,
             compute_full_bulk_reference=compute_full_bulk_reference,
@@ -3815,48 +3850,43 @@ class WeightWatcher:
 
 
     def apply_analyze_traps(self, ww_layer, params=None):
+        import hashlib
         if params is None: params = DEFAULT_PARAMS.copy()
-
         if len(ww_layer.Wmats) != 1:
-            logger.warning("Skipping trap analysis for layer %s %s: expected exactly one Wmat, found %d",
-                           ww_layer.layer_id, ww_layer.name, len(ww_layer.Wmats))
-            return []
+            return ([], {}) if params.get("return_artifacts") else []
 
         original_basis_cache = None
         if params.get("compute_original_basis", True):
             self.apply_esd(ww_layer, params)
             original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
 
-        self.apply_permute_W(ww_layer, params)
+        if params.get("already_randomized", False):
+            pass
+        elif params.get("permuted_ids") is not None:
+            ww_layer.permute_ids = [np.asarray(params.get("permuted_ids"))]
+            ww_layer.Wmats = [ww_layer.Wmats[0].reshape(-1)[ww_layer.permute_ids[0]].reshape(ww_layer.Wmats[0].shape)]
+        else:
+            self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
         W_perm = ww_layer.Wmats[0].astype(float)
         U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
-        trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params)
-        if params.get("compute_full_bulk_reference", True):
-            bulk_stats = self.compute_bulk_trap_reference_metrics(ww_layer, trap_mode_indices, params=params)
-        else:
-            bulk_stats = self.compute_fast_bulk_trap_reference_metrics(ww_layer, U_perm, S_perm, Vh_perm, trap_mode_indices, params=params)
-
-        trap_rows = []
+        trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params, svals=S_perm, evals_desc=S_perm*S_perm)
+        bulk_stats = self.compute_bulk_trap_reference_metrics(ww_layer, trap_mode_indices, params=params) if params.get("compute_full_bulk_reference", True) else self.compute_fast_bulk_trap_reference_metrics(ww_layer, U_perm, S_perm, Vh_perm, trap_mode_indices, params=params)
+        trap_rows=[]; artifacts=[]
+        pids = np.asarray(ww_layer.permute_ids[0]) if len(getattr(ww_layer,'permute_ids',[]))>0 else None
+        fp = hashlib.sha1(pids.tobytes()).hexdigest() if pids is not None else None
         for trap_index, mode_index in enumerate(trap_mode_indices):
-            trap_row = self.analyze_single_trap(
-                ww_layer,
-                trap_mode_index=mode_index,
-                original_basis_cache=original_basis_cache,
-                params=params,
-                trap_index=trap_index,
-                bulk_stats=bulk_stats,
-                precomputed_svd=(U_perm, S_perm, Vh_perm),
-            )
-            trap_row.update(bulk_stats)
+            trap_row = self.analyze_single_trap(ww_layer, trap_mode_index=mode_index, original_basis_cache=original_basis_cache, params=params, trap_index=trap_index, bulk_stats=bulk_stats, precomputed_svd=(U_perm,S_perm,Vh_perm))
+            trap_row.update(bulk_stats); trap_row['permute_fingerprint']=fp
             trap_rows.append(trap_row)
+            artifacts.append({"layer_id": int(ww_layer.layer_id), "trap_index": int(trap_index+1), "trap_mode_index": int(mode_index), "sigma_perm": float(S_perm[mode_index]), "permute_fingerprint": fp, "T_perm": trap_row.get("T_perm"), "T_orig_raw": trap_row.get("T_orig"), "u_trap_perm": U_perm[:, mode_index], "v_trap_perm": Vh_perm[mode_index, :]})
         if trap_rows:
             layer_trap_variance_burden = float(np.nansum([row.get("trap_variance_burden_old", np.nan) for row in trap_rows]))
-            for row in trap_rows:
-                row["layer_trap_variance_burden"] = layer_trap_variance_burden
+            for row in trap_rows: row["layer_trap_variance_burden"] = layer_trap_variance_burden
 
-        self.apply_unpermute_W(ww_layer, params)
-        return trap_rows
+        layer_state={"layer_id": int(ww_layer.layer_id), "name": ww_layer.name, "longname": ww_layer.longname, "permuted_ids": pids, "permute_fingerprint": fp, "W_perm_shape": tuple(W_perm.shape), "U_perm": U_perm, "S_perm": S_perm, "Vh_perm": Vh_perm, "trap_mode_indices": [int(i) for i in trap_mode_indices], "artifacts": artifacts, "trap_rows": trap_rows, "bulk_stats": bulk_stats, "already_randomized": bool(params.get('already_randomized',False))}
+        if not params.get("already_randomized", False): self.apply_unpermute_W(ww_layer, params)
+        return (trap_rows, layer_state) if params.get("return_artifacts") else trap_rows
 
     def compute_trap_delta(self, eval_perm, mp_bulk_max):
         if not (np.isfinite(eval_perm) and np.isfinite(mp_bulk_max)) or mp_bulk_max <= 0:
@@ -3923,12 +3953,12 @@ class WeightWatcher:
         return ww_layer
 
 
-    def identify_trap_mode_indices(self, ww_layer, params=None):
+    def identify_trap_mode_indices(self, ww_layer, params=None, svals=None, evals_desc=None):
         if params is None: params = DEFAULT_PARAMS.copy()
         # Keep trap-mode detection exactly aligned with remove_traps() artifact
         # collection so analyze_traps() and remove_traps() report the same trap
         # counts/indices for a given layer and seed.
-        return remove_traps_ops.identify_trap_mode_indices(self, ww_layer)
+        return remove_traps_ops.identify_trap_mode_indices(self, ww_layer, svals=svals, evals_desc=evals_desc)
 
     def _top_percent_abs_mass(self, mat, percent):
         flat = np.abs(np.asarray(mat, dtype=float)).ravel()
@@ -6022,7 +6052,7 @@ class WeightWatcher:
 
     def identify_remove_trap_mode_indices(self, ww_layer):
         """Backward-compatible wrapper for remove_traps helper mode detection."""
-        return remove_traps_ops.identify_trap_mode_indices(self, ww_layer)
+        return remove_traps_ops.identify_trap_mode_indices(self, ww_layer, svals=svals, evals_desc=evals_desc)
 
     def analyze_single_remove_trap(self, ww_layer, trap_mode_index):
         """Backward-compatible wrapper for remove_traps single-trap artifact extraction."""
@@ -6040,14 +6070,14 @@ class WeightWatcher:
         """Remove selected traps from one dense WWLayer and replace with matched random matrices."""
         return remove_traps_ops.apply_remove_traps(self, ww_layer, trap_indices, params=params, seed=seed, rng=rng)
 
-    def remove_traps(self, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
+    def remove_traps(self, model=None, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                      verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                     base_model=None, peft=DEFAULT_PEFT):
+                     base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
-            self, model=model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
+            self, model=model, randomized_model=randomized_model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
             pool=pool, plot=plot, verify_traps=verify_traps, return_analyze=return_analyze,
-            start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft
+            start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft, trap_state=trap_state, trap_artifacts=trap_artifacts
         )
 
 

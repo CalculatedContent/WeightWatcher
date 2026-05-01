@@ -47,10 +47,12 @@ def apply_trap_mp_fit(ww, ww_layer, params=None):
     return ww_layer
 
 
-def identify_trap_mode_indices(ww, ww_layer):
-    W = ww_layer.Wmats[0]
-    _, svals, _ = svd_full(W)
-    evals_desc = svals * svals
+def identify_trap_mode_indices(ww, ww_layer, svals=None, evals_desc=None):
+    if evals_desc is None:
+        if svals is None:
+            W = ww_layer.Wmats[0]
+            _, svals, _ = svd_full(W)
+        evals_desc = svals * svals
 
     Q = ww_layer.N / ww_layer.M
     M = ww_layer.M
@@ -249,9 +251,9 @@ def _trap_indices_from_traps_df(traps):
     return indices
 
 
-def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
+def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                  verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                 base_model=None, peft=DEFAULT_PEFT):
+                 base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None):
     # PR359 compatibility path: passing traps=<DataFrame> instead of trap_indices=[...]
     if trap_indices is None and traps is not None:
         trap_indices = _trap_indices_from_traps_df(traps)
@@ -259,7 +261,12 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
     if trap_indices is None or len(trap_indices) == 0:
         raise ValueError("trap_indices must be provided and non-empty (or pass traps with trap_index column)")
 
-    ww.set_model_(model)
+    if model is not None and randomized_model is not None:
+        raise ValueError("Pass either model or randomized_model, not both")
+    if trap_state is not None and randomized_model is None:
+        raise ValueError("trap_state-based remove_traps requires randomized_model")
+    active_model = randomized_model if randomized_model is not None else model
+    ww.set_model_(active_model)
     params = DEFAULT_PARAMS.copy()
     params[POOL] = pool
     params[LAYERS] = layers
@@ -287,6 +294,18 @@ def remove_traps(ww, model=None, layers=[], trap_indices=None, traps=None, seed=
                         trap_indices = sorted(set(layer_traps["trap_index"].dropna().astype(int).tolist()))
                     else:
                         raise ValueError("traps DataFrame must include trap_index")
+
+            if trap_state is not None and int(ww_layer.layer_id) in trap_state.get("layers", {}):
+                layer_state = trap_state["layers"][int(ww_layer.layer_id)]
+                cached_artifacts = layer_state.get("artifacts", [])
+                old_W = ww_layer.Wmats[0]; new_W = old_W.copy()
+                for idx in trap_indices:
+                    art = cached_artifacts[idx-1]
+                    T_perm = art["T_perm"]
+                    new_W = new_W - T_perm
+                ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
+                ww_layer.Wmats = [new_W]
+                continue
 
             pre_artifacts = collect_trap_artifacts(
                 ww,

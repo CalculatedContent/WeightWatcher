@@ -37,6 +37,10 @@ def analyze_traps(
     compute_full_bulk_reference=None,
     bulk_mode_sample=10,
     compute_original_trap_svd=None,
+    trap_state=None,
+    return_artifacts=False,
+    permuted_ids=None,
+    already_randomized=False,
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
     if layers is None:
@@ -118,7 +122,22 @@ def analyze_traps(
 
             layer_params = dict(params)
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
-            layer_rows = watcher.apply_analyze_traps(ww_layer, params=layer_params)
+            layer_params["return_artifacts"] = bool(return_artifacts)
+            layer_params["already_randomized"] = bool(already_randomized)
+            pids_map = (trap_state or {}).get("permuted_ids") if trap_state is not None else None
+            if pids_map is not None and ww_layer.layer_id in pids_map:
+                layer_params["permuted_ids"] = pids_map[ww_layer.layer_id]
+            elif permuted_ids is not None:
+                layer_params["permuted_ids"] = permuted_ids.get(ww_layer.layer_id) if isinstance(permuted_ids, dict) else permuted_ids
+            layer_out = watcher.apply_analyze_traps(ww_layer, params=layer_params)
+            if return_artifacts:
+                layer_rows, layer_state = layer_out
+                if trap_state is None:
+                    trap_state = {"already_randomized": bool(already_randomized), "permuted_ids": {}, "layers": {}}
+                trap_state.setdefault("layers", {})[int(ww_layer.layer_id)] = layer_state
+                trap_state.setdefault("permuted_ids", {})[int(ww_layer.layer_id)] = layer_state.get("permuted_ids")
+            else:
+                layer_rows = layer_out
             if layer_rows:
                 if params.get(wwcore.PLOT, False):
                     trap_infos = []
@@ -180,7 +199,7 @@ def analyze_traps(
     else:
         watcher.trap_component_summary = pd.DataFrame()
 
-    return details
+    return (details, trap_state) if return_artifacts else details
 
 
 def _top_trap_component_row(row, weight_matrix, top_k=10):

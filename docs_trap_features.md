@@ -99,3 +99,23 @@ pytest -q tests/test_analyze_traps.py tests/test_remove_traps.py
 ```
 
 > Note: the second path is `test_remove_traps.py` (not `.pyz`).
+
+## Fast randomized trap ablation workflow
+
+Use the new cached workflow to randomize once, analyze once, then remove traps without re-randomizing:
+
+```python
+randomized_model, trap_state = watcher.randomize_model(model=model, layers=layers, rng=seed, return_state=True)
+trap_df, trap_state = watcher.analyze_traps(
+    randomized_model=randomized_model,
+    trap_state=trap_state,
+    return_artifacts=True,
+    trap_burden=True,
+    trap_burden_mode="fast",
+    bulk_mode_sample=10,
+    plot=False,
+)
+ablated_model = watcher.remove_traps(randomized_model=randomized_model, traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
+```
+
+Warning: `trap_burden_mode="fast"` uses approximate overlap and bulk-reference metrics for speed. Use `trap_burden_mode="full"` for expensive original-basis diagnostics.

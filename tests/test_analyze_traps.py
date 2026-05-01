@@ -10,6 +10,7 @@ except Exception:
     TORCH_AVAILABLE = False
 
 import weightwatcher as ww
+from weightwatcher import remove_traps as remove_traps_ops
 
 
 if TORCH_AVAILABLE:
@@ -238,6 +239,11 @@ class TestAnalyzeTraps(unittest.TestCase):
 
     def test_analyze_traps_full_mode_allows_full_diagnostics(self):
         df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="full")
+        self.assertIsInstance(df, pd.DataFrame)
+
+    def test_analyze_traps_fast_mode_does_not_call_collect_trap_artifacts(self):
+        with patch.object(remove_traps_ops, "collect_trap_artifacts", side_effect=AssertionError("should not be called")):
+            df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast")
         self.assertIsInstance(df, pd.DataFrame)
 
     def test_no_trap_fft_api_or_columns(self):

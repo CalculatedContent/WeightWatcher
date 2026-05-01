@@ -3709,10 +3709,10 @@ class WeightWatcher:
                 rng=None,
                 trap_burden=False,
                 trap_burden_variant="top5",
-                trap_burden_mode="full",
+                trap_burden_mode="fast",
                 compute_original_basis=None,
                 compute_full_bulk_reference=None,
-                bulk_mode_sample=None,
+                bulk_mode_sample=10,
                 compute_original_trap_svd=None,
                 top_sector_l=1):
         """Analyze randomized correlation traps and return one row per trap.
@@ -3875,6 +3875,7 @@ class WeightWatcher:
                 "bulk_top_10_mass_std": np.nan,
                 "bulk_ipr_mean": np.nan,
                 "bulk_ipr_std": np.nan,
+                "bulk_mode_sample_used": 0,
             }
         sample_n = params.get("bulk_mode_sample", None)
         if sample_n is None:
@@ -3916,6 +3917,7 @@ class WeightWatcher:
             "bulk_top_10_mass_std": float(np.nanstd(top10_vals)),
             "bulk_ipr_mean": float(np.nanmean(bulk_ipr_vals)),
             "bulk_ipr_std": float(np.nanstd(bulk_ipr_vals)),
+            "bulk_mode_sample_used": int(len(bulk_indices)),
         }
 
     def compute_trap_delta(self, eval_perm, mp_bulk_max):

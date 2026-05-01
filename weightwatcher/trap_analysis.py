@@ -31,10 +31,10 @@ def analyze_traps(
     rng=None,
     trap_burden=False,
     trap_burden_variant="top5",
-    trap_burden_mode="full",
+    trap_burden_mode="fast",
     compute_original_basis=None,
     compute_full_bulk_reference=None,
-    bulk_mode_sample=None,
+    bulk_mode_sample=10,
     compute_original_trap_svd=None,
     top_sector_l=1,
 ):
@@ -92,6 +92,8 @@ def analyze_traps(
         compute_original_trap_svd = (trap_burden_mode == "full")
     params["compute_original_basis"] = bool(compute_original_basis)
     params["compute_full_bulk_reference"] = bool(compute_full_bulk_reference)
+    if bulk_mode_sample is None and trap_burden_mode == "fast":
+        bulk_mode_sample = 10
     params["bulk_mode_sample"] = bulk_mode_sample
     params["compute_original_trap_svd"] = bool(compute_original_trap_svd)
     params["top_sector_l"] = int(top_sector_l)

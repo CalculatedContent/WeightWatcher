@@ -3709,7 +3709,16 @@ class WeightWatcher:
                 rng=None,
                 trap_burden=False,
                 trap_burden_variant="top5",
-                top_sector_l=1):
+                top_sector_l=1,
+                randomized_model=None,
+                trap_state=None,
+                return_artifacts=False,
+                permuted_ids=None,
+                trap_burden_mode="fast",
+                compute_original_basis=None,
+                compute_full_bulk_reference=None,
+                bulk_mode_sample=10,
+                compute_original_trap_svd=None):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3730,10 +3739,13 @@ class WeightWatcher:
             Passing the same seed/object makes trap detection reproducible across runs.
         """
 
+        if model is not None and randomized_model is not None:
+            raise ValueError("Pass either model or randomized_model, not both")
+
         from . import trap_analysis
         return trap_analysis.analyze_traps(
             self,
-            model=model,
+            model=randomized_model if randomized_model is not None else model,
             layers=layers,
             min_evals=min_evals,
             max_evals=max_evals,
@@ -3757,6 +3769,11 @@ class WeightWatcher:
             trap_burden=trap_burden,
             trap_burden_variant=trap_burden_variant,
             top_sector_l=top_sector_l,
+            trap_burden_mode=trap_burden_mode,
+            compute_original_basis=compute_original_basis,
+            compute_full_bulk_reference=compute_full_bulk_reference,
+            bulk_mode_sample=bulk_mode_sample,
+            compute_original_trap_svd=compute_original_trap_svd,
         )
 
     def _trap_result_columns(self):
@@ -3805,13 +3822,20 @@ class WeightWatcher:
                            ww_layer.layer_id, ww_layer.name, len(ww_layer.Wmats))
             return []
 
-        self.apply_esd(ww_layer, params)
-        original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
+        original_basis_cache = None
+        if params.get("compute_original_basis", True):
+            self.apply_esd(ww_layer, params)
+            original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
 
         self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
+        W_perm = ww_layer.Wmats[0].astype(float)
+        U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params)
-        bulk_stats = self.compute_bulk_trap_reference_metrics(ww_layer, trap_mode_indices, params=params)
+        if params.get("compute_full_bulk_reference", True):
+            bulk_stats = self.compute_bulk_trap_reference_metrics(ww_layer, trap_mode_indices, params=params)
+        else:
+            bulk_stats = self.compute_fast_bulk_trap_reference_metrics(ww_layer, U_perm, S_perm, Vh_perm, trap_mode_indices, params=params)
 
         trap_rows = []
         for trap_index, mode_index in enumerate(trap_mode_indices):
@@ -3822,6 +3846,7 @@ class WeightWatcher:
                 params=params,
                 trap_index=trap_index,
                 bulk_stats=bulk_stats,
+                precomputed_svd=(U_perm, S_perm, Vh_perm),
             )
             trap_row.update(bulk_stats)
             trap_rows.append(trap_row)
@@ -3989,6 +4014,31 @@ class WeightWatcher:
         }
 
 
+
+    def compute_fast_bulk_trap_reference_metrics(self, ww_layer, U_perm, S_perm, Vh_perm, trap_mode_indices, params=None):
+        if params is None: params = DEFAULT_PARAMS.copy()
+        trap_set = set(int(i) for i in trap_mode_indices)
+        bulk_indices = [i for i in range(len(S_perm)) if i not in trap_set]
+        bulk_mode_count = int(len(bulk_indices))
+        sample = params.get("bulk_mode_sample", 10)
+        if sample is not None and len(bulk_indices) > int(sample):
+            seed = int(params.get("seed", 0))
+            rng = np.random.RandomState(seed)
+            bulk_indices = sorted(rng.choice(bulk_indices, size=int(sample), replace=False).tolist())
+
+        if len(bulk_indices) == 0:
+            return {"bulk_mode_count": bulk_mode_count, "bulk_mode_sample_used": 0, "bulk_localization_mean": np.nan, "bulk_localization_std": np.nan, "bulk_top_5_mass_mean": np.nan, "bulk_top_5_mass_std": np.nan, "bulk_top_10_mass_mean": np.nan, "bulk_top_10_mass_std": np.nan, "bulk_ipr_mean": np.nan, "bulk_ipr_std": np.nan}
+        loc=[]; top5=[]; top10=[]; ipr=[]
+        for mode_idx in bulk_indices:
+            u_mode = U_perm[:, mode_idx]; v_mode = Vh_perm[mode_idx, :]
+            um=self._trap_vector_metrics(u_mode); vm=self._trap_vector_metrics(v_mode)
+            loc.append(0.5*(float(um.get("localization_ratio", np.nan))+float(vm.get("localization_ratio", np.nan))))
+            ua=np.abs(u_mode); va=np.abs(v_mode)
+            top5.append(0.5*(float(np.sum(np.partition(ua,-max(1,int(np.ceil(0.05*ua.size))))[-max(1,int(np.ceil(0.05*ua.size))):]))/(np.sum(ua)+1e-12)+float(np.sum(np.partition(va,-max(1,int(np.ceil(0.05*va.size))))[-max(1,int(np.ceil(0.05*va.size))):]))/(np.sum(va)+1e-12)))
+            top10.append(0.5*(float(np.sum(np.partition(ua,-max(1,int(np.ceil(0.1*ua.size))))[-max(1,int(np.ceil(0.1*ua.size))):]))/(np.sum(ua)+1e-12)+float(np.sum(np.partition(va,-max(1,int(np.ceil(0.1*va.size))))[-max(1,int(np.ceil(0.1*va.size))):]))/(np.sum(va)+1e-12)))
+            ipr.append(0.5*(float(np.sum(u_mode**4))+float(np.sum(v_mode**4))))
+        return {"bulk_mode_count": bulk_mode_count, "bulk_mode_sample_used": int(len(bulk_indices)), "bulk_localization_mean": float(np.nanmean(loc)), "bulk_localization_std": float(np.nanstd(loc)), "bulk_top_5_mass_mean": float(np.nanmean(top5)), "bulk_top_5_mass_std": float(np.nanstd(top5)), "bulk_top_10_mass_mean": float(np.nanmean(top10)), "bulk_top_10_mass_std": float(np.nanstd(top10)), "bulk_ipr_mean": float(np.nanmean(ipr)), "bulk_ipr_std": float(np.nanstd(ipr))}
+
     def compute_original_basis_for_traps(self, ww_layer, params=None):
         if params is None: params = DEFAULT_PARAMS.copy()
         if len(ww_layer.Wmats) != 1:
@@ -4004,7 +4054,7 @@ class WeightWatcher:
         }
 
 
-    def analyze_single_trap(self, ww_layer, trap_mode_index, original_basis_cache=None, params=None, trap_index=0, bulk_stats=None):
+    def analyze_single_trap(self, ww_layer, trap_mode_index, original_basis_cache=None, params=None, trap_index=0, bulk_stats=None, precomputed_svd=None):
         if params is None: params = DEFAULT_PARAMS.copy()
         if original_basis_cache is None:
             original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
@@ -4014,7 +4064,10 @@ class WeightWatcher:
         W_perm = ww_layer.Wmats[0].astype(float)
         p_ids = ww_layer.permute_ids[0]
 
-        U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
+        if precomputed_svd is not None:
+            U_perm, S_perm, Vh_perm = precomputed_svd
+        else:
+            U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
         V_perm = Vh_perm.T
 
         sigma_perm = float(S_perm[trap_mode_index])
@@ -4027,12 +4080,21 @@ class WeightWatcher:
         top_5_mass = self._top_percent_abs_mass(T_orig, 5.0)
         top_10_mass = self._top_percent_abs_mass(T_orig, 10.0)
 
-        Ut, St, Vht = svd_full(T_orig, method=params[SVD_METHOD])
-        u_trap = Ut[:, 0]
-        v_trap = Vht.T[:, 0]
+        if params.get("compute_original_trap_svd", True):
+            Ut, St, Vht = svd_full(T_orig, method=params[SVD_METHOD])
+            u_trap = Ut[:, 0]
+            v_trap = Vht.T[:, 0]
+        else:
+            St = np.array([sigma_perm], dtype=float)
+            u_trap = u_perm
+            v_trap = v_perm
 
-        U0 = original_basis_cache["U0"]
-        V0 = original_basis_cache["V0"]
+        if original_basis_cache is None:
+            U0 = U_perm
+            V0 = V_perm
+        else:
+            U0 = original_basis_cache["U0"]
+            V0 = original_basis_cache["V0"]
 
         left_overlaps = np.abs(U0.T @ u_trap) ** 2
         right_overlaps = np.abs(V0.T @ v_trap) ** 2

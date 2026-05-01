@@ -32,6 +32,11 @@ def analyze_traps(
     trap_burden=False,
     trap_burden_variant="top5",
     top_sector_l=1,
+    trap_burden_mode="fast",
+    compute_original_basis=None,
+    compute_full_bulk_reference=None,
+    bulk_mode_sample=10,
+    compute_original_trap_svd=None,
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
     if layers is None:
@@ -79,6 +84,19 @@ def analyze_traps(
     params["trap_burden"] = bool(trap_burden)
     params["trap_burden_variant"] = trap_burden_variant
     params["top_sector_l"] = int(top_sector_l)
+    params["trap_burden_mode"] = trap_burden_mode
+    params["bulk_mode_sample"] = 10 if bulk_mode_sample is None and trap_burden_mode == "fast" else bulk_mode_sample
+
+    if compute_original_basis is None:
+        compute_original_basis = (trap_burden_mode == "full")
+    if compute_full_bulk_reference is None:
+        compute_full_bulk_reference = (trap_burden_mode == "full")
+    if compute_original_trap_svd is None:
+        compute_original_trap_svd = (trap_burden_mode == "full")
+
+    params["compute_original_basis"] = bool(compute_original_basis)
+    params["compute_full_bulk_reference"] = bool(compute_full_bulk_reference)
+    params["compute_original_trap_svd"] = bool(compute_original_trap_svd)
 
     wwcore.logger.debug("params {}".format(params))
     if not watcher.valid_params(params):

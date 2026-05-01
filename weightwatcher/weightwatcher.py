@@ -3696,11 +3696,13 @@ class WeightWatcher:
 
 
 
-    def randomize_model(self, model=None, layers=[], rng=None, return_state=False, pool=True,
+    def randomize_model(self, model=None, layers=[], rng=None, return_state=True, pool=True,
                         start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
         import copy, hashlib
         from .RMT_Util import permute_matrix
-        randomized_model = copy.deepcopy(model)
+
+        source_model = model if model is not None else self.model
+        randomized_model = copy.deepcopy(source_model)
         self.set_model_(randomized_model, base_model)
         params = DEFAULT_PARAMS.copy()
         params[POOL] = pool

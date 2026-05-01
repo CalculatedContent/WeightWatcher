@@ -8,6 +8,9 @@ This guide explains how to use the new correlation-trap workflow that was recent
 
 - `analyze_traps(...)` inspects selected layers and reports candidate correlation-trap modes.
 - `remove_traps(...)` removes selected trap modes from those layers and returns an updated model.
+- `randomize_model(...)` randomizes once and returns reusable state for faster ablation loops.
+
+These are intended as **public WeightWatcher APIs** on `ww.WeightWatcher`.
 
 Use this flow when you suspect a layer looks random except for isolated spikes (classic trap signature).
 
@@ -119,3 +122,10 @@ ablated_model = watcher.remove_traps(randomized_model=randomized_model, traps=tr
 ```
 
 Warning: `trap_burden_mode="fast"` uses approximate overlap and bulk-reference metrics for speed. Use `trap_burden_mode="full"` for expensive original-basis diagnostics.
+
+### Why this is faster (and how to avoid long runs)
+
+- Reuse `randomized_model` + `trap_state` across iterative removals instead of re-running full randomization.
+- Set `return_artifacts=True` in `analyze_traps(...)` and pass that same `trap_state` into `remove_traps(...)` so trap artifacts are cached and reused.
+- Use `trap_burden_mode="fast"` and a small `bulk_mode_sample` during exploration; switch to `"full"` only for final verification.
+- Restrict analysis to a small `layers=[...]` subset first, then expand after confirming expected behavior.

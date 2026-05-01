@@ -1,7 +1,9 @@
 import inspect
 import pytest
+import numpy as np
 torch = pytest.importorskip("torch")
 import weightwatcher as ww
+from weightwatcher.RMT_Util import permute_matrix, unpermute_matrix
 
 class OneLayer(torch.nn.Module):
     def __init__(self):
@@ -94,3 +96,49 @@ def test_remove_traps_uses_cached_artifacts(monkeypatch):
     monkeypatch.setattr(rt, "collect_trap_artifacts", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("should not be called")))
     ablated_model = watcher.remove_traps(randomized_model=randomized_model, traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
     assert isinstance(ablated_model, OneLayer)
+
+def test_randomize_model_stores_permuted_ids_int_keys_pool_false():
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True, pool=False)
+    assert randomized_model is not None
+    assert trap_state["permuted_ids"]
+    assert all(isinstance(k, int) for k in trap_state["permuted_ids"].keys())
+    for lid in sorted(trap_state["permuted_ids"].keys()):
+        assert trap_state["layers"][lid]["permuted_ids"] is not None
+
+def test_cached_analyze_requires_randomized_model():
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    _, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True, pool=False)
+    with pytest.raises(ValueError, match="cached trap artifact analysis requires randomized_model"):
+        watcher.analyze_traps(model=model, trap_state=trap_state, return_artifacts=True, pool=False)
+
+def test_cached_analyze_missing_permuted_id_errors():
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True, pool=False)
+    randomized_layers = sorted(trap_state["permuted_ids"].keys())
+    with pytest.raises(ValueError, match="Missing permute_ids for already-randomized layer_id"):
+        watcher.analyze_traps(
+            randomized_model=randomized_model,
+            layers=randomized_layers + [999],
+            trap_state=trap_state,
+            permuted_ids=trap_state["permuted_ids"],
+            return_artifacts=True,
+            pool=False,
+            plot=False,
+        )
+
+def test_rmt_util_unpermutes_randomized_layer_weight():
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    original = model.fc.weight.detach().cpu().numpy().copy()
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True, pool=False)
+    lid = sorted(trap_state["permuted_ids"].keys())[0]
+    pids = np.asarray(trap_state["permuted_ids"][lid], dtype=int)
+    W_perm = randomized_model.fc.weight.detach().cpu().numpy().copy()
+    W_recon = unpermute_matrix(W_perm, pids)
+    assert np.allclose(W_recon, original)
+    W_perm2, pids2 = permute_matrix(original, rng=123)
+    assert np.allclose(unpermute_matrix(W_perm2, pids2), original)

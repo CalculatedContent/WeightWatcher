@@ -5,6 +5,27 @@ from . import remove_traps as remove_traps_ops
 from . import weightwatcher as wwcore
 from .trap_histograms import plot_layer_trap_weight_histogram
 
+def _lookup_layer_permuted_ids(layer_id, trap_state=None, permuted_ids=None):
+    lid = int(layer_id)
+    if isinstance(permuted_ids, dict):
+        if lid in permuted_ids:
+            return np.asarray(permuted_ids[lid], dtype=int)
+        if str(lid) in permuted_ids:
+            return np.asarray(permuted_ids[str(lid)], dtype=int)
+    if isinstance(trap_state, dict):
+        pid_map = trap_state.get("permuted_ids", {})
+        if isinstance(pid_map, dict):
+            if lid in pid_map:
+                return np.asarray(pid_map[lid], dtype=int)
+            if str(lid) in pid_map:
+                return np.asarray(pid_map[str(lid)], dtype=int)
+        layers = trap_state.get("layers", {})
+        if isinstance(layers, dict):
+            layer_state = layers.get(lid, layers.get(str(lid), None))
+            if isinstance(layer_state, dict) and layer_state.get("permuted_ids") is not None:
+                return np.asarray(layer_state["permuted_ids"], dtype=int)
+    return None
+
 
 def analyze_traps(
     watcher,
@@ -124,11 +145,19 @@ def analyze_traps(
             layer_params["_keep_trap_matrix"] = bool(params.get(wwcore.PLOT, False))
             layer_params["return_artifacts"] = bool(return_artifacts)
             layer_params["already_randomized"] = bool(already_randomized)
-            pids_map = (trap_state or {}).get("permuted_ids") if trap_state is not None else None
-            if pids_map is not None and ww_layer.layer_id in pids_map:
-                layer_params["permuted_ids"] = pids_map[ww_layer.layer_id]
-            elif permuted_ids is not None:
-                layer_params["permuted_ids"] = permuted_ids.get(ww_layer.layer_id) if isinstance(permuted_ids, dict) else permuted_ids
+            layer_perm_ids = _lookup_layer_permuted_ids(
+                ww_layer.layer_id, trap_state=trap_state, permuted_ids=permuted_ids
+            )
+            if already_randomized:
+                if layer_perm_ids is None:
+                    raise ValueError(
+                        f"Missing permute_ids for already-randomized layer_id={ww_layer.layer_id}. "
+                        "Use layers=sorted(trap_state['permuted_ids'].keys()) and pass trap_state from randomize_model. "
+                        "Also ensure randomize_model/analyze_traps use matching pool/start_ids/layers."
+                    )
+                layer_params["permuted_ids"] = layer_perm_ids
+            elif layer_perm_ids is not None:
+                layer_params["permuted_ids"] = layer_perm_ids
             layer_out = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if return_artifacts:
                 layer_rows, layer_state = layer_out

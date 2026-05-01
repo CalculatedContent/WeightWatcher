@@ -3698,6 +3698,7 @@ class WeightWatcher:
     def randomize_model(self, model=None, layers=[], rng=None, return_state=False, pool=True,
                         start_ids=DEFAULT_START_ID, svd_method=FAST_SVD, base_model=None, peft=DEFAULT_PEFT):
         import copy, hashlib
+        from .RMT_Util import permute_matrix
         randomized_model = copy.deepcopy(model)
         self.set_model_(randomized_model, base_model)
         params = DEFAULT_PARAMS.copy()
@@ -3711,17 +3712,27 @@ class WeightWatcher:
 
         permuted_ids = {}
         trap_state = {"already_randomized": True, "permuted_ids": permuted_ids, "layers": {}}
+        trap_state["randomize_params"] = {
+            "layers": list(layers or []),
+            "pool": bool(pool),
+            "start_ids": start_ids,
+            "svd_method": svd_method,
+        }
         layer_iterator = self.make_layer_iterator(model=self.model, layers=layers, params=params, base_model=self.base_model)
         for ww_layer in layer_iterator:
             if ww_layer.skipped or not ww_layer.has_weights or len(ww_layer.Wmats) != 1:
                 continue
             self.apply_normalize_Wmats(ww_layer, params)
-            self.apply_permute_W(ww_layer, params, rng=params.get("rng"))
-            pids = np.asarray(ww_layer.permute_ids[0]).copy()
-            permuted_ids[int(ww_layer.layer_id)] = pids
+            W = np.asarray(ww_layer.Wmats[0])
+            W_perm, p_ids = permute_matrix(W, rng=params.get("rng"))
+            pids = np.asarray(p_ids, dtype=int).copy()
+            ww_layer.Wmats = [W_perm]
+            ww_layer.permute_ids = [pids]
+            lid = int(ww_layer.layer_id)
+            permuted_ids[lid] = pids
             fp = hashlib.sha1(pids.tobytes()).hexdigest()
-            trap_state["layers"][int(ww_layer.layer_id)] = {"layer_id": int(ww_layer.layer_id), "permuted_ids": pids, "permute_fingerprint": fp, "already_randomized": True}
-            self.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, ww_layer.Wmats[0])
+            trap_state["layers"][lid] = {"layer_id": lid, "permuted_ids": pids, "permute_fingerprint": fp, "already_randomized": True}
+            self.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, W_perm)
 
         return (randomized_model, trap_state) if return_state else (randomized_model, permuted_ids)
 
@@ -3772,6 +3783,8 @@ class WeightWatcher:
 
         if model is not None and randomized_model is not None:
             raise ValueError("Pass either model or randomized_model, not both")
+        if (return_artifacts or trap_state is not None or permuted_ids is not None) and randomized_model is None:
+            raise ValueError("cached trap artifact analysis requires randomized_model; call randomize_model(..., return_state=True) first")
 
         from . import trap_analysis
         return trap_analysis.analyze_traps(
@@ -3861,9 +3874,15 @@ class WeightWatcher:
             original_basis_cache = self.compute_original_basis_for_traps(ww_layer, params=params)
 
         if params.get("already_randomized", False):
-            pass
+            p_ids = params.get("permuted_ids", None)
+            if p_ids is None:
+                raise ValueError(
+                    f"Missing permute_ids for already-randomized layer_id={ww_layer.layer_id}. "
+                    "Use layers=sorted(trap_state['permuted_ids'].keys()) and pass trap_state from randomize_model."
+                )
+            ww_layer.permute_ids = [np.asarray(p_ids, dtype=int)]
         elif params.get("permuted_ids") is not None:
-            ww_layer.permute_ids = [np.asarray(params.get("permuted_ids"))]
+            ww_layer.permute_ids = [np.asarray(params.get("permuted_ids"), dtype=int)]
             ww_layer.Wmats = [ww_layer.Wmats[0].reshape(-1)[ww_layer.permute_ids[0]].reshape(ww_layer.Wmats[0].shape)]
         else:
             self.apply_permute_W(ww_layer, params)

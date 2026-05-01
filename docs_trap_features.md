@@ -108,17 +108,31 @@ pytest -q tests/test_analyze_traps.py tests/test_remove_traps.py
 Use the new cached workflow to randomize once, analyze once, then remove traps without re-randomizing:
 
 ```python
-randomized_model, trap_state = watcher.randomize_model(model=model, layers=layers, rng=seed, return_state=True)
+randomized_model, trap_state = watcher.randomize_model(
+    model=model, layers=layers, rng=seed, return_state=True, pool=False
+)
+permuted_ids = trap_state["permuted_ids"]
+randomized_layers = sorted(permuted_ids.keys())
+
 trap_df, trap_state = watcher.analyze_traps(
     randomized_model=randomized_model,
+    layers=randomized_layers,
     trap_state=trap_state,
+    permuted_ids=permuted_ids,
     return_artifacts=True,
     trap_burden=True,
     trap_burden_mode="fast",
     bulk_mode_sample=10,
     plot=False,
+    pool=False,
 )
-ablated_model = watcher.remove_traps(randomized_model=randomized_model, traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
+ablated_model = watcher.remove_traps(
+    randomized_model=randomized_model,
+    traps=trap_df.iloc[[0]],
+    trap_state=trap_state,
+    plot=False,
+    pool=False,
+)
 ```
 
 Warning: `trap_burden_mode="fast"` uses approximate overlap and bulk-reference metrics for speed. Use `trap_burden_mode="full"` for expensive original-basis diagnostics.
@@ -127,5 +141,8 @@ Warning: `trap_burden_mode="fast"` uses approximate overlap and bulk-reference m
 
 - Reuse `randomized_model` + `trap_state` across iterative removals instead of re-running full randomization.
 - Set `return_artifacts=True` in `analyze_traps(...)` and pass that same `trap_state` into `remove_traps(...)` so trap artifacts are cached and reused.
+- Use matching `pool/start_ids/layers` between `randomize_model(...)` and `analyze_traps(...)`.
+- Use `layers=sorted(trap_state["permuted_ids"].keys())` and do **not** analyze non-randomized layers in cached mode.
+- Cached workflow (`trap_state`/`permuted_ids`/`return_artifacts`) requires `randomized_model=...`.
 - Use `trap_burden_mode="fast"` and a small `bulk_mode_sample` during exploration; switch to `"full"` only for final verification.
 - Restrict analysis to a small `layers=[...]` subset first, then expand after confirming expected behavior.

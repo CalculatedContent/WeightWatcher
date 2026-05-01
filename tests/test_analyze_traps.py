@@ -228,5 +228,22 @@ class TestAnalyzeTraps(unittest.TestCase):
         self.assertFalse(any(c.startswith("trap_variance_burden__") for c in df.columns))
 
 
+    def test_analyze_traps_fast_mode_skips_original_basis(self):
+        from unittest.mock import patch
+        with patch.object(ww.WeightWatcher, "compute_original_basis_for_traps", side_effect=AssertionError("should not call")):
+            df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast")
+        self.assertIsInstance(df, pd.DataFrame)
+
+    def test_analyze_traps_fast_mode_skips_full_bulk_reference(self):
+        from unittest.mock import patch
+        with patch.object(ww.WeightWatcher, "compute_bulk_trap_reference_metrics", side_effect=AssertionError("should not call")):
+            df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast")
+        self.assertIn("B_absDelta_ipr_ovlamvar", df.columns)
+
+    def test_analyze_traps_rejects_model_and_randomized_model_together(self):
+        with self.assertRaises(ValueError):
+            self.watcher.analyze_traps(model=self.model, randomized_model=self.model, plot=False, savefig=False)
+
+
 if __name__ == "__main__":
     unittest.main()

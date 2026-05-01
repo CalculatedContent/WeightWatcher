@@ -31,6 +31,11 @@ def analyze_traps(
     rng=None,
     trap_burden=False,
     trap_burden_variant="top5",
+    trap_burden_mode="full",
+    compute_original_basis=None,
+    compute_full_bulk_reference=None,
+    bulk_mode_sample=None,
+    compute_original_trap_svd=None,
     top_sector_l=1,
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
@@ -78,6 +83,17 @@ def analyze_traps(
     params["rng"] = remove_traps_ops._normalize_trap_rng(rng=rng)
     params["trap_burden"] = bool(trap_burden)
     params["trap_burden_variant"] = trap_burden_variant
+    params["trap_burden_mode"] = trap_burden_mode
+    if compute_original_basis is None:
+        compute_original_basis = (trap_burden_mode == "full")
+    if compute_full_bulk_reference is None:
+        compute_full_bulk_reference = (trap_burden_mode == "full")
+    if compute_original_trap_svd is None:
+        compute_original_trap_svd = (trap_burden_mode == "full")
+    params["compute_original_basis"] = bool(compute_original_basis)
+    params["compute_full_bulk_reference"] = bool(compute_full_bulk_reference)
+    params["bulk_mode_sample"] = bulk_mode_sample
+    params["compute_original_trap_svd"] = bool(compute_original_trap_svd)
     params["top_sector_l"] = int(top_sector_l)
 
     wwcore.logger.debug("params {}".format(params))

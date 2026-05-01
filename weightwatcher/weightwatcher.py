@@ -3868,12 +3868,11 @@ class WeightWatcher:
         else:
             self.apply_permute_W(ww_layer, params)
         self.apply_trap_mp_fit(ww_layer, params=params)
-        if len(getattr(ww_layer, "permute_ids", [])) == 0:
-            # Randomized models may already be permuted and skip apply_permute_W(),
-            # which means permute_ids is unset. Use an identity permutation so
-            # downstream unpermute logic and trap analysis remain well-defined.
-            n_entries = int(ww_layer.Wmats[0].size)
-            ww_layer.permute_ids = [np.arange(n_entries, dtype=int)]
+        if params.get("already_randomized", False) and len(getattr(ww_layer, "permute_ids", [])) == 0:
+            raise ValueError(
+                f"Missing permute_ids for already-randomized layer_id={ww_layer.layer_id}. "
+                "Pass trap_state/permuted_ids and restrict analyze_traps() layers to randomized layers."
+            )
         W_perm = ww_layer.Wmats[0].astype(float)
         U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
         trap_mode_indices = self.identify_trap_mode_indices(ww_layer, params=params, svals=S_perm, evals_desc=S_perm*S_perm)
@@ -3994,9 +3993,6 @@ class WeightWatcher:
             }
 
         W_perm = ww_layer.Wmats[0].astype(float)
-        if len(getattr(ww_layer, "permute_ids", [])) == 0:
-            n_entries = int(W_perm.size)
-            ww_layer.permute_ids = [np.arange(n_entries, dtype=int)]
         p_ids = ww_layer.permute_ids[0]
         U_perm, S_perm, Vh_perm = svd_full(W_perm, method=params[SVD_METHOD])
         trap_set = set(int(i) for i in trap_mode_indices)
@@ -4101,9 +4097,6 @@ class WeightWatcher:
             bulk_stats = {}
 
         W_perm = ww_layer.Wmats[0].astype(float)
-        if len(getattr(ww_layer, "permute_ids", [])) == 0:
-            n_entries = int(W_perm.size)
-            ww_layer.permute_ids = [np.arange(n_entries, dtype=int)]
         p_ids = ww_layer.permute_ids[0]
 
         if precomputed_svd is not None:

@@ -15,6 +15,7 @@ from __future__ import division, print_function
 
 from .constants import *
 from .weightwatcher import WeightWatcher
+from .compute_trace import ComputeTrace
 
 
 __name__ = "weightwatcher"
@@ -32,4 +33,5 @@ __all__ = [
     "__name__", "__version__", "__license__", "__description__",
     "__url__", "__author__", "__email__", "__copyright__",
     "WeightWatcher",
+    "ComputeTrace",
 ]

@@ -295,8 +295,6 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
                 if len(layer_traps) > 0:
                     if "trap_index" in layer_traps.columns:
                         selected_from_rows = sorted(set(layer_traps["trap_index"].dropna().astype(int).tolist()))
-                        if any(i < 1 for i in selected_from_rows):
-                            raise ValueError("trap_index values are 1-based; got 0")
                     else:
                         raise ValueError("traps DataFrame must include trap_index")
                 else:

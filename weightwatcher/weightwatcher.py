@@ -3744,7 +3744,7 @@ class WeightWatcher:
                 min_evals=DEFAULT_MIN_EVALS, max_evals=DEFAULT_MAX_EVALS,
                 min_size=None, max_size=None, max_N=DEFAULT_MAX_N,
                 glorot_fix=False,
-                plot=True, savefig=DEF_SAVE_DIR,
+                plot=False, savefig=DEF_SAVE_DIR,
                 conv2d_norm=True,
                 ww2x=DEFAULT_WW2X, pool=DEFAULT_POOL,
                 conv2d_fft=False, fft=False, channels=None,

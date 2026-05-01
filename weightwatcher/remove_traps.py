@@ -297,10 +297,23 @@ def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=
 
             if trap_state is not None and int(ww_layer.layer_id) in trap_state.get("layers", {}):
                 layer_state = trap_state["layers"][int(ww_layer.layer_id)]
-                cached_artifacts = layer_state.get("artifacts", [])
+                cached_artifacts = trap_artifacts if trap_artifacts is not None else layer_state.get("artifacts", [])
                 old_W = ww_layer.Wmats[0]; new_W = old_W.copy()
+                selected_rows = layer_traps if layer_traps is not None and len(layer_traps) > 0 else None
                 for idx in trap_indices:
-                    art = cached_artifacts[idx-1]
+                    if idx < 1 or idx > len(cached_artifacts):
+                        raise ValueError(f"trap_index {idx} out of range for cached artifacts in layer {ww_layer.layer_id}")
+                    art = cached_artifacts[idx - 1]
+                    if selected_rows is not None and "trap_index" in selected_rows.columns:
+                        trow = selected_rows[selected_rows["trap_index"].astype(int) == int(idx)]
+                        if len(trow) == 1:
+                            trow = trow.iloc[0]
+                            if "trap_mode_index" in trow and pd.notna(trow.get("trap_mode_index")) and int(trow["trap_mode_index"]) != int(art["trap_mode_index"]):
+                                raise ValueError(f"Trap identity mismatch layer_id={ww_layer.layer_id}, trap_index={idx}: trap_mode_index")
+                            if "sigma_perm" in trow and pd.notna(trow.get("sigma_perm")) and not np.isclose(float(trow["sigma_perm"]), float(art["sigma_perm"])):
+                                raise ValueError(f"Trap identity mismatch layer_id={ww_layer.layer_id}, trap_index={idx}: sigma_perm")
+                            if "permute_fingerprint" in trow and pd.notna(trow.get("permute_fingerprint")) and str(trow["permute_fingerprint"]) != str(art.get("permute_fingerprint")):
+                                raise ValueError(f"Trap identity mismatch layer_id={ww_layer.layer_id}, trap_index={idx}: permute_fingerprint")
                     T_perm = art["T_perm"]
                     new_W = new_W - T_perm
                 ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
@@ -361,5 +374,5 @@ def remove_traps(ww, model=None, randomized_model=None, layers=[], trap_indices=
 
     if return_analyze:
         verify_df = pd.DataFrame.from_records(verify_rows)
-        return model, verify_df
-    return model
+        return active_model, verify_df
+    return active_model

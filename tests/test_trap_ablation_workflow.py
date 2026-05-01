@@ -1,6 +1,6 @@
 import inspect
 import pytest
-import torch
+torch = pytest.importorskip("torch")
 import weightwatcher as ww
 
 class OneLayer(torch.nn.Module):
@@ -43,3 +43,51 @@ def test_public_api_signatures():
     for name in ["randomized_model","trap_state","trap_artifacts"]:
         assert name in r.parameters
     assert "already_randomized" not in r.parameters
+
+def test_fast_mode_skips_original_basis(monkeypatch):
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True)
+    monkeypatch.setattr(watcher, "compute_original_basis_for_traps", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("should not be called")))
+    trap_df = watcher.analyze_traps(
+        randomized_model=randomized_model, trap_state=trap_state,
+        trap_burden=True, trap_burden_mode="fast", plot=False
+    )
+    assert len(trap_df) > 0
+
+def test_fast_mode_skips_full_bulk_reference(monkeypatch):
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True)
+    monkeypatch.setattr(watcher, "compute_bulk_trap_reference_metrics", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("should not be called")))
+    trap_df = watcher.analyze_traps(
+        randomized_model=randomized_model, trap_state=trap_state,
+        trap_burden=True, trap_burden_mode="fast", plot=False
+    )
+    assert len(trap_df) > 0
+
+def test_analyze_traps_does_not_recollect_artifacts(monkeypatch):
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True)
+    import weightwatcher.remove_traps as rt
+    monkeypatch.setattr(rt, "collect_trap_artifacts", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("should not be called")))
+    trap_df, out_state = watcher.analyze_traps(
+        randomized_model=randomized_model, trap_state=trap_state, return_artifacts=True,
+        trap_burden=True, trap_burden_mode="fast", plot=False
+    )
+    assert len(trap_df) > 0
+    assert "layers" in out_state
+
+def test_remove_traps_uses_cached_artifacts(monkeypatch):
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, trap_state = watcher.randomize_model(model=model, rng=123, return_state=True)
+    trap_df, trap_state = watcher.analyze_traps(
+        randomized_model=randomized_model, trap_state=trap_state, return_artifacts=True,
+        trap_burden=True, trap_burden_mode="fast", plot=False
+    )
+    import weightwatcher.remove_traps as rt
+    monkeypatch.setattr(rt, "collect_trap_artifacts", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("should not be called")))
+    ablated_model = watcher.remove_traps(randomized_model=randomized_model, traps=trap_df.iloc[[0]], trap_state=trap_state, plot=False)
+    assert isinstance(ablated_model, OneLayer)

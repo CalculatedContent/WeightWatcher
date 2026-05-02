@@ -59,6 +59,22 @@ class TestAnalyzeTraps(unittest.TestCase):
             "bulk_top_10_mass_mean", "bulk_top_10_mass_std",
         }
         self.assertTrue(expected_cols.issubset(set(df.columns)))
+        self.assertIn("perm_mode_index_0based", df.columns)
+        self.assertTrue((df["perm_mode_index"] == (df["perm_mode_index_0based"] + 1)).all())
+        self.assertTrue((df["trap_index"] >= 1).all())
+
+    def test_analyze_traps_trap_state_public_indices_are_1_based(self):
+        df, trap_state = self.watcher.analyze_traps(plot=False, savefig=False, return_artifacts=True)
+        if len(df) > 0:
+            self.assertGreaterEqual(int(df["trap_index"].min()), 1)
+        for _lid, layer_state in trap_state.get("layers", {}).items():
+            modes = layer_state.get("trap_mode_indices", [])
+            if modes:
+                self.assertGreaterEqual(min(int(x) for x in modes), 1)
+            modes0 = layer_state.get("trap_mode_indices_0based", [])
+            if modes0:
+                self.assertGreaterEqual(min(int(x) for x in modes0), 0)
+                self.assertEqual([int(x) + 1 for x in modes0], [int(x) for x in modes])
 
     def test_analyze_traps_no_powerlaw_columns_required(self):
         np.random.seed(123)

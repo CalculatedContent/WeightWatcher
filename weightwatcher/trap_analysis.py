@@ -212,6 +212,12 @@ def analyze_traps(
     details = details.reindex(columns=trap_cols + [c for c in details.columns if c not in trap_cols])
 
     if len(details) > 0:
+        if "perm_mode_index" in details.columns:
+            details["perm_mode_index_0based"] = details["perm_mode_index"].astype(int)
+            details["perm_mode_index"] = details["perm_mode_index_0based"].apply(remove_traps_ops._internal_trap_index_to_api)
+        if "trap_mode_index" in details.columns:
+            details["trap_mode_index_0based"] = details["trap_mode_index"].astype(int)
+            details["trap_mode_index"] = details["trap_mode_index_0based"].apply(remove_traps_ops._internal_trap_index_to_api)
         lead_cols = ["layer_id", "name"]
         details = details[lead_cols + [c for c in details.columns if c not in lead_cols]]
 
@@ -228,6 +234,28 @@ def analyze_traps(
     else:
         watcher.trap_component_summary = pd.DataFrame()
 
+    if return_artifacts and isinstance(trap_state, dict):
+        for _lid, layer_state in trap_state.get("layers", {}).items():
+            if not isinstance(layer_state, dict):
+                continue
+            modes0 = layer_state.get("trap_mode_indices_0based")
+            if modes0 is None:
+                modes_raw = layer_state.get("trap_mode_indices", [])
+                if modes_raw:
+                    modes_int = [int(x) for x in modes_raw]
+                    if min(modes_int) >= 1:
+                        modes0 = [m - 1 for m in modes_int]
+                    else:
+                        modes0 = modes_int
+                else:
+                    modes0 = []
+            layer_state["trap_mode_indices_0based"] = [int(x) for x in modes0]
+            layer_state["trap_mode_indices"] = remove_traps_ops._internal_trap_indices_to_api(layer_state["trap_mode_indices_0based"])
+
+            for artifact in layer_state.get("artifacts", []) or []:
+                if "trap_mode_index" in artifact:
+                    artifact["trap_mode_index_0based"] = int(artifact["trap_mode_index"])
+                    artifact["trap_mode_index"] = remove_traps_ops._internal_trap_index_to_api(artifact["trap_mode_index_0based"])
     return (details, trap_state) if return_artifacts else details
 
 

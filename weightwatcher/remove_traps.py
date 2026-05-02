@@ -13,6 +13,26 @@ from .compute_trace import trace_event
 
 logger = logging.getLogger(WW_NAME)
 
+def _api_trap_index_to_internal(trap_index):
+    """Convert public 1-based trap_index to internal 0-based index."""
+    if trap_index is None:
+        return None
+    idx = int(trap_index)
+    if idx < 1:
+        raise ValueError(f"trap_index is public/API-facing and must be 1-based; got {trap_index}.")
+    return idx - 1
+
+
+def _internal_trap_index_to_api(internal_index):
+    """Convert internal 0-based trap/mode index to public 1-based index."""
+    return int(internal_index) + 1
+
+
+def _internal_trap_indices_to_api(indices):
+    if indices is None:
+        return indices
+    return [_internal_trap_index_to_api(i) for i in indices]
+
 
 def _normalize_trap_rng(rng=None, seed=None):
     """Normalize trap permutation RNG to a reproducible numpy RandomState."""
@@ -248,6 +268,9 @@ def _trap_indices_from_traps_df(traps):
     if "trap_index" not in trap_df.columns:
         raise ValueError("traps must include a 'trap_index' column")
     indices = trap_df["trap_index"].dropna().astype(int).tolist()
+    if any(idx < 1 for idx in indices):
+        bad = sorted(set(idx for idx in indices if idx < 1))
+        raise ValueError(f"trap_index is public/API-facing and must be 1-based; got {bad[0]}.")
     indices = sorted(set(indices))
     if len(indices) == 0:
         raise ValueError("traps did not contain any valid trap_index values")
@@ -263,6 +286,9 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
 
     if trap_indices is not None and len(trap_indices) == 0:
         raise ValueError("trap_indices must be non-empty when provided")
+    if trap_indices is not None:
+        for trap_index in trap_indices:
+            _api_trap_index_to_internal(trap_index)
 
     if randomized_model is None:
         raise ValueError("randomized_model must be provided")

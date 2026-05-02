@@ -215,6 +215,26 @@ def test_remove_traps_public_api_direct_call(monkeypatch):
     assert len(post_artifacts) == 0
 
 
+def test_remove_traps_rejects_zero_public_index(monkeypatch):
+    W, _, _, _ = _single_trap_setup(seed=808)
+    ww_layer = make_ww_layer(W)
+    watcher = WeightWatcher(model={"dummy_weight": np.array([1.0])})
+    monkeypatch.setattr(
+        watcher,
+        "make_layer_iterator",
+        lambda model=None, layers=None, params=None, base_model=None: [ww_layer],
+    )
+    with pytest.raises(ValueError, match="1-based"):
+        watcher.remove_traps(
+            randomized_model={"dummy_weight": np.array([1.0])},
+            layers=[],
+            trap_indices=[0],
+            seed=77,
+            pool=True,
+            plot=False,
+        )
+
+
 def test_remove_traps_accepts_traps_dataframe_and_returns_verify_df(monkeypatch):
     W, _, _, _ = _single_trap_setup(seed=505)
     ww_layer = make_ww_layer(W)
@@ -332,7 +352,7 @@ def test_trap_rng_consistency_analyze_vs_collect_single_and_multi_layer():
         params = watcher.normalize_params(params)
         ww_layer = list(watcher.make_layer_iterator(model=watcher.model, layers=[layer_id], params=params))[0]
         artifacts = watcher._collect_trap_artifacts(ww_layer, params=params, seed=123)
-        artifact_mode_indices = [int(a["trap_mode_index"]) for a in artifacts]
+        artifact_mode_indices = [int(a["trap_mode_index"]) + 1 for a in artifacts]
 
         assert len(expected_mode_indices) == len(artifact_mode_indices)
         assert expected_mode_indices == artifact_mode_indices

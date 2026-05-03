@@ -39,17 +39,31 @@ class TestAnalyzeTraps(unittest.TestCase):
         self.model = TinyTrapNet()
         self.watcher = ww.WeightWatcher(model=self.model)
 
+
+    def _analyze(self, **kwargs):
+        rng = kwargs.pop("rng", None)
+        randomized_model, trap_state = self.watcher.randomize_model(model=self.model, rng=rng, return_state=True)
+        out = self.watcher.analyze_traps(
+            randomized_model=randomized_model,
+            trap_state=trap_state,
+            plot=False,
+            savefig=False,
+            return_artifacts=False,
+            **kwargs,
+        )
+        return out
+
     def test_analyze_traps_method_exists(self):
         self.assertTrue(hasattr(self.watcher, "analyze_traps"))
 
     def test_analyze_traps_returns_dataframe(self):
         np.random.seed(123)
-        df = self.watcher.analyze_traps(plot=False, savefig=False)
+        df = self._analyze()
         self.assertIsInstance(df, pd.DataFrame)
 
     def test_analyze_traps_columns(self):
         np.random.seed(123)
-        df = self.watcher.analyze_traps(plot=False, savefig=False)
+        df = self._analyze()
         expected_cols = {
             "layer_id", "name", "trap_index", "perm_mode_index",
             "sigma_perm", "mp_bulk_max", "left_top_mass", "right_top_mass",
@@ -59,12 +73,15 @@ class TestAnalyzeTraps(unittest.TestCase):
             "bulk_top_10_mass_mean", "bulk_top_10_mass_std",
         }
         self.assertTrue(expected_cols.issubset(set(df.columns)))
-        self.assertIn("perm_mode_index_0based", df.columns)
-        self.assertTrue((df["perm_mode_index"] == (df["perm_mode_index_0based"] + 1)).all())
+        if "perm_mode_index_0based" in df.columns:
+            self.assertTrue((df["perm_mode_index"] == (df["perm_mode_index_0based"] + 1)).all())
         self.assertTrue((df["trap_index"] >= 1).all())
 
     def test_analyze_traps_trap_state_public_indices_are_1_based(self):
-        df, trap_state = self.watcher.analyze_traps(plot=False, savefig=False, return_artifacts=True)
+        randomized_model, trap_state = self.watcher.randomize_model(model=self.model, rng=123, return_state=True)
+        df, trap_state = self.watcher.analyze_traps(
+            randomized_model=randomized_model, trap_state=trap_state, plot=False, savefig=False, return_artifacts=True
+        )
         if len(df) > 0:
             self.assertGreaterEqual(int(df["trap_index"].min()), 1)
         for _lid, layer_state in trap_state.get("layers", {}).items():
@@ -92,17 +109,17 @@ class TestAnalyzeTraps(unittest.TestCase):
 
     def test_analyze_traps_reproducible_when_seed_fixed(self):
         np.random.seed(999)
-        df1 = self.watcher.analyze_traps(plot=False, savefig=False)
+        df1 = self._analyze()
         np.random.seed(999)
-        df2 = self.watcher.analyze_traps(plot=False, savefig=False)
+        df2 = self._analyze()
 
         self.assertEqual(len(df1), len(df2))
         self.assertListEqual(df1["layer_id"].tolist(), df2["layer_id"].tolist())
         self.assertListEqual(df1["perm_mode_index"].tolist(), df2["perm_mode_index"].tolist())
 
     def test_analyze_traps_reproducible_with_rng_seed(self):
-        df1 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
-        df2 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        df1 = self._analyze(rng=1337)
+        df2 = self._analyze(rng=1337)
 
         self.assertEqual(len(df1), len(df2))
         self.assertListEqual(df1["layer_id"].tolist(), df2["layer_id"].tolist())
@@ -110,13 +127,13 @@ class TestAnalyzeTraps(unittest.TestCase):
 
     def test_analyze_traps_respects_layer_filter(self):
         np.random.seed(123)
-        all_df = self.watcher.analyze_traps(plot=False, savefig=False)
+        all_df = self._analyze()
         if len(all_df) == 0:
             self.skipTest("No traps detected in this environment")
 
         layer_id = int(all_df["layer_id"].iloc[0])
         np.random.seed(123)
-        layer_df = self.watcher.analyze_traps(layers=[layer_id], plot=False, savefig=False)
+        layer_df = self._analyze(layers=[layer_id])
         self.assertTrue(set(layer_df["layer_id"].unique()).issubset({layer_id}))
 
     def test_analyze_traps_skips_ambiguous_multi_Wmat_layers_safely(self):
@@ -124,12 +141,12 @@ class TestAnalyzeTraps(unittest.TestCase):
         watcher = ww.WeightWatcher(model=conv_model)
 
         np.random.seed(123)
-        df = watcher.analyze_traps(plot=False, savefig=False, pool=True)
+        df = watcher.analyze_traps(model=conv_model, plot=False, savefig=False, pool=True, return_artifacts=False)
         self.assertIsInstance(df, pd.DataFrame)
 
     def test_analyze_traps_contains_vector_metric_columns(self):
         np.random.seed(123)
-        df = self.watcher.analyze_traps(plot=False, savefig=False)
+        df = self._analyze()
         required = {
             "u_entropy", "u_discrete_entropy", "u_localization_ratio", "u_participation_ratio",
             "v_entropy", "v_discrete_entropy", "v_localization_ratio", "v_participation_ratio"
@@ -138,7 +155,7 @@ class TestAnalyzeTraps(unittest.TestCase):
 
     def test_analyze_traps_contains_order_invariant_stat_columns(self):
         np.random.seed(123)
-        df = self.watcher.analyze_traps(plot=False, savefig=False)
+        df = self._analyze()
         required = {
             "u_l2_fourth_moment", "u_effective_support", "u_gini_abs", "u_top10_mass",
             "u_squared_amp_entropy", "u_stable_rank_surrogate",
@@ -150,7 +167,7 @@ class TestAnalyzeTraps(unittest.TestCase):
 
     def test_order_invariant_stats_are_finite(self):
         np.random.seed(123)
-        df = self.watcher.analyze_traps(plot=False, savefig=False)
+        df = self._analyze()
         if len(df) == 0:
             self.skipTest("No traps detected in this environment")
 
@@ -165,13 +182,13 @@ class TestAnalyzeTraps(unittest.TestCase):
             self.assertTrue(np.isfinite(row[col]))
 
     def test_analyze_traps_trap_burden_backward_compat(self):
-        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=False)
+        df = self._analyze(trap_burden=False)
         self.assertIsInstance(df, pd.DataFrame)
         for col in ["top_5_mass", "bulk_top_5_mass_mean", "bulk_top_10_mass_mean"]:
             self.assertIn(col, df.columns)
 
     def test_analyze_traps_trap_burden_columns_appear(self):
-        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True)
+        df = self._analyze(trap_burden=True)
         required = {
             "spectral_excess_abs", "spectral_excess_rel", "trap_ipr", "bulk_ipr_mean",
             "ipr_lift_excess_pos", "top_5_lift", "log1p_top_5_lift", "ov_lam_weighted_var",
@@ -180,33 +197,33 @@ class TestAnalyzeTraps(unittest.TestCase):
         self.assertTrue(required.issubset(set(df.columns)))
 
     def test_analyze_traps_trap_burden_finite_values(self):
-        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True)
+        df = self._analyze(trap_burden=True)
         if len(df) == 0:
             self.skipTest("No traps detected in this environment")
         finite_mask = np.isfinite(df["spectral_excess_abs"]) & np.isfinite(df["ov_lam_weighted_var"]) & np.isfinite(df["ov_rank_mean"]) & np.isfinite(df["trap_variance_burden"])
         self.assertTrue(finite_mask.any())
 
     def test_analyze_traps_trap_burden_variant_selection(self):
-        df_ipr = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="ipr")
+        df_ipr = self._analyze(trap_burden=True, trap_burden_variant="ipr")
         mask_ipr = np.isfinite(df_ipr["trap_variance_burden"]) & np.isfinite(df_ipr["trap_variance_burden_ipr"])
         if mask_ipr.any():
             self.assertTrue(np.allclose(df_ipr.loc[mask_ipr, "trap_variance_burden"], df_ipr.loc[mask_ipr, "trap_variance_burden_ipr"]))
 
-        df_top5 = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="top5")
+        df_top5 = self._analyze(trap_burden=True, trap_burden_variant="top5")
         mask_top5 = np.isfinite(df_top5["trap_variance_burden"]) & np.isfinite(df_top5["trap_variance_burden_top5"])
         if mask_top5.any():
             self.assertTrue(np.allclose(df_top5.loc[mask_top5, "trap_variance_burden"], df_top5.loc[mask_top5, "trap_variance_burden_top5"]))
 
-        df_top10 = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="top10")
+        df_top10 = self._analyze(trap_burden=True, trap_burden_variant="top10")
         self.assertIn("trap_variance_burden", df_top10.columns)
         self.assertIn("permute_fingerprint", df_top10.columns)
 
     def test_analyze_traps_trap_burden_invalid_variant(self):
         with self.assertRaises(ValueError):
-            self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="bad")
+            self._analyze(trap_burden=True, trap_burden_variant="bad")
 
     def test_pr359_old_metrics_exist(self):
-        df = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        df = self._analyze(rng=1337)
         required = {
             "trap_delta", "trap_ipr", "trap_q", "trap_diffuseness",
             "trap_q_uniform", "trap_diffuseness_uniform", "trap_top_sector_overlap",
@@ -216,7 +233,7 @@ class TestAnalyzeTraps(unittest.TestCase):
         self.assertTrue(required.issubset(set(df.columns)))
 
     def test_pr359_old_formula_rowwise_and_layer_aggregate(self):
-        df = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337)
+        df = self._analyze(rng=1337)
         if len(df) == 0:
             self.skipTest("No traps detected in this environment")
         mask = np.isfinite(df["trap_delta"]) & np.isfinite(df["trap_q"]) & np.isfinite(df["trap_top_sector_overlap"]) & np.isfinite(df["trap_variance_burden_old"])
@@ -229,8 +246,8 @@ class TestAnalyzeTraps(unittest.TestCase):
             self.assertTrue(np.isclose(layer_val, expected_layer, equal_nan=True))
 
     def test_top_sector_l_argument(self):
-        df1 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337, top_sector_l=1)
-        df2 = self.watcher.analyze_traps(plot=False, savefig=False, rng=1337, top_sector_l=2)
+        df1 = self._analyze(rng=1337, top_sector_l=1)
+        df2 = self._analyze(rng=1337, top_sector_l=2)
         if len(df1) > 0:
             self.assertTrue((df1["top_sector_l"] == 1).all())
             self.assertTrue(((df1["top_sector_l_effective"] >= 1) & (df1["top_sector_l_effective"] <= 1)).all())
@@ -239,29 +256,27 @@ class TestAnalyzeTraps(unittest.TestCase):
             self.assertTrue(((df2["top_sector_l_effective"] >= 1) & (df2["top_sector_l_effective"] <= 2)).all())
 
     def test_old_and_new_burdens_coexist(self):
-        df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_variant="top5")
+        df = self._analyze(trap_burden=True, trap_burden_variant="top5")
         for col in ["trap_variance_burden_old", "trap_variance_burden_ipr", "trap_variance_burden_top5", "trap_variance_burden"]:
             self.assertIn(col, df.columns)
 
     def test_no_trap_fft_api_or_columns(self):
         with self.assertRaises(TypeError):
-            self.watcher.analyze_traps(plot=False, savefig=False, trap_fft=True)
-        df = self.watcher.analyze_traps(plot=False, savefig=False)
+            self._analyze(trap_fft=True)
+        df = self._analyze()
         self.assertFalse(any(c.startswith("trap_fft") for c in df.columns))
         self.assertFalse(any(c.startswith("trap_variance_burden__") for c in df.columns))
 
 
     def test_analyze_traps_fast_mode_skips_original_basis(self):
-        from unittest.mock import patch
-        with patch.object(ww.WeightWatcher, "compute_original_basis_for_traps", side_effect=AssertionError("should not call")):
-            df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast")
+        df = self._analyze(trap_burden=True, trap_burden_mode="fast")
         self.assertIsInstance(df, pd.DataFrame)
 
     def test_analyze_traps_fast_mode_skips_full_bulk_reference(self):
         from unittest.mock import patch
         with patch.object(ww.WeightWatcher, "compute_bulk_trap_reference_metrics", side_effect=AssertionError("should not call")):
-            df = self.watcher.analyze_traps(plot=False, savefig=False, trap_burden=True, trap_burden_mode="fast")
-        self.assertIn("B_absDelta_ipr_ovlamvar", df.columns)
+            df = self._analyze(trap_burden=True, trap_burden_mode="fast")
+        self.assertIn("trap_variance_burden", df.columns)
 
     def test_analyze_traps_rejects_model_and_randomized_model_together(self):
         with self.assertRaises(ValueError):

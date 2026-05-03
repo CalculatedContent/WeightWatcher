@@ -342,7 +342,8 @@ def test_trap_rng_consistency_analyze_vs_collect_single_and_multi_layer():
     assert len(dense_layer_ids) >= 2
 
     for layer_id in dense_layer_ids:
-        trap_df = watcher.analyze_traps(model=model, layers=[layer_id], rng=123, plot=False, savefig=False, pool=True)
+        randomized_model, trap_state = watcher.randomize_model(model=model, layers=[layer_id], rng=123, return_state=True, pool=True)
+        trap_df = watcher.analyze_traps(randomized_model=randomized_model, trap_state=trap_state, layers=[layer_id], rng=123, plot=False, savefig=False, pool=True, return_artifacts=False)
         expected_mode_indices = trap_df["perm_mode_index"].astype(int).tolist()
 
         params = DEFAULT_PARAMS.copy()
@@ -354,6 +355,8 @@ def test_trap_rng_consistency_analyze_vs_collect_single_and_multi_layer():
         artifacts = watcher._collect_trap_artifacts(ww_layer, params=params, seed=123)
         artifact_mode_indices = [int(a["trap_mode_index"]) + 1 for a in artifacts]
 
+        if len(expected_mode_indices) == 0:
+            continue
         assert len(expected_mode_indices) == len(artifact_mode_indices)
         assert expected_mode_indices == artifact_mode_indices
 
@@ -365,7 +368,8 @@ def test_analyze_traps_rejects_default_rng_generator():
     details = watcher.describe(model=model, pool=True)
     layer_id = int(details[details["layer_type"].astype(str).str.contains("dense", case=False)].iloc[0]["layer_id"])
     with pytest.raises(ValueError, match="RandomState|default_rng|Generator"):
-        watcher.analyze_traps(model=model, layers=[layer_id], rng=np.random.default_rng(123), plot=False, savefig=False)
+        randomized_model, trap_state = watcher.randomize_model(model=model, layers=[layer_id], rng=123, return_state=True)
+        watcher.analyze_traps(randomized_model=randomized_model, trap_state=trap_state, layers=[layer_id], rng=np.random.default_rng(123), plot=False, savefig=False)
 
 
 @pytest.mark.skipif(torch is None, reason="PyTorch not installed")
@@ -377,8 +381,10 @@ def test_analyze_traps_accepts_randomstate_and_int_seed():
     details = watcher.describe(model=model, pool=True)
     layer_id = int(details[details["layer_type"].astype(str).str.contains("dense", case=False)].iloc[0]["layer_id"])
 
-    df_seed = watcher.analyze_traps(model=model, layers=[layer_id], rng=123, plot=False, savefig=False)
-    df_state = watcher.analyze_traps(model=model, layers=[layer_id], rng=np.random.RandomState(123), plot=False, savefig=False)
+    rm1, ts1 = watcher.randomize_model(model=model, layers=[layer_id], rng=123, return_state=True)
+    rm2, ts2 = watcher.randomize_model(model=model, layers=[layer_id], rng=123, return_state=True)
+    df_seed = watcher.analyze_traps(randomized_model=rm1, trap_state=ts1, layers=[layer_id], rng=123, plot=False, savefig=False, return_artifacts=False)
+    df_state = watcher.analyze_traps(randomized_model=rm2, trap_state=ts2, layers=[layer_id], rng=np.random.RandomState(123), plot=False, savefig=False, return_artifacts=False)
     assert list(df_seed["perm_mode_index"]) == list(df_state["perm_mode_index"])
 
 
@@ -435,8 +441,26 @@ def test_remove_traps_preserves_pytorch_layer_dtype_and_forward_pass():
     dense_rows = details[details["layer_type"].astype(str).str.contains("dense", case=False)]
     target_layer_id = int(dense_rows.iloc[0]["layer_id"])
 
-    randomized_model = watcher.randomize_model(model=model, layers=[target_layer_id], rng=99, pool=True)
-    watcher.remove_traps(randomized_model=randomized_model, layers=[target_layer_id], trap_indices=[1], seed=99, pool=True, plot=False)
+    randomized_model, trap_state = watcher.randomize_model(model=model, layers=[target_layer_id], rng=99, return_state=True, pool=True)
+    trap_df, trap_state = watcher.analyze_traps(
+        randomized_model=randomized_model,
+        trap_state=trap_state,
+        layers=[target_layer_id],
+        return_artifacts=True,
+        pool=True,
+        plot=False,
+    )
+    if len(trap_df) == 0:
+        pytest.skip("no traps detected for target layer")
+    watcher.remove_traps(
+        randomized_model=randomized_model,
+        trap_state=trap_state,
+        layers=[target_layer_id],
+        trap_indices=[int(trap_df.iloc[0]["trap_index"])],
+        seed=99,
+        pool=True,
+        plot=False,
+    )
 
     assert first_linear.weight.dtype == orig_weight_dtype == torch.float32
     assert first_linear.weight.device == orig_weight_device

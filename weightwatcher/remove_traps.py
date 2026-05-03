@@ -33,6 +33,34 @@ def _internal_trap_indices_to_api(indices):
         return indices
     return [_internal_trap_index_to_api(i) for i in indices]
 
+def _resolve_trap_ids_to_svd_indices(layer_id, trap_ids, trap_state):
+    layer = trap_state.get("layers", {}).get(int(layer_id)) if isinstance(trap_state, dict) else None
+    if layer is None:
+        raise ValueError(f"unknown layer_id for trap ids: {layer_id}")
+    m = layer.get("trap_id_to_svd_index", {})
+    out = []
+    for tid in trap_ids:
+        if int(tid) not in m:
+            raise ValueError(f"unknown trap_id {tid} for layer_id {layer_id}")
+        out.append(int(m[int(tid)]))
+    return out
+
+def _resolve_bulk_ids_to_svd_indices(layer_id, bulk_ids, trap_state):
+    layer = trap_state.get("layers", {}).get(int(layer_id)) if isinstance(trap_state, dict) else None
+    if layer is None:
+        raise ValueError(f"unknown layer_id for bulk ids: {layer_id}")
+    m = layer.get("bulk_id_to_svd_index", {})
+    trap_set = set(int(x) for x in layer.get("trap_svd_indices", []))
+    out = []
+    for bid in bulk_ids:
+        if int(bid) not in m:
+            raise ValueError(f"unknown bulk_id {bid} for layer_id {layer_id}")
+        svd_i = int(m[int(bid)])
+        if svd_i in trap_set:
+            raise ValueError(f"bulk_id {bid} corresponds to a trap mode in layer_id {layer_id}")
+        out.append(svd_i)
+    return out
+
 
 def _normalize_trap_rng(rng=None, seed=None):
     """Normalize trap permutation RNG to a reproducible numpy RandomState."""
@@ -279,7 +307,9 @@ def _trap_indices_from_traps_df(traps):
 
 def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                  verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                 base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None):
+                 base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None, bulk_ids_by_layer=None, mode_type="trap"):
+    if trap_indices is not None and bulk_ids_by_layer is not None:
+        raise ValueError("Pass either trap_indices/traps or bulk_ids_by_layer, not both.")
     # PR359 compatibility path: passing traps=<DataFrame> instead of trap_indices=[...]
     if trap_indices is None and traps is not None:
         trap_indices = _trap_indices_from_traps_df(traps)
@@ -327,6 +357,29 @@ def remove_traps(ww, randomized_model=None, layers=[], trap_indices=None, traps=
                 selected_from_rows = None
 
             layer_selected_trap_indices = selected_from_rows if selected_from_rows is not None else requested_trap_indices
+
+            if mode_type == "bulk" or bulk_ids_by_layer is not None:
+                if trap_state is None:
+                    raise ValueError("bulk removal requires trap_state from analyze_traps(..., return_bulk_ids=True, return_artifacts=True)")
+                lid = int(ww_layer.layer_id)
+                selected_bulk_ids = None
+                if isinstance(bulk_ids_by_layer, dict):
+                    selected_bulk_ids = bulk_ids_by_layer.get(lid, bulk_ids_by_layer.get(str(lid)))
+                if not selected_bulk_ids:
+                    continue
+                layer_state = trap_state.get("layers", {}).get(lid)
+                if not isinstance(layer_state, dict):
+                    raise ValueError(f"unknown layer_id {lid}")
+                U = layer_state.get("U_perm"); S = layer_state.get("S_perm"); Vh = layer_state.get("Vh_perm")
+                if U is None or S is None or Vh is None:
+                    raise ValueError("requested mode not available because SVD/MP state was not retained")
+                svd_indices = _resolve_bulk_ids_to_svd_indices(lid, selected_bulk_ids, trap_state)
+                old_W = ww_layer.Wmats[0]; new_W = old_W.copy()
+                for j in svd_indices:
+                    new_W = new_W - float(S[j]) * np.outer(U[:, j], Vh[j, :])
+                ww.replace_layer_weights(ww_layer.layer_id, ww_layer.framework_layer, new_W)
+                ww_layer.Wmats = [new_W]
+                continue
 
             if trap_state is not None and int(ww_layer.layer_id) in trap_state.get("layers", {}):
                 layer_state = trap_state["layers"][int(ww_layer.layer_id)]

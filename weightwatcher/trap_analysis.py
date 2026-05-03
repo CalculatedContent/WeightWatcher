@@ -27,6 +27,68 @@ def _lookup_layer_permuted_ids(layer_id, trap_state=None, permuted_ids=None):
     return None
 
 
+
+
+def _sample_bulk_modes(svd_indices, eigenvalues, max_modes=None, seed=None, strategy="all"):
+    ids = [int(i) for i in svd_indices]
+    if max_modes is None or max_modes >= len(ids) or strategy == "all":
+        return ids
+    rng = np.random.RandomState(seed) if seed is not None else np.random.RandomState(0)
+    if strategy == "uniform":
+        pick = rng.choice(ids, size=max_modes, replace=False)
+        return sorted(int(x) for x in pick)
+    if strategy == "stratified":
+        ev = np.asarray([eigenvalues[i] for i in ids], dtype=float)
+        q1, q2 = np.quantile(ev, [1/3, 2/3])
+        bins = [[], [], []]
+        for i,e in zip(ids, ev):
+            bins[0 if e<=q1 else 1 if e<=q2 else 2].append(i)
+        out=[]
+        per=max(1, max_modes//3)
+        for b in bins:
+            if not b: continue
+            k=min(len(b), per)
+            out.extend(rng.choice(b,size=k,replace=False).tolist())
+        remain=max_modes-len(out)
+        if remain>0:
+            rem=[i for i in ids if i not in out]
+            if rem:
+                out.extend(rng.choice(rem,size=min(remain,len(rem)),replace=False).tolist())
+        return sorted(int(x) for x in out)
+    raise ValueError("bulk_sampling_strategy must be one of: all, uniform, stratified")
+
+
+def _build_trap_bulk_rows(layer_state, layer_rows, return_bulk_ids=False, bulk_only=False, trap_only=False, max_bulk_modes_per_layer=None, bulk_sampling_seed=None, bulk_sampling_strategy='all'):
+    trap_svd = [int(i) for i in layer_state.get('trap_mode_indices_0based', [])]
+    S = np.asarray(layer_state.get('S_perm', []), dtype=float)
+    evals = S*S
+    mp_max=float(layer_state.get('bulk_stats',{}).get('mp_bulk_max', np.nan))
+    mp_min=float(layer_state.get('bulk_stats',{}).get('mp_bulk_min', 0.0))
+    trap_set=set(trap_svd)
+    inside=[i for i,e in enumerate(evals) if np.isfinite(mp_max) and e>=mp_min and e<=mp_max]
+    bulk=[i for i in inside if i not in trap_set]
+    bulk=_sample_bulk_modes(bulk, evals, max_bulk_modes_per_layer, bulk_sampling_seed, bulk_sampling_strategy)
+    layer_state['trap_svd_indices']=trap_svd
+    layer_state['bulk_svd_indices']=bulk
+    layer_state['trap_id_to_svd_index']={i+1:v for i,v in enumerate(trap_svd)}
+    layer_state['bulk_id_to_svd_index']={i+1:v for i,v in enumerate(bulk)}
+    for r in layer_rows:
+        r['mode_type']='trap'; r['ablation_type']='trap'; r['mode_id']=int(r.get('trap_index'))
+        r['trap_id']=int(r.get('trap_index')); r['bulk_id']=np.nan; r['bulk_index']=np.nan
+        r['is_trap']=True; r['is_bulk']=False
+        r['svd_mode_index']=int(r.get('trap_mode_index_0based', r.get('trap_mode_index',-1)))
+        ev=float(r.get('eval_perm', np.nan))
+        r['eigenvalue']=ev; r['singular_value']=float(np.sqrt(ev)) if np.isfinite(ev) else np.nan
+        r['mode_index']=r['svd_mode_index']; r['mp_lambda_min']=mp_min; r['mp_lambda_max']=mp_max
+    bulk_rows=[]
+    if return_bulk_ids:
+        for bi,svd_i in enumerate(bulk, start=1):
+            ev=float(evals[svd_i])
+            bulk_rows.append({'layer_id':int(layer_state['layer_id']),'name':layer_state.get('name'),'longname':layer_state.get('longname'),'mode_type':'bulk','ablation_type':'bulk','mode_id':bi,'trap_id':np.nan,'trap_index':np.nan,'bulk_id':bi,'bulk_index':bi,'is_trap':False,'is_bulk':True,'svd_mode_index':svd_i,'mode_index':svd_i,'singular_value':float(S[svd_i]),'eigenvalue':ev,'eval_perm':ev,'mp_lambda_min':mp_min,'mp_lambda_max':mp_max,'is_inside_mp_bulk':True,'is_above_mp_edge':False,'is_below_mp_edge':False})
+    if bulk_only: return bulk_rows
+    if trap_only: return layer_rows
+    return layer_rows + bulk_rows
+
 def analyze_traps(
     watcher,
     model=None,
@@ -62,6 +124,12 @@ def analyze_traps(
     return_artifacts=True,
     permuted_ids=None,
     already_randomized=False,
+    return_bulk_ids=False,
+    bulk_only=False,
+    trap_only=False,
+    max_bulk_modes_per_layer=None,
+    bulk_sampling_seed=None,
+    bulk_sampling_strategy="all",
 ):
     """Externalized implementation for WeightWatcher.analyze_traps()."""
     if layers is None:
@@ -167,7 +235,8 @@ def analyze_traps(
                 trap_state.setdefault("permuted_ids", {})[int(ww_layer.layer_id)] = layer_state.get("permuted_ids")
             else:
                 layer_rows = layer_out
-            if layer_rows:
+            if layer_rows or return_bulk_ids:
+                layer_rows = _build_trap_bulk_rows(layer_state if return_artifacts else {"layer_id": int(ww_layer.layer_id), "name": ww_layer.name, "longname": ww_layer.longname, "S_perm": np.array([]), "trap_mode_indices_0based": []}, layer_rows or [], return_bulk_ids=return_bulk_ids, bulk_only=bulk_only, trap_only=trap_only, max_bulk_modes_per_layer=max_bulk_modes_per_layer, bulk_sampling_seed=bulk_sampling_seed, bulk_sampling_strategy=bulk_sampling_strategy)
                 if params.get(wwcore.PLOT, False):
                     trap_infos = []
                     for row in layer_rows:

@@ -115,12 +115,14 @@ def _build_trap_bulk_rows(layer_state, layer_rows, return_bulk_ids=False, bulk_o
     else:
         inside=[i for i,e in enumerate(evals) if np.isfinite(e) and i not in trap_set]
     bulk=[i for i in inside if i not in trap_set]
-    if return_bulk_ids and len(evals) > 2 and len(bulk) == 0:
+    if return_bulk_ids and len(bulk) == 0:
         raise ValueError(
             f"No eligible bulk modes found for layer_id={layer_state.get('layer_id')} "
             f"name={layer_state.get('name')} len_evals={len(evals)} mp_bulk_min={mp_min} "
             f"mp_bulk_max={mp_max} min_eval={np.nanmin(evals) if len(evals) else np.nan} "
-            f"max_eval={np.nanmax(evals) if len(evals) else np.nan} n_traps={len(trap_svd)}"
+            f"max_eval={np.nanmax(evals) if len(evals) else np.nan} n_traps={len(trap_svd)}. "
+            "This is an invalid state for bulk ID generation and indicates a broken MP fit "
+            "or a corrupted trap/bulk classification path."
         )
     bulk=_sample_bulk_modes(bulk, evals, max_bulk_modes_per_layer, bulk_sampling_seed, bulk_sampling_strategy)
     layer_state['trap_svd_indices']=trap_svd

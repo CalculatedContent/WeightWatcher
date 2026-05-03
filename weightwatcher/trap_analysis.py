@@ -287,6 +287,11 @@ def analyze_traps(
             layer_out = watcher.apply_analyze_traps(ww_layer, params=layer_params)
             if return_artifacts:
                 layer_rows, layer_state = layer_out
+                if isinstance(layer_state, dict):
+                    if layer_state.get("mp_bulk_max") is None and hasattr(ww_layer, "bulk_max"):
+                        layer_state["mp_bulk_max"] = float(ww_layer.bulk_max) if ww_layer.bulk_max is not None else None
+                    if layer_state.get("mp_bulk_min") is None and hasattr(ww_layer, "bulk_min"):
+                        layer_state["mp_bulk_min"] = float(ww_layer.bulk_min) if ww_layer.bulk_min is not None else 0.0
                 if trap_state is None:
                     trap_state = {"already_randomized": bool(already_randomized), "permuted_ids": {}, "layers": {}}
                 trap_state.setdefault("layers", {})[int(ww_layer.layer_id)] = layer_state
@@ -340,11 +345,13 @@ def analyze_traps(
 
     if len(details) > 0:
         if "perm_mode_index" in details.columns:
-            details["perm_mode_index_0based"] = details["perm_mode_index"].astype(int)
-            details["perm_mode_index"] = details["perm_mode_index_0based"].apply(remove_traps_ops._internal_trap_index_to_api)
+            mask = details["perm_mode_index"].notna()
+            details.loc[mask, "perm_mode_index_0based"] = details.loc[mask, "perm_mode_index"].astype(int)
+            details.loc[mask, "perm_mode_index"] = details.loc[mask, "perm_mode_index_0based"].apply(remove_traps_ops._internal_trap_index_to_api)
         if "trap_mode_index" in details.columns:
-            details["trap_mode_index_0based"] = details["trap_mode_index"].astype(int)
-            details["trap_mode_index"] = details["trap_mode_index_0based"].apply(remove_traps_ops._internal_trap_index_to_api)
+            mask = details["trap_mode_index"].notna()
+            details.loc[mask, "trap_mode_index_0based"] = details.loc[mask, "trap_mode_index"].astype(int)
+            details.loc[mask, "trap_mode_index"] = details.loc[mask, "trap_mode_index_0based"].apply(remove_traps_ops._internal_trap_index_to_api)
         lead_cols = ["layer_id", "name"]
         details = details[lead_cols + [c for c in details.columns if c not in lead_cols]]
 

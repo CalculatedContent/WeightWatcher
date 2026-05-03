@@ -3770,7 +3770,8 @@ class WeightWatcher:
                 trap_only=False,
                 max_bulk_modes_per_layer=None,
                 bulk_sampling_seed=None,
-                bulk_sampling_strategy="all"):
+                bulk_sampling_strategy="all",
+                allow_bulk_without_mp_edges=False):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3838,6 +3839,7 @@ class WeightWatcher:
             max_bulk_modes_per_layer=max_bulk_modes_per_layer,
             bulk_sampling_seed=bulk_sampling_seed,
             bulk_sampling_strategy=bulk_sampling_strategy,
+            allow_bulk_without_mp_edges=allow_bulk_without_mp_edges,
         )
 
     def analyze_bulk_modes(self, bulk_ids_by_layer=None, layers=None, randomized_model=None, trap_state=None, **kwargs):

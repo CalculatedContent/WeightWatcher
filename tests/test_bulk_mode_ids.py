@@ -51,3 +51,25 @@ def test_invalid_bulk_id_errors():
     _, state = watcher.analyze_traps(randomized_model=randomized_model, trap_state=state, return_artifacts=True, return_bulk_ids=True, plot=False)
     with pytest.raises(ValueError):
         watcher.remove_modes(mode_ids_by_layer={999:[1]}, mode_type='bulk', randomized_model=randomized_model, trap_state=state, plot=False)
+
+
+def test_bulk_only_has_mp_edges_and_nonempty():
+    model = OneLayer()
+    watcher = ww.WeightWatcher(model=model)
+    randomized_model, state = watcher.randomize_model(model=model, rng=123, return_state=True)
+    bulk_df, out_state = watcher.analyze_traps(
+        randomized_model=randomized_model,
+        trap_state=state,
+        return_artifacts=True,
+        return_bulk_ids=True,
+        bulk_only=True,
+        max_bulk_modes_per_layer=5,
+        bulk_sampling_seed=123,
+        plot=False,
+    )
+    assert len(bulk_df) > 0
+    assert set(bulk_df["mode_type"]) == {"bulk"}
+    for _lid, layer_state in out_state["layers"].items():
+        assert np.isfinite(layer_state["mp_bulk_min"])
+        assert np.isfinite(layer_state["mp_bulk_max"])
+        assert len(layer_state["bulk_svd_indices"]) > 0

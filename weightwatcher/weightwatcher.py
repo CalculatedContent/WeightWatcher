@@ -3764,7 +3764,13 @@ class WeightWatcher:
                 compute_original_basis=None,
                 compute_full_bulk_reference=None,
                 bulk_mode_sample=10,
-                compute_original_trap_svd=None):
+                compute_original_trap_svd=None,
+                return_bulk_ids=False,
+                bulk_only=False,
+                trap_only=False,
+                max_bulk_modes_per_layer=None,
+                bulk_sampling_seed=None,
+                bulk_sampling_strategy="all"):
         """Analyze randomized correlation traps and return one row per trap.
 
         This method follows the randomized/permuted trap workflow:
@@ -3826,7 +3832,37 @@ class WeightWatcher:
             compute_full_bulk_reference=compute_full_bulk_reference,
             bulk_mode_sample=bulk_mode_sample,
             compute_original_trap_svd=compute_original_trap_svd,
+            return_bulk_ids=return_bulk_ids,
+            bulk_only=bulk_only,
+            trap_only=trap_only,
+            max_bulk_modes_per_layer=max_bulk_modes_per_layer,
+            bulk_sampling_seed=bulk_sampling_seed,
+            bulk_sampling_strategy=bulk_sampling_strategy,
         )
+
+    def analyze_bulk_modes(self, bulk_ids_by_layer=None, layers=None, randomized_model=None, trap_state=None, **kwargs):
+        df, out_state = self.analyze_traps(
+            randomized_model=randomized_model,
+            layers=layers or [],
+            trap_state=trap_state,
+            return_artifacts=True,
+            return_bulk_ids=True,
+            **kwargs,
+        )
+        bulk_df = df[df["mode_type"] == "bulk"].copy()
+        if bulk_ids_by_layer:
+            keep = []
+            for lid, ids in bulk_ids_by_layer.items():
+                keep.append((bulk_df["layer_id"].astype(int) == int(lid)) & (bulk_df["bulk_id"].astype(float).isin([int(i) for i in ids])))
+            if keep:
+                mask = keep[0]
+                for m in keep[1:]:
+                    mask = mask | m
+                bulk_df = bulk_df[mask]
+        bulk_df["trap_index"] = np.nan
+        bulk_df["trap_id"] = np.nan
+        bulk_df["ablation_type"] = "bulk"
+        return bulk_df
 
     def _trap_result_columns(self):
         return [
@@ -6112,13 +6148,22 @@ class WeightWatcher:
 
     def remove_traps(self, randomized_model=None, layers=[], trap_indices=None, traps=None, seed=None, rng=None, pool=True, plot=True,
                      verify_traps=False, return_analyze=False, start_ids=DEFAULT_START_ID, svd_method=FAST_SVD,
-                     base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None):
+                     base_model=None, peft=DEFAULT_PEFT, trap_state=None, trap_artifacts=None, bulk_ids_by_layer=None, mode_type="trap"):
         """Remove selected randomized MP/TW traps from dense layers."""
         return remove_traps_ops.remove_traps(
             self, randomized_model=randomized_model, layers=layers, trap_indices=trap_indices, traps=traps, seed=seed, rng=rng,
             pool=pool, plot=plot, verify_traps=verify_traps, return_analyze=return_analyze,
-            start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft, trap_state=trap_state, trap_artifacts=trap_artifacts
+            start_ids=start_ids, svd_method=svd_method, base_model=base_model, peft=peft, trap_state=trap_state, trap_artifacts=trap_artifacts,
+            bulk_ids_by_layer=bulk_ids_by_layer, mode_type=mode_type
         )
+
+    def remove_modes(self, mode_ids_by_layer, mode_type="trap", randomized_model=None, trap_state=None, **kwargs):
+        if mode_type not in ("trap", "bulk"):
+            raise ValueError("mode_type must be 'trap' or 'bulk'")
+        if mode_type == "trap":
+            first_ids = list(mode_ids_by_layer.values())[0] if mode_ids_by_layer else []
+            return self.remove_traps(randomized_model=randomized_model, trap_indices=first_ids, trap_state=trap_state, mode_type="trap", **kwargs)
+        return self.remove_traps(randomized_model=randomized_model, trap_state=trap_state, bulk_ids_by_layer=mode_ids_by_layer, mode_type="bulk", **kwargs)
 
 
     

@@ -78,7 +78,14 @@ class TestAnalyzeTraps(unittest.TestCase):
 
     def test_analyze_traps_no_powerlaw_columns_required(self):
         np.random.seed(123)
-        df = self.watcher.analyze_traps(plot=False, savefig=False)
+        randomized_model, trap_state = self.watcher.randomize_model(model=self.model, rng=123, return_state=True)
+        df, _ = self.watcher.analyze_traps(
+            randomized_model=randomized_model,
+            trap_state=trap_state,
+            return_artifacts=True,
+            plot=False,
+            savefig=False,
+        )
         self.assertNotIn("alpha", df.columns)
         self.assertNotIn("xmin", df.columns)
         self.assertNotIn("xmax", df.columns)

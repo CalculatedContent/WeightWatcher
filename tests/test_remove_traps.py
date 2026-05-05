@@ -34,6 +34,20 @@ class FakeDenseFrameworkLayer(FrameworkLayer):
         self._W = W.copy()
 
 
+
+
+class FakeConv1DFrameworkLayer(FakeDenseFrameworkLayer):
+    def __init__(self, W):
+        super().__init__(W)
+        self.the_type = LAYER_TYPE.CONV1D
+        self.name = "fake_conv1d"
+        self.longname = "fake_conv1d"
+
+
+def make_conv1d_ww_layer(W):
+    return WWLayer(FakeConv1DFrameworkLayer(W), params=make_test_params())
+
+
 def random_unit_vector(rng, n):
     x = rng.standard_normal(n)
     return x / np.linalg.norm(x)
@@ -99,6 +113,19 @@ def _two_trap_setup(seed=7, n=96, noise_std=0.03, s1=12.0, s2=8.5):
     W = W_base + T1 + T2
     return W, (T1, T2), (u1, v1, u2, v2)
 
+
+
+
+def test_remove_traps_supports_conv1d_like_2d_linear():
+    watcher = WeightWatcher(model=None)
+    W, _, _, _ = _single_trap_setup(seed=4242)
+    ww_layer = make_conv1d_ww_layer(W)
+
+    watcher.apply_remove_traps(ww_layer, trap_indices=[1], params=make_test_params(), seed=123)
+    W_new = ww_layer.framework_layer._W
+
+    assert W_new.shape == W.shape
+    assert not np.allclose(W_new, W)
 
 def test_remove_traps_single_trap_flow():
     watcher = WeightWatcher(model=None)

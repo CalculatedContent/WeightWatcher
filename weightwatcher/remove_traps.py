@@ -208,8 +208,9 @@ def apply_remove_traps(ww, ww_layer, trap_indices, params=None, seed=None, rng=N
     if trap_indices is None or len(trap_indices) == 0:
         raise ValueError("trap_indices must be a non-empty list of 1-based indices")
 
-    if ww_layer.the_type != LAYER_TYPE.DENSE or len(ww_layer.Wmats) != 1 or ww_layer.Wmats[0].ndim != 2:
-        raise NotImplementedError("remove_traps currently supports single 2D dense matrices only")
+    supported_types = {LAYER_TYPE.DENSE, LAYER_TYPE.CONV1D}
+    if ww_layer.the_type not in supported_types or len(ww_layer.Wmats) != 1 or ww_layer.Wmats[0].ndim != 2:
+        raise NotImplementedError("remove_traps currently supports single 2D dense/conv1d matrices only")
 
     requested = sorted(set(trap_indices))
     if any(idx < 1 for idx in requested):

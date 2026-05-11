@@ -25,7 +25,7 @@ It can be used to:
 
 ## Quick Links 
 
-- Please see [our latest talk from the Sillicon Valley ACM meetup](https://www.youtube.com/watch?v=Tnafo6JVoJs)
+- Please see [our latest talk from Cohere for AI](https://www.youtube.com/watch?v=NXqO4nDNIwo)
 
 - Join the [Discord Server](https://discord.gg/uVVsEAcfyF) 
 

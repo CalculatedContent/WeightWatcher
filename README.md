@@ -1,5 +1,6 @@
 [![Downloads](http://pepy.tech/badge/weightwatcher)](http://pepy.tech/project/weightwatcher)
 [![PyPI](https://img.shields.io/pypi/v/weightwatcher?color=teal&label=release)](https://pypi.org/project/weightwatcher/)
+[![Conda](https://img.shields.io/conda/v/conda-forge/weightwatcher?color=green)](https://anaconda.org/conda-forge/weightwatcher)
 [![GitHub](https://img.shields.io/github/license/calculatedcontent/weightwatcher?color=blue)](./LICENSE.txt)
 [![Published in Nature](https://img.shields.io/badge/Published%20in-Nature-teal)](https://nature.com/articles/s41467-021-24025-8)
 [![Video Tutorial](https://img.shields.io/badge/Video-Tutorial-blue)](https://www.youtube.com/watch?v=Tnafo6JVoJs)
@@ -52,6 +53,10 @@ If you have some models you would like to analyze and get feedback on, check out
 
 ```sh
 pip install weightwatcher
+```
+Or, via conda:
+```sh
+conda install conda-forge::weightwatcher
 ```
 
 if this fails try
@@ -489,7 +494,7 @@ details = watcher.distances(initial_model, trained_model)
 
 ---
 
-#### compatability with version 0.2.x
+#### Compatibility with version 0.2.x
 
 The new 0.4.x version of WeightWatcher treats each layer as a single, unified set of eigenvalues.
 In contrast, the 0.2.x versions split the Conv2D layers into n slices, one for each receptive field.
@@ -593,9 +598,14 @@ This tool is based on state-of-the-art research done in collaboration with UC Be
 <summary>
 WeightWatcher has been featured in top journals like JMLR and Nature:	
 </summary>
-#### Latest papers and talks
+	
+### Latest papers and talks
 
-- [SETOL: A Semi-Empirical Theory of (Deep) Learning] (in progress)
+- [Grokking and Generalization Collapse: Insights from HTSR theory (available upon request)]
+
+- [SETOL: A Semi-Empirical Theory of (Deep) Learning (draft)] (https://github.com/CalculatedContent/setol_paper/blob/main/setol_draft.pdf)
+
+- [Temperature Balancing, Layer-wise Weight Analysis, and Neural Network Training (NeurIPS 2023 Spotlight Paper)(https://arxiv.org/abs/2312.00359)
 
 - [Post-mortem on a deep learning contest: a Simpson's paradox and the complementary roles of scale metrics versus shape metrics](https://arxiv.org/abs/2106.00734)
 
@@ -641,7 +651,11 @@ and has been presented at Stanford, UC Berkeley, KDD, etc:
 - [KDD 2019 Workshop: Statistical Mechanics Methods for Discovering
   Knowledge from Production-Scale Neural Networks](https://dl.acm.org/doi/abs/10.1145/3292500.3332294)
 
-- [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf) 
+- [KDD 2019 Workshop: Slides](https://www.stat.berkeley.edu/~mmahoney/talks/dnn_kdd19_fin.pdf)
+
+#### NeurIPS 2023 
+- [Heavy-Tailed Self-Regularization in Deep Neural Networks](https://neurips.cc/virtual/2023/83033)
+
 	
 </details>
 
@@ -650,7 +664,7 @@ and has been presented at Stanford, UC Berkeley, KDD, etc:
 WeightWatcher has also been featured at local meetups and many popular podcasts
 </summary>
 	
-#### Popular Popdcasts and Blogs
+#### Popular Podcasts and Blogs
 
 - [This Week in ML](https://twimlai.com/meetups/implicit-self-regularization-in-deep-neural-networks/)
  
@@ -668,15 +682,35 @@ WeightWatcher has also been featured at local meetups and many popular podcasts
 
 - [Applied AI Community](https://www.youtube.com/watch?v=xLZOf2IDLkc&feature=youtu.be)
 
+- [UCL Financial Computing (2022)](https://www.youtube.com/watch?v=sOXROWJ70Pg)
+
 - [Practical AI](https://changelog.com/practicalai/194)
 
-- [Latest Results](https://www.youtube.com/watch?v=rojbXvK9mJg)
+- [AI Nation 2023](https://www.youtube.com/watch?v=rojbXvK9mJg)
+
+- [ICCF 2024](https://youtu.be/_c0-_ru0sZc)
+
+- [Data Science at Home (2025)](https://www.youtube.com/watch?v=iv7Pv3StHms)
+
+- [Cohere for AI 2025](https://www.youtube.com/watch?v=NXqO4nDNIwo)
+
+- [The FreeStyle Podcast](https://www.youtube.com/watch?v=hb0YrwQ3K2Q)
+
+- [This Week in ML AI Podcast](https://twimlai.com/podcast/twimlai/grokking-generalization-collapse-and-the-dynamics-of-training-deep-neural-networks/)
+
+
+  and many more 
+
+
 
 #### 2021 Short Presentations
 
 - [MLC Research Jam  March 2021](presentations/ww_5min_talk.pdf)
 
 - [PyTorch2021 Poster  April 2021](presentations/pytorch2021_poster.pdf)
+
+#### TEDx Talk
+- [The Emergence of Signatures of Artificial General Intelligence ](https://www.youtube.com/watch?v=5dBEzqTlq-Y)
 
 #### Recent talk(s) by Mike Mahoney, UC Berekely
 

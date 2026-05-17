@@ -12,6 +12,60 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+'''
+=====================================================================================================================
+This Python file defines a class named WeightWatcher designed for analyzing weight matrices in machine learning models.
+Here's a breakdown of the file's key elements and their functions:
+1. Imports and Configuration
+Imports: The file imports essential libraries like sys, os, re, json, numpy, pandas, scipy, matplotlib.pyplot, copy, importlib, and safetensors. It also imports custom modules (RMT_Util, constants, and WW_powerlaw).
+Logging: The file sets up basic logging using the logging module. It configures the default logging level to INFO and specifies a custom logger named WW_NAME.
+2. FrameworkLayer Class
+Purpose: This abstract base class provides a common structure for representing layers from different deep learning frameworks.
+Attributes: It defines attributes common to various layer types like layer_id, name, longname, the_type, skipped, and others.
+Methods: It defines abstract methods like layer_type, has_biases, get_weights_and_biases, and replace_layer_weights. These methods need to be implemented by specific subclasses.
+3. FrameworkLayer Subclasses
+KerasLayer: Subclass for Keras layers, implementing specific methods for Keras.
+PyTorchLayer: Subclass for PyTorch layers, implementing methods for extracting weights and biases from PyTorch models.
+PyStateDictLayer: Subclass for working with PyTorch state dictionaries (.bin or .safetensors files).
+PyStateDictDir: Similar to PyStateDictLayer, but reads a list of state dictionary files from a directory.
+WWFlatFile: Helper class for directly reading weights and biases from flat files (.npy).
+ONNXLayer: Subclass for handling ONNX layers.
+4. WWLayer Class
+Purpose: This class wraps the layer objects from different frameworks and provides additional metadata and analysis results.
+Attributes: It stores metadata, weights and biases, original and extracted weight matrices, eigenvalues, and analysis results.
+Methods: Includes methods for getting weight matrices, applying transformations, computing ESD, fitting power laws, and calculating vector metrics.
+5. ModelIterator Class
+Purpose: This abstract class serves as a base for iterating over layers in a model.
+Attributes: Defines attributes like framework, params, layer_map, and model_iter.
+Methods: Includes model_iter_, which returns a layer iterator based on the framework, and make_layer_iter_, which can be overridden by subclasses to modify the iteration behavior.
+6. ModelIterator Subclasses
+WWLayerIterator: Base subclass for iterating over WWLayer objects, applying filters and checking if a layer is supported.
+WW2xSliceIterator: Variant of WWLayerIterator that breaks Conv2D layers into slices (for backward compatibility).
+WWIntraLayerIterator: Variant for analyzing intra-layer correlations.
+WWStackedLayerIterator: Variant for stacking all weight matrices into a single layer for analysis.
+WWPeftLayerIterator: Variant for handling PEFT/LoRA layers.
+WWDeltaLayerIterator: Variant for comparing two models by subtracting their weights and biases.
+7. WeightWatcher Class
+Purpose: The main class of the file, providing various methods for analyzing models using Random Matrix Theory (RMT).
+Attributes: Includes model, details (dataframe containing analysis results), and framework.
+Methods: Includes methods for:
+Inferring framework: infer_framework and infer_model_file_format
+Loading framework imports: load_framework_imports
+Computing distances: distances
+Analyzing models: analyze and describe
+Analyzing vectors: analyze_vectors and apply_analyze_eigenvectors
+Applying RMT tools: apply_esd, apply_random_esd, apply_mp_fit, fit_powerlaw
+Smoothing and sharpening: SVDSmoothing, apply_svd_smoothing, SVDSharpness, apply_svd_sharpness
+Preprocessing: extract_pytorch_bins, write_pystatedict_config, read_pystatedict_config, found_pystate_config
+Utilities: same_models, matrix_distance, combined_eigenvalues, apply_normalize_Wmats, apply_FFT, apply_permute_W, apply_unpermute_W, apply_detX, apply_plot_esd, plot_random_esd, random_eigenvalues, normalize_evals, glorot_norm_fix, glorot_norm_check, replace_layer_weights, apply_norm_metrics, apply_plot_deltaEs, smooth_W, smooth_W_alt, get_ESD, get_Weights, get_framework_layer, and others.
+8. SafeTensorDict Class
+Purpose: This class provides lazy access to multiple safetensors files. It loads tensors on demand, avoiding loading all files into memory at once.
+In summary, the file implements a comprehensive framework for analyzing the weights and eigenvalues of deep learning models using RMT tools. It provides various methods for extracting information, applying transformations, and visualizing the results. The WeightWatcher class is the primary interface for interacting with these functionalities.
+=======================================================================================================================================================================================================================================================================================================================================================
+'''
+
+
 import sys, os, re, io
 import glob, json
 import traceback

@@ -121,6 +121,50 @@ trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 
 See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
+### ERG trace-log normalization
+
+Enable the new tail normalization explicitly alongside `ERG=True`:
+
+```python
+details = watcher.analyze(ERG=True, erg_normalization="lambda_min")
+```
+
+The default remains `erg_normalization="frobenius"`. Existing calls to
+`analyze(ERG=True)` or `analyze(detX=True)` keep their current results, and
+`SVDSmoothing()` keeps its existing normalization. The new parameter also works
+with `detX=True`; setting it alone does not enable ERG analysis.
+
+For the `"lambda_min"` option, each candidate retained tail uses
+
+$$
+\widetilde{\lambda}_i = \frac{\lambda_i}{e\,\lambda_{\min}},
+\qquad
+\mathcal{E}_R = \frac{1}{|R|}\sum_{i\in R}\log\widetilde{\lambda}_i.
+$$
+
+Here, `lambda_min` is the smallest eigenvalue in that candidate tail, not the
+minimum of the full spectrum or the independently fitted power-law `xmin`.
+The ERG condition is $\mathcal{E}_R=0$. The implementation selects the tail
+with the smallest absolute mean trace-log, using logarithms to avoid overflowing
+products. It considers positive tails with at least two eigenvalues, keeps all
+eigenvalues tied at the cutoff, and prefers the larger tail when residuals tie
+within numerical precision. Zero modes are excluded. Invalid spectra and
+spectra with fewer than two distinct positive eigenvalues return zero retained
+modes and `NaN` cutoffs.
+
+For an ideal unbounded Pareto tail, $\mathcal{E}_R=1/(\alpha-1)-1$, which vanishes
+at $\alpha=2$. A finite spectrum need not have an exact zero or a sign change;
+the selected tail is the closest finite-sample approximation to this condition.
+
+The result columns are unchanged:
+
+| Column | Meaning with `erg_normalization="lambda_min"` |
+| --- | --- |
+| `detX_num`, `num_ERG_spikes` | Number of retained ERG modes |
+| `ERG_gap` | `detX_num - num_pl_spikes` |
+| `detX_val` | Selected cutoff in the original ESD's units |
+| `detX_val_unrescaled` | Normalized cutoff, $1/e$; the legacy column name is preserved |
+
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.
 

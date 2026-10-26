@@ -123,18 +123,20 @@ See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_t
 
 ### ERG trace-log normalization
 
-Enable the new tail normalization explicitly alongside `ERG=True`:
+Select an ERG normalization explicitly alongside `ERG=True`:
 
 ```python
+details = watcher.analyze(ERG=True, erg_normalization="frobenius")
 details = watcher.analyze(ERG=True, erg_normalization="lambda_min")
+details = watcher.analyze(ERG=True, erg_normalization="tracelog")
 ```
 
 The default remains `erg_normalization="frobenius"`. Existing calls to
-`analyze(ERG=True)` or `analyze(detX=True)` keep their current results, and
-`SVDSmoothing()` keeps its existing normalization. The new parameter also works
-with `detX=True`; setting it alone does not enable ERG analysis.
+`analyze(ERG=True)` or `analyze(detX=True)` therefore keep their current
+results. The parameter also works with `detX=True`; setting it alone does not
+enable ERG analysis.
 
-For the `"lambda_min"` option, each candidate retained tail uses
+For `"lambda_min"`, each candidate retained tail uses
 
 $$
 \widetilde{\lambda}_i = \frac{\lambda_i}{e\,\lambda_{\min}},
@@ -142,28 +144,46 @@ $$
 \mathcal{E}_R = \frac{1}{|R|}\sum_{i\in R}\log\widetilde{\lambda}_i.
 $$
 
-Here, `lambda_min` is the smallest eigenvalue in that candidate tail, not the
-minimum of the full spectrum or the independently fitted power-law `xmin`.
-The ERG condition is $\mathcal{E}_R=0$. The implementation selects the tail
-with the smallest absolute mean trace-log, using logarithms to avoid overflowing
-products. It considers positive tails with at least two eigenvalues, keeps all
-eigenvalues tied at the cutoff, and prefers the larger tail when residuals tie
-within numerical precision. Zero modes are excluded. Invalid spectra and
-spectra with fewer than two distinct positive eigenvalues return zero retained
-modes and `NaN` cutoffs.
+Here `lambda_min` is the smallest eigenvalue in that candidate tail. The
+implementation selects the finite tail with the smallest absolute mean
+trace-log. This mode is scale invariant but uses a candidate-tail-dependent
+normalization.
 
-For an ideal unbounded Pareto tail, $\mathcal{E}_R=1/(\alpha-1)-1$, which vanishes
-at $\alpha=2$. A finite spectrum need not have an exact zero or a sign change;
-the selected tail is the closest finite-sample approximation to this condition.
+For `"tracelog"`, the positive ESD is instead normalized by its geometric
+mean, without using a power-law fit or `xmin`:
+
+$$
+c_{\mathrm{TL}}=
+\exp\!\left[-\frac{1}{M_+}\sum_{i\in S_+}\log\lambda_i\right],
+\qquad
+\widetilde\lambda_i=c_{\mathrm{TL}}\lambda_i.
+$$
+
+Therefore
+
+$$
+\sum_{i\in S_+}\log\widetilde\lambda_i=0,
+\qquad
+\det\widetilde X_{S_+}=1,
+$$
+
+so the associated retained-coordinate Jacobian is unity. Zero modes are
+excluded from the logarithm and remain zero.
+
+Important: this gauge fixes the scale but does not by itself supply a
+nontrivial decimation boundary. With no additional decimation criterion, the
+largest volume-neutral retained set is the complete positive spectral support.
+The implementation returns that support deliberately so this option can test
+the trace-log/Jacobian normalization separately from tail selection.
 
 The result columns are unchanged:
 
-| Column | Meaning with `erg_normalization="lambda_min"` |
+| Column | Meaning |
 | --- | --- |
 | `detX_num`, `num_ERG_spikes` | Number of retained ERG modes |
 | `ERG_gap` | `detX_num - num_pl_spikes` |
 | `detX_val` | Selected cutoff in the original ESD's units |
-| `detX_val_unrescaled` | Normalized cutoff, $1/e$; the legacy column name is preserved |
+| `detX_val_unrescaled` | Cutoff in the selected normalized coordinates; for `"lambda_min"` this is $1/e$ |
 
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.

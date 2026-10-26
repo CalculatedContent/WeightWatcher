@@ -1224,15 +1224,18 @@ def detX_constraint(evals, rescale=True, normalization=DEFAULT_ERG_NORMALIZATION
 
 
 def _detX_constraint_tracelog(evals):
-    """Apply the detX condition after geometric-mean trace-log rescaling.
+    """Run the existing determinant-tail scan after trace-log rescaling.
 
-    The trace-log normalization fixes the positive spectral support to unit
-    determinant by construction. Therefore, without a separate decimation
-    criterion, the largest volume-neutral retained set is the complete
-    positive support.
+    This mode changes only the rescaling step: positive eigenvalues are divided
+    by their geometric mean, then the same upper-tail detX scan used by the
+    legacy ERG calculation is applied.
 
-    This is intentional: the trace-log gauge fixes the scale, but by itself it
-    does not identify a nontrivial ECS boundary.
+    Because the complete positive spectrum has unit determinant by
+    construction, every proper upper tail of a nonconstant sorted spectrum has
+    determinant >= 1. In exact arithmetic the scan therefore reaches the full
+    positive support. Keeping the scan explicit is useful because it makes this
+    consequence of the normalization visible rather than introducing a new
+    tail-selection rule.
     """
     if evals is None:
         logger.warning("No eigenvalues found")
@@ -1254,12 +1257,20 @@ def _detX_constraint_tracelog(evals):
 
     scaled, _ = rescale_eigenvalues_by_tracelog(evals)
     positive = scaled[first_positive:]
-    trace_log = float(np.sum(np.log(positive), dtype=np.float64))
-    tol = 1e-12 * max(1, len(positive))
-    if not np.isclose(trace_log, 0.0, rtol=0.0, atol=tol):
-        logger.warning("trace-log rescaling residual is %g", trace_log)
+    num_evals = len(positive)
+    idx_local = 0
 
-    return len(positive), first_positive
+    # Same determinant-tail rule as the legacy ERG path, evaluated in log
+    # space to avoid overflow and underflow.
+    log_positive = np.log(positive)
+    for idx in range(len(positive) - 1, 0, -1):
+        tail_trace_log = float(np.sum(log_positive[idx:], dtype=np.float64))
+        if tail_trace_log < 0.0:
+            num_evals = len(positive) - idx
+            idx_local = idx
+            break
+
+    return num_evals, first_positive + idx_local
 
 
 def _detX_constraint_lambda_min(evals):

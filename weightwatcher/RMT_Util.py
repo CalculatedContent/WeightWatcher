@@ -1123,6 +1123,41 @@ def rescale_eigenvalues(evals):
     
     return evals, Wscale  
 
+
+def rescale_eigenvalues_by_tracelog(evals):
+    """Rescale positive eigenvalues so their trace-log vanishes.
+
+    The eigenvalue scale is fixed by the geometric mean,
+
+        c_TL = exp(-mean(log(lambda_i))) = 1 / GM(lambda),
+
+    over the positive eigenvalues. The returned positive spectrum therefore
+    has unit determinant, so the associated retained-coordinate Jacobian has
+    unit volume. Zero modes remain zero.
+
+    Returns the rescaled eigenvalues and the equivalent weight/singular-value
+    scale Wscale such that lambda_scaled = Wscale**2 * lambda. The input is
+    not modified.
+    """
+    evals = np.asarray(evals, dtype=np.float64)
+    if evals.ndim != 1:
+        raise ValueError("evals must be a one-dimensional array")
+    if not np.all(np.isfinite(evals)) or np.any(evals < 0):
+        raise ValueError("trace-log rescaling requires finite, nonnegative eigenvalues")
+
+    scaled = evals.copy()
+    positive = scaled > 0
+    if not np.any(positive):
+        return scaled, 1.0
+
+    logs = np.log(scaled[positive])
+    log_gmean = float(np.mean(logs))
+    Wscale = float(np.exp(-0.5 * log_gmean))
+    scaled[positive] = np.exp(logs - log_gmean)
+
+    return scaled, Wscale
+
+
 def un_rescale_eigenvalues(evals, Wscale):
     """UnRescale eigenvalues """
     
@@ -1143,6 +1178,12 @@ def detX_constraint(evals, rescale=True, normalization=DEFAULT_ERG_NORMALIZATION
     this scale-invariant mode. See ``_detX_constraint_lambda_min`` for the
     finite-spectrum selection and degenerate-input conventions.
 
+    normalization='tracelog' fixes the global positive-spectrum scale by its
+    geometric mean, so sum(log(lambda_tilde)) == 0 and the associated
+    retained-coordinate Jacobian is unity. With no additional decimation rule,
+    the determinant constraint is then satisfied by the complete positive
+    spectral support; see _detX_constraint_tracelog.
+
     Return (tail size, first tail index in the input array). The default mode
     and the positional ``rescale`` argument remain backward compatible.
     """
@@ -1150,6 +1191,8 @@ def detX_constraint(evals, rescale=True, normalization=DEFAULT_ERG_NORMALIZATION
         raise ValueError("normalization must be one of {}".format(VALID_ERG_NORMALIZATIONS))
     if normalization == 'lambda_min':
         return _detX_constraint_lambda_min(evals)
+    if normalization == 'tracelog':
+        return _detX_constraint_tracelog(evals)
 
     if evals is None or len(evals)<2:
         logger.warning("No or not enough evals found")
@@ -1178,6 +1221,45 @@ def detX_constraint(evals, rescale=True, normalization=DEFAULT_ERG_NORMALIZATION
     
     
     return num_evals, idx
+
+
+def _detX_constraint_tracelog(evals):
+    """Apply the detX condition after geometric-mean trace-log rescaling.
+
+    The trace-log normalization fixes the positive spectral support to unit
+    determinant by construction. Therefore, without a separate decimation
+    criterion, the largest volume-neutral retained set is the complete
+    positive support.
+
+    This is intentional: the trace-log gauge fixes the scale, but by itself it
+    does not identify a nontrivial ECS boundary.
+    """
+    if evals is None:
+        logger.warning("No eigenvalues found")
+        return 0, 0
+
+    evals = np.asarray(evals, dtype=np.float64)
+    if evals.ndim != 1 or len(evals) == 0:
+        logger.warning("No eigenvalues found")
+        return 0, 0
+    if (not np.all(np.isfinite(evals)) or np.any(evals < 0)
+            or np.any(evals[1:] < evals[:-1])):
+        logger.warning("ERG requires finite, nonnegative, sorted eigenvalues")
+        return 0, 0
+
+    first_positive = int(np.searchsorted(evals, 0.0, side='right'))
+    if first_positive == len(evals):
+        logger.warning("No positive eigenvalues found")
+        return 0, 0
+
+    scaled, _ = rescale_eigenvalues_by_tracelog(evals)
+    positive = scaled[first_positive:]
+    trace_log = float(np.sum(np.log(positive), dtype=np.float64))
+    tol = 1e-12 * max(1, len(positive))
+    if not np.isclose(trace_log, 0.0, rtol=0.0, atol=tol):
+        logger.warning("trace-log rescaling residual is %g", trace_log)
+
+    return len(positive), first_positive
 
 
 def _detX_constraint_lambda_min(evals):

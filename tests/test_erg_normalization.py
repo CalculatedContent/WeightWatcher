@@ -1,4 +1,4 @@
-"""Regression coverage for the optional lambda_min ERG normalization."""
+"""Regression coverage for the optional ERG normalization modes."""
 
 import matplotlib
 
@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from weightwatcher.RMT_Util import detX_constraint
+from weightwatcher.RMT_Util import detX_constraint, rescale_eigenvalues_by_tracelog
 from weightwatcher.constants import DEFAULT_PARAMS, ERG_NORMALIZATION
 from weightwatcher.weightwatcher import FrameworkLayer, WeightWatcher, WWLayer
 
@@ -29,9 +29,9 @@ def _layer(evals, num_pl_spikes=None):
     return layer
 
 
-def _params(**overrides):
+def _params(normalization="lambda_min", **overrides):
     params = DEFAULT_PARAMS.copy()
-    params.update(erg_normalization="lambda_min", plot=False, savefig=False)
+    params.update(erg_normalization=normalization, plot=False, savefig=False)
     params.update(overrides)
     return params
 
@@ -98,6 +98,38 @@ def test_default_preserves_the_legacy_zero_boundary(rescale):
     assert detX_constraint(evals, rescale=rescale) == (11, 89)
     assert detX_constraint(evals, rescale=rescale, normalization="frobenius") == (11, 89)
     assert detX_constraint(evals, rescale=rescale, normalization="lambda_min") == (0, 0)
+
+
+@pytest.mark.parametrize("scale", [1e-100, 1.0, 1e100])
+def test_tracelog_rescaling_sets_unit_jacobian_and_is_scale_invariant(scale):
+    evals = scale * np.array([0.0, 2.0, 8.0, 32.0])
+    original = evals.copy()
+    scaled, Wscale = rescale_eigenvalues_by_tracelog(evals)
+
+    np.testing.assert_allclose(scaled, [0.0, 0.25, 1.0, 4.0], rtol=1e-12, atol=1e-14)
+    np.testing.assert_allclose(scaled[1:], evals[1:] * Wscale * Wscale, rtol=1e-12)
+    assert np.sum(np.log(scaled[scaled > 0])) == pytest.approx(0.0, abs=1e-12)
+    assert np.sqrt(np.prod(scaled[scaled > 0])) == pytest.approx(1.0, abs=1e-12)
+    np.testing.assert_array_equal(evals, original)
+
+
+def test_tracelog_constraint_returns_complete_positive_support():
+    assert detX_constraint([2.0, 8.0, 32.0], normalization="tracelog") == (3, 0)
+    assert detX_constraint([0.0, 0.0, 2.0, 8.0, 32.0], normalization="tracelog") == (3, 2)
+    assert detX_constraint([0.0, 0.0], normalization="tracelog") == (0, 0)
+
+
+def test_apply_detx_tracelog_reports_gauge_scaled_cutoff():
+    layer = _layer([0.0, 2.0, 8.0, 32.0], num_pl_spikes=2)
+    original = layer.evals.copy()
+    result = WeightWatcher().apply_detX(layer, params=_params("tracelog"))
+
+    assert result is layer
+    assert layer.detX_num == layer.num_ERG_spikes == 3
+    assert layer.ERG_gap == 1
+    assert layer.detX_val == pytest.approx(2.0)
+    assert layer.detX_val_unrescaled == pytest.approx(0.25)
+    np.testing.assert_array_equal(layer.evals, original)
 
 
 def test_apply_detx_reports_expected_metrics_without_changing_the_esd():
@@ -183,8 +215,12 @@ def test_analyze_new_option_and_alias_preserve_other_metrics():
     frobenius = watcher.analyze(ERG=True, erg_normalization="frobenius", **options)
     new_erg = watcher.analyze(ERG=True, erg_normalization="lambda_min", **options)
     new_detx = watcher.analyze(detX=True, erg_normalization="lambda_min", **options)
+    tracelog_erg = watcher.analyze(ERG=True, erg_normalization="tracelog", **options)
+    tracelog_detx = watcher.analyze(detX=True, erg_normalization="tracelog", **options)
     pd.testing.assert_frame_equal(default, frobenius)
     pd.testing.assert_frame_equal(new_erg, new_detx)
+    pd.testing.assert_frame_equal(tracelog_erg, tracelog_detx)
+    assert tracelog_erg.detX_num.iloc[0] == len(evals)
     assert len(new_erg) == 1
     assert new_erg.detX_num.iloc[0] == new_erg.num_ERG_spikes.iloc[0] == 3
     assert new_erg.detX_val.iloc[0] == pytest.approx(1.0)

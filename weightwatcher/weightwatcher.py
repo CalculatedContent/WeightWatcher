@@ -3098,9 +3098,13 @@ class WeightWatcher:
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
-        evals = ww_layer.evals        
-        evals, Wscale = rescale_eigenvalues(evals)
-        detX_num, detX_idx = detX_constraint(evals, rescale=False)
+        evals = ww_layer.evals
+        if normalization == 'tracelog':
+            detX_num, detX_idx = detX_constraint(evals, normalization='tracelog')
+            evals, Wscale = rescale_eigenvalues_by_tracelog(evals)
+        else:
+            evals, Wscale = rescale_eigenvalues(evals)
+            detX_num, detX_idx = detX_constraint(evals, rescale=False)
         detX_val = evals[detX_idx]
 
 
@@ -3569,13 +3573,17 @@ class WeightWatcher:
         ERG: bool, default: False
             Alias for detX. If ERG=True, detX is set to True.
 
-        erg_normalization: {'frobenius', 'lambda_min'}, default: 'frobenius'
+        erg_normalization: {'frobenius', 'lambda_min', 'tracelog'}, default: 'frobenius'
             Normalization for ERG/detX analysis; does not enable it by itself.
             'frobenius' preserves the existing full-spectrum normalization.
             'lambda_min' selects the tail minimizing
             abs(mean(log(lambda_i / (e * lambda_min)))), with lambda_min the
-            smallest eigenvalue in each candidate tail. ERG_gap remains
-            detX_num - num_pl_spikes. Use with ERG=True or detX=True.
+            smallest eigenvalue in each candidate tail.
+            'tracelog' rescales the positive ESD by its geometric mean so that
+            sum(log(lambda_tilde)) = 0 and the retained-coordinate Jacobian is
+            unity. With no additional decimation rule this returns the complete
+            positive spectral support. ERG_gap remains detX_num -
+            num_pl_spikes. Use with ERG=True or detX=True.
 
         svd_method:  string, default: 'fast'
             Must be one of "fast" or "accurate". Determines the method by which eigenvalues are calcualted.

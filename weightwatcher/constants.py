@@ -138,7 +138,7 @@ SPARSIFY = 'sparsify'
 DETX = 'detX' # compute detx and for smoothing
 ERG_NORMALIZATION = 'erg_normalization'
 DEFAULT_ERG_NORMALIZATION = 'frobenius'
-VALID_ERG_NORMALIZATIONS = ('frobenius', 'lambda_min')
+VALID_ERG_NORMALIZATIONS = ('frobenius', 'lambda_min', 'tracelog')
 LAMBDA_MIN = 'alpha_min' # smoothing
 AUTO = 'auto' # smoothing
 

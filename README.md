@@ -121,6 +121,70 @@ trap_df = watcher.analyze_traps(layers=[3, 5], plot=True, savefig="trap_images")
 
 See the new usage guide: [Correlation Trap Workflow (`analyze_traps` + `remove_traps`)](./docs_trap_features.md)
 
+### ERG trace-log normalization
+
+Select an ERG normalization explicitly alongside `ERG=True`:
+
+```python
+details = watcher.analyze(ERG=True, erg_normalization="frobenius")
+details = watcher.analyze(ERG=True, erg_normalization="lambda_min")
+details = watcher.analyze(ERG=True, erg_normalization="tracelog")
+```
+
+The default remains `erg_normalization="frobenius"`. Existing calls to
+`analyze(ERG=True)` or `analyze(detX=True)` therefore keep their current
+results. The parameter also works with `detX=True`; setting it alone does not
+enable ERG analysis.
+
+For `"lambda_min"`, each candidate retained tail uses
+
+$$
+\widetilde{\lambda}_i = \frac{\lambda_i}{e\,\lambda_{\min}},
+\qquad
+\mathcal{E}_R = \frac{1}{|R|}\sum_{i\in R}\log\widetilde{\lambda}_i.
+$$
+
+Here `lambda_min` is the smallest eigenvalue in that candidate tail. The
+implementation selects the finite tail with the smallest absolute mean
+trace-log. This mode is scale invariant but uses a candidate-tail-dependent
+normalization.
+
+For `"tracelog"`, the positive ESD is instead normalized by its geometric
+mean, without using a power-law fit or `xmin`:
+
+$$
+c_{\mathrm{TL}}=
+\exp\!\left[-\frac{1}{M_+}\sum_{i\in S_+}\log\lambda_i\right],
+\qquad
+\widetilde\lambda_i=c_{\mathrm{TL}}\lambda_i.
+$$
+
+Therefore
+
+$$
+\sum_{i\in S_+}\log\widetilde\lambda_i=0,
+\qquad
+\det\widetilde X_{S_+}=1,
+$$
+
+so the associated retained-coordinate Jacobian is unity. Zero modes are
+excluded from the logarithm and remain zero.
+
+Important: this gauge fixes the scale but does not by itself supply a
+nontrivial decimation boundary. With no additional decimation criterion, the
+largest volume-neutral retained set is the complete positive spectral support.
+The implementation returns that support deliberately so this option can test
+the trace-log/Jacobian normalization separately from tail selection.
+
+The result columns are unchanged:
+
+| Column | Meaning |
+| --- | --- |
+| `detX_num`, `num_ERG_spikes` | Number of retained ERG modes |
+| `ERG_gap` | `detX_num - num_pl_spikes` |
+| `detX_val` | Selected cutoff in the original ESD's units |
+| `detX_val_unrescaled` | Cutoff in the selected normalized coordinates; for `"lambda_min"` this is $1/e$ |
+
 ## PEFT / LORA models  (experimental)
 To analyze an PEFT / LORA fine-tuned model, specify the peft option.
 

@@ -3084,19 +3084,27 @@ class WeightWatcher:
         return ww_layer
     
     
-        # Not used yet
     def apply_detX(self, ww_layer, params=None):
-        """Compute the detX constraint, and optionally plot """
+        """Compute the detX constraint with the requested ERG normalization."""
                     
         if params is None: params = DEFAULT_PARAMS.copy()
+        normalization = params.get(ERG_NORMALIZATION, DEFAULT_ERG_NORMALIZATION)
+        if normalization not in VALID_ERG_NORMALIZATIONS:
+            raise ValueError("erg_normalization must be one of {}".format(VALID_ERG_NORMALIZATIONS))
+        if normalization == 'lambda_min':
+            return self._apply_detX_lambda_min(ww_layer, params)
         
         plot = params[PLOT]           
         savefig = params[SAVEFIG]
         savedir = params[SAVEDIR]
 
-        evals = ww_layer.evals        
-        evals, Wscale = rescale_eigenvalues(evals)
-        detX_num, detX_idx = detX_constraint(evals, rescale=False)
+        evals = ww_layer.evals
+        if normalization == 'tracelog':
+            detX_num, detX_idx = detX_constraint(evals, normalization='tracelog')
+            evals, Wscale = rescale_eigenvalues_by_tracelog(evals)
+        else:
+            evals, Wscale = rescale_eigenvalues(evals)
+            detX_num, detX_idx = detX_constraint(evals, rescale=False)
         detX_val = evals[detX_idx]
 
 
@@ -3138,8 +3146,59 @@ class WeightWatcher:
         ww_layer.add_column('detX_val_unrescaled', detX_val_unrescaled)
 
         return ww_layer
-    
-    
+
+    def _apply_detX_lambda_min(self, ww_layer, params):
+        """Compute the ERG tail using lambda_i / (e * lambda_min).
+
+        ``detX_val`` is the cutoff in the input ESD's units. The legacy column
+        ``detX_val_unrescaled`` stores the normalized cutoff, now 1/e.
+        Both cutoff values are NaN when no valid tail can be selected.
+        """
+
+        plot = params[PLOT]
+        savefig = params[SAVEFIG]
+        savedir = params[SAVEDIR]
+
+        evals = ww_layer.evals
+        detX_num, detX_idx = detX_constraint(evals, normalization='lambda_min')
+        detX_val = float(evals[detX_idx]) if detX_num else np.nan
+        detX_val_unrescaled = float(np.exp(-1.0)) if detX_num else np.nan
+
+        if plot and detX_num:
+            name = ww_layer.name
+            plot_id = ww_layer.plot_id
+            plt.title(f"ERG trace-log condition for {name}")
+            plt.xlabel(r"$\log_{10}[\lambda / (e\,\lambda_{\min})]$")
+            positive = np.asarray(evals, dtype=np.float64)
+            positive = positive[positive > 0]
+            log_scale = np.log(detX_val) + 1.0
+            plt.hist((np.log(positive) - log_scale) / np.log(10.0), bins=100)
+            plt.axvline(-1.0 / np.log(10.0), color='purple', label="ERG cutoff")
+
+            xmin = getattr(ww_layer, 'xmin', None)
+            if xmin is not None and np.isfinite(xmin) and xmin > 0:
+                plt.axvline((np.log(xmin) - log_scale) / np.log(10.0),
+                            color='red', label=r"PL $\lambda_{min}$")
+
+            plt.legend()
+            if savefig:
+                save_fig(plt, "detX", plot_id, savedir)
+            plt.show(); plt.clf()
+
+        ww_layer.add_column('detX_num', detX_num)
+        ww_layer.add_column('num_ERG_spikes', detX_num)
+
+        ERG_gap = np.nan
+        if ww_layer.has_column('num_pl_spikes'):
+            ERG_gap = detX_num - ww_layer.num_pl_spikes
+        ww_layer.add_column('ERG_gap', ERG_gap)
+
+        ww_layer.add_column('detX_val', detX_val)
+        ww_layer.add_column('detX_val_unrescaled', detX_val_unrescaled)
+
+        return ww_layer
+
+
     # Not used yet
     def apply_plot_esd(self, ww_layer, params=None):
         """Plot the ESD on regular and log scale.  Only used when powerlaw fit not called"""
@@ -3400,7 +3459,8 @@ class WeightWatcher:
                 xmax=DEFAULT_XMAX,
                 base_model=None,
                 peft = DEFAULT_PEFT,
-                inverse = False
+                inverse = False,
+                erg_normalization=DEFAULT_ERG_NORMALIZATION
                 ):
         """
         Analyze the weight matrices of a model.
@@ -3513,6 +3573,18 @@ class WeightWatcher:
         ERG: bool, default: False
             Alias for detX. If ERG=True, detX is set to True.
 
+        erg_normalization: {'frobenius', 'lambda_min', 'tracelog'}, default: 'frobenius'
+            Normalization for ERG/detX analysis; does not enable it by itself.
+            'frobenius' preserves the existing full-spectrum normalization.
+            'lambda_min' selects the tail minimizing
+            abs(mean(log(lambda_i / (e * lambda_min)))), with lambda_min the
+            smallest eigenvalue in each candidate tail.
+            'tracelog' rescales the positive ESD by its geometric mean so that
+            sum(log(lambda_tilde)) = 0 and the retained-coordinate Jacobian is
+            unity. With no additional decimation rule this returns the complete
+            positive spectral support. ERG_gap remains detX_num -
+            num_pl_spikes. Use with ERG=True or detX=True.
+
         svd_method:  string, default: 'fast'
             Must be one of "fast" or "accurate". Determines the method by which eigenvalues are calcualted.
             
@@ -3597,6 +3669,7 @@ class WeightWatcher:
         params[FIT] = fit
         params[SPARSIFY] = sparsify
         params[DETX] = detX
+        params[ERG_NORMALIZATION] = erg_normalization
         params[SVD_METHOD] = svd_method
         params[TOLERANCE] = tolerance
         params[START_IDS] = start_ids
@@ -4820,6 +4893,12 @@ class WeightWatcher:
         svd_method = params.get(SVD_METHOD)
         if svd_method not in VALID_SVD_METHODS:
             logger.warning("unrecognized svd_method {}. Must be one of {}".format(svd_method, VALID_SVD_METHODS))
+            valid = False
+
+        erg_normalization = params.get(ERG_NORMALIZATION, DEFAULT_ERG_NORMALIZATION)
+        if erg_normalization not in VALID_ERG_NORMALIZATIONS:
+            logger.warning("unrecognized erg_normalization {}. Must be one of {}".format(
+                erg_normalization, VALID_ERG_NORMALIZATIONS))
             valid = False
             
         

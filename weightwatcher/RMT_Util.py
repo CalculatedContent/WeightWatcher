@@ -1123,33 +1123,76 @@ def rescale_eigenvalues(evals):
     
     return evals, Wscale  
 
+
+def rescale_eigenvalues_by_tracelog(evals):
+    """Rescale positive eigenvalues so their trace-log vanishes.
+
+    The eigenvalue scale is fixed by the geometric mean,
+
+        c_TL = exp(-mean(log(lambda_i))) = 1 / GM(lambda),
+
+    over the positive eigenvalues. The returned positive spectrum therefore
+    has unit determinant, so the associated retained-coordinate Jacobian has
+    unit volume. Zero modes remain zero.
+
+    Returns the rescaled eigenvalues and the equivalent weight/singular-value
+    scale Wscale such that lambda_scaled = Wscale**2 * lambda. The input is
+    not modified.
+    """
+    evals = np.asarray(evals, dtype=np.float64)
+    if evals.ndim != 1:
+        raise ValueError("evals must be a one-dimensional array")
+    if not np.all(np.isfinite(evals)) or np.any(evals < 0):
+        raise ValueError("trace-log rescaling requires finite, nonnegative eigenvalues")
+
+    scaled = evals.copy()
+    positive = scaled > 0
+    if not np.any(positive):
+        return scaled, 1.0
+
+    logs = np.log(scaled[positive])
+    log_gmean = float(np.mean(logs))
+    Wscale = float(np.exp(-0.5 * log_gmean))
+    scaled[positive] = np.exp(logs - log_gmean)
+
+    return scaled, Wscale
+
+
 def un_rescale_eigenvalues(evals, Wscale):
     """UnRescale eigenvalues """
     
     evals = evals/(Wscale*Wscale)
     return evals
 
-def detX_constraint(evals, rescale=True):
-    """Identifies the number of eigenvalues necessary to best satisify the det X = 1 constraint
-    
-    Parameters
-    ----------
-    evals : float array
-        Eigenvalues, assumed to be in sort order, evals[0]<evals[-1]
-        
-    rescale: bool
-        Rescale the eigenvalues by the Frobenius Norm if not already rescaled
-    
-    Returns:
-    --------
-    
-        num_evals:  int
-        number of eigenvalues in the tail
-        
-        det_x_idx:  int
-        index of the first eigenvalue in the tail
-    
+def detX_constraint(evals, rescale=True, normalization=DEFAULT_ERG_NORMALIZATION):
+    """Find the determinant-constrained tail of sorted eigenvalues.
+
+    ``normalization='frobenius'`` preserves the original detX criterion:
+    optionally rescale the full spectrum to mean one, then scan from the
+    largest eigenvalue until the tail product falls below one. ``rescale=False``
+    leaves the supplied eigenvalues unchanged in this legacy mode.
+
+    ``normalization='lambda_min'`` instead minimizes the absolute mean
+    trace-log of lambda_i / (e * lambda_min) over candidate tails. The cutoff
+    lambda_min is recomputed for each candidate; ``rescale`` has no effect in
+    this scale-invariant mode. See ``_detX_constraint_lambda_min`` for the
+    finite-spectrum selection and degenerate-input conventions.
+
+    normalization='tracelog' fixes the global positive-spectrum scale by its
+    geometric mean, so sum(log(lambda_tilde)) == 0 and the associated
+    retained-coordinate Jacobian is unity. With no additional decimation rule,
+    the determinant constraint is then satisfied by the complete positive
+    spectral support; see _detX_constraint_tracelog.
+
+    Return (tail size, first tail index in the input array). The default mode
+    and the positional ``rescale`` argument remain backward compatible.
     """
+    if normalization not in VALID_ERG_NORMALIZATIONS:
+        raise ValueError("normalization must be one of {}".format(VALID_ERG_NORMALIZATIONS))
+    if normalization == 'lambda_min':
+        return _detX_constraint_lambda_min(evals)
+    if normalization == 'tracelog':
+        return _detX_constraint_tracelog(evals)
 
     if evals is None or len(evals)<2:
         logger.warning("No or not enough evals found")
@@ -1178,6 +1221,123 @@ def detX_constraint(evals, rescale=True):
     
     
     return num_evals, idx
+
+
+def _detX_constraint_tracelog(evals):
+    """Run the existing determinant-tail scan after trace-log rescaling.
+
+    This mode changes only the rescaling step: positive eigenvalues are divided
+    by their geometric mean, then the same upper-tail detX scan used by the
+    legacy ERG calculation is applied.
+
+    Because the complete positive spectrum has unit determinant by
+    construction, every proper upper tail of a nonconstant sorted spectrum has
+    determinant >= 1. In exact arithmetic the scan therefore reaches the full
+    positive support. Keeping the scan explicit is useful because it makes this
+    consequence of the normalization visible rather than introducing a new
+    tail-selection rule.
+    """
+    if evals is None:
+        logger.warning("No eigenvalues found")
+        return 0, 0
+
+    evals = np.asarray(evals, dtype=np.float64)
+    if evals.ndim != 1 or len(evals) == 0:
+        logger.warning("No eigenvalues found")
+        return 0, 0
+    if (not np.all(np.isfinite(evals)) or np.any(evals < 0)
+            or np.any(evals[1:] < evals[:-1])):
+        logger.warning("ERG requires finite, nonnegative, sorted eigenvalues")
+        return 0, 0
+
+    first_positive = int(np.searchsorted(evals, 0.0, side='right'))
+    if first_positive == len(evals):
+        logger.warning("No positive eigenvalues found")
+        return 0, 0
+
+    scaled, _ = rescale_eigenvalues_by_tracelog(evals)
+    positive = scaled[first_positive:]
+    num_evals = len(positive)
+    idx_local = 0
+
+    # Same determinant-tail rule as the legacy ERG path, evaluated in log
+    # space to avoid overflow and underflow.
+    log_positive = np.log(positive)
+    for idx in range(len(positive) - 1, 0, -1):
+        tail_trace_log = float(np.sum(log_positive[idx:], dtype=np.float64))
+        if tail_trace_log < 0.0:
+            num_evals = len(positive) - idx
+            idx_local = idx
+            break
+
+    return num_evals, first_positive + idx_local
+
+
+def _detX_constraint_lambda_min(evals):
+    """Find the tail closest to the ERG mean trace-log condition.
+
+    For each candidate tail R, use its smallest eigenvalue as lambda_min:
+
+        mean(log(lambda_i / (e * lambda_min))) = 0,  i in R.
+
+    Minimize the absolute mean trace-log over positive tails containing at
+    least two eigenvalues. Include all eigenvalues tied at the cutoff and
+    prefer the larger tail when residuals tie to numerical precision. A finite
+    spectrum need not contain an exact zero or even a sign change.
+
+    Parameters
+    ----------
+    evals : float array
+        Finite, nonnegative eigenvalues in ascending order. Zero eigenvalues
+        cannot enter the logarithm and are excluded from candidate tails.
+
+    Returns:
+    --------
+        num_evals:  int
+        number of eigenvalues in the tail
+
+        det_x_idx:  int
+        index of the first eigenvalue in the original input array
+
+    Return (0, 0) for invalid input or fewer than two distinct positive
+    eigenvalues. The input is not modified.
+    """
+
+    if evals is None:
+        logger.warning("No or not enough evals found")
+        return 0, 0
+
+    evals = np.asarray(evals, dtype=np.float64)
+    if evals.ndim != 1 or len(evals) < 2:
+        logger.warning("No or not enough evals found")
+        return 0, 0
+
+    if (not np.all(np.isfinite(evals)) or np.any(evals < 0)
+            or np.any(evals[1:] < evals[:-1])):
+        logger.warning("ERG requires finite, nonnegative, sorted eigenvalues")
+        return 0, 0
+
+    first_positive = int(np.searchsorted(evals, 0.0, side='right'))
+    positive = evals[first_positive:]
+    if len(positive) < 2 or positive[0] == positive[-1]:
+        logger.warning("ERG requires at least two distinct positive eigenvalues")
+        return 0, 0
+
+    # Work in log space: products and explicit lambda / lambda_min ratios can
+    # overflow. Center the logs before summing to remove the common scale.
+    log_evals = np.log(positive)
+    log_evals -= log_evals[-1]
+    tail_sizes = np.arange(len(positive), 0, -1)
+    tail_log_sums = np.cumsum(log_evals[::-1], dtype=np.float64)[::-1]
+    residuals = tail_log_sums / tail_sizes - log_evals - 1.0
+
+    # A cutoff retains the whole tied eigenspace, never only part of it.
+    first_at_cutoff = np.r_[True, positive[1:] > positive[:-1]]
+    candidates = np.flatnonzero(first_at_cutoff & (tail_sizes >= 2))
+    errors = np.abs(residuals[candidates])
+    best = np.flatnonzero(np.isclose(errors, np.min(errors), rtol=0.0, atol=1e-12))[0]
+    idx = first_positive + int(candidates[best])
+    return len(evals) - idx, idx
 
 
 def combine_weights_and_biases(W,b):
